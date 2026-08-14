@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --forest: #22392f;
+  --forest-deep: #17281f;
+  --signal: #00a100;
+  --signal-dark: #007d00;
+  --fog: #f4f5f2;
+  --shadow-press: #007d00;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  color: var(--forest-deep);
+  background:
+    linear-gradient(135deg, rgba(0, 161, 0, 0.05), transparent 32%),
+    linear-gradient(315deg, rgba(75, 158, 255, 0.1), transparent 34%),
+    var(--fog);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer components {
+  /* Boton primario: accion en verde senal con sombreado inferior que responde al presionar. */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-[14px] border-2 px-5 py-3 font-black transition-transform duration-150;
+    min-height: 44px;
+  }
+  .btn-primary {
+    @apply border-signal-dark bg-signal text-[#07140e];
+    box-shadow: 0 5px 0 var(--signal-dark);
+  }
+  .btn-secondary {
+    @apply border-forest bg-white text-forest;
+    box-shadow: 0 5px 0 rgba(23, 40, 31, 0.24);
+  }
+  .btn-ghost {
+    @apply border-forest bg-forest text-white;
+    box-shadow: 0 5px 0 #0b1812;
+  }
+  .btn:active {
+    transform: translateY(4px);
+    box-shadow: none;
+  }
+
+  .accent-line {
+    @apply h-2 w-32 rounded-full;
+    background: linear-gradient(90deg, var(--signal), #40c6bd, #4b9eff, #ff735c);
+  }
+}
