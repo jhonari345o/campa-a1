@@ -22,7 +22,7 @@ export function LoginForm() {
         setError("No pudimos ingresar. Revisa tu correo y contrasena.");
         return;
       }
-      router.push("/consola");
+      router.push("/mercado");
       router.refresh();
     } catch {
       setError("Ocurrio un problema de conexion. Intenta de nuevo.");
