@@ -22,7 +22,7 @@ export function LoginForm() {
         setError("No pudimos ingresar. Revisa tu correo y contrasena.");
         return;
       }
-      router.push("/mercado");
+      router.push("/panel");
       router.refresh();
     } catch {
       setError("Ocurrio un problema de conexion. Intenta de nuevo.");

@@ -6,7 +6,7 @@ type AppHeaderProps = {
   name: string;
   isAdmin: boolean;
   /** Ruta activa para resaltar el enlace. */
-  active?: "mercado" | "consola";
+  active?: "mercado" | "consola" | "panel";
 };
 
 /** Encabezado del area autenticada (mercado, consola). */
@@ -15,10 +15,11 @@ export function AppHeader({ name, isAdmin, active }: AppHeaderProps) {
     <header className="border-b border-border bg-white/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
         <div className="flex items-center gap-6">
-          <Link href="/mercado" className="text-lg">
+          <Link href="/panel" className="text-lg">
             <Wordmark one />
           </Link>
           <nav className="hidden items-center gap-5 md:flex">
+            <HeaderLink href="/panel" label="Panel" active={active === "panel"} />
             <HeaderLink href="/mercado" label="Mercado" active={active === "mercado"} />
             {isAdmin && (
               <HeaderLink href="/consola" label="Consola" active={active === "consola"} />
