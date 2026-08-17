@@ -7,6 +7,11 @@ frontend:
     preBuild:
       commands:
         - npm ci
+        # Next.js "hornea" las NEXT_PUBLIC_* dentro del bundle del navegador en el
+        # build. Amplify entrega las variables del panel como env del build, pero
+        # Next solo las inyecta al cliente si están en el entorno o en .env.production.
+        # Las volcamos aquí para garantizar que el login (cliente) tenga la URL/anon key.
+        - env | grep -e '^NEXT_PUBLIC_' >> .env.production || true
     build:
       commands:
         - npm run build

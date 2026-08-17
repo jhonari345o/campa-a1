@@ -56,11 +56,21 @@ Si en local funciona pero al subir a AWS "se corta la conexión con la base"
 (páginas que redirigen a *Falta configurar Supabase*, o los formularios que no
 guardan), casi siempre es una de estas causas — revísalas en orden:
 
-1. **Variables `NEXT_PUBLIC_*` ausentes en el build.** Estas se "hornean" en el
-   momento del `npm run build`, no en tiempo de ejecución. Si las cargaste en
-   Amplify *después* del primer deploy, hay que **volver a construir** (Redeploy /
-   *Clear cache and redeploy*), no solo reiniciar. Sin ellas, el navegador apunta
-   a `undefined` y toda llamada a Supabase falla.
+1. **Variables `NEXT_PUBLIC_*` no inyectadas en el bundle del navegador.**
+   *Síntoma típico:* el sitio **carga bien** pero al **ingresar** aparece
+   *"Ocurrió un problema de conexión. Intenta de nuevo."* (el error es del lado
+   del cliente, no del servidor). Causa: Next.js "hornea" las `NEXT_PUBLIC_*`
+   dentro del JavaScript del navegador en el momento del `npm run build`. El
+   servidor las lee en runtime (por eso la página carga), pero el bundle del
+   cliente quedó con la URL/anon key vacías, así que `signInWithPassword` falla.
+   *Arreglo:* `amplify.yml` ahora vuelca las `NEXT_PUBLIC_*` a `.env.production`
+   en preBuild para que Next las inyecte. Después:
+   1. Confirma en **App settings → Environment variables** que están
+      `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` y
+      `NEXT_PUBLIC_SITE_URL`.
+   2. Lanza **Redeploy this version → Clear cache and redeploy** (un simple
+      reinicio no rehornea el bundle).
+   3. Recarga con caché limpia y prueba el login.
 
 2. **Llaves cruzadas.** `NEXT_PUBLIC_SUPABASE_ANON_KEY` = la *publishable*
    (`sb_publishable_...`); `SUPABASE_SERVICE_ROLE_KEY` = la *secret*
