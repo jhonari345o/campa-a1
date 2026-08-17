@@ -29,6 +29,7 @@ export function companySlug(name: string): string {
 export function generateRegistrationCode(companyName: string): string {
   const year = new Date().getFullYear();
   const prefix = slugLetters(companyName).slice(0, 5);
-  const suffix = randomBytes(2).toString("hex").toUpperCase(); // 4 chars
+  // 8 hex (32 bits, ~4.3 mil millones) en vez de 4: resiste la fuerza bruta.
+  const suffix = randomBytes(4).toString("hex").toUpperCase(); // 8 chars
   return `AMK-${year}-${prefix}-${suffix}`;
 }

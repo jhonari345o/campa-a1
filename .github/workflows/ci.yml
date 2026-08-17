@@ -1,0 +1,29 @@
+name: CI
+
+# Verifica tipos y build en cada push / PR, para no romper el despliegue.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  build:
+    name: Typecheck + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        env:
+          # Valores de marcador: el build no contacta a Supabase, solo necesita
+          # que las NEXT_PUBLIC_* existan para no fallar por variable ausente.
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+        run: npm run build

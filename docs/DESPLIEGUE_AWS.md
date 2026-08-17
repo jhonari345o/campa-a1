@@ -50,6 +50,42 @@ Para un control mas fino (o correr detras de ALB + WAF propio):
    *secrets* (SSM Parameter Store / Secrets Manager) — la secret key nunca en la
    imagen.
 
+## Solución de problemas: la conexión con Supabase se cae en AWS
+
+Si en local funciona pero al subir a AWS "se corta la conexión con la base"
+(páginas que redirigen a *Falta configurar Supabase*, o los formularios que no
+guardan), casi siempre es una de estas causas — revísalas en orden:
+
+1. **Variables `NEXT_PUBLIC_*` ausentes en el build.** Estas se "hornean" en el
+   momento del `npm run build`, no en tiempo de ejecución. Si las cargaste en
+   Amplify *después* del primer deploy, hay que **volver a construir** (Redeploy /
+   *Clear cache and redeploy*), no solo reiniciar. Sin ellas, el navegador apunta
+   a `undefined` y toda llamada a Supabase falla.
+
+2. **Llaves cruzadas.** `NEXT_PUBLIC_SUPABASE_ANON_KEY` = la *publishable*
+   (`sb_publishable_...`); `SUPABASE_SERVICE_ROLE_KEY` = la *secret*
+   (`sb_secret_...`) y **sin** el prefijo `NEXT_PUBLIC_`. Si se invierten, el
+   servidor no autentica y el cliente queda sin permisos.
+
+3. **La app se sirvió como estático, no como SSR.** El middleware y los Server
+   Actions necesitan cómputo. En Amplify confirma que la app quedó como
+   **Next.js (Web Compute / SSR)**, no como *Static*. Si no, la sesión no se
+   refresca y las acciones no corren.
+
+4. **Proyecto Supabase pausado.** En el plan gratuito, Supabase **pausa** el
+   proyecto por inactividad y rechaza conexiones hasta reanudarlo desde el panel.
+   Súbelo a un plan con actividad continua antes de abrir a clientes.
+
+5. **Egress bloqueado (solo ECS/Fargate).** Si usas la Opción B detrás de un ALB
+   en subredes privadas, la tarea necesita salida a internet (NAT Gateway) para
+   llegar a `*.supabase.co` por HTTPS. Sin NAT, la conexión "se cuelga".
+
+> El sitio habla con Supabase por **HTTPS (API REST)**, no por una conexión
+> Postgres directa: no hay pooler ni `DATABASE_URL` que configurar aquí. Si el
+> corte fue al **pegar `schema.sql` en el SQL Editor**, es independiente de AWS —
+> el script es idempotente, vuelve a ejecutarlo (o por secciones si el editor
+> corta los bloques `do $$ ... $$` largos).
+
 ## Checklist previo a abrir a clientes (regla de oro)
 - [ ] `schema.sql` y `seed.sql` ejecutados en Supabase.
 - [ ] Primer platform admin creado y verificado.

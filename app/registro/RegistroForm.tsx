@@ -26,7 +26,7 @@ export function RegistroForm() {
 
   return (
     <form action={formAction} className="mt-6 space-y-4">
-      <Field name="code" label="Codigo de registro *" placeholder="AMK-2026-XXXXX-XXXX" required mono />
+      <Field name="code" label="Codigo de registro *" placeholder="AMK-2026-XXXXX-XXXXXXXX" required mono />
       <Field name="full_name" label="Tu nombre" placeholder="Nombre y apellido" />
       <Field name="email" label="Correo *" type="email" placeholder="tu@empresa.com" required />
       <Field name="password" label="Contrasena *" type="password" placeholder="Minimo 8 caracteres" required />
