@@ -26,24 +26,25 @@ tu presupuesto de hardware:
 | Mistral 7B Instruct | 7B | Buena, liviano | 1 GPU 16 GB |
 | Qwen2.5 14B Instruct | 14B | Muy buena | 1 GPU 24–40 GB |
 
-## Opcion A — Amazon Bedrock (recomendada: sin administrar GPU)
+## Opcion A — Amazon Bedrock (recomendada: sin servidor)
 
-Corre en **tu** cuenta AWS, con modelos abiertos (Llama/Mistral), sin servidor
-que mantener. Pagas por uso (centavos por consulta).
+El sitio ya trae el conector de Bedrock incorporado (Converse API). No hace falta
+proxy ni servidor. Pasos:
 
-1. AWS Console → **Bedrock** → *Model access* → habilita Llama o Mistral.
-2. Expon un endpoint compatible con OpenAI. Dos formas:
-   - **LiteLLM Proxy** (recomendado): un contenedor pequeno que traduce de
-     OpenAI a Bedrock. Lo corres en ECS/Fargate o una EC2 chica (sin GPU).
-     Config minima (`config.yaml`):
-     ```yaml
-     model_list:
-       - model_name: llama-3.1-8b-instruct
-         litellm_params:
-           model: bedrock/meta.llama3-1-8b-instruct-v1:0
-           aws_region_name: us-east-1
-     ```
-   - Luego: `LLM_BASE_URL=http://TU-PROXY:4000/v1`, `LLM_MODEL=llama-3.1-8b-instruct`.
+1. **AWS Console → Bedrock → Model access** → habilita un modelo abierto
+   (ej. *Llama 3.1 8B Instruct* o *Mistral 7B*). La activacion suele ser inmediata.
+2. **IAM → Users → Create user** (acceso programatico) con la politica
+   **AmazonBedrockFullAccess** (o una politica minima con `bedrock:InvokeModel`).
+   Guarda el **Access key ID** y el **Secret access key**.
+3. En **Amplify → Variables de entorno** agrega:
+   - `BEDROCK_REGION` = `us-east-1`
+   - `BEDROCK_MODEL_ID` = `meta.llama3-1-8b-instruct-v1:0`
+   - `BEDROCK_ACCESS_KEY_ID` = tu access key
+   - `BEDROCK_SECRET_ACCESS_KEY` = tu secret key
+4. **Volver a implementar** (redeploy). Listo: Mavi responde.
+
+> Si sale un error de "inference profile", antepon `us.` al modelo:
+> `us.meta.llama3-1-8b-instruct-v1:0`.
 
 ## Opcion B — Modelo dedicado en una GPU (sin pago por consulta)
 
