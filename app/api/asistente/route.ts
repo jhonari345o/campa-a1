@@ -1,11 +1,9 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { getSessionProfile } from "@/lib/auth";
 import { buildMarketContext } from "@/lib/assistant/context";
+import { chatCompletion, type LlmMessage } from "@/lib/assistant/llm";
 
 export const runtime = "nodejs";
-
-const MODEL = "claude-opus-5";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -22,21 +20,13 @@ Reglas:
 - Datos honestos: si un dato no esta en el resumen o no esta verificado, dilo claramente; no
   inventes cifras ni prometas resultados garantizados.
 - Tono: valiente, preciso, optimista y claro. Espanol de Ecuador. Respuestas breves y accionables:
-  di que ocurre, por que importa y cual es el siguiente paso.
-- No incluyas etiquetas XML internas ni de sistema en tu respuesta.`;
+  di que ocurre, por que importa y cual es el siguiente paso.`;
 
 export async function POST(request: Request) {
   // 1. Solo usuarios autenticados.
   const profile = await getSessionProfile();
   if (!profile) {
     return NextResponse.json({ error: "Debes iniciar sesion." }, { status: 401 });
-  }
-
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json(
-      { error: "El asistente aun no esta configurado (falta ANTHROPIC_API_KEY)." },
-      { status: 503 },
-    );
   }
 
   // 2. Validar el historial.
@@ -53,34 +43,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Falta el mensaje del usuario." }, { status: 400 });
   }
 
-  // 3. Contexto de datos + llamada a Claude.
+  // 3. Contexto de datos + llamada al modelo propio.
   try {
     const context = await buildMarketContext();
-    const anthropic = new Anthropic();
+    const messages: LlmMessage[] = [
+      { role: "system", content: `${SYSTEM}\n\n${context}` },
+      ...history.map((m) => ({ role: m.role, content: m.content }) as LlmMessage),
+    ];
 
-    const response = await anthropic.messages.create({
-      model: MODEL,
-      max_tokens: 1500,
-      thinking: { type: "disabled" },
-      system: `${SYSTEM}\n\n${context}`,
-      messages: history.map((m) => ({ role: m.role, content: m.content })),
-    });
-
-    if (response.stop_reason === "refusal") {
-      return NextResponse.json({
-        reply:
-          "Prefiero no responder eso. Puedo ayudarte con planificacion de medios, inversion publicitaria y metricas. ¿Que necesitas?",
-      });
-    }
-
-    const reply = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("\n")
-      .trim();
-
+    const reply = await chatCompletion(messages, { maxTokens: 1024 });
     return NextResponse.json({ reply: reply || "No pude generar una respuesta. Intenta de nuevo." });
   } catch (err) {
+    if (err instanceof Error && err.message === "MODELO_NO_CONFIGURADO") {
+      return NextResponse.json(
+        { error: "El asistente aun no esta conectado a un modelo (falta LLM_BASE_URL / LLM_MODEL)." },
+        { status: 503 },
+      );
+    }
     const message = err instanceof Error ? err.message : "Error desconocido";
     return NextResponse.json({ error: `El asistente fallo: ${message}` }, { status: 500 });
   }
