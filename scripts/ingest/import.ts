@@ -10,7 +10,7 @@
  */
 import { admin, logStep } from "./env";
 import { readCsv, toNumber, toStatus } from "./csv";
-import { ensureSource, upsertAdvertiser, upsertInvestment, upsertMetric } from "./upsert";
+import { ensureSource, upsertAdvertiser, upsertChannel, upsertInvestment, upsertMetric } from "./upsert";
 
 const pick = (row: Record<string, string>, ...keys: string[]) => {
   for (const k of keys) {
@@ -40,6 +40,21 @@ async function importAdvertisers(file: string) {
     n++;
   }
   logStep(`✓ ${n} anunciantes procesados`);
+}
+
+async function importChannels(file: string) {
+  const db = admin();
+  const rows = readCsv(file);
+  logStep(`${rows.length} filas de medios/canales`);
+  let n = 0;
+  for (const row of rows) {
+    const name = pick(row, "name", "nombre", "medio");
+    const media_type = pick(row, "media_type", "tipo") || "otros";
+    if (!name) continue;
+    await upsertChannel(db, { name, media_type, owner: pick(row, "owner", "propietario", "grupo") || null });
+    n++;
+  }
+  logStep(`✓ ${n} medios procesados`);
 }
 
 async function importInvestments(file: string) {
@@ -118,11 +133,12 @@ async function importMetrics(file: string) {
 async function main() {
   const [kind, file] = process.argv.slice(2);
   if (!kind || !file) {
-    console.error("Uso: import.ts <advertisers|investments|metrics> <archivo.csv>");
+    console.error("Uso: import.ts <advertisers|channels|investments|metrics> <archivo.csv>");
     process.exit(1);
   }
   console.log(`Ingesta: ${kind} <- ${file}`);
   if (kind === "advertisers") await importAdvertisers(file);
+  else if (kind === "channels") await importChannels(file);
   else if (kind === "investments") await importInvestments(file);
   else if (kind === "metrics") await importMetrics(file);
   else {

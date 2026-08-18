@@ -17,9 +17,21 @@ commitean.
 
 ```bash
 npx tsx --env-file=.env.local scripts/ingest/import.ts advertisers  data/samples/advertisers.csv
+npx tsx --env-file=.env.local scripts/ingest/import.ts channels     data/samples/channels.csv
 npx tsx --env-file=.env.local scripts/ingest/import.ts investments  data/samples/investments.csv
 npx tsx --env-file=.env.local scripts/ingest/import.ts metrics      data/samples/metrics.csv
 ```
+
+### Datos reales ya incluidos
+
+En `data/` hay datos reales listos para cargar (monitoreo de medios y radios):
+
+```bash
+npx tsx --env-file=.env.local scripts/ingest/import.ts investments data/inversion_medios_2026.csv  # ~5.000 registros, ~3.700 anunciantes
+npx tsx --env-file=.env.local scripts/ingest/import.ts channels    data/radios.csv                 # 104 emisoras
+```
+
+Entran como `pendiente` (por verificar). Marca `verificado` desde la Consola cuando confirmes contra la fuente.
 
 Los importadores son **idempotentes**: si vuelves a correrlos, actualizan en
 vez de duplicar (dedup por RUC/nombre, y por anunciante+medio/plataforma+periodo).

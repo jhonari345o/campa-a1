@@ -59,6 +59,26 @@ export async function upsertAdvertiser(db: SupabaseClient, a: AdvertiserInput): 
   return created!.id;
 }
 
+export type ChannelInput = { name: string; media_type: string; owner?: string | null };
+
+/** Deduplica un medio/canal por (nombre, tipo). */
+export async function upsertChannel(db: SupabaseClient, c: ChannelInput): Promise<void> {
+  const { data: existing } = await db
+    .from("media_channels")
+    .select("id")
+    .ilike("name", c.name)
+    .eq("media_type", c.media_type)
+    .maybeSingle();
+
+  const payload = { name: c.name, media_type: c.media_type, owner: c.owner ?? null };
+  if (existing?.id) {
+    await db.from("media_channels").update(payload).eq("id", existing.id);
+  } else {
+    const { error } = await db.from("media_channels").insert(payload);
+    if (error) throw new Error(`channel "${c.name}": ${error.message}`);
+  }
+}
+
 export type InvestmentInput = {
   advertiser_id: string;
   media_type?: string | null;
