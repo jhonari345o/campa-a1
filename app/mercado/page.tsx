@@ -24,6 +24,8 @@ export default async function MercadoPage() {
 
   const profile = await getSessionProfile();
   if (!profile) redirect("/ingresar");
+  // La data de mercado es solo para el equipo Ad Mavericks.
+  if (!profile.is_platform_admin) redirect("/planificador");
 
   const [overview, advertisers, investments, metrics] = await Promise.all([
     getOverview(),

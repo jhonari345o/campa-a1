@@ -16,7 +16,7 @@ export default async function CargarPage() {
   if (!supabaseConfigured) redirect("/consola");
   const profile = await getSessionProfile();
   if (!profile) redirect("/ingresar");
-  if (!profile.is_platform_admin) redirect("/mercado");
+  if (!profile.is_platform_admin) redirect("/planificador");
 
   const advertisers = await getAdvertisers(200);
   const advertiserOptions = advertisers.map((a) => ({ value: a.id, label: a.name }));

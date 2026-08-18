@@ -111,20 +111,23 @@ function QuickLinks() {
   return (
     <section className="grid gap-4 sm:grid-cols-2">
       <Link
-        href="/mercado"
+        href="/planificador"
         className="rounded-panel border border-border bg-forest p-6 text-white shadow-panel transition-transform hover:-translate-y-0.5"
       >
-        <h3 className="text-lg font-black">Inteligencia de mercado →</h3>
+        <h3 className="text-lg font-black">Planificador de medios →</h3>
         <p className="mt-1 text-sm text-white/70">
-          Como las principales empresas distribuyen su inversion en medios.
+          Arma un plan de medios para tu negocio con base en el mercado.
         </p>
       </Link>
-      <div className="rounded-panel border border-border bg-white p-6 shadow-panel">
-        <h3 className="text-lg font-black text-forest">Planificacion de medios</h3>
+      <Link
+        href="/asistente"
+        className="rounded-panel border border-border bg-white p-6 shadow-panel transition-transform hover:-translate-y-0.5"
+      >
+        <h3 className="text-lg font-black text-forest">Pregunta a Mavi →</h3>
         <p className="mt-1 text-sm text-muted">
-          Proximamente: cotizaciones, reservas y ordenes de compra (Fase 2–3).
+          Tu guia de medios: resuelve dudas de publicidad y planificacion.
         </p>
-      </div>
+      </Link>
     </section>
   );
 }
