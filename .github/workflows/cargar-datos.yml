@@ -1,0 +1,29 @@
+name: Cargar datos de mercado (una vez)
+
+# Carga los datos reales (inversion 2026 + radios) en Supabase.
+# Se corre a mano desde la pestana "Actions" del repositorio.
+#
+# Antes de usarlo, define dos secrets del repositorio
+# (Settings -> Secrets and variables -> Actions -> New repository secret):
+#   SUPABASE_URL                = https://TU-PROYECTO.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY   = sb_secret_...
+on:
+  workflow_dispatch:
+
+jobs:
+  cargar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Cargar inversion y radios
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          npx tsx scripts/ingest/import.ts investments data/inversion_medios_2026.csv
+          npx tsx scripts/ingest/import.ts channels    data/radios.csv
