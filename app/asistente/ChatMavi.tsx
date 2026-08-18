@@ -6,9 +6,10 @@ import { MaviAvatar } from "@/components/Mavi";
 type Msg = { role: "user" | "assistant"; content: string };
 
 const SUGERENCIAS = [
-  "¿Cuanto invierten las empresas en TV abierta?",
-  "¿Que medios usan mas los anunciantes del sector bebidas?",
-  "Arma un mix de medios de referencia para una marca nueva.",
+  "Tengo una cafeteria y $2000 al mes. ¿En que canales invierto?",
+  "Hazme un guion para un reel de Instagram de mi restaurante.",
+  "Escribe una cuna de radio de 30s para mi farmacia.",
+  "¿Como armo una campana de WhatsApp para vender mas?",
 ];
 
 export function ChatMavi() {
@@ -16,7 +17,7 @@ export function ChatMavi() {
     {
       role: "assistant",
       content:
-        "¡Hola! Soy Mavi. Preguntame sobre inversion en medios, canales o metricas y te oriento con datos de referencia del mercado.",
+        "¡Hola! Soy Mavi. Cuentame tu negocio y tu presupuesto, y te digo en que canales invertir y como. Tambien te armo campanas y guiones para redes, TV o radio.",
     },
   ]);
   const [input, setInput] = useState("");

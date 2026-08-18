@@ -1,86 +1,70 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { MEDIA_TYPE_LABELS, money } from "@/lib/market";
 
 /**
- * Arma un resumen compacto de la base de inversion publicitaria para
- * fundamentar (grounding) las respuestas de Mavi. Solo datos de mercado,
- * agregados; nada de datos de una empresa cliente en particular.
+ * Arma el contexto de Mavi. Corre del lado del servidor con la clave de
+ * servicio (los clientes no ven la data cruda; solo la respuesta de Mavi).
+ * Combina: (1) resumen agregado de inversion del mercado y (2) la base de
+ * conocimiento de giros, canales y plantillas de campana. Sin Internet.
  */
 export async function buildMarketContext(): Promise<string> {
-  const supabase = await createClient();
-
-  const [{ data: investments }, { data: metrics }] = await Promise.all([
-    supabase
-      .from("ad_investments")
-      .select("media_type, amount_usd, status, period_year, advertisers(name, sector)")
-      .order("period_year", { ascending: false })
-      .limit(500),
-    supabase
-      .from("digital_metrics")
-      .select("platform, spend_usd, impressions, clicks, status")
-      .limit(500),
-  ]);
-
-  const inv = investments ?? [];
-  if (inv.length === 0 && (metrics ?? []).length === 0) {
-    return "No hay datos de inversion publicitaria cargados todavia en la base.";
+  let db;
+  try {
+    db = createAdminClient();
+  } catch {
+    return "La base de conocimiento aun no esta disponible.";
   }
 
-  // Totales y verificacion.
-  const total = inv.reduce((s, r) => s + Number(r.amount_usd ?? 0), 0);
-  const verified = inv.filter((r) => r.status === "verificado").length;
+  const [{ data: investments }, { data: giros }, { data: canales }, { data: campanas }] =
+    await Promise.all([
+      db.from("ad_investments").select("media_type, amount_usd").limit(4000),
+      db.from("kb_giros").select("giro, publico, canales, tono, ideas"),
+      db.from("kb_canales").select("canal, para_que, como_invertir, formato, tip"),
+      db.from("kb_campanas").select("tipo, titulo, estructura"),
+    ]);
 
-  // Por medio.
+  // Resumen de inversion por medio (referencia del mercado).
   const byMedia = new Map<string, number>();
-  for (const r of inv) {
-    const key = r.media_type ?? "otros";
-    byMedia.set(key, (byMedia.get(key) ?? 0) + Number(r.amount_usd ?? 0));
+  let total = 0;
+  for (const r of investments ?? []) {
+    const amt = Number(r.amount_usd ?? 0);
+    if (amt <= 0) continue;
+    const k = r.media_type ?? "otros";
+    byMedia.set(k, (byMedia.get(k) ?? 0) + amt);
+    total += amt;
   }
-
-  // Por sector.
-  const bySector = new Map<string, number>();
-  // Por anunciante.
-  const byAdvertiser = new Map<string, number>();
-  for (const r of inv) {
-    const adv = r.advertisers as unknown as { name: string; sector: string | null } | null;
-    if (adv?.sector) bySector.set(adv.sector, (bySector.get(adv.sector) ?? 0) + Number(r.amount_usd ?? 0));
-    if (adv?.name) byAdvertiser.set(adv.name, (byAdvertiser.get(adv.name) ?? 0) + Number(r.amount_usd ?? 0));
-  }
-
-  const top = (m: Map<string, number>, n: number, label = (k: string) => k) =>
-    [...m.entries()]
+  const mediaLines =
+    [...byMedia.entries()]
       .sort((a, b) => b[1] - a[1])
-      .slice(0, n)
-      .map(([k, v]) => `- ${label(k)}: ${money(v)}`)
-      .join("\n");
+      .map(([mt, v]) => `- ${MEDIA_TYPE_LABELS[mt] ?? mt}: ${money(v)} (${total ? Math.round((v / total) * 100) : 0}%)`)
+      .join("\n") || "- (sin datos)";
 
-  // Metricas digitales por plataforma.
-  const byPlatform = new Map<string, { spend: number; impr: number; clicks: number }>();
-  for (const m of metrics ?? []) {
-    const cur = byPlatform.get(m.platform) ?? { spend: 0, impr: 0, clicks: 0 };
-    cur.spend += Number(m.spend_usd ?? 0);
-    cur.impr += Number(m.impressions ?? 0);
-    cur.clicks += Number(m.clicks ?? 0);
-    byPlatform.set(m.platform, cur);
-  }
-  const platformLines = [...byPlatform.entries()]
-    .map(([p, v]) => `- ${p}: inversion ${money(v.spend)}, ${v.impr.toLocaleString("es-EC")} impresiones, ${v.clicks.toLocaleString("es-EC")} clics`)
-    .join("\n");
+  const giroLines =
+    (giros ?? [])
+      .map((g) => `- ${g.giro}: publico ${g.publico}; canales ${g.canales}; tono ${g.tono}; ideas: ${g.ideas}`)
+      .join("\n") || "- (sin datos)";
+
+  const canalLines =
+    (canales ?? [])
+      .map((c) => `- ${c.canal}: ${c.para_que}. Como invertir: ${c.como_invertir}. Formato: ${c.formato}. Tip: ${c.tip}`)
+      .join("\n") || "- (sin datos)";
+
+  const campanaLines =
+    (campanas ?? [])
+      .map((c) => `- [${c.tipo}] ${c.titulo}: ${c.estructura}`)
+      .join("\n") || "- (sin datos)";
 
   return [
-    `RESUMEN DE LA BASE DE INVERSION PUBLICITARIA (muestra de ${inv.length} registros):`,
-    `Inversion total registrada: ${money(total)}. Registros verificados: ${verified} de ${inv.length}.`,
+    `INVERSION DEL MERCADO POR MEDIO (referencia, total ${money(total)}):`,
+    mediaLines,
     "",
-    "Inversion por tipo de medio:",
-    top(byMedia, 10, (k) => MEDIA_TYPE_LABELS[k] ?? k) || "- (sin datos)",
+    "GIROS DE NEGOCIO (publico, canales, tono, ideas):",
+    giroLines,
     "",
-    "Inversion por sector economico:",
-    top(bySector, 8) || "- (sin datos)",
+    "CANALES DE PUBLICIDAD (para que sirve, como invertir, formato, tip):",
+    canalLines,
     "",
-    "Principales anunciantes por inversion:",
-    top(byAdvertiser, 12) || "- (sin datos)",
-    "",
-    "Metricas digitales por plataforma:",
-    platformLines || "- (sin datos)",
+    "PLANTILLAS DE CAMPANA Y GUIONES:",
+    campanaLines,
   ].join("\n");
 }
