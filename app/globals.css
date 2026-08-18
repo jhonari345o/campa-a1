@@ -60,3 +60,19 @@ body {
     background: linear-gradient(90deg, var(--signal), #40c6bd, #4b9eff, #ff735c);
   }
 }
+
+/* Mavi flota suavemente (se detiene con prefers-reduced-motion). */
+@keyframes maviFloat {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1.2deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(1.2deg);
+  }
+}
+.mavi-float {
+  animation: maviFloat 4.5s ease-in-out infinite;
+  will-change: transform;
+  filter: drop-shadow(0 12px 12px rgba(23, 40, 31, 0.18));
+}

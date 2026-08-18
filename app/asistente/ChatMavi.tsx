@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { MaviAvatar } from "@/components/Mavi";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -112,14 +113,7 @@ function Bubble({
   const isUser = role === "user";
   return (
     <div className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
-      {!isUser && (
-        <span
-          aria-hidden
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-signal/15 text-lg"
-        >
-          🦎
-        </span>
-      )}
+      {!isUser && <MaviAvatar size={36} className="shrink-0" />}
       <div
         className={`max-w-[75%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm ${
           isUser

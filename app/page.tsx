@@ -1,5 +1,6 @@
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { MaviFull } from "@/components/Mavi";
 
 export default function HomePage() {
   return (
@@ -41,6 +42,10 @@ function Hero() {
           </a>
         </div>
         <div className="accent-line mt-10" />
+        <MaviFull
+          height={360}
+          className="pointer-events-none absolute bottom-0 right-6 z-[1] hidden lg:block"
+        />
         <div
           aria-hidden
           className="pointer-events-none absolute -right-40 -top-72 h-[550px] w-[550px] rounded-full border border-white/15"

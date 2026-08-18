@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { getSessionProfile } from "@/lib/auth";
+import { MaviAvatar } from "@/components/Mavi";
 import { ChatMavi } from "./ChatMavi";
 
 export const metadata = { title: "Pregunta a Mavi" };
@@ -23,9 +24,7 @@ export default async function AsistentePage() {
       />
       <main className="mx-auto max-w-3xl px-6 py-8">
         <div className="mb-5 flex items-center gap-3">
-          <span aria-hidden className="flex h-11 w-11 items-center justify-center rounded-full bg-signal/15 text-2xl">
-            🦎
-          </span>
+          <MaviAvatar size={48} />
           <div>
             <h1 className="text-2xl font-black tracking-tight">Pregunta a Mavi</h1>
             <p className="text-sm text-muted">
