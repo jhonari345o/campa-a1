@@ -18,15 +18,34 @@ const CIUDADES = ["Guayaquil", "Quito", "Cuenca"];
 
 type Step = "red" | "link" | "geo" | "monto" | "pago" | "hecho";
 
-export function PautarChat() {
-  const [chat, setChat] = useState<Bubble[]>([
-    { from: "mavi", text: "¡Listo para pautar! 🦎 Vamos paso a paso. Primero: ¿en que plataforma quieres pautar?" },
-  ]);
-  const [step, setStep] = useState<Step>("red");
-  const [red, setRed] = useState("");
+export function PautarChat({
+  initialRed,
+  initialMonto,
+  initialObjetivo,
+}: {
+  initialRed?: string;
+  initialMonto?: number;
+  initialObjetivo?: string;
+} = {}) {
+  const prefilled = Boolean(initialRed && initialMonto && initialMonto > 0);
+  const [chat, setChat] = useState<Bubble[]>(
+    prefilled
+      ? [
+          {
+            from: "mavi",
+            text: `¡Te prepare esta campana! 🦎 ${redLabel(initialRed!)} · ${money(initialMonto!)}${
+              initialObjetivo ? ` · ${initialObjetivo}` : ""
+            }. Solo pega el link de la publicacion que quieres pautar 👇`,
+          },
+        ]
+      : [{ from: "mavi", text: "¡Listo para pautar! 🦎 Vamos paso a paso. Primero: ¿en que plataforma quieres pautar?" }],
+  );
+  const [step, setStep] = useState<Step>(prefilled ? "link" : "red");
+  const [red, setRed] = useState(initialRed ?? "");
   const [postUrl, setPostUrl] = useState("");
   const [cities, setCities] = useState<string[]>([]);
-  const [monto, setMonto] = useState(0);
+  const [monto, setMonto] = useState(initialMonto ?? 0);
+  const [objetivo] = useState(initialObjetivo ?? "");
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,8 +82,18 @@ export function PautarChat() {
   function confirmCities() {
     if (cities.length === 0) return;
     push({ from: "user", text: cities.join(", ") });
-    push({ from: "mavi", text: "¡Buenisimo! ¿Cuanto quieres pautar? Escribe el monto en dolares (ej. 200)." });
-    setStep("monto");
+    if (monto > 0) {
+      // Presupuesto ya venia de la campana: pasamos directo al pago.
+      const ch = computeCharge(monto);
+      push({
+        from: "mavi",
+        text: `¡Buenisimo! Para pautar ${money(monto)} pasas por caja: se suman los costos de servicio y gestion. Total a pagar: ${money(ch.total)}.`,
+      });
+      setStep("pago");
+    } else {
+      push({ from: "mavi", text: "¡Buenisimo! ¿Cuanto quieres pautar? Escribe el monto en dolares (ej. 200)." });
+      setStep("monto");
+    }
   }
 
   function submitText() {
@@ -100,7 +129,13 @@ export function PautarChat() {
   async function pagar() {
     setSending(true);
     setError(null);
-    const res = await crearPauta({ red, postUrl, geo: cities.join(", "), presupuesto: monto });
+    const res = await crearPauta({
+      red,
+      postUrl,
+      geo: cities.join(", "),
+      presupuesto: monto,
+      objetivo: objetivo || undefined,
+    });
     setSending(false);
     if (!res.ok) {
       setError(res.error);
@@ -283,6 +318,10 @@ export function PautarChat() {
       </div>
     </div>
   );
+}
+
+function redLabel(id: string) {
+  return REDES.find((r) => r.id === id)?.label ?? id;
 }
 
 /** Agrupa el numero de tarjeta de 4 en 4 (solo visual). */

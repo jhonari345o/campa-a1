@@ -13,10 +13,22 @@ const supabaseConfigured = Boolean(
 // El motor real se enciende cuando conectas Meta (token en el entorno).
 const metaConectada = Boolean(process.env.META_ACCESS_TOKEN);
 
-export default async function PautarPage() {
+const REDES_VALIDAS = ["instagram", "facebook", "tiktok"];
+
+export default async function PautarPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ red?: string; monto?: string; objetivo?: string }>;
+}) {
   if (!supabaseConfigured) redirect("/consola");
   const profile = await getSessionProfile();
   if (!profile) redirect("/ingresar");
+
+  const sp = await searchParams;
+  const initialRed = sp.red && REDES_VALIDAS.includes(sp.red) ? sp.red : undefined;
+  const montoNum = Number(sp.monto);
+  const initialMonto = Number.isFinite(montoNum) && montoNum > 0 ? montoNum : undefined;
+  const initialObjetivo = sp.objetivo?.slice(0, 120) || undefined;
 
   return (
     <div className="min-h-screen">
@@ -42,7 +54,7 @@ export default async function PautarPage() {
         {profile.is_platform_admin && <ModeloMonetizacion />}
 
         <div className="mt-6">
-          <PautarChat />
+          <PautarChat initialRed={initialRed} initialMonto={initialMonto} initialObjetivo={initialObjetivo} />
         </div>
       </main>
     </div>

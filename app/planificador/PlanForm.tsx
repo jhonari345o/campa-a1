@@ -145,6 +145,18 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
   );
 }
 
+/**
+ * Enlaza la campana generada con el flujo de pauta+pago, prellenando red y
+ * presupuesto. Solo para las redes que soportan pauta social (Meta/TikTok).
+ */
+function pautarHref(c: Campaign): string | null {
+  const red = c.key === "meta" ? "instagram" : c.key === "tiktok" ? "tiktok" : null;
+  if (!red || c.budget == null) return null;
+  const params = new URLSearchParams({ red, monto: String(c.budget) });
+  if (c.objetivo) params.set("objetivo", c.objetivo);
+  return `/pautar?${params.toString()}`;
+}
+
 function CampaignCard({ c }: { c: Campaign }) {
   const [copied, setCopied] = useState(false);
   const [sending, setSending] = useState(false);
@@ -219,7 +231,12 @@ function CampaignCard({ c }: { c: Campaign }) {
       )}
 
       <div className="mt-auto flex flex-wrap gap-2 pt-4">
-        <button onClick={ejecutar} type="button" disabled={sending} className="btn btn-primary text-xs disabled:opacity-60">
+        {pautarHref(c) && (
+          <a href={pautarHref(c)!} className="btn btn-primary text-xs">
+            Pautar y pagar →
+          </a>
+        )}
+        <button onClick={ejecutar} type="button" disabled={sending} className="btn btn-secondary text-xs disabled:opacity-60">
           {sending ? "Enviando…" : "Ejecutar con Mavi 🦎"}
         </button>
         <button onClick={copy} type="button" className="btn btn-secondary text-xs">
