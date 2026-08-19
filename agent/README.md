@@ -34,9 +34,21 @@ playwright install chromium
 cp .env.example .env    # ajusta el modelo si quieres
 ```
 
-## Uso
-1. Toma una campana del planificador (boton "Copiar campana") y arma un JSON como
-   `campaign.example.json`.
+## Uso — modo TRABAJADOR (integrado al sitio, recomendado)
+Asi todo se ve dentro de admavericks.one: el cliente aprieta "Ejecutar con Mavi"
+y el estado aparece en la pantalla **Campanas**. El agente corre en tu maquina/EC2
+y consulta el sitio por trabajos pendientes.
+
+1. En `.env` pon `SITE_URL` y el mismo `AGENT_WORKER_TOKEN` que configuraste en Amplify.
+2. Corre el trabajador (queda escuchando):
+   ```bash
+   python worker.py
+   ```
+3. Cuando un cliente use "Ejecutar con Mavi", el agente lo toma, prepara la campana
+   y marca el trabajo como **listo_para_revision** (nunca publica solo).
+
+## Uso — modo manual (una campana suelta, para probar)
+1. Arma un JSON como `campaign.example.json`.
 2. Corre:
    ```bash
    python run_campaign.py campaign.example.json

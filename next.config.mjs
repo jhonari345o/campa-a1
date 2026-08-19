@@ -15,6 +15,7 @@ const nextConfig = {
     BEDROCK_MODEL_ID: process.env.BEDROCK_MODEL_ID,
     BEDROCK_ACCESS_KEY_ID: process.env.BEDROCK_ACCESS_KEY_ID,
     BEDROCK_SECRET_ACCESS_KEY: process.env.BEDROCK_SECRET_ACCESS_KEY,
+    AGENT_WORKER_TOKEN: process.env.AGENT_WORKER_TOKEN,
   },
 };
 

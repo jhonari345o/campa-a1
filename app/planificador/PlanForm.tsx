@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { generarPlan, type PlanResult } from "./actions";
 import type { PlanRow } from "@/lib/planner";
 import type { Campaign } from "@/lib/campaigns";
+import { ejecutarCampana } from "@/app/campanas/actions";
 
 const money = (n: number | null) =>
   n == null ? "—" : new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
@@ -146,6 +147,33 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
 
 function CampaignCard({ c }: { c: Campaign }) {
   const [copied, setCopied] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState<null | { ok: boolean; msg: string }>(null);
+
+  async function ejecutar() {
+    setSending(true);
+    setSent(null);
+    try {
+      const res = await ejecutarCampana({
+        platform: c.key,
+        objetivo: c.objetivo,
+        publico: c.publico,
+        formato: c.formato,
+        presupuesto: c.budget,
+        copy: c.copy,
+      });
+      setSent(
+        res.ok
+          ? { ok: true, msg: "Enviada a Mavi. Sigue el estado en Campanas." }
+          : { ok: false, msg: res.error },
+      );
+    } catch {
+      setSent({ ok: false, msg: "No se pudo enviar. Intenta de nuevo." });
+    } finally {
+      setSending(false);
+    }
+  }
+
   const fullText =
     `Campana: ${c.platform}\n` +
     `Objetivo: ${c.objetivo}\n` +
@@ -191,13 +219,23 @@ function CampaignCard({ c }: { c: Campaign }) {
       )}
 
       <div className="mt-auto flex flex-wrap gap-2 pt-4">
+        <button onClick={ejecutar} type="button" disabled={sending} className="btn btn-primary text-xs disabled:opacity-60">
+          {sending ? "Enviando…" : "Ejecutar con Mavi 🦎"}
+        </button>
         <button onClick={copy} type="button" className="btn btn-secondary text-xs">
-          {copied ? "Copiado ✓" : "Copiar campana"}
+          {copied ? "Copiado ✓" : "Copiar"}
         </button>
         <a href={c.link} target="_blank" rel="noopener noreferrer" className="btn btn-ghost text-xs">
           {c.linkLabel} →
         </a>
       </div>
+      {sent && (
+        <p
+          className={`mt-2 text-xs font-bold ${sent.ok ? "text-signal-dark" : "text-[#a13b31]"}`}
+        >
+          {sent.msg}
+        </p>
+      )}
     </article>
   );
 }

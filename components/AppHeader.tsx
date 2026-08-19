@@ -6,7 +6,7 @@ type AppHeaderProps = {
   name: string;
   isAdmin: boolean;
   /** Ruta activa para resaltar el enlace. */
-  active?: "mercado" | "consola" | "panel" | "asistente" | "planificador";
+  active?: "mercado" | "consola" | "panel" | "asistente" | "planificador" | "campanas";
 };
 
 /** Encabezado del area autenticada (mercado, consola). */
@@ -21,6 +21,7 @@ export function AppHeader({ name, isAdmin, active }: AppHeaderProps) {
           <nav className="hidden items-center gap-5 md:flex">
             <HeaderLink href="/panel" label="Panel" active={active === "panel"} />
             <HeaderLink href="/planificador" label="Planificador" active={active === "planificador"} />
+            <HeaderLink href="/campanas" label="Campanas" active={active === "campanas"} />
             <HeaderLink href="/asistente" label="Mavi" active={active === "asistente"} />
             {isAdmin && (
               <HeaderLink href="/mercado" label="Mercado" active={active === "mercado"} />

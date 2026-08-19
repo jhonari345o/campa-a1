@@ -1,6 +1,7 @@
 import type { MediaPlan } from "@/lib/planner";
 
 export type Campaign = {
+  key: "meta" | "google" | "tiktok" | "whatsapp";
   platform: string;
   icon: string;
   budget: number | null;
@@ -40,6 +41,7 @@ export function buildCampaigns(input: CampaignInput, plan: MediaPlan): Campaign[
 
   return [
     {
+      key: "meta",
       platform: "Meta — Facebook e Instagram",
       icon: "📘",
       budget: amountFor(plan, "meta"),
@@ -55,6 +57,7 @@ export function buildCampaigns(input: CampaignInput, plan: MediaPlan): Campaign[
       linkLabel: "Abrir Meta Ads Manager",
     },
     {
+      key: "google",
       platform: "Google — Busqueda y YouTube",
       icon: "🔎",
       budget: amountFor(plan, "google"),
@@ -75,6 +78,7 @@ export function buildCampaigns(input: CampaignInput, plan: MediaPlan): Campaign[
       linkLabel: "Abrir Google Ads",
     },
     {
+      key: "tiktok",
       platform: "TikTok",
       icon: "🎵",
       budget: amountFor(plan, "tiktok"),
@@ -90,6 +94,7 @@ export function buildCampaigns(input: CampaignInput, plan: MediaPlan): Campaign[
       linkLabel: "Abrir TikTok Ads",
     },
     {
+      key: "whatsapp",
       platform: "WhatsApp Business",
       icon: "💬",
       budget: amountFor(plan, "whatsapp"),
