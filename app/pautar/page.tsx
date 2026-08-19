@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { getSessionProfile } from "@/lib/auth";
 import { PautarChat } from "./PautarChat";
+import { computeCharge, money, SERVICE_FEE_PCT } from "@/lib/pricing";
 
 export const metadata = { title: "Pautar con Mavi" };
 
@@ -32,15 +33,58 @@ export default async function PautarPage() {
 
         {!metaConectada && (
           <p className="mt-4 rounded-xl border border-amber/40 bg-amber/10 px-4 py-3 text-sm font-bold text-forest">
-            🔌 Modo demostracion: tu orden queda guardada en la cola. La pauta saldra en vivo y las
-            metricas seran reales cuando conectemos tu cuenta de Meta.
+            🔌 Modo demostracion: el muro de pago y la pauta son simulados. Se conectan al pago real
+            y a la API de Meta cuando actives tu cuenta.
           </p>
         )}
+
+        <ModeloMonetizacion />
 
         <div className="mt-6">
           <PautarChat />
         </div>
       </main>
+    </div>
+  );
+}
+
+/** Explica el modelo de negocio con un ejemplo (para mostrar al equipo). */
+function ModeloMonetizacion() {
+  const ej = computeCharge(200);
+  const pct = Math.round(SERVICE_FEE_PCT * 100);
+  return (
+    <details className="mt-4 rounded-panel border border-border bg-white p-5 shadow-panel">
+      <summary className="cursor-pointer text-sm font-black text-forest">
+        💡 Como funciona el modelo (ejemplo)
+      </summary>
+      <p className="mt-3 text-sm text-muted">
+        El cliente recarga lo que quiere invertir en anuncios. Sobre esa recarga cobramos una
+        comision de servicio del <strong className="text-forest">{pct}%</strong>: esa es la ganancia
+        de Ad Mavericks. La recarga completa se acredita a la pauta.
+      </p>
+      <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+        <Box label="Recarga (a ads)" value={money(ej.base)} tone="fog" />
+        <Box label={`Comision ${pct}%`} value={money(ej.fee)} tone="signal" />
+        <Box label="Paga el cliente" value={money(ej.total)} tone="forest" />
+      </div>
+      <p className="mt-3 text-xs text-muted">
+        Ejemplo: recarga {money(ej.base)} → paga {money(ej.total)} → van {money(ej.base)} a los
+        anuncios y {money(ej.fee)} es nuestra ganancia.
+      </p>
+    </details>
+  );
+}
+
+function Box({ label, value, tone }: { label: string; value: string; tone: "fog" | "signal" | "forest" }) {
+  const map = {
+    fog: "bg-fog text-forest",
+    signal: "bg-signal/15 text-signal-dark",
+    forest: "bg-forest text-white",
+  } as const;
+  return (
+    <div className={`rounded-xl px-2 py-3 ${map[tone]}`}>
+      <p className="text-lg font-black">{value}</p>
+      <p className="text-[10px] font-bold uppercase opacity-80">{label}</p>
     </div>
   );
 }

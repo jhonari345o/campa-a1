@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/auth";
 import { getMyCompanies } from "@/lib/company";
+import { computeCharge } from "@/lib/pricing";
 
 export type PautaInput = {
   red: string; // instagram | facebook | tiktok
@@ -48,6 +49,8 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
     return { ok: false, error: "Indica la ubicacion donde quieres pautar." };
   }
 
+  const charge = computeCharge(presupuesto);
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("campaign_jobs")
@@ -61,7 +64,12 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
         red: input.red,
         post_url: input.postUrl.trim(),
         geo: input.geo.trim(),
-        presupuesto_usd: presupuesto,
+        presupuesto_usd: charge.base,
+        // Modelo de monetizacion (demostracion): comision + total pagado.
+        comision_pct: charge.feePct,
+        comision_usd: charge.fee,
+        total_pagado_usd: charge.total,
+        pago: "demostracion",
         objetivo: input.objetivo?.trim() || "Promocionar publicacion",
       },
     })

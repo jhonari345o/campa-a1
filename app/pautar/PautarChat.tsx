@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { MaviAvatar } from "@/components/Mavi";
 import { crearPauta } from "./actions";
+import { computeCharge, money, SERVICE_FEE_PCT } from "@/lib/pricing";
 
 type Bubble = { from: "mavi" | "user"; text: string };
 
@@ -13,18 +14,19 @@ const REDES = [
   { id: "tiktok", label: "TikTok", emoji: "🎵" },
 ];
 
-const money = (n: number) =>
-  new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+const CIUDADES = ["Guayaquil", "Quito", "Cuenca"];
+
+type Step = "red" | "link" | "geo" | "monto" | "pago" | "hecho";
 
 export function PautarChat() {
   const [chat, setChat] = useState<Bubble[]>([
-    { from: "mavi", text: "¡Listo para pautar! 🦎 Vamos paso a paso. Primero: ¿en que red quieres pautar?" },
+    { from: "mavi", text: "¡Listo para pautar! 🦎 Vamos paso a paso. Primero: ¿en que plataforma quieres pautar?" },
   ]);
-  const [step, setStep] = useState<"red" | "link" | "monto" | "geo" | "confirmar" | "hecho">("red");
+  const [step, setStep] = useState<Step>("red");
   const [red, setRed] = useState("");
   const [postUrl, setPostUrl] = useState("");
-  const [monto, setMonto] = useState("");
-  const [geo, setGeo] = useState("");
+  const [cities, setCities] = useState<string[]>([]);
+  const [monto, setMonto] = useState(0);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,8 +39,19 @@ export function PautarChat() {
   function pickRed(r: { id: string; label: string }) {
     setRed(r.id);
     push({ from: "user", text: r.label });
-    push({ from: "mavi", text: "Perfecto. Ahora pega el link de la publicacion (video o foto) que quieres pautar 👇" });
+    push({ from: "mavi", text: "Perfecto. Pega el link de la publicacion (video o foto) que quieres pautar 👇" });
     setStep("link");
+  }
+
+  function toggleCity(c: string) {
+    setCities((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
+  }
+
+  function confirmCities() {
+    if (cities.length === 0) return;
+    push({ from: "user", text: cities.join(", ") });
+    push({ from: "mavi", text: "¡Buenisimo! ¿Cuanto quieres pautar? Escribe el monto en dolares (ej. 200)." });
+    setStep("monto");
   }
 
   function submitText() {
@@ -49,54 +62,49 @@ export function PautarChat() {
 
     if (step === "link") {
       if (!/^https?:\/\//i.test(value)) {
-        push({ from: "mavi", text: "Ese link no se ve bien. Debe empezar con http... Copialo desde la publicacion e intenta de nuevo." });
+        push({ from: "mavi", text: "Ese link no se ve bien. Debe empezar con http... Copialo de la publicacion e intenta de nuevo." });
         return;
       }
       setPostUrl(value);
-      push({ from: "mavi", text: "¡Anotado! ¿Cuanto quieres invertir en total? Escribe el monto en dolares (ej. 50)." });
-      setStep("monto");
+      push({ from: "mavi", text: "¡Anotado! ¿En que publicos quieres mostrar el anuncio? Elige una o varias ciudades." });
+      setStep("geo");
     } else if (step === "monto") {
       const n = Number(value.replace(/[^0-9.]/g, ""));
       if (!Number.isFinite(n) || n <= 0) {
-        push({ from: "mavi", text: "Necesito un monto en dolares, solo el numero (ej. 50)." });
+        push({ from: "mavi", text: "Necesito un monto en dolares, solo el numero (ej. 200)." });
         return;
       }
-      setMonto(String(n));
-      push({ from: "mavi", text: "Genial. ¿En que ubicacion quieres mostrar el anuncio? (ciudad, provincia o pais)" });
-      setStep("geo");
-    } else if (step === "geo") {
-      setGeo(value);
+      setMonto(n);
+      const ch = computeCharge(n);
       push({
         from: "mavi",
-        text: `Listo, reviso: pauta en ${redLabel(red)}, ${money(Number(monto))}, ubicacion "${value}". ¿Lo creo?`,
+        text: `Perfecto. Para recargar ${money(n)} en tu pauta pasas por caja: se suma la comision de servicio (${Math.round(SERVICE_FEE_PCT * 100)}%). Total a pagar: ${money(ch.total)}.`,
       });
-      setStep("confirmar");
+      setStep("pago");
     }
   }
 
-  async function confirmar() {
+  async function pagar() {
     setSending(true);
     setError(null);
-    const res = await crearPauta({
-      red,
-      postUrl,
-      geo,
-      presupuesto: Number(monto),
-    });
+    const res = await crearPauta({ red, postUrl, geo: cities.join(", "), presupuesto: monto });
     setSending(false);
     if (!res.ok) {
       setError(res.error);
       return;
     }
     setJobId(res.id);
-    push({ from: "mavi", text: "¡Orden de pauta creada! 🚀 La veras en 'Mis campanas' con su estado y sus metricas." });
+    push({ from: "user", text: `Pagar ${money(computeCharge(monto).total)}` });
+    push({ from: "mavi", text: "¡Pago recibido (demostracion)! 🚀 Cree tu orden de pauta. La veras en 'Mis campanas' con sus metricas." });
     setStep("hecho");
   }
+
+  const charge = computeCharge(monto);
 
   return (
     <div className="rounded-panel border border-border bg-white shadow-panel">
       {/* Transcript */}
-      <div className="max-h-[420px] space-y-3 overflow-y-auto p-5">
+      <div className="max-h-[380px] space-y-3 overflow-y-auto p-5">
         {chat.map((b, i) => (
           <div key={i} className={b.from === "user" ? "flex justify-end" : "flex items-start gap-2"}>
             {b.from === "mavi" && <MaviAvatar size={30} className="mt-0.5 shrink-0" />}
@@ -125,7 +133,7 @@ export function PautarChat() {
           </div>
         )}
 
-        {(step === "link" || step === "monto" || step === "geo") && (
+        {(step === "link" || step === "monto") && (
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -138,36 +146,60 @@ export function PautarChat() {
               value={text}
               onChange={(e) => setText(e.target.value)}
               inputMode={step === "monto" ? "decimal" : "text"}
-              placeholder={
-                step === "link"
-                  ? "https://instagram.com/p/..."
-                  : step === "monto"
-                    ? "50"
-                    : "Guayaquil, Ecuador"
-              }
+              placeholder={step === "link" ? "https://instagram.com/p/..." : "200"}
               className="flex-1 rounded-xl border border-border bg-white px-4 py-2.5 text-forest outline-none focus:border-signal"
             />
-            <button type="submit" className="btn btn-primary">
-              Enviar
-            </button>
+            <button type="submit" className="btn btn-primary">Enviar</button>
           </form>
         )}
 
-        {step === "confirmar" && (
-          <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={confirmar} disabled={sending} className="btn btn-primary disabled:opacity-60">
-              {sending ? "Creando..." : "Si, crear la pauta →"}
-            </button>
+        {step === "geo" && (
+          <div>
+            <div className="flex flex-wrap gap-2">
+              {CIUDADES.map((c) => {
+                const on = cities.includes(c);
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => toggleCity(c)}
+                    className={
+                      "rounded-full border px-4 py-1.5 text-sm font-black transition-colors " +
+                      (on
+                        ? "border-signal bg-signal/15 text-signal-dark"
+                        : "border-border bg-white text-forest hover:border-signal")
+                    }
+                  >
+                    {on ? "✓ " : ""}📍 {c}
+                  </button>
+                );
+              })}
+            </div>
             <button
               type="button"
-              onClick={() => {
-                push({ from: "user", text: "Mejor no" });
-                push({ from: "mavi", text: "Sin problema. Cuando quieras empezamos de nuevo." });
-                setStep("hecho");
-              }}
-              className="btn btn-secondary"
+              onClick={confirmCities}
+              disabled={cities.length === 0}
+              className="btn btn-primary mt-3 disabled:opacity-50"
             >
-              Cancelar
+              Continuar →
+            </button>
+          </div>
+        )}
+
+        {step === "pago" && (
+          <div className="rounded-xl border-2 border-signal/30 bg-signal/5 p-4">
+            <p className="text-xs font-black uppercase tracking-wide text-signal-dark">🔒 Muro de pago</p>
+            <div className="mt-3 space-y-1.5 text-sm">
+              <Row label={`Recarga para tu pauta (${red || "red"})`} value={money(charge.base)} />
+              <Row label={`Comision de servicio (${Math.round(charge.feePct * 100)}%)`} value={money(charge.fee)} />
+              <div className="my-2 border-t border-border" />
+              <Row label="Total a pagar" value={money(charge.total)} bold />
+            </div>
+            <p className="mt-3 text-xs text-muted">
+              Se acreditan {money(charge.base)} a tus anuncios. La comision es la ganancia de Ad Mavericks.
+            </p>
+            <button type="button" onClick={pagar} disabled={sending} className="btn btn-primary mt-4 w-full disabled:opacity-60">
+              {sending ? "Procesando..." : `Pagar ${money(charge.total)} (demostracion)`}
             </button>
           </div>
         )}
@@ -188,6 +220,11 @@ export function PautarChat() {
   );
 }
 
-function redLabel(id: string) {
-  return REDES.find((r) => r.id === id)?.label ?? id;
+function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className={bold ? "font-black text-forest" : "text-muted"}>{label}</span>
+      <span className={bold ? "text-lg font-black text-forest" : "font-bold text-forest"}>{value}</span>
+    </div>
+  );
 }

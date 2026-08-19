@@ -26,6 +26,8 @@ type Job = {
     red?: string;
     geo?: string;
     post_url?: string;
+    comision_usd?: number;
+    total_pagado_usd?: number;
     metrics?: {
       impresiones?: number;
       alcance?: number;
@@ -113,7 +115,13 @@ export default async function CampanasPage() {
                   <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
                     {j.spec?.objetivo && <span>{j.spec.objetivo}</span>}
                     {j.spec?.geo && <span>📍 {j.spec.geo}</span>}
-                    {j.spec?.presupuesto_usd != null && <span>Presupuesto: ${j.spec.presupuesto_usd}</span>}
+                    {j.spec?.presupuesto_usd != null && <span>Recarga: ${j.spec.presupuesto_usd}</span>}
+                    {j.spec?.total_pagado_usd != null && (
+                      <span className="font-bold text-forest">
+                        Pagado: ${j.spec.total_pagado_usd}
+                        {j.spec?.comision_usd != null ? ` (comision $${j.spec.comision_usd})` : ""}
+                      </span>
+                    )}
                     <span>{new Date(j.created_at).toLocaleString("es-EC")}</span>
                   </div>
                   {j.spec?.post_url && (
