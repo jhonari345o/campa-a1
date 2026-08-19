@@ -4,6 +4,7 @@ import { Wordmark } from "./Wordmark";
 const nav = [
   { href: "#plataforma", label: "Plataforma" },
   { href: "#como-funciona", label: "Como funciona" },
+  { href: "#precios", label: "Precios" },
   { href: "#seguridad", label: "Seguridad" },
   { href: "#fases", label: "Implementacion" },
 ];

@@ -5,9 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionProfile } from "@/lib/auth";
 import { companySlug, generateRegistrationCode } from "@/lib/codes";
+import { getPlan } from "@/lib/plans";
 
 export type CrearClienteResult =
-  | { ok: true; code: string; companyName: string }
+  | { ok: true; code: string; companyName: string; planName?: string }
   | { ok: false; error: string };
 
 /**
@@ -28,8 +29,12 @@ export async function crearCliente(
   const name = String(formData.get("name") ?? "").trim();
   const legalId = String(formData.get("legal_id") ?? "").trim() || null;
   const email = String(formData.get("email") ?? "").trim() || null;
+  // El plan define los cupos. Si no viene plan, se usa el campo de usuarios.
+  const plan = getPlan(String(formData.get("plan") ?? "").trim());
   const seatsRaw = String(formData.get("seats") ?? "5").trim();
-  const seats = Math.max(1, Math.min(500, Number.parseInt(seatsRaw, 10) || 5));
+  const seats = plan
+    ? plan.seats
+    : Math.max(1, Math.min(500, Number.parseInt(seatsRaw, 10) || 5));
 
   if (name.length < 2) {
     return { ok: false, error: "Escribe el nombre del cliente." };
@@ -90,11 +95,11 @@ export async function crearCliente(
     action: "company.created",
     entity: "companies",
     entity_id: company.id,
-    metadata: { name, code, seats },
+    metadata: { name, code, seats, plan: plan?.id ?? null },
   });
 
   revalidatePath("/consola");
-  return { ok: true, code, companyName: company.name };
+  return { ok: true, code, companyName: company.name, planName: plan?.name };
 }
 
 /** Cierra la sesion del usuario actual. */

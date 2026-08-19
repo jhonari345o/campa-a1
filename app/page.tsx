@@ -1,6 +1,7 @@
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { MaviFull } from "@/components/Mavi";
+import { PlanesPricing } from "@/components/PlanesPricing";
 
 export default function HomePage() {
   return (
@@ -10,12 +11,31 @@ export default function HomePage() {
         <Hero />
         <Plataforma />
         <ComoFunciona />
+        <Precios />
         <Seguridad />
         <Fases />
         <Contacto />
       </main>
       <SiteFooter />
     </>
+  );
+}
+
+function Precios() {
+  return (
+    <section id="precios" className="mx-auto max-w-6xl px-6 py-20">
+      <div className="text-center">
+        <span className="text-xs font-black uppercase tracking-[0.1em] text-signal-dark">Planes</span>
+        <h2 className="mt-2 text-[clamp(1.8rem,3vw,2.8rem)] font-black leading-tight tracking-tight">
+          Elige tu nivel de gestion de medios.
+        </h2>
+        <p className="mx-auto mt-4 max-w-xl text-muted">
+          Un servicio de central de medios de primer nivel, con Mavi de tu lado.
+          Cambia o cancela cuando quieras.
+        </p>
+      </div>
+      <PlanesPricing />
+    </section>
   );
 }
 

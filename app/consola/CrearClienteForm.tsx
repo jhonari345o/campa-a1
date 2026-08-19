@@ -3,12 +3,15 @@
 import { useActionState } from "react";
 import { useState } from "react";
 import { crearCliente, type CrearClienteResult } from "./actions";
+import { PLANS, planMoney } from "@/lib/plans";
 
 export function CrearClienteForm() {
   const [state, formAction, pending] = useActionState<CrearClienteResult | null, FormData>(
     crearCliente,
     null,
   );
+  const [planId, setPlanId] = useState("premium");
+  const selected = PLANS.find((p) => p.id === planId);
 
   return (
     <div className="rounded-panel border border-border bg-white p-8 shadow-panel">
@@ -55,18 +58,27 @@ export function CrearClienteForm() {
           />
         </div>
         <div>
-          <label htmlFor="seats" className="block text-sm font-black text-forest">
-            Nº de usuarios
+          <label htmlFor="plan" className="block text-sm font-black text-forest">
+            Plan
           </label>
-          <input
-            id="seats"
-            name="seats"
-            type="number"
-            min={1}
-            max={500}
-            defaultValue={5}
+          <select
+            id="plan"
+            name="plan"
+            value={planId}
+            onChange={(e) => setPlanId(e.target.value)}
             className="mt-1 w-full rounded-xl border border-border bg-fog px-4 py-3 outline-none focus:border-signal focus:ring-2 focus:ring-signal/30"
-          />
+          >
+            {PLANS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} — {planMoney(p.price)}/mes · {p.seats} usuarios
+              </option>
+            ))}
+          </select>
+          {selected && (
+            <p className="mt-1 text-xs text-muted">
+              Incluye {selected.seats} usuarios. {selected.tagline}
+            </p>
+          )}
         </div>
         <div className="sm:col-span-2">
           <button type="submit" disabled={pending} className="btn btn-primary disabled:opacity-60">
@@ -81,12 +93,14 @@ export function CrearClienteForm() {
         </p>
       )}
 
-      {state?.ok === true && <CodeResult code={state.code} companyName={state.companyName} />}
+      {state?.ok === true && (
+        <CodeResult code={state.code} companyName={state.companyName} planName={state.planName} />
+      )}
     </div>
   );
 }
 
-function CodeResult({ code, companyName }: { code: string; companyName: string }) {
+function CodeResult({ code, companyName, planName }: { code: string; companyName: string; planName?: string }) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -102,7 +116,8 @@ function CodeResult({ code, companyName }: { code: string; companyName: string }
   return (
     <div className="mt-6 rounded-panel border border-signal/40 bg-signal/5 p-6">
       <p className="text-sm font-bold text-signal-dark">
-        Cliente <strong>{companyName}</strong> creado. Comparte este codigo:
+        Cliente <strong>{companyName}</strong>
+        {planName ? ` (plan ${planName})` : ""} creado. Comparte este codigo:
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <code className="rounded-xl border border-border bg-white px-4 py-3 text-lg font-black tracking-wider text-forest">
