@@ -4,6 +4,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { getSessionProfile } from "@/lib/auth";
 import { getMyCompanies, getCompanyTeam, ROLE_LABELS, type TeamMember } from "@/lib/company";
 import { MaviFull } from "@/components/Mavi";
+import { AgregarUsuarioForm } from "./AgregarUsuarioForm";
 
 export const metadata = { title: "Mi panel" };
 
@@ -61,9 +62,11 @@ function CompanyCard({
   company,
   team,
 }: {
-  company: { name: string; status: string; seats: number; role: string; created_at: string };
+  company: { id: string; name: string; status: string; seats: number; role: string; created_at: string };
   team: TeamMember[];
 }) {
+  const remaining = Math.max(0, company.seats - team.length);
+  const canManage = company.role === "admin";
   return (
     <section className="rounded-panel border border-border bg-white p-8 shadow-panel">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -103,6 +106,16 @@ function CompanyCard({
           ))}
         </ul>
       </div>
+
+      {canManage &&
+        (remaining > 0 ? (
+          <AgregarUsuarioForm companyId={company.id} remaining={remaining} />
+        ) : (
+          <p className="mt-6 rounded-xl border border-amber/40 bg-amber/10 px-4 py-3 text-sm font-bold text-forest">
+            Ya ocupaste los {company.seats} cupos de tu plan. Para agregar mas usuarios,
+            contacta a Ad Mavericks.
+          </p>
+        ))}
     </section>
   );
 }
