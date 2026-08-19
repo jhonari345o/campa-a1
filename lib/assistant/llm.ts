@@ -31,9 +31,26 @@ async function bedrockChat(messages: LlmMessage[], opts?: { maxTokens?: number; 
   const system = messages
     .filter((m) => m.role === "system")
     .map((m) => ({ text: m.content }));
-  const convo = messages
+
+  // Converse exige: (1) empezar con un mensaje de "user"; (2) que los roles
+  // alternen user/assistant. La UI de Mavi arranca con un saludo del asistente,
+  // asi que quitamos los turnos "assistant" iniciales y fusionamos turnos
+  // consecutivos del mismo rol.
+  const turns = messages
     .filter((m) => m.role !== "system")
-    .map((m) => ({ role: m.role as "user" | "assistant", content: [{ text: m.content }] }));
+    .map((m) => ({ role: m.role as "user" | "assistant", text: m.content }));
+  while (turns.length && turns[0].role !== "user") turns.shift();
+
+  const convo: { role: "user" | "assistant"; content: { text: string }[] }[] = [];
+  for (const t of turns) {
+    const last = convo[convo.length - 1];
+    if (last && last.role === t.role) {
+      last.content[0].text += `\n\n${t.text}`;
+    } else {
+      convo.push({ role: t.role, content: [{ text: t.text }] });
+    }
+  }
+  if (!convo.length) throw new Error("No hay ningun mensaje del usuario todavia.");
 
   const res = await client.send(
     new ConverseCommand({

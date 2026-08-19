@@ -50,6 +50,29 @@ export async function ejecutarCampana(input: JobInput): Promise<JobResult> {
     .single();
 
   if (error || !data) return { ok: false, error: error?.message ?? "No se pudo crear el trabajo." };
+
+  // Disparador "bajo demanda": si hay un runner configurado, se le avisa para
+  // que abra el navegador en la nube solo en ese momento. Es best-effort: si
+  // falla o no esta configurado, el trabajo igual queda en cola (pantalla Campanas).
+  const triggerUrl = process.env.AGENT_TRIGGER_URL;
+  if (triggerUrl) {
+    try {
+      await fetch(triggerUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(process.env.AGENT_WORKER_TOKEN
+            ? { Authorization: `Bearer ${process.env.AGENT_WORKER_TOKEN}` }
+            : {}),
+        },
+        body: JSON.stringify({ jobId: data.id, platform: input.platform }),
+        signal: AbortSignal.timeout(8000),
+      });
+    } catch {
+      /* el runner lo tomara luego via /api/agent/next */
+    }
+  }
+
   revalidatePath("/campanas");
   return { ok: true, id: data.id };
 }
