@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { generarPlan, type PlanResult } from "./actions";
 import type { PlanRow } from "@/lib/planner";
+import type { Campaign } from "@/lib/campaigns";
 
 const money = (n: number | null) =>
   n == null ? "—" : new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
@@ -110,6 +111,22 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
         </p>
       </div>
 
+      {/* Campanas sugeridas por Mavi */}
+      <div>
+        <div className="flex items-center gap-2">
+          <span aria-hidden className="text-xl">🦎</span>
+          <h3 className="text-lg font-black tracking-tight">Campanas sugeridas por Mavi</h3>
+        </div>
+        <p className="mt-1 text-sm text-muted">
+          Listas para lanzar en cada plataforma segun tu plan. Copialas o abre la plataforma.
+        </p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          {result.campaigns.map((c) => (
+            <CampaignCard key={c.platform} c={c} />
+          ))}
+        </div>
+      </div>
+
       {/* Contacto con Ad Mavericks */}
       <div className="rounded-panel bg-forest p-6 text-white">
         <h3 className="text-lg font-black">¿Quieres ejecutar este plan?</h3>
@@ -124,6 +141,64 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
         </a>
       </div>
     </div>
+  );
+}
+
+function CampaignCard({ c }: { c: Campaign }) {
+  const [copied, setCopied] = useState(false);
+  const fullText =
+    `Campana: ${c.platform}\n` +
+    `Objetivo: ${c.objetivo}\n` +
+    `Publico: ${c.publico}\n` +
+    `Formato: ${c.formato}\n` +
+    (c.budget != null ? `Presupuesto: ${money(c.budget)}\n` : "") +
+    `\n${c.copy}` +
+    (c.extra ? `\n\n${c.extra.label}: ${c.extra.value}` : "");
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(fullText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* clipboard no disponible */
+    }
+  }
+
+  return (
+    <article className="flex flex-col rounded-panel border border-border bg-white p-5 shadow-panel">
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex items-center gap-2 font-black text-forest">
+          <span aria-hidden className="text-lg">{c.icon}</span>
+          {c.platform}
+        </span>
+        {c.budget != null && <span className="text-sm font-black text-signal-dark">{money(c.budget)}</span>}
+      </div>
+
+      <dl className="mt-3 space-y-1 text-xs text-muted">
+        <div><dt className="inline font-black text-forest">Objetivo: </dt><dd className="inline">{c.objetivo}</dd></div>
+        <div><dt className="inline font-black text-forest">Publico: </dt><dd className="inline">{c.publico}</dd></div>
+        <div><dt className="inline font-black text-forest">Formato: </dt><dd className="inline">{c.formato}</dd></div>
+      </dl>
+
+      <pre className="mt-3 whitespace-pre-wrap rounded-xl border border-border bg-fog px-3 py-3 text-xs text-forest">
+        {c.copy}
+      </pre>
+      {c.extra && (
+        <p className="mt-2 text-xs text-muted">
+          <span className="font-black text-forest">{c.extra.label}:</span> {c.extra.value}
+        </p>
+      )}
+
+      <div className="mt-auto flex flex-wrap gap-2 pt-4">
+        <button onClick={copy} type="button" className="btn btn-secondary text-xs">
+          {copied ? "Copiado ✓" : "Copiar campana"}
+        </button>
+        <a href={c.link} target="_blank" rel="noopener noreferrer" className="btn btn-ghost text-xs">
+          {c.linkLabel} →
+        </a>
+      </div>
+    </article>
   );
 }
 

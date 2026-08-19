@@ -2,9 +2,17 @@
 
 import { getSessionProfile } from "@/lib/auth";
 import { buildMediaPlan, type MediaPlan } from "@/lib/planner";
+import { buildCampaigns, type Campaign } from "@/lib/campaigns";
 
 export type PlanResult =
-  | { ok: true; plan: MediaPlan; keyword: string; objective: string; audience: string }
+  | {
+      ok: true;
+      plan: MediaPlan;
+      campaigns: Campaign[];
+      keyword: string;
+      objective: string;
+      audience: string;
+    }
   | { ok: false; error: string };
 
 /**
@@ -31,7 +39,8 @@ export async function generarPlan(
 
   try {
     const plan = await buildMediaPlan({ keyword, budgetUsd });
-    return { ok: true, plan, keyword, objective, audience };
+    const campaigns = buildCampaigns({ keyword, audience, objective }, plan);
+    return { ok: true, plan, campaigns, keyword, objective, audience };
   } catch (err) {
     if (err instanceof Error && err.message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
       return { ok: false, error: "El planificador aun no esta habilitado (falta la clave de servicio)." };
