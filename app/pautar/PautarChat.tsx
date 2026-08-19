@@ -32,6 +32,19 @@ export function PautarChat() {
   const [error, setError] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
 
+  // Datos de tarjeta (SIMULADOS — no se envian a ningun lado).
+  const [cardName, setCardName] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExp, setCardExp] = useState("");
+  const [cardCvc, setCardCvc] = useState("");
+
+  const cardDigits = cardNumber.replace(/\D/g, "");
+  const cardValido =
+    cardName.trim().length >= 3 &&
+    cardDigits.length >= 15 &&
+    /^\d{2}\/\d{2}$/.test(cardExp) &&
+    /^\d{3,4}$/.test(cardCvc);
+
   function push(b: Bubble) {
     setChat((c) => [...c, b]);
   }
@@ -188,19 +201,71 @@ export function PautarChat() {
 
         {step === "pago" && (
           <div className="rounded-xl border-2 border-signal/30 bg-signal/5 p-4">
-            <p className="text-xs font-black uppercase tracking-wide text-signal-dark">🔒 Muro de pago</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-black uppercase tracking-wide text-signal-dark">🔒 Pago seguro</p>
+              <span className="text-lg" aria-hidden>💳</span>
+            </div>
+
             <div className="mt-3 space-y-1.5 text-sm">
               <Row label={`Inversion en anuncios (${red || "red"})`} value={money(charge.base)} />
               <Row label={SERVICE_FEE_LABEL} value={money(charge.fee)} />
               <div className="my-2 border-t border-border" />
               <Row label="Total a pagar" value={money(charge.total)} bold />
             </div>
-            <p className="mt-3 text-xs text-muted">
-              Incluye la creacion, publicacion y seguimiento de tu campana.
+
+            {/* Formulario de tarjeta (simulado) */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (cardValido) pagar();
+              }}
+              className="mt-4 space-y-2"
+            >
+              <input
+                value={cardName}
+                onChange={(e) => setCardName(e.target.value)}
+                placeholder="Nombre en la tarjeta"
+                className="w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm text-forest outline-none focus:border-signal"
+              />
+              <input
+                value={cardNumber}
+                onChange={(e) => setCardNumber(formatCard(e.target.value))}
+                inputMode="numeric"
+                placeholder="4242 4242 4242 4242"
+                maxLength={19}
+                className="w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm text-forest outline-none focus:border-signal"
+              />
+              <div className="flex gap-2">
+                <input
+                  value={cardExp}
+                  onChange={(e) => setCardExp(formatExp(e.target.value))}
+                  inputMode="numeric"
+                  placeholder="MM/AA"
+                  maxLength={5}
+                  className="w-1/2 rounded-xl border border-border bg-white px-4 py-2.5 text-sm text-forest outline-none focus:border-signal"
+                />
+                <input
+                  value={cardCvc}
+                  onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                  inputMode="numeric"
+                  placeholder="CVC"
+                  maxLength={4}
+                  className="w-1/2 rounded-xl border border-border bg-white px-4 py-2.5 text-sm text-forest outline-none focus:border-signal"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={sending || !cardValido}
+                className="btn btn-primary mt-1 w-full disabled:opacity-50"
+              >
+                {sending ? "Procesando pago..." : `Pagar ${money(charge.total)}`}
+              </button>
+            </form>
+
+            <p className="mt-2 text-center text-[11px] text-muted">
+              🔒 Pago cifrado · Demostracion (no se realiza ningun cobro real)
             </p>
-            <button type="button" onClick={pagar} disabled={sending} className="btn btn-primary mt-4 w-full disabled:opacity-60">
-              {sending ? "Procesando..." : `Pagar ${money(charge.total)} (demostracion)`}
-            </button>
           </div>
         )}
 
@@ -218,6 +283,21 @@ export function PautarChat() {
       </div>
     </div>
   );
+}
+
+/** Agrupa el numero de tarjeta de 4 en 4 (solo visual). */
+function formatCard(v: string) {
+  return v
+    .replace(/\D/g, "")
+    .slice(0, 16)
+    .replace(/(.{4})/g, "$1 ")
+    .trim();
+}
+
+/** Formatea la expiracion como MM/AA. */
+function formatExp(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 4);
+  return d.length <= 2 ? d : `${d.slice(0, 2)}/${d.slice(2)}`;
 }
 
 function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
