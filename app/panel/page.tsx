@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { getSessionProfile } from "@/lib/auth";
 import { getMyCompanies, getCompanyTeam, ROLE_LABELS, type TeamMember } from "@/lib/company";
-import { MaviFull } from "@/components/Mavi";
+import { MaviScene } from "@/components/Mavi";
+import { MaviTour } from "@/components/MaviTour";
 import { AgregarUsuarioForm } from "./AgregarUsuarioForm";
 
 export const metadata = { title: "Mi panel" };
@@ -24,17 +25,23 @@ export default async function PanelPage() {
   return (
     <div className="min-h-screen">
       <AppHeader name={name} isAdmin={profile.is_platform_admin} active="panel" />
+      <MaviTour isAdmin={profile.is_platform_admin} />
       <main className="mx-auto max-w-5xl px-6 py-10">
         <div className="flex items-center gap-4">
-          <MaviFull height={104} className="hidden sm:block" />
+          <MaviScene
+            height={104}
+            motion="float"
+            prop={companies.length > 0 ? "🔍" : "👋"}
+            className="hidden shrink-0 sm:block"
+          />
           <div>
             <h1 className="text-3xl font-black tracking-tight">
               Hola{profile.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}.
             </h1>
             <p className="mt-1 text-muted">
               {companies.length > 0
-                ? "Este es el espacio de tu empresa. Solo tu equipo tiene acceso."
-                : "Bienvenido a Ad Mavericks One."}
+                ? "Estoy revisando los datos de tu empresa. Solo tu equipo tiene acceso."
+                : "Bienvenido a Ad Mavericks One. Yo te guio."}
             </p>
           </div>
         </div>

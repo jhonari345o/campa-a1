@@ -76,3 +76,104 @@ body {
   will-change: transform;
   filter: drop-shadow(0 12px 12px rgba(23, 40, 31, 0.18));
 }
+
+/* Mavi salta (para "ejecuciones": brinca de campana en campana). */
+@keyframes maviBounce {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  30% {
+    transform: translateY(-18px) rotate(2deg);
+  }
+  50% {
+    transform: translateY(0) rotate(-1deg);
+  }
+}
+.mavi-bounce {
+  animation: maviBounce 1.6s ease-in-out infinite;
+  will-change: transform;
+  filter: drop-shadow(0 12px 12px rgba(23, 40, 31, 0.18));
+}
+
+/* Mavi se asoma (peek): entra ladeada desde un costado. */
+@keyframes maviPeek {
+  0%,
+  100% {
+    transform: translateX(0) rotate(-3deg);
+  }
+  50% {
+    transform: translateX(6px) rotate(2deg);
+  }
+}
+.mavi-peek {
+  animation: maviPeek 3.2s ease-in-out infinite;
+  will-change: transform;
+  filter: drop-shadow(0 12px 12px rgba(23, 40, 31, 0.18));
+}
+
+/* Accesorio de Mavi (reloj, lupa, cohete...) junto a su cuerpo. */
+.mavi-prop {
+  position: absolute;
+  right: -6px;
+  bottom: 8px;
+  font-size: 1.5rem;
+  line-height: 1;
+  filter: drop-shadow(0 3px 4px rgba(23, 40, 31, 0.25));
+  animation: maviPropWiggle 2.4s ease-in-out infinite;
+}
+@keyframes maviPropWiggle {
+  0%,
+  100% {
+    transform: rotate(-8deg) scale(1);
+  }
+  50% {
+    transform: rotate(8deg) scale(1.08);
+  }
+}
+
+/* Globo de dialogo de Mavi. */
+.mavi-bubble {
+  position: relative;
+  background: #fff;
+  border: 2px solid var(--border, #e4e7e5);
+  border-radius: 1rem;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 8px 20px rgba(23, 40, 31, 0.08);
+}
+.mavi-bubble::after {
+  content: "";
+  position: absolute;
+  left: -9px;
+  top: 22px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-left: 2px solid var(--border, #e4e7e5);
+  border-bottom: 2px solid var(--border, #e4e7e5);
+  transform: rotate(45deg);
+}
+
+/* Aparicion suave al cambiar de ejemplo. */
+@keyframes maviFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.mavi-fade {
+  animation: maviFade 0.35s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mavi-bounce,
+  .mavi-peek,
+  .mavi-prop,
+  .mavi-fade {
+    animation: none;
+  }
+}

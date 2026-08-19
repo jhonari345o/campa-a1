@@ -4,6 +4,8 @@ import { getSessionProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { JOB_STATUS, PLATFORM_LABEL, type JobStatus } from "@/lib/jobs";
 import { clsx } from "@/lib/clsx";
+import { MaviScene } from "@/components/Mavi";
+import { MaviShowcase } from "@/components/MaviShowcase";
 
 export const metadata = { title: "Mis campanas" };
 
@@ -32,6 +34,7 @@ export default async function CampanasPage() {
     .order("created_at", { ascending: false })
     .limit(50);
   const jobs = (data ?? []) as Job[];
+  const pendientes = jobs.filter((j) => j.status === "pendiente" || j.status === "en_proceso").length;
 
   return (
     <div className="min-h-screen">
@@ -41,19 +44,34 @@ export default async function CampanasPage() {
         active="campanas"
       />
       <main className="mx-auto max-w-5xl px-6 py-10">
-        <h1 className="text-3xl font-black tracking-tight">Mis campanas</h1>
-        <p className="mt-1 text-muted">
-          Estado de las campanas que enviaste a ejecutar con Mavi.
-        </p>
+        <div className="flex items-center gap-4">
+          <MaviScene
+            height={92}
+            motion={pendientes > 0 ? "peek" : "float"}
+            prop={pendientes > 0 ? "⏰" : "🚀"}
+            className="hidden shrink-0 sm:block"
+          />
+          <div>
+            <h1 className="text-3xl font-black tracking-tight">Mis campanas</h1>
+            <p className="mt-1 text-muted">
+              {pendientes > 0
+                ? `Estoy pendiente del reloj: tienes ${pendientes} campana${pendientes === 1 ? "" : "s"} en cola.`
+                : "Estado de las campanas que enviaste a ejecutar conmigo."}
+            </p>
+          </div>
+        </div>
 
         {jobs.length === 0 ? (
-          <p className="mt-8 rounded-panel border border-border bg-fog px-4 py-8 text-center text-sm text-muted">
-            Aun no has enviado campanas. Ve al{" "}
-            <a href="/planificador" className="font-black text-signal-dark hover:underline">
-              Planificador
-            </a>{" "}
-            y usa "Ejecutar con Mavi".
-          </p>
+          <>
+            <MaviShowcase />
+            <p className="mt-6 rounded-panel border border-border bg-fog px-4 py-8 text-center text-sm text-muted">
+              Aun no has enviado campanas. Ve al{" "}
+              <a href="/planificador" className="font-black text-signal-dark hover:underline">
+                Planificador
+              </a>{" "}
+              y usa "Ejecutar con Mavi".
+            </p>
+          </>
         ) : (
           <ul className="mt-8 space-y-3">
             {jobs.map((j) => {
