@@ -20,20 +20,22 @@ type Job = {
   log: string | null;
   created_at: string;
   spec: { objetivo?: string; presupuesto_usd?: number | null } | null;
+  companies: { name: string } | null;
 };
 
 export default async function CampanasPage() {
   if (!supabaseConfigured) redirect("/consola");
   const profile = await getSessionProfile();
   if (!profile) redirect("/ingresar");
+  const isAdmin = profile.is_platform_admin;
 
   const supabase = await createClient();
   const { data } = await supabase
     .from("campaign_jobs")
-    .select("id, platform, status, log, created_at, spec")
+    .select("id, platform, status, log, created_at, spec, companies(name)")
     .order("created_at", { ascending: false })
     .limit(50);
-  const jobs = (data ?? []) as Job[];
+  const jobs = (data ?? []) as unknown as Job[];
   const pendientes = jobs.filter((j) => j.status === "pendiente" || j.status === "en_proceso").length;
 
   return (
@@ -52,11 +54,15 @@ export default async function CampanasPage() {
             className="hidden shrink-0 sm:block"
           />
           <div>
-            <h1 className="text-3xl font-black tracking-tight">Mis campanas</h1>
+            <h1 className="text-3xl font-black tracking-tight">
+              {isAdmin ? "Campanas de tus clientes" : "Mis campanas"}
+            </h1>
             <p className="mt-1 text-muted">
-              {pendientes > 0
-                ? `Estoy pendiente del reloj: tienes ${pendientes} campana${pendientes === 1 ? "" : "s"} en cola.`
-                : "Estado de las campanas que enviaste a ejecutar conmigo."}
+              {isAdmin
+                ? `Cola de TODOS los clientes${pendientes > 0 ? ` — ${pendientes} en espera.` : "."} Cada cliente solo ve las suyas.`
+                : pendientes > 0
+                  ? `Estoy pendiente del reloj: tienes ${pendientes} campana${pendientes === 1 ? "" : "s"} en cola.`
+                  : "Estado de las campanas que enviaste a ejecutar conmigo."}
             </p>
           </div>
         </div>
@@ -79,7 +85,14 @@ export default async function CampanasPage() {
               return (
                 <li key={j.id} className="rounded-panel border border-border bg-white p-5 shadow-panel">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <span className="font-black text-forest">{PLATFORM_LABEL[j.platform] ?? j.platform}</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-black text-forest">{PLATFORM_LABEL[j.platform] ?? j.platform}</span>
+                      {isAdmin && j.companies?.name && (
+                        <span className="rounded-full bg-forest/10 px-2.5 py-0.5 text-xs font-black text-forest">
+                          {j.companies.name}
+                        </span>
+                      )}
+                    </div>
                     <StatusBadge tone={st.tone} label={st.label} />
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
