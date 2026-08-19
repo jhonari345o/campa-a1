@@ -119,7 +119,7 @@ export default async function CampanasPage() {
                     {j.spec?.total_pagado_usd != null && (
                       <span className="font-bold text-forest">
                         Pagado: ${j.spec.total_pagado_usd}
-                        {j.spec?.comision_usd != null ? ` (comision $${j.spec.comision_usd})` : ""}
+                        {isAdmin && j.spec?.comision_usd != null ? ` (ganancia $${j.spec.comision_usd})` : ""}
                       </span>
                     )}
                     <span>{new Date(j.created_at).toLocaleString("es-EC")}</span>

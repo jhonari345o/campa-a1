@@ -12,6 +12,9 @@
  */
 export const SERVICE_FEE_PCT = 0.25; // 25% — cambiar aqui si se ajusta el modelo
 
+/** Etiqueta que VE EL CLIENTE en el muro de pago (no revela el %). */
+export const SERVICE_FEE_LABEL = "Servicio y gestion de campana";
+
 export type Charge = {
   base: number; // recarga que va a la pauta (ads)
   feePct: number; // % de comision

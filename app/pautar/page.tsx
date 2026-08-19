@@ -38,7 +38,8 @@ export default async function PautarPage() {
           </p>
         )}
 
-        <ModeloMonetizacion />
+        {/* El desglose real (comision/ganancia) es SOLO para el equipo Ad Mavericks. */}
+        {profile.is_platform_admin && <ModeloMonetizacion />}
 
         <div className="mt-6">
           <PautarChat />
@@ -48,14 +49,14 @@ export default async function PautarPage() {
   );
 }
 
-/** Explica el modelo de negocio con un ejemplo (para mostrar al equipo). */
+/** Explica el modelo de negocio con un ejemplo. SOLO para el equipo (admin). */
 function ModeloMonetizacion() {
   const ej = computeCharge(200);
   const pct = Math.round(SERVICE_FEE_PCT * 100);
   return (
-    <details className="mt-4 rounded-panel border border-border bg-white p-5 shadow-panel">
+    <details className="mt-4 rounded-panel border border-forest/30 bg-forest/5 p-5 shadow-panel">
       <summary className="cursor-pointer text-sm font-black text-forest">
-        💡 Como funciona el modelo (ejemplo)
+        🔒 Solo equipo · Como ganamos (ejemplo)
       </summary>
       <p className="mt-3 text-sm text-muted">
         El cliente recarga lo que quiere invertir en anuncios. Sobre esa recarga cobramos una

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { MaviAvatar } from "@/components/Mavi";
 import { crearPauta } from "./actions";
-import { computeCharge, money, SERVICE_FEE_PCT } from "@/lib/pricing";
+import { computeCharge, money, SERVICE_FEE_LABEL } from "@/lib/pricing";
 
 type Bubble = { from: "mavi" | "user"; text: string };
 
@@ -78,7 +78,7 @@ export function PautarChat() {
       const ch = computeCharge(n);
       push({
         from: "mavi",
-        text: `Perfecto. Para recargar ${money(n)} en tu pauta pasas por caja: se suma la comision de servicio (${Math.round(SERVICE_FEE_PCT * 100)}%). Total a pagar: ${money(ch.total)}.`,
+        text: `Perfecto. Para pautar ${money(n)} pasas por caja: se suman los costos de servicio y gestion. Total a pagar: ${money(ch.total)}.`,
       });
       setStep("pago");
     }
@@ -190,13 +190,13 @@ export function PautarChat() {
           <div className="rounded-xl border-2 border-signal/30 bg-signal/5 p-4">
             <p className="text-xs font-black uppercase tracking-wide text-signal-dark">🔒 Muro de pago</p>
             <div className="mt-3 space-y-1.5 text-sm">
-              <Row label={`Recarga para tu pauta (${red || "red"})`} value={money(charge.base)} />
-              <Row label={`Comision de servicio (${Math.round(charge.feePct * 100)}%)`} value={money(charge.fee)} />
+              <Row label={`Inversion en anuncios (${red || "red"})`} value={money(charge.base)} />
+              <Row label={SERVICE_FEE_LABEL} value={money(charge.fee)} />
               <div className="my-2 border-t border-border" />
               <Row label="Total a pagar" value={money(charge.total)} bold />
             </div>
             <p className="mt-3 text-xs text-muted">
-              Se acreditan {money(charge.base)} a tus anuncios. La comision es la ganancia de Ad Mavericks.
+              Incluye la creacion, publicacion y seguimiento de tu campana.
             </p>
             <button type="button" onClick={pagar} disabled={sending} className="btn btn-primary mt-4 w-full disabled:opacity-60">
               {sending ? "Procesando..." : `Pagar ${money(charge.total)} (demostracion)`}
