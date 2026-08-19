@@ -19,9 +19,24 @@ type Job = {
   status: JobStatus;
   log: string | null;
   created_at: string;
-  spec: { objetivo?: string; presupuesto_usd?: number | null } | null;
+  spec: {
+    objetivo?: string;
+    presupuesto_usd?: number | null;
+    tipo?: string;
+    red?: string;
+    geo?: string;
+    post_url?: string;
+    metrics?: {
+      impresiones?: number;
+      alcance?: number;
+      clics?: number;
+      gasto_usd?: number;
+    } | null;
+  } | null;
   companies: { name: string } | null;
 };
+
+const nfmt = (n: number) => new Intl.NumberFormat("es-EC").format(n);
 
 export default async function CampanasPage() {
   if (!supabaseConfigured) redirect("/consola");
@@ -97,9 +112,24 @@ export default async function CampanasPage() {
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
                     {j.spec?.objetivo && <span>{j.spec.objetivo}</span>}
+                    {j.spec?.geo && <span>📍 {j.spec.geo}</span>}
                     {j.spec?.presupuesto_usd != null && <span>Presupuesto: ${j.spec.presupuesto_usd}</span>}
                     <span>{new Date(j.created_at).toLocaleString("es-EC")}</span>
                   </div>
+                  {j.spec?.post_url && (
+                    <a
+                      href={j.spec.post_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1 inline-block text-xs font-black text-signal-dark hover:underline"
+                    >
+                      Ver publicacion pautada ↗
+                    </a>
+                  )}
+
+                  {/* Dashboard de metricas de la pauta */}
+                  <MetricsPanel metrics={j.spec?.metrics ?? null} live={j.status === "publicada"} />
+
                   {j.log && <p className="mt-2 whitespace-pre-wrap text-xs text-muted">{j.log}</p>}
                 </li>
               );
@@ -107,6 +137,41 @@ export default async function CampanasPage() {
           </ul>
         )}
       </main>
+    </div>
+  );
+}
+
+function MetricsPanel({
+  metrics,
+  live,
+}: {
+  metrics: { impresiones?: number; alcance?: number; clics?: number; gasto_usd?: number } | null;
+  live: boolean;
+}) {
+  const cells = [
+    { label: "Impresiones", value: metrics?.impresiones },
+    { label: "Alcance", value: metrics?.alcance },
+    { label: "Clics", value: metrics?.clics },
+    { label: "Gasto", value: metrics?.gasto_usd, money: true },
+  ];
+  return (
+    <div className="mt-3 rounded-xl border border-border bg-fog/50 p-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-black uppercase tracking-wide text-muted">Metricas</span>
+        <span className="text-[10px] font-black uppercase text-muted">
+          {live ? "En vivo" : "Se activan al publicar"}
+        </span>
+      </div>
+      <div className="mt-2 grid grid-cols-4 gap-2 text-center">
+        {cells.map((c) => (
+          <div key={c.label} className="rounded-lg bg-white px-1 py-2">
+            <p className="text-sm font-black text-forest">
+              {c.value == null ? "—" : c.money ? `$${nfmt(c.value)}` : nfmt(c.value)}
+            </p>
+            <p className="text-[10px] font-bold uppercase text-muted">{c.label}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
