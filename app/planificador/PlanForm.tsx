@@ -161,6 +161,9 @@ function CampaignCard({ c }: { c: Campaign }) {
   const [copied, setCopied] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState<null | { ok: boolean; msg: string }>(null);
+  const ideas = c.ideas?.length ? c.ideas : [c.copy];
+  const [ideaIndex, setIdeaIndex] = useState(0);
+  const currentCopy = ideas[ideaIndex] ?? c.copy;
 
   async function ejecutar() {
     setSending(true);
@@ -172,7 +175,7 @@ function CampaignCard({ c }: { c: Campaign }) {
         publico: c.publico,
         formato: c.formato,
         presupuesto: c.budget,
-        copy: c.copy,
+        copy: currentCopy,
       });
       setSent(
         res.ok
@@ -192,7 +195,7 @@ function CampaignCard({ c }: { c: Campaign }) {
     `Publico: ${c.publico}\n` +
     `Formato: ${c.formato}\n` +
     (c.budget != null ? `Presupuesto: ${money(c.budget)}\n` : "") +
-    `\n${c.copy}` +
+    `\n${currentCopy}` +
     (c.extra ? `\n\n${c.extra.label}: ${c.extra.value}` : "");
 
   async function copy() {
@@ -221,8 +224,22 @@ function CampaignCard({ c }: { c: Campaign }) {
         <div><dt className="inline font-black text-forest">Formato: </dt><dd className="inline">{c.formato}</dd></div>
       </dl>
 
-      <pre className="mt-3 whitespace-pre-wrap rounded-xl border border-border bg-fog px-3 py-3 text-xs text-forest">
-        {c.copy}
+      <div className="mt-3 flex items-center justify-between">
+        <span className="text-[11px] font-black uppercase tracking-wide text-muted">
+          Idea {ideaIndex + 1} de {ideas.length}
+        </span>
+        {ideas.length > 1 && (
+          <button
+            type="button"
+            onClick={() => setIdeaIndex((i) => (i + 1) % ideas.length)}
+            className="text-xs font-black text-signal-dark hover:underline"
+          >
+            Otra idea ✨
+          </button>
+        )}
+      </div>
+      <pre className="mt-2 whitespace-pre-wrap rounded-xl border border-border bg-fog px-3 py-3 text-xs text-forest">
+        {currentCopy}
       </pre>
       {c.extra && (
         <p className="mt-2 text-xs text-muted">
