@@ -10,8 +10,10 @@ const supabaseConfigured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 );
 
-// El motor real se enciende cuando conectas Meta (token en el entorno).
-const metaConectada = Boolean(process.env.META_ACCESS_TOKEN);
+// El motor real se enciende al conectar una plataforma (token en el entorno).
+const metaConectada = Boolean(
+  process.env.META_ACCESS_TOKEN || process.env.GOOGLE_ADS_DEVELOPER_TOKEN,
+);
 
 const REDES_VALIDAS = ["instagram", "facebook", "tiktok"];
 
