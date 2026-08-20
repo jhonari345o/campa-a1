@@ -10,7 +10,14 @@
  */
 import { admin, logStep } from "./env";
 import { readCsv, toNumber, toStatus } from "./csv";
-import { ensureSource, upsertAdvertiser, upsertChannel, upsertInvestment, upsertMetric } from "./upsert";
+import {
+  ensureSource,
+  upsertAdvertiser,
+  upsertChannel,
+  upsertInvestment,
+  upsertMonthlyInvestment,
+  upsertMetric,
+} from "./upsert";
 
 const pick = (row: Record<string, string>, ...keys: string[]) => {
   for (const k of keys) {
@@ -90,6 +97,31 @@ async function importInvestments(file: string) {
   logStep(`✓ ${n} registros de inversion procesados`);
 }
 
+async function importMonthly(file: string) {
+  const db = admin();
+  const rows = readCsv(file);
+  logStep(`${rows.length} filas de inversion mensual`);
+  let n = 0;
+  for (const row of rows) {
+    const advName = pick(row, "advertiser", "anunciante", "name", "nombre");
+    const year = toNumber(pick(row, "year", "anio", "ano", "period_year"));
+    const month = toNumber(pick(row, "month", "mes", "period_month"));
+    if (!advName || !year || !month) continue;
+
+    const advertiserId = await upsertAdvertiser(db, { name: advName });
+    await upsertMonthlyInvestment(db, {
+      advertiser_id: advertiserId,
+      period_year: year,
+      period_month: month,
+      amount_usd: toNumber(pick(row, "amount_usd", "monto", "inversion")),
+      avisos: toNumber(pick(row, "avisos", "ads")),
+      status: toStatus(pick(row, "status", "estado")),
+    });
+    n++;
+  }
+  logStep(`✓ ${n} registros de inversion mensual procesados`);
+}
+
 async function importMetrics(file: string) {
   const db = admin();
   const rows = readCsv(file);
@@ -133,13 +165,14 @@ async function importMetrics(file: string) {
 async function main() {
   const [kind, file] = process.argv.slice(2);
   if (!kind || !file) {
-    console.error("Uso: import.ts <advertisers|channels|investments|metrics> <archivo.csv>");
+    console.error("Uso: import.ts <advertisers|channels|investments|monthly|metrics> <archivo.csv>");
     process.exit(1);
   }
   console.log(`Ingesta: ${kind} <- ${file}`);
   if (kind === "advertisers") await importAdvertisers(file);
   else if (kind === "channels") await importChannels(file);
   else if (kind === "investments") await importInvestments(file);
+  else if (kind === "monthly") await importMonthly(file);
   else if (kind === "metrics") await importMetrics(file);
   else {
     console.error(`Tipo desconocido: ${kind}`);

@@ -120,6 +120,44 @@ export async function upsertInvestment(db: SupabaseClient, inv: InvestmentInput)
   }
 }
 
+export type MonthlyInvestmentInput = {
+  advertiser_id: string;
+  period_year: number;
+  period_month: number;
+  amount_usd?: number | null;
+  avisos?: number | null;
+  status?: "verificado" | "pendiente";
+  source_id?: string | null;
+};
+
+/** Deduplica por (anunciante, anio, mes) en la tabla mensual aparte. */
+export async function upsertMonthlyInvestment(db: SupabaseClient, inv: MonthlyInvestmentInput): Promise<void> {
+  const { data: existing } = await db
+    .from("ad_investments_monthly")
+    .select("id")
+    .eq("advertiser_id", inv.advertiser_id)
+    .eq("period_year", inv.period_year)
+    .eq("period_month", inv.period_month)
+    .maybeSingle();
+
+  const payload = {
+    advertiser_id: inv.advertiser_id,
+    period_year: inv.period_year,
+    period_month: inv.period_month,
+    amount_usd: inv.amount_usd ?? null,
+    avisos: inv.avisos ?? null,
+    status: inv.status ?? "pendiente",
+    source_id: inv.source_id ?? null,
+  };
+
+  if (existing?.id) {
+    await db.from("ad_investments_monthly").update(payload).eq("id", existing.id);
+  } else {
+    const { error } = await db.from("ad_investments_monthly").insert(payload);
+    if (error) throw new Error(`monthly investment: ${error.message}`);
+  }
+}
+
 export type MetricInput = {
   advertiser_id: string;
   platform: string;
