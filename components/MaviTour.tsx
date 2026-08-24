@@ -9,7 +9,7 @@ const BASE_STEPS: Step[] = [
   {
     emoji: "🦎",
     title: "¡Hola! Soy Mavi",
-    body: "Tu estratega de medios. Te acompano en cada paso: desde armar tu plan hasta lanzar tus campanas. Te muestro rapido como funciona.",
+    body: "Tu guia de medios. Te acompano desde el plan hasta la solicitud de campana, siempre con revision humana. Te muestro rapido como funciona.",
   },
   {
     emoji: "🧭",
@@ -23,8 +23,8 @@ const BASE_STEPS: Step[] = [
   },
   {
     emoji: "🚀",
-    title: "3. Ejecuta y sigue tus campanas",
-    body: "Cuando le des 'Ejecutar con Mavi', preparo la campana y la veras en 'Mis campanas' con su estado. Nunca publico sola: tu das el visto bueno.",
+    title: "3. Prepara y sigue tus solicitudes",
+    body: "Cuando envies una solicitud, preparo el borrador y lo veras en 'Mis campanas'. Nunca publico ni compro sola: una persona autorizada da el visto bueno.",
   },
 ];
 

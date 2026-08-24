@@ -4,6 +4,7 @@ export const ROLE_LABELS: Record<string, string> = {
   admin: "Administrador",
   planner: "Planificador",
   analyst: "Analista",
+  approver: "Aprobador",
   viewer: "Lector",
 };
 

@@ -10,7 +10,7 @@ const envPath = path.join(currentDir, ".env.local");
 const SESSION_COOKIE = "adm_console_session";
 const SESSION_TTL = 8 * 60 * 60 * 1000;
 const BODY_LIMIT = 64 * 1024;
-const ROLES = new Set(["admin", "planner", "analyst", "viewer"]);
+const ROLES = new Set(["admin", "planner", "analyst", "approver", "viewer"]);
 
 function loadEnvFile() {
   if (!fs.existsSync(envPath)) return;

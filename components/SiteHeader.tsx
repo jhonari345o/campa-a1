@@ -12,8 +12,8 @@ const nav = [
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-border/70 bg-fog/85 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-4">
-        <Link href="/" className="shrink-0 text-xl">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-4 sm:gap-6 sm:px-6">
+        <Link href="/" className="shrink-0 text-sm sm:text-xl">
           <Wordmark one />
         </Link>
         <nav className="hidden items-center gap-7 md:flex" aria-label="Principal">
@@ -31,8 +31,9 @@ export function SiteHeader() {
           <Link href="/ingresar" className="hidden text-sm font-black text-forest hover:text-signal-dark sm:block">
             Ingresar
           </Link>
-          <a href="#contacto" className="btn btn-primary text-sm">
-            Solicitar acceso
+          <a href="#contacto" className="btn btn-primary px-3 text-xs sm:px-5 sm:text-sm">
+            <span className="sm:hidden">Solicitar</span>
+            <span className="hidden sm:inline">Solicitar acceso</span>
           </a>
         </div>
       </div>

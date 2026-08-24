@@ -8,6 +8,8 @@ import { computeCharge } from "@/lib/pricing";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { preparePayPhonePayment } from "@/lib/payments/payphone";
 import { getMaxMetaBudgetUsd } from "@/lib/ads/config";
+import { isCommercialPaymentsEnabled } from "@/lib/commercial";
+import { canCompanyRole } from "@/lib/permissions";
 
 export type PautaInput = {
   red: string; // instagram | facebook | tiktok
@@ -31,11 +33,21 @@ export type PautaResult =
 export async function crearPauta(input: PautaInput): Promise<PautaResult> {
   const profile = await getSessionProfile();
   if (!profile) return { ok: false, error: "Debes iniciar sesion." };
+  if (!isCommercialPaymentsEnabled()) {
+    return {
+      ok: false,
+      error:
+        "El cobro esta bloqueado mientras se completan seguridad, respaldo, conciliacion y aprobaciones. Puedes preparar el plan, pero todavia no pagar.",
+    };
+  }
 
   const companies = await getMyCompanies(profile.id);
   const company = companies[0];
-  if (!company) {
+  if (!company || company.status !== "activa") {
     return { ok: false, error: "Solo una cuenta de empresa puede pautar." };
+  }
+  if (!canCompanyRole(company.role, "campaign:create")) {
+    return { ok: false, error: "Tu rol no permite crear una orden de pauta." };
   }
 
   const presupuesto = Number(input.presupuesto);
@@ -46,8 +58,8 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
       error: "La pauta real esta habilitada primero para Instagram y Facebook mediante Meta.",
     };
   }
-  if (!input.postUrl || !/^https?:\/\//i.test(input.postUrl)) {
-    return { ok: false, error: "Pega un link valido de la publicacion (empieza con http)." };
+  if (!isAllowedMetaPostUrl(input.postUrl, red)) {
+    return { ok: false, error: "Usa un enlace HTTPS de Facebook o Instagram que coincida con la red elegida." };
   }
   const maxBudget = getMaxMetaBudgetUsd();
   if (!Number.isFinite(presupuesto) || presupuesto < 5 || presupuesto > maxBudget) {
@@ -56,8 +68,11 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
       error: `El presupuesto debe estar entre $5 y $${maxBudget.toFixed(2)}.`,
     };
   }
-  if (!input.geo?.trim()) {
+  if (!input.geo?.trim() || input.geo.trim().length > 160) {
     return { ok: false, error: "Indica la ubicacion donde quieres pautar." };
+  }
+  if ((input.objetivo?.length ?? 0) > 240) {
+    return { ok: false, error: "Resume el objetivo en un maximo de 240 caracteres." };
   }
   const latitude = Number(input.latitude);
   const longitude = Number(input.longitude);
@@ -125,7 +140,7 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
     .single();
 
   if (error || !data) {
-    return { ok: false, error: error?.message ?? "No se pudo crear la orden de pauta." };
+    return { ok: false, error: "No se pudo crear la orden de pauta." };
   }
 
   const amounts = {
@@ -224,5 +239,19 @@ function getSiteUrl(): string | null {
     return url.origin;
   } catch {
     return null;
+  }
+}
+
+function isAllowedMetaPostUrl(raw: string, red: string): boolean {
+  if (!raw || raw.length > 2048) return false;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" || url.username || url.password) return false;
+    const hostname = url.hostname.toLowerCase();
+    const facebook = hostname === "facebook.com" || hostname.endsWith(".facebook.com");
+    const instagram = hostname === "instagram.com" || hostname.endsWith(".instagram.com");
+    return red === "facebook" ? facebook : red === "instagram" ? instagram : false;
+  } catch {
+    return false;
   }
 }

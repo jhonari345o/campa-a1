@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isAgentAutomationEnabled } from "@/lib/commercial";
 
 export const runtime = "nodejs";
 
@@ -8,6 +9,12 @@ export const runtime = "nodejs";
  * Autenticacion: header  Authorization: Bearer <AGENT_WORKER_TOKEN>
  */
 export async function POST(request: Request) {
+  if (!isAgentAutomationEnabled()) {
+    return NextResponse.json(
+      { error: "La automatizacion permanece bloqueada para revision humana." },
+      { status: 503 },
+    );
+  }
   const token = process.env.AGENT_WORKER_TOKEN;
   if (!token) {
     return NextResponse.json({ error: "Agente no configurado (falta AGENT_WORKER_TOKEN)." }, { status: 503 });

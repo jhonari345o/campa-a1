@@ -20,10 +20,12 @@ export function PautarChat({
   initialRed,
   initialMonto,
   initialObjetivo,
+  commercialPaymentsEnabled = false,
 }: {
   initialRed?: string;
   initialMonto?: number;
   initialObjetivo?: string;
+  commercialPaymentsEnabled?: boolean;
 } = {}) {
   const prefilled = Boolean(initialRed && initialMonto && initialMonto > 0);
   const [chat, setChat] = useState<Bubble[]>(
@@ -232,7 +234,19 @@ export function PautarChat({
               <Row label="Total a pagar" value={money(charge.total)} bold />
             </div>
 
-            {!paymentLinks ? (
+            {!commercialPaymentsEnabled ? (
+              <div className="mt-4 space-y-2">
+                <button type="button" disabled className="btn btn-secondary w-full cursor-not-allowed opacity-60">
+                  Cobro bloqueado hasta aprobación comercial
+                </button>
+                <a
+                  href="mailto:hola@admavericks.one?subject=Revision%20de%20solicitud%20de%20pauta"
+                  className="btn btn-primary w-full"
+                >
+                  Solicitar revisión humana →
+                </a>
+              </div>
+            ) : !paymentLinks ? (
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -268,7 +282,9 @@ export function PautarChat({
             )}
 
             <p className="mt-2 text-center text-[11px] text-muted">
-              🔒 PayPhone procesa el pago en su pagina segura. Ad Mavericks no recibe los datos de la tarjeta.
+              {commercialPaymentsEnabled
+                ? "🔒 PayPhone procesa el pago en su pagina segura. Ad Mavericks no recibe los datos de la tarjeta."
+                : "No se solicitan ni almacenan datos de tarjeta durante el modo controlado."}
             </p>
           </div>
         )}

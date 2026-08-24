@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { MEDIA_TYPE_LABELS, money } from "@/lib/market";
+import { MEDIA_TYPE_LABELS } from "@/lib/market";
 
 /**
  * Arma el contexto de Mavi. Corre del lado del servidor con la clave de
@@ -36,7 +36,7 @@ export async function buildMarketContext(): Promise<string> {
   const mediaLines =
     [...byMedia.entries()]
       .sort((a, b) => b[1] - a[1])
-      .map(([mt, v]) => `- ${MEDIA_TYPE_LABELS[mt] ?? mt}: ${money(v)} (${total ? Math.round((v / total) * 100) : 0}%)`)
+      .map(([mt, v]) => `- ${MEDIA_TYPE_LABELS[mt] ?? mt}: ${total ? Math.round((v / total) * 100) : 0}%`)
       .join("\n") || "- (sin datos)";
 
   const giroLines =
@@ -55,7 +55,7 @@ export async function buildMarketContext(): Promise<string> {
       .join("\n") || "- (sin datos)";
 
   return [
-    `INVERSION DEL MERCADO POR MEDIO (referencia, total ${money(total)}):`,
+    "PARTICIPACION AGREGADA DEL MERCADO POR MEDIO (sin montos ni anunciantes):",
     mediaLines,
     "",
     "GIROS DE NEGOCIO (publico, canales, tono, ideas):",

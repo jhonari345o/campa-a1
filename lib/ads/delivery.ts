@@ -9,6 +9,7 @@ import {
   type MetaCampaignIds,
 } from "@/lib/ads/meta";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isMetaPausedDraftsEnabled, isMetaRealSpendEnabled } from "@/lib/commercial";
 
 type DeliveryRow = {
   id: string;
@@ -22,6 +23,9 @@ type DeliveryRow = {
 };
 
 export async function preparePaidMetaJob(jobId: string) {
+  if (!isMetaPausedDraftsEnabled()) {
+    throw new Error("La creacion de borradores Meta esta bloqueada por el control de lanzamiento.");
+  }
   const admin = createAdminClient();
   const context = await loadPaidJob(admin, jobId);
   const delivery = await getOrCreateDelivery(admin, context.job.id, context.job.company_id);
@@ -113,6 +117,9 @@ export async function preparePaidMetaJob(jobId: string) {
 }
 
 export async function activatePaidMetaJob(jobId: string) {
+  if (!isMetaRealSpendEnabled()) {
+    throw new Error("El gasto real en Meta esta bloqueado por el control de lanzamiento.");
+  }
   const admin = createAdminClient();
   const context = await loadPaidJob(admin, jobId);
   const maxCents = Math.round(getMaxMetaBudgetUsd() * 100);

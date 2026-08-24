@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isAgentAutomationEnabled } from "@/lib/commercial";
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,9 @@ const ALLOWED = new Set([
  * Body: { id, status, log? }. Auth: Bearer <AGENT_WORKER_TOKEN>.
  */
 export async function POST(request: Request) {
+  if (!isAgentAutomationEnabled()) {
+    return NextResponse.json({ error: "Automatizacion deshabilitada." }, { status: 503 });
+  }
   const token = process.env.AGENT_WORKER_TOKEN;
   if (!token) {
     return NextResponse.json({ error: "Agente no configurado." }, { status: 503 });
@@ -31,7 +35,13 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: "Cuerpo invalido." }, { status: 400 });
   }
-  if (!body.id || !body.status || !ALLOWED.has(body.status)) {
+  if (
+    !body.id ||
+    !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(body.id) ||
+    !body.status ||
+    !ALLOWED.has(body.status) ||
+    (body.log?.length ?? 0) > 1000
+  ) {
     return NextResponse.json({ error: "id o status invalido." }, { status: 400 });
   }
 
@@ -47,6 +57,6 @@ export async function POST(request: Request) {
     .update({ status: body.status, log: body.log ?? null })
     .eq("id", body.id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: "No se pudo actualizar el trabajo." }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

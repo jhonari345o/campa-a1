@@ -3,6 +3,8 @@ import { Nunito_Sans } from "next/font/google";
 import "leaflet/dist/leaflet.css";
 import "./globals.css";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://admavericks.one";
+
 const nunito = Nunito_Sans({
   subsets: ["latin"],
   weight: ["400", "600", "800", "900"],
@@ -17,13 +19,27 @@ export const metadata: Metadata = {
   },
   description:
     "Ad Mavericks convierte una operacion compleja de medios en una experiencia clara, segura y facil de comprender. Planificacion, compra y control de pauta publicitaria en Ecuador.",
-  metadataBase: new URL("https://admavericks.one"),
+  metadataBase: new URL(siteUrl),
   openGraph: {
-    title: "Ad Mavericks One",
+    title: "Ad Mavericks One — Tu central de medios del nuevo siglo",
     description:
-      "Planificacion, compra y control de medios. Clara, segura y multiempresa.",
+      "Planificacion, catalogo y gestion de medios para Ecuador.",
     type: "website",
     locale: "es_EC",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "Ad Mavericks One — Tu central de medios del nuevo siglo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Ad Mavericks One — Tu central de medios del nuevo siglo",
+    description: "Planificacion, catalogo y gestion de medios para Ecuador.",
+    images: ["/og.png"],
   },
 };
 

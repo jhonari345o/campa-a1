@@ -75,6 +75,7 @@ export async function preparePayPhonePayment(
       optionalParameter: input.jobId,
     }),
     cache: "no-store",
+    signal: AbortSignal.timeout(15_000),
   });
   const body = (await response.json()) as PayPhonePaymentLinks & PayPhoneError;
   if (!response.ok) throw payPhoneError(body, "PayPhone no pudo preparar el pago.");
@@ -98,6 +99,7 @@ export async function confirmPayPhonePayment(
     },
     body: JSON.stringify({ id, clientTxId: clientTransactionId }),
     cache: "no-store",
+    signal: AbortSignal.timeout(15_000),
   });
   const body = (await response.json()) as PayPhoneConfirmation & PayPhoneError;
   if (!response.ok) throw payPhoneError(body, "PayPhone no pudo confirmar la transaccion.");
@@ -135,4 +137,3 @@ function payPhoneError(body: PayPhoneError, fallback: string): Error {
   const code = body.errorCode ? ` (${body.errorCode})` : "";
   return new Error(`${body.message || fallback}${code}${details ? `: ${details}` : ""}`);
 }
-

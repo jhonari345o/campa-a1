@@ -28,7 +28,7 @@ export default async function AsistentePage() {
           <div>
             <h1 className="text-2xl font-black tracking-tight">Pregunta a Mavi</h1>
             <p className="text-sm text-muted">
-              Tu asesora de medios: te dice donde y como invertir, y te arma campanas y guiones.
+              Tu guia de medios: prepara recomendaciones y borradores para revision humana.
             </p>
           </div>
         </div>

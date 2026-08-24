@@ -28,7 +28,7 @@ Navegador ──▶ Next.js (App Router)
               Supabase (Postgres + Auth + RLS)
                        │
                        ▼
-              Infraestructura AWS (WAF, respaldos, monitoreo)
+              AWS Amplify Hosting (SSR, HTTPS y CDN)
 
 Equipo Ad Mavericks ──▶ Consola local (127.0.0.1)
                               │ service_role solo en el proceso local
@@ -37,18 +37,22 @@ Equipo Ad Mavericks ──▶ Consola local (127.0.0.1)
 
 - **Supabase** provee la base de datos, la autenticacion y el aislamiento por
   RLS. Es la fuente de verdad de datos y acceso.
-- **AWS** aporta el escudo (WAF), respaldos automaticos con recuperacion a un
-  punto en el tiempo, y vigilancia. El sitio Next.js se despliega aqui.
+- **AWS Amplify** aloja el sitio Next.js con SSR, HTTPS y CDN. WAF, alertas y
+  monitoreo operativo deben configurarse y verificarse por separado antes de
+  abrir la operacion comercial.
 - **Consola local** permite crear usuarios sin publicar esa herramienta ni su
   `service_role`; corre como un proceso Node separado y escucha solo en loopback.
-- **Mavi** usa Amazon Bedrock (preferido en AWS) o un endpoint LLM compatible y
-  conserva el flujo de generacion y ejecucion supervisada de campanas.
+- **Mavi** usa Amazon Bedrock (preferido en AWS) o un endpoint LLM compatible.
+  Solo prepara explicaciones o borradores y nunca compra ni activa pauta por si
+  sola. El envio a un proveedor requiere consentimiento explicito.
 - **Pauta externa** recibe el URL de la publicacion, un centro y radio de
   geolocalizacion en Ecuador y la inversion. La orden guarda el objetivo
   geografico en `campaign_jobs.spec`; el total suma 22% de impuestos/costos y
   25% de comision sobre la inversion base. PayPhone aloja el pago y la app
-  confirma el resultado contra su API antes de habilitar la entrega. Meta crea la campaña en pausa; el equipo revisa
-  y confirma por separado la activacion que inicia gasto.
+  confirma el resultado contra su API antes de habilitar la entrega. Meta crea
+  la campana en pausa; el equipo revisa y confirma por separado la activacion
+  que inicia gasto. Los tres pasos tienen interruptores de lanzamiento
+  independientes y permanecen apagados por defecto.
 
 ## 3. Modelo de datos
 
@@ -57,7 +61,7 @@ Equipo Ad Mavericks ──▶ Consola local (127.0.0.1)
 - `companies` — cada empresa cliente (tenant), con estado y numero de asientos.
 - `profiles` — 1:1 con `auth.users`; `is_platform_admin` marca al equipo Ad Mavericks.
 - `company_members` — relacion usuario↔empresa con rol (`admin`, `planner`,
-  `analyst`, `viewer`). Varias personas por empresa.
+  `analyst`, `approver`, `viewer`). Varias personas por empresa.
 - `registration_codes` — tabla heredada; el registro publico por codigo esta
   deshabilitado y no se generan codigos nuevos.
 - `audit_log` — quien hizo que y cuando.
@@ -67,8 +71,9 @@ usuario solo alcance su propia empresa; el staff de Ad Mavericks administra todo
 
 ### Base de inversion publicitaria (inteligencia de mercado)
 
-Datos de referencia compartidos (no por tenant). Lectura para usuarios
-autenticados; escritura solo para el equipo.
+Datos de referencia compartidos (no por tenant). Las tablas crudas quedan
+restringidas al equipo administrador; los clientes reciben resultados agregados
+y sin montos, anunciantes ni registros licenciados identificables.
 
 - `data_sources` — Superintendencia de Companias, Superintendencia de Bancos,
   canales de TV, Google Ads, Google Analytics, Meta Ads.
@@ -88,14 +93,19 @@ Todo dato entra como `pendiente` hasta ser verificado contra su fuente.
 | 2 · Catalogo y cotizacion | Proveedores, tarifas, cotizaciones, reservas. | 5–7 sem |
 | 3 · Ordenes, cobro y movil | Compra vinculante, facturacion, cobro, app. | 6–10 sem |
 
-## 5. Seguridad — cuatro garantias
+## 5. Controles y validaciones
 
 1. **Aislamiento por cliente** (RLS en Supabase).
-2. **Respaldos probados** (recuperacion a un punto en el tiempo).
-3. **Escudo contra ataques** (WAF y control de abuso en AWS).
+2. **Respaldos por probar** con un ejercicio documentado de restauracion.
+3. **Escudo por activar**: WAF, limites de abuso y alertas en AWS.
 4. **Datos honestos** (`status = pendiente` mientras no se verifica).
 
 ## 6. Variables de entorno
 
 Ver [`.env.example`](../.env.example). La `service_role key` vive solo en el
 servidor y jamas se envia al navegador.
+
+Las variables `COMMERCIAL_PAYMENTS_ENABLED`, `META_PAUSED_DRAFTS_ENABLED`,
+`META_REAL_SPEND_ENABLED`, `AI_ASSISTANT_ENABLED` y
+`AGENT_AUTOMATION_ENABLED` usan cierre seguro: solo el valor literal `true`
+habilita cada capacidad.

@@ -31,7 +31,7 @@ function Precios() {
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-muted">
           Un servicio de central de medios de primer nivel, con Mavi de tu lado.
-          Cambia o cancela cuando quieras.
+          El alcance, acceso y responsables se confirman con nuestro equipo.
         </p>
       </div>
       <PlanesPricing />
@@ -87,7 +87,7 @@ const pilares = [
   },
   {
     title: "Control multiempresa",
-    body: "Cada cliente entra con su cuenta corporativa segura y aislada. Reservas, ordenes, facturas y auditoria.",
+    body: "Cada cliente entra por invitacion y trabaja dentro de su empresa. Reservas, ordenes y facturas se habilitan solo tras validacion comercial.",
   },
 ];
 
@@ -128,7 +128,7 @@ const pasos = [
   { n: "02", t: "Analizar al publico", d: "Edad, ubicacion, intereses, habitos, dispositivos y momentos de exposicion." },
   { n: "03", t: "Disenar la estrategia", d: "Que canales, que rol tiene cada uno, cuanto presupuesto y por cuanto tiempo." },
   { n: "04", t: "Planificar la campana", d: "Fechas, formatos, ubicaciones, audiencias, inversion y resultados estimados." },
-  { n: "05", t: "Comprar los espacios", d: "Reserva y negociacion en TV, radio, via publica, prensa, digital y streaming." },
+  { n: "05", t: "Confirmar los espacios", d: "El equipo valida disponibilidad, condiciones y aprobaciones antes de emitir una orden vinculante." },
   { n: "06", t: "Medir y optimizar", d: "Alcance, frecuencia, conversiones, CPC/CPM/CPA y retorno de inversion." },
 ];
 
@@ -164,10 +164,10 @@ function ComoFunciona() {
 }
 
 const garantias = [
-  { t: "Aislamiento por cliente", d: "Cada empresa en su propio cuarto. Nunca puede ver ni buscar datos de otra." },
-  { t: "Respaldos probados", d: "Copias automaticas y recuperacion a un punto en el tiempo, verificadas periodicamente." },
-  { t: "Escudo contra ataques", d: "Proteccion WAF y control de abuso sobre la infraestructura AWS." },
-  { t: "Datos honestos", d: "Si un dato no esta verificado, se marca pendiente. Nunca se inventa una cifra." },
+  { t: "Aislamiento por cliente", d: "Supabase aplica politicas por empresa; las pruebas de aislamiento forman parte de cada liberacion." },
+  { t: "Recuperacion verificable", d: "La retencion y la restauracion deben comprobarse antes de habilitar operacion comercial." },
+  { t: "Proteccion por capas", d: "HTTPS y cabeceras seguras estan activas; WAF y limites de abuso se validan antes del lanzamiento." },
+  { t: "Datos honestos", d: "Si una fuente o metodologia no esta homologada, se muestra como pendiente y nunca se inventa una cifra." },
 ];
 
 function Seguridad() {
@@ -179,12 +179,12 @@ function Seguridad() {
             Seguridad
           </span>
           <h2 className="mt-2 max-w-lg text-[clamp(1.8rem,3vw,2.8rem)] font-black leading-tight tracking-tight">
-            Su informacion, protegida y respaldada.
+            Controles claros antes de operar con clientes reales.
           </h2>
         </div>
         <p className="max-w-sm text-muted">
-          Datos y acceso sobre Supabase; escudo, respaldos y vigilancia sobre AWS.
-          Cuatro garantias desde el primer dia.
+          La plataforma funciona como piloto controlado mientras se completan y
+          documentan los controles obligatorios del lanzamiento comercial.
         </p>
       </div>
       <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

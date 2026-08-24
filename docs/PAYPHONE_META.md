@@ -14,7 +14,7 @@ El flujo separa el cobro de la activacion publicitaria:
 ## 1. Supabase
 
 En SQL Editor, ejecutar en orden `supabase/migrations/0001_*.sql` hasta
-`0006_payphone_meta_pauta.sql`. La ultima migracion crea:
+`0007_handoff_security.sql`. La migracion `0006` crea:
 
 - `campaign_payments`: importes esperados y estado de PayPhone.
 - `campaign_payment_confirmations`: idempotencia y auditoria de confirmaciones.
@@ -22,6 +22,10 @@ En SQL Editor, ejecutar en orden `supabase/migrations/0001_*.sql` hasta
 
 Mantener desactivado **Allow new users to sign up**. Las escrituras de pago y
 Meta no tienen politicas RLS publicas: se hacen con `service_role` en el servidor.
+
+La migracion `0007` restringe la creacion de solicitudes a roles `admin` y
+`planner`, protege los privilegios del perfil y hace inmutable el registro de
+auditoria.
 
 ## 2. PayPhone
 
@@ -59,6 +63,9 @@ pausa. Si Meta rechaza un paso, conserva los ids ya creados para reanudar.
 
 ## 4. Salida controlada
 
+- Mantener `COMMERCIAL_PAYMENTS_ENABLED=false`,
+  `META_PAUSED_DRAFTS_ENABLED=false` y `META_REAL_SPEND_ENABLED=false` al
+  desplegar. Las credenciales por si solas no habilitan ninguna operacion.
 - Probar PayPhone en su ambiente controlado y Meta solo en `PAUSED`.
 - Revisar con contabilidad ecuatoriana la denominacion/facturacion del 22% antes
   de cobrar clientes reales.
@@ -66,3 +73,7 @@ pausa. Si Meta rechaza un paso, conserva los ids ya creados para reanudar.
 - Verificar que **Pausar gasto** detenga la campaña antes de la primera pauta.
 - Rotar de inmediato cualquier token que haya sido expuesto.
 
+Orden de apertura recomendado: primero activar solo borradores pausados; luego
+PayPhone tras conciliacion e idempotencia verificadas; por ultimo el gasto real
+de Meta, con aprobacion humana y un tope bajo. Cada cambio requiere una nueva
+prueba de pausa y evidencia en auditoria.

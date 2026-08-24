@@ -35,7 +35,7 @@ function setView(authenticated) {
 }
 
 function roleLabel(role) {
-  return ({ admin: "Admin", planner: "Planificador", analyst: "Analista", viewer: "Lectura" })[role] || role;
+  return ({ admin: "Admin", planner: "Planificador", analyst: "Analista", approver: "Aprobador", viewer: "Lectura" })[role] || role;
 }
 
 function renderCompanies() {

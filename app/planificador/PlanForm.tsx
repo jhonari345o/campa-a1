@@ -19,7 +19,7 @@ export function PlanForm() {
       <section className="rounded-panel border border-border bg-white p-6 shadow-panel">
         <h2 className="text-lg font-black tracking-tight">Cuentanos de tu negocio</h2>
         <p className="mt-1 text-sm text-muted">
-          Con esto buscamos cuanto invierten negocios similares y armamos tu plan.
+          Con esto usamos patrones agregados del mercado y armamos una recomendacion para revision.
         </p>
         <form action={formAction} className="mt-5 space-y-4">
           <Field name="keyword" label="Giro del negocio *" placeholder="Cafeteria, banco, farmacia…" required />
@@ -59,8 +59,8 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
         <h2 className="text-xl font-black tracking-tight">Tu plan de medios</h2>
         <p className="mt-1 text-sm text-muted">
           {plan.basis === "giro"
-            ? `Basado en ${plan.matched} negocios similares a "${keyword}".`
-            : `No encontramos suficientes negocios de "${keyword}"; usamos el promedio del mercado como referencia.`}
+            ? `Basado en patrones agregados de negocios comparables a "${keyword}".`
+            : `No encontramos una base comparable suficiente para "${keyword}"; usamos una referencia agregada del mercado.`}
         </p>
 
         <h3 className="mt-6 text-sm font-black uppercase tracking-wide text-muted">Distribucion recomendada por canal</h3>
@@ -119,7 +119,8 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
           <h3 className="text-lg font-black tracking-tight">Campanas sugeridas por Mavi</h3>
         </div>
         <p className="mt-1 text-sm text-muted">
-          Listas para lanzar en cada plataforma segun tu plan. Copialas o abre la plataforma.
+          Borradores para revisar segun tu plan. Mavi ayuda a prepararlos; la disponibilidad,
+          aprobacion y publicacion siempre se confirman con una persona responsable.
         </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {result.campaigns.map((c) => (
@@ -179,7 +180,7 @@ function CampaignCard({ c }: { c: Campaign }) {
       });
       setSent(
         res.ok
-          ? { ok: true, msg: "Enviada a Mavi. Sigue el estado en Campanas." }
+          ? { ok: true, msg: "Solicitud enviada para revision. Sigue el estado en Campanas." }
           : { ok: false, msg: res.error },
       );
     } catch {
@@ -250,11 +251,11 @@ function CampaignCard({ c }: { c: Campaign }) {
       <div className="mt-auto flex flex-wrap gap-2 pt-4">
         {pautarHref(c) && (
           <a href={pautarHref(c)!} className="btn btn-primary text-xs">
-            Pautar y pagar →
+            Preparar solicitud →
           </a>
         )}
         <button onClick={ejecutar} type="button" disabled={sending} className="btn btn-secondary text-xs disabled:opacity-60">
-          {sending ? "Enviando…" : "Ejecutar con Mavi 🦎"}
+          {sending ? "Enviando…" : "Enviar a revision 🦎"}
         </button>
         <button onClick={copy} type="button" className="btn btn-secondary text-xs">
           {copied ? "Copiado ✓" : "Copiar"}

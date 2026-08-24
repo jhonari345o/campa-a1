@@ -303,7 +303,11 @@ async function metaFetchUrl<T>(
   url: string,
   init: { method?: "GET" | "POST"; body?: URLSearchParams } = {},
 ): Promise<T> {
-  const response = await fetch(url, {
+  const target = new URL(url);
+  if (target.protocol !== "https:" || target.hostname !== "graph.facebook.com") {
+    throw new Error("Meta devolvio una direccion de API no permitida.");
+  }
+  const response = await fetch(target, {
     method: init.method ?? "GET",
     headers: {
       Authorization: `Bearer ${config.accessToken}`,
@@ -311,6 +315,7 @@ async function metaFetchUrl<T>(
     },
     body: init.body?.toString(),
     cache: "no-store",
+    signal: AbortSignal.timeout(20_000),
   });
   const result = (await response.json()) as T & {
     error?: { message?: string; code?: number; error_subcode?: number };

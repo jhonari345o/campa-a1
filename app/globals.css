@@ -16,6 +16,7 @@ html {
 }
 
 body {
+  overflow-x: hidden;
   color: var(--forest-deep);
   background:
     linear-gradient(135deg, rgba(0, 161, 0, 0.05), transparent 32%),
@@ -35,7 +36,7 @@ body {
 @layer components {
   /* Boton primario: accion en verde senal con sombreado inferior que responde al presionar. */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-[14px] border-2 px-5 py-3 font-black transition-transform duration-150;
+    @apply inline-flex items-center justify-center gap-2 rounded-[14px] border-2 px-5 py-3 font-black transition-transform duration-150 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky/40;
     min-height: 44px;
   }
   .btn-primary {

@@ -6,6 +6,7 @@ import { JOB_STATUS, PLATFORM_LABEL, type JobStatus } from "@/lib/jobs";
 import { clsx } from "@/lib/clsx";
 import { MaviScene } from "@/components/Mavi";
 import { MaviShowcase } from "@/components/MaviShowcase";
+import { isMetaPausedDraftsEnabled, isMetaRealSpendEnabled } from "@/lib/commercial";
 import {
   activarPautaMeta,
   actualizarMetricasMeta,
@@ -40,6 +41,7 @@ type Job = {
       clics?: number;
       gasto_usd?: number;
     } | null;
+    metrics_actualizadas_at?: string;
   } | null;
   companies: { name: string } | null;
   payment?: { status: string; total_cents: number } | null;
@@ -71,6 +73,8 @@ export default async function CampanasPage({
   const profile = await getSessionProfile();
   if (!profile) redirect("/ingresar");
   const isAdmin = profile.is_platform_admin;
+  const metaDraftsEnabled = isMetaPausedDraftsEnabled();
+  const metaSpendEnabled = isMetaRealSpendEnabled();
 
   const supabase = await createClient();
   const { data } = await supabase
@@ -123,11 +127,22 @@ export default async function CampanasPage({
               {isAdmin
                 ? `Cola de TODOS los clientes${pendientes > 0 ? ` — ${pendientes} en espera.` : "."} Cada cliente solo ve las suyas.`
                 : pendientes > 0
-                  ? `Estoy pendiente del reloj: tienes ${pendientes} campana${pendientes === 1 ? "" : "s"} en cola.`
-                  : "Estado de las campanas que enviaste a ejecutar conmigo."}
+                  ? `Tienes ${pendientes} solicitud${pendientes === 1 ? "" : "es"} en revision.`
+                  : "Estado de las solicitudes preparadas para revision humana."}
             </p>
           </div>
         </div>
+
+        {isAdmin && (!metaDraftsEnabled || !metaSpendEnabled) && (
+          <div className="mt-5 rounded-xl border border-amber/50 bg-amber/10 px-4 py-3 text-sm text-forest">
+            <p className="font-black">Control de lanzamiento activo</p>
+            <p className="mt-1">
+              {metaDraftsEnabled
+                ? "Los borradores pausados estan habilitados; el gasto real sigue bloqueado."
+                : "La creacion de borradores y el gasto real siguen bloqueados hasta completar la validacion tecnica y comercial."}
+            </p>
+          </div>
+        )}
 
         {sp.meta && <MetaResultNotice result={sp.meta} detail={sp.detail} />}
 
@@ -139,7 +154,7 @@ export default async function CampanasPage({
               <a href="/planificador" className="font-black text-signal-dark hover:underline">
                 Planificador
               </a>{" "}
-              y usa “Ejecutar con Mavi”.
+              y prepara una solicitud para revision.
             </p>
           </>
         ) : (
@@ -189,11 +204,19 @@ export default async function CampanasPage({
                   )}
 
                   {isAdmin && j.platform === "meta" && j.payment?.status === "paid" && (
-                    <MetaControls job={j} />
+                    <MetaControls
+                      job={j}
+                      draftsEnabled={metaDraftsEnabled}
+                      spendEnabled={metaSpendEnabled}
+                    />
                   )}
 
                   {/* Dashboard de metricas de la pauta */}
-                  <MetricsPanel metrics={j.spec?.metrics ?? null} live={j.status === "publicada"} />
+                  <MetricsPanel
+                    metrics={j.spec?.metrics ?? null}
+                    active={j.status === "publicada"}
+                    updatedAt={j.spec?.metrics_actualizadas_at}
+                  />
 
                   {j.log && <p className="mt-2 whitespace-pre-wrap text-xs text-muted">{j.log}</p>}
                 </li>
@@ -206,7 +229,15 @@ export default async function CampanasPage({
   );
 }
 
-function MetaControls({ job }: { job: Job }) {
+function MetaControls({
+  job,
+  draftsEnabled,
+  spendEnabled,
+}: {
+  job: Job;
+  draftsEnabled: boolean;
+  spendEnabled: boolean;
+}) {
   const delivery = job.delivery;
   const canPrepare = !delivery || ["ready", "error"].includes(delivery.status);
   return (
@@ -217,7 +248,7 @@ function MetaControls({ job }: { job: Job }) {
       )}
       {delivery?.error && <p className="mt-1 text-xs font-bold text-[#a13b31]">{delivery.error}</p>}
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        {canPrepare && (
+        {canPrepare && draftsEnabled && (
           <form action={prepararPautaMeta}>
             <input type="hidden" name="job_id" value={job.id} />
             <button type="submit" className="btn btn-secondary text-xs">
@@ -225,7 +256,7 @@ function MetaControls({ job }: { job: Job }) {
             </button>
           </form>
         )}
-        {delivery?.status === "paused" && (
+        {delivery?.status === "paused" && spendEnabled && (
           <form action={activarPautaMeta} className="flex flex-wrap items-center gap-2">
             <input type="hidden" name="job_id" value={job.id} />
             <label className="flex items-center gap-1 text-[11px] font-bold text-forest">
@@ -248,6 +279,16 @@ function MetaControls({ job }: { job: Job }) {
           </>
         )}
       </div>
+      {!draftsEnabled && (
+        <p className="mt-2 text-xs font-bold text-[#9a6a00]">
+          La creacion en Meta esta bloqueada hasta aprobar los controles de lanzamiento.
+        </p>
+      )}
+      {draftsEnabled && delivery?.status === "paused" && !spendEnabled && (
+        <p className="mt-2 text-xs font-bold text-[#9a6a00]">
+          Borrador disponible para revision; la activacion con gasto real permanece bloqueada.
+        </p>
+      )}
     </div>
   );
 }
@@ -261,8 +302,10 @@ function MetaResultNotice({ result, detail }: { result: string; detail?: string 
     falta_confirmacion: "Debes confirmar expresamente el inicio del gasto real.",
     no_autorizado: "Solo el equipo administrador puede operar Meta.",
     orden_invalida: "La orden seleccionada no es valida.",
+    bloqueada_cumplimiento:
+      "Operacion bloqueada por el control de lanzamiento. Completa las validaciones antes de habilitar pauta real.",
   };
-  const isError = result === "error" || result === "falta_confirmacion";
+  const isError = ["error", "falta_confirmacion", "bloqueada_cumplimiento"].includes(result);
   return (
     <p
       className={`mt-5 rounded-xl border px-4 py-3 text-sm font-bold ${
@@ -289,10 +332,12 @@ function paymentLabel(status: string): string {
 
 function MetricsPanel({
   metrics,
-  live,
+  active,
+  updatedAt,
 }: {
   metrics: { impresiones?: number; alcance?: number; clics?: number; gasto_usd?: number } | null;
-  live: boolean;
+  active: boolean;
+  updatedAt?: string;
 }) {
   const cells = [
     { label: "Impresiones", value: metrics?.impresiones },
@@ -305,9 +350,16 @@ function MetricsPanel({
       <div className="flex items-center justify-between">
         <span className="text-xs font-black uppercase tracking-wide text-muted">Metricas</span>
         <span className="text-[10px] font-black uppercase text-muted">
-          {live ? "En vivo" : "Se activan al publicar"}
+          {updatedAt
+            ? `Actualizadas ${new Date(updatedAt).toLocaleString("es-EC")}`
+            : active
+              ? "Pendientes de sincronizacion"
+              : "Se habilitan tras publicar"}
         </span>
       </div>
+      <p className="mt-2 text-[10px] text-muted">
+        Fuente: Meta Marketing API · periodo acumulado de la campana · metodo reportado por la plataforma.
+      </p>
       <div className="mt-2 grid grid-cols-4 gap-2 text-center">
         {cells.map((c) => (
           <div key={c.label} className="rounded-lg bg-white px-1 py-2">

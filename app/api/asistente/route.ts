@@ -2,14 +2,15 @@ import { NextResponse } from "next/server";
 import { getSessionProfile } from "@/lib/auth";
 import { buildMarketContext } from "@/lib/assistant/context";
 import { chatCompletion, type LlmMessage } from "@/lib/assistant/llm";
+import { isAiAssistantEnabled } from "@/lib/commercial";
 
 export const runtime = "nodejs";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
 const SYSTEM = `Eres Mavi, la iguana guayaca de Ad Mavericks One, una central de medios de Ecuador.
-Eres una asesora de medios y creativa. Ayudas a los clientes a EJECUTAR su plan de medios:
-les indicas en que canales invertir y como, y GENERAS campanas y guiones (video, redes,
+Eres una guia de medios y creativa. Ayudas a los clientes a PREPARAR su plan de medios:
+les indicas que canales evaluar y por que, y GENERAS borradores y guiones (video, redes,
 television, radio, WhatsApp).
 
 Tus unicas fuentes son el CONTEXTO que se te entrega (inversion del mercado, giros de negocio,
@@ -27,28 +28,61 @@ Reglas:
 - Solo hablas de publicidad, medios y campanas. Si preguntan otra cosa, reencauza con amabilidad.
 - Datos honestos: si algo no esta en el contexto, dilo; no inventes cifras ni prometas
   resultados garantizados.
+- Nunca afirmas que compraste, reservaste, publicaste o activaste pauta. Toda recomendacion,
+  presupuesto y borrador requiere revision y aprobacion humana.
+- No conviertes ranking de radio, OTS, circulacion, seguidores o impresiones en alcance
+  comparable. Si no hay metodologia homologada, indicas "pendiente de homologacion".
 - Tono: valiente, preciso, optimista y cercano. Espanol de Ecuador. Respuestas accionables:
   que hacer, por que y el siguiente paso. Guiones en formato claro y listos para usar.`;
 
 export async function POST(request: Request) {
+  const requestId = request.headers.get("x-request-id")?.slice(0, 100) || crypto.randomUUID();
+  const headers = { "x-request-id": requestId, "cache-control": "no-store" };
+
+  if (!isAiAssistantEnabled()) {
+    return NextResponse.json(
+      { error: "Mavi permanece deshabilitada hasta validar el tratamiento de datos con el proveedor de IA." },
+      { status: 503, headers },
+    );
+  }
+  if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
+    return NextResponse.json({ error: "Tipo de contenido no admitido." }, { status: 415, headers });
+  }
+  const contentLength = Number(request.headers.get("content-length") ?? "0");
+  if (Number.isFinite(contentLength) && contentLength > 32_768) {
+    return NextResponse.json({ error: "La consulta es demasiado grande." }, { status: 413, headers });
+  }
+  const origin = request.headers.get("origin");
+  if (!origin || !isAllowedOrigin(origin, request.url)) {
+    return NextResponse.json({ error: "Origen no permitido." }, { status: 403, headers });
+  }
+
   // 1. Solo usuarios autenticados.
   const profile = await getSessionProfile();
   if (!profile) {
-    return NextResponse.json({ error: "Debes iniciar sesion." }, { status: 401 });
+    return NextResponse.json({ error: "Debes iniciar sesion." }, { status: 401, headers });
   }
 
   // 2. Validar el historial.
-  let body: { messages?: ChatMessage[] };
+  let body: { messages?: ChatMessage[]; consent?: boolean };
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Cuerpo invalido." }, { status: 400 });
+    return NextResponse.json({ error: "Cuerpo invalido." }, { status: 400, headers });
+  }
+  if (body.consent !== true) {
+    return NextResponse.json({ error: "Falta confirmar el tratamiento de la consulta." }, { status: 403, headers });
   }
   const history = (body.messages ?? [])
     .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+    .map((m) => ({ ...m, content: m.content.trim().slice(0, 4000) }))
     .slice(-12);
+  const totalChars = history.reduce((sum, message) => sum + message.content.length, 0);
+  if (totalChars > 16_000) {
+    return NextResponse.json({ error: "La conversacion es demasiado larga. Inicia una consulta nueva." }, { status: 413, headers });
+  }
   if (history.length === 0 || history[history.length - 1].role !== "user") {
-    return NextResponse.json({ error: "Falta el mensaje del usuario." }, { status: 400 });
+    return NextResponse.json({ error: "Falta el mensaje del usuario." }, { status: 400, headers });
   }
 
   // 3. Contexto de datos + llamada al modelo propio.
@@ -60,15 +94,33 @@ export async function POST(request: Request) {
     ];
 
     const reply = await chatCompletion(messages, { maxTokens: 1024 });
-    return NextResponse.json({ reply: reply || "No pude generar una respuesta. Intenta de nuevo." });
+    return NextResponse.json(
+      { reply: reply || "No pude generar una respuesta. Intenta de nuevo." },
+      { headers },
+    );
   } catch (err) {
     if (err instanceof Error && err.message === "MODELO_NO_CONFIGURADO") {
       return NextResponse.json(
-        { error: "El asistente aun no esta conectado a un modelo (falta LLM_BASE_URL / LLM_MODEL)." },
-        { status: 503 },
+        { error: "El asistente aun no tiene un proveedor aprobado y configurado." },
+        { status: 503, headers },
       );
     }
-    const message = err instanceof Error ? err.message : "Error desconocido";
-    return NextResponse.json({ error: `El asistente fallo: ${message}` }, { status: 500 });
+    console.error(JSON.stringify({ event: "assistant.error", request_id: requestId, error: "provider_failure" }));
+    return NextResponse.json(
+      { error: "Mavi no pudo responder. Intenta de nuevo mas tarde.", requestId },
+      { status: 500, headers },
+    );
+  }
+}
+
+function isAllowedOrigin(origin: string, requestUrl: string): boolean {
+  try {
+    const candidates = [new URL(requestUrl).origin];
+    if (process.env.NEXT_PUBLIC_SITE_URL) {
+      candidates.push(new URL(process.env.NEXT_PUBLIC_SITE_URL).origin);
+    }
+    return candidates.includes(new URL(origin).origin);
+  } catch {
+    return false;
   }
 }

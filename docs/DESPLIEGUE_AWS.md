@@ -4,14 +4,9 @@ La app es Next.js 15 con SSR y middleware. La ruta recomendada es **AWS Amplify
 Hosting**, que soporta Next.js de forma nativa (SSR, rutas dinamicas y middleware)
 y entrega HTTPS, dominio y CDN. Alternativa por contenedor (ECS/Fargate) al final.
 
-> **Control de seguridad fechado (24-08-2026):** el proyecto queda en Next.js
-> `15.5.21`, ultima linea compatible documentada por Amplify. Next.js anuncio un
-> parche critico para la linea 15.5 el **26-08-2026**. Antes del siguiente
-> despliegue, actualizar al parche 15.5.x publicado ese dia, ejecutar
-> `npm audit`, `npm run typecheck`, `npm run lint` y `npm run build`, y desplegar
-> solo si todos finalizan correctamente. Si produccion estuvo en Next.js 15.1.6
-> sin parche desde diciembre de 2025, rotar despues del despliegue la
-> `SUPABASE_SERVICE_ROLE_KEY`, las credenciales de Bedrock y `AGENT_WORKER_TOKEN`.
+> **Control de seguridad:** antes de cada despliegue se ejecutan typecheck,
+> lint, pruebas, build y auditoria de dependencias. Las credenciales de alto
+> impacto deben rotarse ante cualquier sospecha de exposicion.
 
 ## Opcion A — AWS Amplify Hosting (recomendada)
 
@@ -30,6 +25,11 @@ y entrega HTTPS, dominio y CDN. Alternativa por contenedor (ECS/Fargate) al fina
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | publishable key (`sb_publishable_...`) |
 | `SUPABASE_SERVICE_ROLE_KEY` | secret key (`sb_secret_...`) — solo servidor |
 | `NEXT_PUBLIC_SITE_URL` | la URL publica que asigne Amplify (o el dominio) |
+| `COMMERCIAL_PAYMENTS_ENABLED` | `false` hasta aprobar cobros reales |
+| `META_PAUSED_DRAFTS_ENABLED` | `false` hasta aprobar la prueba pausada |
+| `META_REAL_SPEND_ENABLED` | `false` hasta aprobar pauta con gasto |
+| `AI_ASSISTANT_ENABLED` | `false` hasta aprobar proveedor y tratamiento de datos |
+| `AGENT_AUTOMATION_ENABLED` | `false` hasta aprobar el worker automatizado |
 | `PAYPHONE_TOKEN` | Bearer Token de la aplicacion WEB PayPhone (solo servidor) |
 | `PAYPHONE_STORE_ID` | StoreID del comercio PayPhone |
 | `META_ACCESS_TOKEN` | token de Marketing API (solo servidor) |
@@ -60,12 +60,13 @@ responde con las credenciales temporales del runtime.
 - *Save and deploy*. Amplify instala, construye (`npm run build`) y publica.
 - Al terminar entrega una URL `https://<rama>.<appid>.amplifyapp.com`.
 
-### 4. Escudo y respaldos (garantias de la propuesta)
-- **WAF:** Amplify permite asociar **AWS WAF** a la app (Web ACL con reglas
-  administradas + rate limiting) para el "escudo contra ataques".
-- **Respaldos:** los datos viven en Supabase (Postgres) con *point-in-time
-  recovery*; verificar la retencion en el plan del proyecto.
-- **Monitoreo:** CloudWatch para metricas y alarmas de la app en AWS.
+### 4. Escudo y respaldos (pendientes de evidencia)
+- **WAF:** asociar AWS WAF a la app, activar reglas administradas y limites por
+  IP/ruta, y guardar evidencia de una prueba de bloqueo.
+- **Respaldos:** confirmar el plan y retencion de Supabase y ejecutar una
+  restauracion de prueba en un entorno separado.
+- **Monitoreo:** configurar alarmas de AWS y captura de errores sin registrar
+  tokens, PII ni datos licenciados.
 
 ## Opcion B — Contenedor en ECS/Fargate
 
@@ -83,13 +84,17 @@ Para un control mas fino (o correr detras de ALB + WAF propio):
 
 ## Checklist previo a abrir a clientes (regla de oro)
 - [ ] `schema.sql` y `seed.sql` ejecutados en Supabase.
-- [ ] Migraciones `0001` a `0006` ejecutadas; tablas de pagos/entregas verificadas.
+- [ ] Migraciones `0001` a `0007` ejecutadas y politicas RLS verificadas.
 - [ ] Primer platform admin creado y verificado.
 - [ ] Autorregistro desactivado en Supabase Auth; usuarios creados solo por administracion.
 - [ ] Variables de entorno cargadas en Amplify (o secrets en ECS).
 - [ ] Aplicacion WEB PayPhone ligada al dominio y URL de respuesta de produccion.
 - [ ] Preparacion y confirmacion PayPhone probadas en ambiente controlado.
 - [ ] Meta Marketing API aprobada; campaña de prueba creada en `PAUSED` sin gasto.
+- [ ] `COMMERCIAL_PAYMENTS_ENABLED=false` y `META_REAL_SPEND_ENABLED=false`
+      hasta que los controles P0/P1 tengan evidencia aprobada.
+- [ ] Pruebas de aislamiento entre dos empresas y roles ejecutadas.
+- [ ] Retencion, exportacion y borrado de datos aprobados por legal.
 - [ ] WAF activo.
 - [ ] Respaldos y point-in-time recovery confirmados.
 - [ ] Secret key rotada tras la configuracion inicial.

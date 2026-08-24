@@ -17,17 +17,22 @@ export function ChatMavi() {
     {
       role: "assistant",
       content:
-        "¡Hola! Soy Mavi. Cuentame tu negocio y tu presupuesto, y te digo en que canales invertir y como. Tambien te armo campanas y guiones para redes, TV o radio.",
+        "¡Hola! Soy Mavi. Cuentame tu negocio y tu presupuesto, y te ayudo a evaluar canales y preparar un borrador para revision humana. Tambien te propongo guiones para redes, TV o radio.",
     },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [consent, setConsent] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   async function send(text: string) {
     const clean = text.trim();
     if (!clean || loading) return;
+    if (!consent) {
+      setError("Confirma el aviso de tratamiento antes de enviar informacion a Mavi.");
+      return;
+    }
     setError(null);
     const next = [...messages, { role: "user" as const, content: clean }];
     setMessages(next);
@@ -37,7 +42,7 @@ export function ChatMavi() {
       const res = await fetch("/api/asistente", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({ messages: next, consent: true }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -86,17 +91,32 @@ export function ChatMavi() {
           e.preventDefault();
           send(input);
         }}
-        className="flex items-center gap-3 border-t border-border p-4"
+        className="border-t border-border p-4"
       >
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Escribe tu pregunta sobre medios…"
-          className="flex-1 rounded-xl border border-border bg-fog px-4 py-3 outline-none focus:border-signal focus:ring-2 focus:ring-signal/30"
-        />
-        <button type="submit" disabled={loading} className="btn btn-primary disabled:opacity-60">
-          Enviar →
-        </button>
+        <label className="mb-3 flex items-start gap-2 text-xs text-muted">
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={(event) => setConsent(event.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            Autorizo procesar esta consulta con el proveedor de IA configurado. No incluire
+            contrasenas, datos personales, contratos, tarifarios ni informacion licenciada.
+          </span>
+        </label>
+        <div className="flex items-center gap-3">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            maxLength={4000}
+            placeholder="Escribe tu pregunta sobre medios…"
+            className="flex-1 rounded-xl border border-border bg-fog px-4 py-3 outline-none focus:border-signal focus:ring-2 focus:ring-signal/30"
+          />
+          <button type="submit" disabled={loading || !consent} className="btn btn-primary disabled:opacity-60">
+            Enviar →
+          </button>
+        </div>
       </form>
     </div>
   );

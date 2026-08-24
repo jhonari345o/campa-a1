@@ -3,6 +3,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { getSessionProfile } from "@/lib/auth";
 import { PautarChat } from "./PautarChat";
 import { computeCharge, money, SERVICE_FEE_PCT, TAX_PCT } from "@/lib/pricing";
+import { isCommercialPaymentsEnabled } from "@/lib/commercial";
 
 export const metadata = { title: "Pautar con Mavi" };
 
@@ -40,6 +41,7 @@ export default async function PautarPage({
   const montoNum = Number(sp.monto);
   const initialMonto = Number.isFinite(montoNum) && montoNum > 0 ? montoNum : undefined;
   const initialObjetivo = sp.objetivo?.slice(0, 120) || undefined;
+  const commercialPaymentsEnabled = isCommercialPaymentsEnabled();
 
   return (
     <div className="min-h-screen">
@@ -51,8 +53,16 @@ export default async function PautarPage({
       <main className="mx-auto max-w-2xl px-6 py-10">
         <h1 className="text-3xl font-black tracking-tight">Pautar con Mavi</h1>
         <p className="mt-1 text-muted">
-          Mavi te pide lo necesario y crea la orden de pauta. La sigues en “Mis campanas”.
+          Mavi prepara la solicitud. El equipo revisa cuenta, disponibilidad, condiciones y
+          aprobaciones antes de cualquier orden vinculante.
         </p>
+
+        {!commercialPaymentsEnabled && (
+          <p className="mt-4 rounded-xl border border-amber/40 bg-amber/10 px-4 py-3 text-sm font-bold text-forest">
+            🛡️ Modo controlado: puedes definir publicación, ubicación y presupuesto, pero el cobro
+            permanece bloqueado hasta completar los controles P0/P1 del lanzamiento comercial.
+          </p>
+        )}
 
         {sp.checkout === "success" && (
           <p className="mt-4 rounded-xl border border-signal/40 bg-signal/10 px-4 py-3 text-sm font-bold text-forest">
@@ -84,7 +94,12 @@ export default async function PautarPage({
         {profile.is_platform_admin && <ModeloMonetizacion />}
 
         <div className="mt-6">
-          <PautarChat initialRed={initialRed} initialMonto={initialMonto} initialObjetivo={initialObjetivo} />
+          <PautarChat
+            initialRed={initialRed}
+            initialMonto={initialMonto}
+            initialObjetivo={initialObjetivo}
+            commercialPaymentsEnabled={commercialPaymentsEnabled}
+          />
         </div>
       </main>
     </div>
