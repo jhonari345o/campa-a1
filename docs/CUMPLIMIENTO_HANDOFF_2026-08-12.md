@@ -17,7 +17,7 @@ necesita configuracion, evidencia o desarrollo adicional.
 | IA explicable y supervisada | Parcial | Consentimiento, minimizacion y bloqueo por variable; falta contrato/DPA y evaluacion formal. |
 | Metricas con fuente y metodologia | Parcial | Meta muestra fuente, periodo y metodo; catalogo cross-media homologado sigue pendiente. |
 | Headers y CSP | Implementado | CSP, HSTS, anti-frame, no-sniff, permisos y no-cache/no-index en rutas privadas. |
-| CI, pruebas y SAST | Configurado | Workflow de calidad, pruebas de flags/permisos y CodeQL; verificar primera ejecucion en GitHub. |
+| CI, pruebas y SAST | Aplicado y verificado | Calidad, pruebas, compilacion, auditoria de dependencias y CodeQL finalizaron correctamente en GitHub el 2026-08-24. |
 | OIDC/SSO y MFA | Pendiente externo | Configurar proveedor empresarial antes de usuarios externos. |
 | Entornos separados | Pendiente externo | Crear staging con proyecto Supabase y secretos propios. |
 | WAF, rate limiting y anti-bot | Pendiente externo | Configurar AWS WAF/Turnstile equivalente y guardar evidencia. |

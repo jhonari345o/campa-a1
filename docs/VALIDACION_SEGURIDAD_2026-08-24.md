@@ -33,5 +33,11 @@ claims en una transaccion y termino con `ROLLBACK`.
 | Campanas fuera de su membresia visibles | 0, OK |
 | Intento de activar `is_platform_admin` en su perfil | Bloqueado, OK |
 
+## Integracion continua
+
+Los controles de TypeScript, lint, pruebas, compilacion de produccion,
+auditoria de dependencias y CodeQL finalizaron correctamente en GitHub para
+las ramas de integracion y produccion.
+
 Pendiente antes de apertura externa: repetir con una matriz automatizada de dos
 empresas y todos los roles, incluyendo crear/aprobar, cargas y proveedores.
