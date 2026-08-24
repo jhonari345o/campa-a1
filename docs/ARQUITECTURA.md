@@ -57,7 +57,8 @@ Equipo Ad Mavericks ──▶ Consola local (127.0.0.1)
 - `profiles` — 1:1 con `auth.users`; `is_platform_admin` marca al equipo Ad Mavericks.
 - `company_members` — relacion usuario↔empresa con rol (`admin`, `planner`,
   `analyst`, `viewer`). Varias personas por empresa.
-- `registration_codes` — codigos de alta tipo `AMK-2026-CRESA-7F3Q`.
+- `registration_codes` — tabla heredada; el registro publico por codigo esta
+  deshabilitado y no se generan codigos nuevos.
 - `audit_log` — quien hizo que y cuando.
 
 Las politicas RLS usan `is_platform_admin()` y `my_company_ids()` para que cada

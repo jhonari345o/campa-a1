@@ -26,19 +26,13 @@ export default async function ConsolaPage() {
     .order("created_at", { ascending: false })
     .limit(20);
 
-  const { data: codes } = await supabase
-    .from("registration_codes")
-    .select("code, uses, max_uses, created_at, company_id")
-    .order("created_at", { ascending: false })
-    .limit(20);
-
   return (
     <div className="min-h-screen">
       <ConsolaHeader name={profile.full_name ?? profile.email ?? "Ad Mavericks"} />
       <main className="mx-auto max-w-5xl px-6 py-10">
         <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr]">
           <CrearClienteForm />
-          <RecentClients companies={companies ?? []} codes={codes ?? []} />
+          <RecentClients companies={companies ?? []} />
         </div>
       </main>
     </div>
@@ -69,10 +63,7 @@ function ConsolaHeader({ name }: { name: string }) {
 }
 
 type Company = { id: string; name: string; status: string; seats: number; created_at: string };
-type Code = { code: string; uses: number; max_uses: number; company_id: string };
-
-function RecentClients({ companies, codes }: { companies: Company[]; codes: Code[] }) {
-  const codeByCompany = new Map(codes.map((c) => [c.company_id, c]));
+function RecentClients({ companies }: { companies: Company[] }) {
   return (
     <section className="rounded-panel border border-border bg-white p-8 shadow-panel">
       <h2 className="text-xl font-black tracking-tight">Clientes recientes</h2>
@@ -84,17 +75,13 @@ function RecentClients({ companies, codes }: { companies: Company[]; codes: Code
       ) : (
         <ul className="mt-6 space-y-3">
           {companies.map((c) => {
-            const code = codeByCompany.get(c.id);
             return (
               <li key={c.id} className="rounded-xl border border-border bg-fog px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-black text-forest">{c.name}</span>
                   <span className="text-xs font-black uppercase text-signal-dark">{c.status}</span>
                 </div>
-                <div className="mt-1 flex items-center justify-between gap-3 text-xs text-muted">
-                  <span>{c.seats} usuarios</span>
-                  {code && <code className="font-black tracking-wide text-forest">{code.code}</code>}
-                </div>
+                <p className="mt-1 text-xs text-muted">{c.seats} usuarios · altas desde consola local</p>
               </li>
             );
           })}

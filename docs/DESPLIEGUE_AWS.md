@@ -75,6 +75,7 @@ Para un control mas fino (o correr detras de ALB + WAF propio):
 ## Checklist previo a abrir a clientes (regla de oro)
 - [ ] `schema.sql` y `seed.sql` ejecutados en Supabase.
 - [ ] Primer platform admin creado y verificado.
+- [ ] Autorregistro desactivado en Supabase Auth; usuarios creados solo por administracion.
 - [ ] Variables de entorno cargadas en Amplify (o secrets en ECS).
 - [ ] WAF activo.
 - [ ] Respaldos y point-in-time recovery confirmados.

@@ -10,7 +10,7 @@ De una demostracion a un producto real, seguro y multiempresa.
 | Modulo | Estado | Descripcion |
 | --- | --- | --- |
 | **Sitio publico** | listo | Landing y precios con identidad Ad Mavericks. |
-| **Plataforma autenticada** | lista | Login, panel, planificador, campanas y mercado con aislamiento por empresa. |
+| **Plataforma autenticada** | lista | Login sin autorregistro, panel, planificador, campanas y mercado con aislamiento por empresa. |
 | **Mavi (IA)** | lista para configurar | Asistente conectado a Amazon Bedrock o a un endpoint LLM compatible. |
 | **Pauta externa** | flujo listo | URL del anuncio, segmentacion en mapa de Ecuador con radio, pago demo, 22% de impuestos/costos y 25% de comision. |
 | **Base de datos (Supabase)** | SQL listo | Esquema multiempresa con RLS, datos operativos y archivo auditable de los Excel. |
@@ -69,6 +69,10 @@ Completar el archivo local con la URL de Supabase, la `service_role` y una frase
 de acceso de al menos 16 caracteres. La clave de servicio permanece en el
 proceso Node local y no llega al navegador. Ver
 [`admin-console/README.md`](admin-console/README.md).
+
+En Supabase, desactivar **Authentication → Sign In / Providers → Allow new
+users to sign up**. Asi solo entran usuarios creados previamente desde la
+consola local o el panel administrativo de Supabase.
 
 ## Marca
 

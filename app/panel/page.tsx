@@ -5,7 +5,6 @@ import { getSessionProfile } from "@/lib/auth";
 import { getMyCompanies, getCompanyTeam, ROLE_LABELS, type TeamMember } from "@/lib/company";
 import { MaviScene } from "@/components/Mavi";
 import { MaviTour } from "@/components/MaviTour";
-import { AgregarUsuarioForm } from "./AgregarUsuarioForm";
 
 export const metadata = { title: "Mi panel" };
 
@@ -72,8 +71,6 @@ function CompanyCard({
   company: { id: string; name: string; status: string; seats: number; role: string; created_at: string };
   team: TeamMember[];
 }) {
-  const remaining = Math.max(0, company.seats - team.length);
-  const canManage = company.role === "admin";
   return (
     <section className="rounded-panel border border-border bg-white p-8 shadow-panel">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -114,15 +111,12 @@ function CompanyCard({
         </ul>
       </div>
 
-      {canManage &&
-        (remaining > 0 ? (
-          <AgregarUsuarioForm companyId={company.id} remaining={remaining} />
-        ) : (
-          <p className="mt-6 rounded-xl border border-amber/40 bg-amber/10 px-4 py-3 text-sm font-bold text-forest">
-            Ya ocupaste los {company.seats} cupos de tu plan. Para agregar mas usuarios,
-            contacta a Ad Mavericks.
-          </p>
-        ))}
+      {company.role === "admin" && (
+        <p className="mt-6 rounded-xl border border-sky/30 bg-sky/10 px-4 py-3 text-sm font-bold text-forest">
+          Las altas y cambios de usuarios se realizan exclusivamente desde la consola local de
+          Ad Mavericks conectada a Supabase.
+        </p>
+      )}
     </section>
   );
 }
@@ -176,11 +170,9 @@ function NoCompany() {
     <section className="mt-8 rounded-panel border border-amber/40 bg-amber/10 p-8">
       <h2 className="text-xl font-black tracking-tight text-forest">Tu cuenta aun no tiene empresa</h2>
       <p className="mt-1 text-muted">
-        Si tienes un codigo de registro, activa tu cuenta. Si no, contacta a Ad Mavericks.
+        Tu usuario existe, pero aun no esta vinculado a una empresa. Contacta a Ad Mavericks.
       </p>
-      <Link href="/registro" className="btn btn-primary mt-6">
-        Activar con un codigo →
-      </Link>
+      <Link href="/" className="btn btn-secondary mt-6">Volver al inicio</Link>
     </section>
   );
 }

@@ -18,10 +18,8 @@ export default function IngresarPage() {
         <LoginForm />
       </div>
       <p className="mt-6 text-center text-sm text-muted">
-        ¿Tienes un codigo de registro?{" "}
-        <Link href="/registro" className="font-black text-signal-dark hover:underline">
-          Activa tu cuenta
-        </Link>
+        Solo pueden ingresar usuarios dados de alta previamente por Ad Mavericks
+        en Supabase. Si necesitas acceso, contacta al administrador.
       </p>
     </main>
   );

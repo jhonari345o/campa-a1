@@ -4,17 +4,16 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionProfile } from "@/lib/auth";
-import { companySlug, generateRegistrationCode } from "@/lib/codes";
+import { companySlug } from "@/lib/codes";
 import { getPlan } from "@/lib/plans";
 
 export type CrearClienteResult =
-  | { ok: true; code: string; companyName: string; planName?: string }
+  | { ok: true; companyName: string; planName?: string }
   | { ok: false; error: string };
 
 /**
- * Da de alta un cliente: crea la empresa (tenant), genera un codigo de
- * registro unico y deja constancia en la auditoria. Solo para el equipo
- * Ad Mavericks (platform admin).
+ * Da de alta un cliente: crea la empresa (tenant) y deja constancia en la
+ * auditoria. Los usuarios se agregan despues desde la consola local.
  */
 export async function crearCliente(
   _prev: CrearClienteResult | null,
@@ -28,7 +27,6 @@ export async function crearCliente(
 
   const name = String(formData.get("name") ?? "").trim();
   const legalId = String(formData.get("legal_id") ?? "").trim() || null;
-  const email = String(formData.get("email") ?? "").trim() || null;
   // El plan define los cupos. Si no viene plan, se usa el campo de usuarios.
   const plan = getPlan(String(formData.get("plan") ?? "").trim());
   const seatsRaw = String(formData.get("seats") ?? "5").trim();
@@ -69,37 +67,17 @@ export async function crearCliente(
     return { ok: false, error: `No se pudo crear la empresa: ${companyErr?.message ?? "desconocido"}` };
   }
 
-  // 2. Generar el codigo de registro unico.
-  let code = generateRegistrationCode(name);
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const { error: codeErr } = await admin.from("registration_codes").insert({
-      code,
-      company_id: company.id,
-      email,
-      role: "admin",
-      max_uses: seats,
-      created_by: profile.id,
-    });
-    if (!codeErr) break;
-    if (codeErr.code === "23505") {
-      // colision de codigo unico: reintentar con otro sufijo
-      code = generateRegistrationCode(name);
-      continue;
-    }
-    return { ok: false, error: `No se pudo generar el codigo: ${codeErr.message}` };
-  }
-
-  // 3. Auditoria: quien dio de alta a quien y cuando.
+  // 2. Auditoria: quien dio de alta a quien y cuando.
   await admin.from("audit_log").insert({
     actor_id: profile.id,
     action: "company.created",
     entity: "companies",
     entity_id: company.id,
-    metadata: { name, code, seats, plan: plan?.id ?? null },
+    metadata: { name, seats, plan: plan?.id ?? null, user_provisioning: "local_console" },
   });
 
   revalidatePath("/consola");
-  return { ok: true, code, companyName: company.name, planName: plan?.name };
+  return { ok: true, companyName: company.name, planName: plan?.name };
 }
 
 /** Cierra la sesion del usuario actual. */
