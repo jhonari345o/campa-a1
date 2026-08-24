@@ -6,6 +6,12 @@ import { JOB_STATUS, PLATFORM_LABEL, type JobStatus } from "@/lib/jobs";
 import { clsx } from "@/lib/clsx";
 import { MaviScene } from "@/components/Mavi";
 import { MaviShowcase } from "@/components/MaviShowcase";
+import {
+  activarPautaMeta,
+  actualizarMetricasMeta,
+  pausarPautaMeta,
+  prepararPautaMeta,
+} from "./actions";
 
 export const metadata = { title: "Mis campanas" };
 
@@ -36,11 +42,31 @@ type Job = {
     } | null;
   } | null;
   companies: { name: string } | null;
+  payment?: { status: string; total_cents: number } | null;
+  delivery?: {
+    status: string;
+    provider_campaign_id: string | null;
+    provider_ad_id: string | null;
+    error: string | null;
+  } | null;
+};
+
+type PaymentRow = { job_id: string; status: string; total_cents: number };
+type DeliveryRow = {
+  job_id: string;
+  status: string;
+  provider_campaign_id: string | null;
+  provider_ad_id: string | null;
+  error: string | null;
 };
 
 const nfmt = (n: number) => new Intl.NumberFormat("es-EC").format(n);
 
-export default async function CampanasPage() {
+export default async function CampanasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ meta?: string; detail?: string }>;
+}) {
   if (!supabaseConfigured) redirect("/consola");
   const profile = await getSessionProfile();
   if (!profile) redirect("/ingresar");
@@ -53,7 +79,26 @@ export default async function CampanasPage() {
     .order("created_at", { ascending: false })
     .limit(50);
   const jobs = (data ?? []) as unknown as Job[];
-  const pendientes = jobs.filter((j) => j.status === "pendiente" || j.status === "en_proceso").length;
+  const jobIds = jobs.map((job) => job.id);
+  if (jobIds.length > 0) {
+    const [{ data: payments }, { data: deliveries }] = await Promise.all([
+      supabase.from("campaign_payments").select("job_id, status, total_cents").in("job_id", jobIds),
+      supabase
+        .from("campaign_deliveries")
+        .select("job_id, status, provider_campaign_id, provider_ad_id, error")
+        .in("job_id", jobIds),
+    ]);
+    const paymentByJob = new Map((payments as PaymentRow[] | null)?.map((row) => [row.job_id, row]));
+    const deliveryByJob = new Map((deliveries as DeliveryRow[] | null)?.map((row) => [row.job_id, row]));
+    jobs.forEach((job) => {
+      job.payment = paymentByJob.get(job.id) ?? null;
+      job.delivery = deliveryByJob.get(job.id) ?? null;
+    });
+  }
+  const pendientes = jobs.filter((j) =>
+    ["pendiente", "en_proceso", "esperando_pago", "pagada", "lista_para_publicar", "publicando"].includes(j.status),
+  ).length;
+  const sp = await searchParams;
 
   return (
     <div className="min-h-screen">
@@ -83,6 +128,8 @@ export default async function CampanasPage() {
             </p>
           </div>
         </div>
+
+        {sp.meta && <MetaResultNotice result={sp.meta} detail={sp.detail} />}
 
         {jobs.length === 0 ? (
           <>
@@ -135,6 +182,16 @@ export default async function CampanasPage() {
                     </a>
                   )}
 
+                  {j.payment && (
+                    <p className="mt-2 text-xs font-bold text-forest">
+                      PayPhone: {paymentLabel(j.payment.status)} · ${(j.payment.total_cents / 100).toFixed(2)}
+                    </p>
+                  )}
+
+                  {isAdmin && j.platform === "meta" && j.payment?.status === "paid" && (
+                    <MetaControls job={j} />
+                  )}
+
                   {/* Dashboard de metricas de la pauta */}
                   <MetricsPanel metrics={j.spec?.metrics ?? null} live={j.status === "publicada"} />
 
@@ -147,6 +204,87 @@ export default async function CampanasPage() {
       </main>
     </div>
   );
+}
+
+function MetaControls({ job }: { job: Job }) {
+  const delivery = job.delivery;
+  const canPrepare = !delivery || ["ready", "error"].includes(delivery.status);
+  return (
+    <div className="mt-3 rounded-xl border border-forest/20 bg-forest/5 p-3">
+      <p className="text-xs font-black uppercase tracking-wide text-forest">Control real de Meta</p>
+      {delivery?.provider_campaign_id && (
+        <p className="mt-1 text-[11px] text-muted">Campaña Meta: {delivery.provider_campaign_id}</p>
+      )}
+      {delivery?.error && <p className="mt-1 text-xs font-bold text-[#a13b31]">{delivery.error}</p>}
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        {canPrepare && (
+          <form action={prepararPautaMeta}>
+            <input type="hidden" name="job_id" value={job.id} />
+            <button type="submit" className="btn btn-secondary text-xs">
+              {delivery?.status === "error" ? "Reintentar borrador pausado" : "Crear borrador pausado"}
+            </button>
+          </form>
+        )}
+        {delivery?.status === "paused" && (
+          <form action={activarPautaMeta} className="flex flex-wrap items-center gap-2">
+            <input type="hidden" name="job_id" value={job.id} />
+            <label className="flex items-center gap-1 text-[11px] font-bold text-forest">
+              <input type="checkbox" name="confirm" value="ACTIVAR_PAUTA_REAL" required />
+              Confirmo que empieza gasto real
+            </label>
+            <button type="submit" className="btn btn-primary text-xs">Activar en Meta</button>
+          </form>
+        )}
+        {delivery?.status === "active" && (
+          <>
+            <form action={pausarPautaMeta}>
+              <input type="hidden" name="job_id" value={job.id} />
+              <button type="submit" className="btn btn-secondary text-xs">Pausar gasto</button>
+            </form>
+            <form action={actualizarMetricasMeta}>
+              <input type="hidden" name="job_id" value={job.id} />
+              <button type="submit" className="btn btn-secondary text-xs">Actualizar metricas</button>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MetaResultNotice({ result, detail }: { result: string; detail?: string }) {
+  const messages: Record<string, string> = {
+    borrador_listo: "Borrador creado en Meta y mantenido en pausa.",
+    activada: "Pauta activada en Meta. El presupuesto ya puede empezar a consumirse.",
+    pausada: "Pauta pausada en Meta.",
+    metricas_actualizadas: "Metricas actualizadas desde Meta.",
+    falta_confirmacion: "Debes confirmar expresamente el inicio del gasto real.",
+    no_autorizado: "Solo el equipo administrador puede operar Meta.",
+    orden_invalida: "La orden seleccionada no es valida.",
+  };
+  const isError = result === "error" || result === "falta_confirmacion";
+  return (
+    <p
+      className={`mt-5 rounded-xl border px-4 py-3 text-sm font-bold ${
+        isError ? "border-coral/40 bg-coral/10 text-[#a13b31]" : "border-signal/40 bg-signal/10 text-forest"
+      }`}
+    >
+      {detail || messages[result] || "Operacion de Meta completada."}
+    </p>
+  );
+}
+
+function paymentLabel(status: string): string {
+  const labels: Record<string, string> = {
+    payment_preparing: "iniciando",
+    payment_open: "esperando pago",
+    paid: "pago confirmado",
+    cancelled: "cancelado",
+    failed: "fallido",
+    requires_attention: "requiere revision",
+    reversed: "reversado",
+  };
+  return labels[status] ?? status;
 }
 
 function MetricsPanel({

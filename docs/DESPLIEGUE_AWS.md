@@ -30,6 +30,15 @@ y entrega HTTPS, dominio y CDN. Alternativa por contenedor (ECS/Fargate) al fina
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | publishable key (`sb_publishable_...`) |
 | `SUPABASE_SERVICE_ROLE_KEY` | secret key (`sb_secret_...`) — solo servidor |
 | `NEXT_PUBLIC_SITE_URL` | la URL publica que asigne Amplify (o el dominio) |
+| `PAYPHONE_TOKEN` | Bearer Token de la aplicacion WEB PayPhone (solo servidor) |
+| `PAYPHONE_STORE_ID` | StoreID del comercio PayPhone |
+| `META_ACCESS_TOKEN` | token de Marketing API (solo servidor) |
+| `META_AD_ACCOUNT_ID` | cuenta `act_...` que pagara la pauta |
+| `META_PAGE_ID` | pagina de Facebook vinculada |
+| `META_INSTAGRAM_USER_ID` | cuenta profesional de Instagram vinculada |
+| `META_GRAPH_API_VERSION` | version estable habilitada, por ejemplo `v25.0` |
+| `META_MAX_CAMPAIGN_BUDGET_USD` | tope por campaña; empieza en `500` |
+| `META_CAMPAIGN_DURATION_DAYS` | duracion del presupuesto, empieza en `7` |
 
 > La `SUPABASE_SERVICE_ROLE_KEY` nunca lleva el prefijo `NEXT_PUBLIC_`: asi jamas
 > se envia al navegador. `next.config.mjs` tampoco debe contener secretos en su
@@ -74,9 +83,13 @@ Para un control mas fino (o correr detras de ALB + WAF propio):
 
 ## Checklist previo a abrir a clientes (regla de oro)
 - [ ] `schema.sql` y `seed.sql` ejecutados en Supabase.
+- [ ] Migraciones `0001` a `0006` ejecutadas; tablas de pagos/entregas verificadas.
 - [ ] Primer platform admin creado y verificado.
 - [ ] Autorregistro desactivado en Supabase Auth; usuarios creados solo por administracion.
 - [ ] Variables de entorno cargadas en Amplify (o secrets en ECS).
+- [ ] Aplicacion WEB PayPhone ligada al dominio y URL de respuesta de produccion.
+- [ ] Preparacion y confirmacion PayPhone probadas en ambiente controlado.
+- [ ] Meta Marketing API aprobada; campaña de prueba creada en `PAUSED` sin gasto.
 - [ ] WAF activo.
 - [ ] Respaldos y point-in-time recovery confirmados.
 - [ ] Secret key rotada tras la configuracion inicial.

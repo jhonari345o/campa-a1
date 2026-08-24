@@ -10,17 +10,26 @@ const supabaseConfigured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 );
 
-// El motor real se enciende al conectar una plataforma (token en el entorno).
+const payPhoneConectado = Boolean(process.env.PAYPHONE_TOKEN && process.env.PAYPHONE_STORE_ID);
 const metaConectada = Boolean(
-  process.env.META_ACCESS_TOKEN || process.env.GOOGLE_ADS_DEVELOPER_TOKEN,
+  process.env.META_ACCESS_TOKEN &&
+    process.env.META_AD_ACCOUNT_ID &&
+    process.env.META_PAGE_ID,
 );
 
-const REDES_VALIDAS = ["instagram", "facebook", "tiktok"];
+const REDES_VALIDAS = ["instagram", "facebook"];
 
 export default async function PautarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ red?: string; monto?: string; objetivo?: string }>;
+  searchParams: Promise<{
+    red?: string;
+    monto?: string;
+    objetivo?: string;
+    checkout?: string;
+    job?: string;
+    detail?: string;
+  }>;
 }) {
   if (!supabaseConfigured) redirect("/consola");
   const profile = await getSessionProfile();
@@ -45,10 +54,29 @@ export default async function PautarPage({
           Mavi te pide lo necesario y crea la orden de pauta. La sigues en “Mis campanas”.
         </p>
 
-        {!metaConectada && (
+        {sp.checkout === "success" && (
+          <p className="mt-4 rounded-xl border border-signal/40 bg-signal/10 px-4 py-3 text-sm font-bold text-forest">
+            ✅ PayPhone confirmo el pago. La orden ya esta disponible en “Mis campanas” para preparar
+            el borrador pausado de Meta.
+          </p>
+        )}
+        {sp.checkout === "cancelled" && (
           <p className="mt-4 rounded-xl border border-amber/40 bg-amber/10 px-4 py-3 text-sm font-bold text-forest">
-            🔌 Modo demostracion: el muro de pago y la pauta son simulados. Se conectan al pago real
-            y a la API de Meta cuando actives tu cuenta.
+            Pago cancelado. PayPhone no habilito la pauta; puedes crear una nueva orden cuando quieras.
+          </p>
+        )}
+
+        {["failed", "attention", "invalid"].includes(sp.checkout ?? "") && (
+          <p className="mt-4 rounded-xl border border-coral/40 bg-coral/10 px-4 py-3 text-sm font-bold text-[#a13b31]">
+            {sp.detail || "PayPhone no pudo confirmar el pago. La pauta no fue habilitada."}
+          </p>
+        )}
+
+        {(!payPhoneConectado || !metaConectada) && (
+          <p className="mt-4 rounded-xl border border-amber/40 bg-amber/10 px-4 py-3 text-sm font-bold text-forest">
+            🔌 Integracion pendiente de credenciales: {!payPhoneConectado ? "PayPhone" : ""}
+            {!payPhoneConectado && !metaConectada ? " y " : ""}
+            {!metaConectada ? "Meta" : ""}. No se simulan tarjetas ni publicaciones.
           </p>
         )}
 

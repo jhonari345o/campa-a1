@@ -5,6 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/auth";
 import { getMyCompanies } from "@/lib/company";
 import { computeCharge } from "@/lib/pricing";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { preparePayPhonePayment } from "@/lib/payments/payphone";
+import { getMaxMetaBudgetUsd } from "@/lib/ads/config";
 
 export type PautaInput = {
   red: string; // instagram | facebook | tiktok
@@ -17,19 +20,13 @@ export type PautaInput = {
   objetivo?: string;
 };
 
-export type PautaResult = { ok: true; id: string } | { ok: false; error: string };
-
-/** instagram/facebook -> meta (misma API). tiktok -> tiktok. */
-function platformFromRed(red: string): string {
-  const r = red.toLowerCase();
-  if (r === "instagram" || r === "facebook") return "meta";
-  return r;
-}
+export type PautaResult =
+  | { ok: true; id: string; payWithCard: string; payWithPayPhone: string }
+  | { ok: false; error: string };
 
 /**
- * Crea una orden de pauta desde el chat de Mavi. Guarda los datos en
- * campaign_jobs (sin nuevas tablas): red, link del post, geo y presupuesto.
- * Queda "pendiente" hasta que el motor (API de Meta) este conectado.
+ * Crea una orden y prepara el Boton de Pago de PayPhone. La orden queda fuera
+ * de la cola de publicacion hasta confirmar la transaccion con la API oficial.
  */
 export async function crearPauta(input: PautaInput): Promise<PautaResult> {
   const profile = await getSessionProfile();
@@ -42,11 +39,22 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
   }
 
   const presupuesto = Number(input.presupuesto);
+  const red = input.red.toLowerCase();
+  if (red !== "instagram" && red !== "facebook") {
+    return {
+      ok: false,
+      error: "La pauta real esta habilitada primero para Instagram y Facebook mediante Meta.",
+    };
+  }
   if (!input.postUrl || !/^https?:\/\//i.test(input.postUrl)) {
     return { ok: false, error: "Pega un link valido de la publicacion (empieza con http)." };
   }
-  if (!Number.isFinite(presupuesto) || presupuesto <= 0) {
-    return { ok: false, error: "Indica un presupuesto valido en dolares." };
+  const maxBudget = getMaxMetaBudgetUsd();
+  if (!Number.isFinite(presupuesto) || presupuesto < 5 || presupuesto > maxBudget) {
+    return {
+      ok: false,
+      error: `El presupuesto debe estar entre $5 y $${maxBudget.toFixed(2)}.`,
+    };
   }
   if (!input.geo?.trim()) {
     return { ok: false, error: "Indica la ubicacion donde quieres pautar." };
@@ -69,18 +77,32 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
   }
 
   const charge = computeCharge(presupuesto);
+  const siteUrl = getSiteUrl();
+  if (!siteUrl) {
+    return { ok: false, error: "Falta configurar NEXT_PUBLIC_SITE_URL para regresar desde PayPhone." };
+  }
+  if (!process.env.PAYPHONE_TOKEN || !process.env.PAYPHONE_STORE_ID) {
+    return { ok: false, error: "PayPhone aun no esta configurado en el servidor." };
+  }
+
+  let admin: ReturnType<typeof createAdminClient>;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return { ok: false, error: "Falta la configuracion segura de Supabase en el servidor." };
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("campaign_jobs")
     .insert({
       company_id: company.id,
-      platform: platformFromRed(input.red),
-      status: "pendiente",
+      platform: "meta",
+      status: "esperando_pago",
       created_by: profile.id,
       spec: {
         tipo: "pauta",
-        red: input.red,
+        red,
         post_url: input.postUrl.trim(),
         geo: input.geo.trim(),
         geo_target: {
@@ -89,13 +111,13 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
           radius_km: radiusKm,
         },
         presupuesto_usd: charge.base,
-        // Modelo de monetizacion (demostracion): impuestos + comision + total.
+        // Modelo de monetizacion calculado en servidor.
         impuestos_pct: charge.taxPct,
         impuestos_usd: charge.tax,
         comision_pct: charge.feePct,
         comision_usd: charge.fee,
-        total_pagado_usd: charge.total,
-        pago: "demostracion",
+        total_a_pagar_usd: charge.total,
+        pago: "payphone_pendiente",
         objetivo: input.objetivo?.trim() || "Promocionar publicacion",
       },
     })
@@ -106,26 +128,101 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
     return { ok: false, error: error?.message ?? "No se pudo crear la orden de pauta." };
   }
 
-  // Disparador opcional bajo demanda (mismo patron que ejecutarCampana).
-  const triggerUrl = process.env.AGENT_TRIGGER_URL;
-  if (triggerUrl) {
-    try {
-      await fetch(triggerUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(process.env.AGENT_WORKER_TOKEN
-            ? { Authorization: `Bearer ${process.env.AGENT_WORKER_TOKEN}` }
-            : {}),
-        },
-        body: JSON.stringify({ jobId: data.id, platform: platformFromRed(input.red) }),
-        signal: AbortSignal.timeout(8000),
-      });
-    } catch {
-      /* queda en cola de todos modos */
-    }
+  const amounts = {
+    baseCents: toCents(charge.base),
+    taxCents: toCents(charge.tax),
+    feeCents: toCents(charge.fee),
+  };
+  const clientTransactionId = `ADM-${data.id}`;
+  const { data: payment, error: paymentError } = await admin
+    .from("campaign_payments")
+    .insert({
+      job_id: data.id,
+      company_id: company.id,
+      client_transaction_id: clientTransactionId,
+      status: "payment_preparing",
+      currency: "usd",
+      base_cents: amounts.baseCents,
+      tax_cents: amounts.taxCents,
+      fee_cents: amounts.feeCents,
+      total_cents: amounts.baseCents + amounts.taxCents + amounts.feeCents,
+      metadata: { red, created_by: profile.id },
+    })
+    .select("id")
+    .single();
+
+  if (paymentError || !payment) {
+    await admin
+      .from("campaign_jobs")
+      .update({ status: "error", log: "No se pudo inicializar el registro seguro del pago." })
+      .eq("id", data.id);
+    return { ok: false, error: "No se pudo inicializar el pago. Intenta nuevamente." };
   }
 
-  revalidatePath("/campanas");
-  return { ok: true, id: data.id };
+  try {
+    const links = await preparePayPhonePayment({
+      jobId: data.id,
+      clientTransactionId,
+      customerEmail: profile.email,
+      red,
+      ...amounts,
+      responseUrl: `${siteUrl}/api/payments/payphone/confirm`,
+      cancellationUrl: `${siteUrl}/pautar?checkout=cancelled&job=${encodeURIComponent(data.id)}`,
+      latitude,
+      longitude,
+    });
+
+    await admin
+      .from("campaign_payments")
+      .update({
+        provider_payment_id: links.paymentId,
+        checkout_url: links.payWithCard,
+        status: "payment_open",
+        metadata: {
+          red,
+          created_by: profile.id,
+          pay_with_payphone_url: links.payWithPayPhone,
+        },
+      })
+      .eq("id", payment.id);
+
+    revalidatePath("/campanas");
+    return {
+      ok: true,
+      id: data.id,
+      payWithCard: links.payWithCard,
+      payWithPayPhone: links.payWithPayPhone,
+    };
+  } catch (checkoutError) {
+    const detail = checkoutError instanceof Error ? checkoutError.message : "Error desconocido de PayPhone";
+    await Promise.all([
+      admin
+        .from("campaign_payments")
+        .update({ status: "failed", metadata: { red, payphone_error: detail.slice(0, 500) } })
+        .eq("id", payment.id),
+      admin
+        .from("campaign_jobs")
+        .update({ status: "error", log: "PayPhone no pudo abrir la pagina de pago." })
+        .eq("id", data.id),
+    ]);
+    return { ok: false, error: "No fue posible abrir PayPhone. No se realizo ningun cobro." };
+  }
+}
+
+function toCents(amount: number): number {
+  return Math.round(amount * 100);
+}
+
+function getSiteUrl(): string | null {
+  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" && !(url.protocol === "http:" && url.hostname === "localhost")) {
+      return null;
+    }
+    return url.origin;
+  } catch {
+    return null;
+  }
 }

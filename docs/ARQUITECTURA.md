@@ -46,8 +46,9 @@ Equipo Ad Mavericks ──▶ Consola local (127.0.0.1)
 - **Pauta externa** recibe el URL de la publicacion, un centro y radio de
   geolocalizacion en Ecuador y la inversion. La orden guarda el objetivo
   geografico en `campaign_jobs.spec`; el total suma 22% de impuestos/costos y
-  25% de comision sobre la inversion base. El pago sigue marcado como
-  demostracion hasta conectar una pasarela real.
+  25% de comision sobre la inversion base. PayPhone aloja el pago y la app
+  confirma el resultado contra su API antes de habilitar la entrega. Meta crea la campaña en pausa; el equipo revisa
+  y confirma por separado la activacion que inicia gasto.
 
 ## 3. Modelo de datos
 

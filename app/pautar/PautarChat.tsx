@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { MaviAvatar } from "@/components/Mavi";
 import { crearPauta } from "./actions";
 import { EcuadorTargetMap, type GeoTarget } from "./EcuadorTargetMap";
@@ -10,12 +9,12 @@ import { computeCharge, money, SERVICE_FEE_LABEL, TAX_LABEL } from "@/lib/pricin
 type Bubble = { from: "mavi" | "user"; text: string };
 
 const REDES = [
-  { id: "instagram", label: "Instagram", emoji: "📸" },
-  { id: "facebook", label: "Facebook", emoji: "👍" },
-  { id: "tiktok", label: "TikTok", emoji: "🎵" },
+  { id: "instagram", label: "Instagram", emoji: "📸", enabled: true },
+  { id: "facebook", label: "Facebook", emoji: "👍", enabled: true },
+  { id: "tiktok", label: "TikTok · proximamente", emoji: "🎵", enabled: false },
 ];
 
-type Step = "red" | "link" | "geo" | "monto" | "pago" | "hecho";
+type Step = "red" | "link" | "geo" | "monto" | "pago";
 
 export function PautarChat({
   initialRed,
@@ -48,26 +47,17 @@ export function PautarChat({
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [jobId, setJobId] = useState<string | null>(null);
-
-  // Datos de tarjeta (SIMULADOS — no se envian a ningun lado).
-  const [cardName, setCardName] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExp, setCardExp] = useState("");
-  const [cardCvc, setCardCvc] = useState("");
-
-  const cardDigits = cardNumber.replace(/\D/g, "");
-  const cardValido =
-    cardName.trim().length >= 3 &&
-    cardDigits.length >= 15 &&
-    /^\d{2}\/\d{2}$/.test(cardExp) &&
-    /^\d{3,4}$/.test(cardCvc);
+  const [paymentLinks, setPaymentLinks] = useState<{
+    payWithCard: string;
+    payWithPayPhone: string;
+  } | null>(null);
 
   function push(b: Bubble) {
     setChat((c) => [...c, b]);
   }
 
-  function pickRed(r: { id: string; label: string }) {
+  function pickRed(r: { id: string; label: string; enabled: boolean }) {
+    if (!r.enabled) return;
     setRed(r.id);
     push({ from: "user", text: r.label });
     push({ from: "mavi", text: "Perfecto. Pega el link de la publicacion (video o foto) que quieres pautar 👇" });
@@ -146,10 +136,11 @@ export function PautarChat({
       setError(res.error);
       return;
     }
-    setJobId(res.id);
-    push({ from: "user", text: `Pagar ${money(computeCharge(monto).total)}` });
-    push({ from: "mavi", text: "¡Pago recibido (demostracion)! 🚀 Cree tu orden de pauta. La veras en 'Mis campanas' con sus metricas." });
-    setStep("hecho");
+    setPaymentLinks({
+      payWithCard: res.payWithCard,
+      payWithPayPhone: res.payWithPayPhone,
+    });
+    push({ from: "mavi", text: "PayPhone preparo el pago. Elige tarjeta o la app PayPhone; el enlace vence en 10 minutos." });
   }
 
   const charge = computeCharge(monto);
@@ -179,7 +170,13 @@ export function PautarChat({
         {step === "red" && (
           <div className="flex flex-wrap gap-2">
             {REDES.map((r) => (
-              <button key={r.id} type="button" onClick={() => pickRed(r)} className="btn btn-secondary">
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => pickRed(r)}
+                disabled={!r.enabled}
+                className="btn btn-secondary disabled:cursor-not-allowed disabled:opacity-50"
+              >
                 {r.emoji} {r.label}
               </button>
             ))}
@@ -235,66 +232,45 @@ export function PautarChat({
               <Row label="Total a pagar" value={money(charge.total)} bold />
             </div>
 
-            {/* Formulario de tarjeta (simulado) */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (cardValido) pagar();
-              }}
-              className="mt-4 space-y-2"
-            >
-              <input
-                value={cardName}
-                onChange={(e) => setCardName(e.target.value)}
-                placeholder="Nombre en la tarjeta"
-                className="w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm text-forest outline-none focus:border-signal"
-              />
-              <input
-                value={cardNumber}
-                onChange={(e) => setCardNumber(formatCard(e.target.value))}
-                inputMode="numeric"
-                placeholder="4242 4242 4242 4242"
-                maxLength={19}
-                className="w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm text-forest outline-none focus:border-signal"
-              />
-              <div className="flex gap-2">
-                <input
-                  value={cardExp}
-                  onChange={(e) => setCardExp(formatExp(e.target.value))}
-                  inputMode="numeric"
-                  placeholder="MM/AA"
-                  maxLength={5}
-                  className="w-1/2 rounded-xl border border-border bg-white px-4 py-2.5 text-sm text-forest outline-none focus:border-signal"
-                />
-                <input
-                  value={cardCvc}
-                  onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                  inputMode="numeric"
-                  placeholder="CVC"
-                  maxLength={4}
-                  className="w-1/2 rounded-xl border border-border bg-white px-4 py-2.5 text-sm text-forest outline-none focus:border-signal"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={sending || !cardValido}
-                className="btn btn-primary mt-1 w-full disabled:opacity-50"
+            {!paymentLinks ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  pagar();
+                }}
+                className="mt-4"
               >
-                {sending ? "Procesando pago..." : `Pagar ${money(charge.total)}`}
-              </button>
-            </form>
+                <button
+                  type="submit"
+                  disabled={sending}
+                  className="btn btn-primary mt-1 w-full disabled:opacity-50"
+                >
+                  {sending ? "Preparando PayPhone..." : `Continuar a PayPhone · ${money(charge.total)}`}
+                </button>
+              </form>
+            ) : (
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => window.location.assign(paymentLinks.payWithCard)}
+                  className="btn btn-primary"
+                >
+                  Pagar con tarjeta
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.location.assign(paymentLinks.payWithPayPhone)}
+                  className="btn btn-secondary"
+                >
+                  Pagar con app PayPhone
+                </button>
+              </div>
+            )}
 
             <p className="mt-2 text-center text-[11px] text-muted">
-              🔒 Pago cifrado · Demostracion (no se realiza ningun cobro real)
+              🔒 PayPhone procesa el pago en su pagina segura. Ad Mavericks no recibe los datos de la tarjeta.
             </p>
           </div>
-        )}
-
-        {step === "hecho" && jobId && (
-          <Link href="/campanas" className="btn btn-primary w-full text-center">
-            Ver en Mis campanas →
-          </Link>
         )}
 
         {error && (
@@ -309,21 +285,6 @@ export function PautarChat({
 
 function redLabel(id: string) {
   return REDES.find((r) => r.id === id)?.label ?? id;
-}
-
-/** Agrupa el numero de tarjeta de 4 en 4 (solo visual). */
-function formatCard(v: string) {
-  return v
-    .replace(/\D/g, "")
-    .slice(0, 16)
-    .replace(/(.{4})/g, "$1 ")
-    .trim();
-}
-
-/** Formatea la expiracion como MM/AA. */
-function formatExp(v: string) {
-  const d = v.replace(/\D/g, "").slice(0, 4);
-  return d.length <= 2 ? d : `${d.slice(0, 2)}/${d.slice(2)}`;
 }
 
 function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {

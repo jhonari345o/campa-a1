@@ -1,9 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/auth";
 import { getMyCompanies } from "@/lib/company";
+import {
+  activatePaidMetaJob,
+  pausePaidMetaJob,
+  preparePaidMetaJob,
+  syncPaidMetaJobMetrics,
+} from "@/lib/ads/delivery";
 
 export type JobInput = {
   platform: string;
@@ -75,4 +82,64 @@ export async function ejecutarCampana(input: JobInput): Promise<JobResult> {
 
   revalidatePath("/campanas");
   return { ok: true, id: data.id };
+}
+
+export async function prepararPautaMeta(formData: FormData): Promise<void> {
+  const jobId = await requireAdminJobId(formData);
+  try {
+    await preparePaidMetaJob(jobId);
+  } catch (error) {
+    redirectWithMetaResult("error", error);
+  }
+  revalidatePath("/campanas");
+  redirect("/campanas?meta=borrador_listo");
+}
+
+export async function activarPautaMeta(formData: FormData): Promise<void> {
+  const jobId = await requireAdminJobId(formData);
+  if (formData.get("confirm") !== "ACTIVAR_PAUTA_REAL") {
+    redirect("/campanas?meta=falta_confirmacion");
+  }
+  try {
+    await activatePaidMetaJob(jobId);
+  } catch (error) {
+    redirectWithMetaResult("error", error);
+  }
+  revalidatePath("/campanas");
+  redirect("/campanas?meta=activada");
+}
+
+export async function pausarPautaMeta(formData: FormData): Promise<void> {
+  const jobId = await requireAdminJobId(formData);
+  try {
+    await pausePaidMetaJob(jobId);
+  } catch (error) {
+    redirectWithMetaResult("error", error);
+  }
+  revalidatePath("/campanas");
+  redirect("/campanas?meta=pausada");
+}
+
+export async function actualizarMetricasMeta(formData: FormData): Promise<void> {
+  const jobId = await requireAdminJobId(formData);
+  try {
+    await syncPaidMetaJobMetrics(jobId);
+  } catch (error) {
+    redirectWithMetaResult("error", error);
+  }
+  revalidatePath("/campanas");
+  redirect("/campanas?meta=metricas_actualizadas");
+}
+
+async function requireAdminJobId(formData: FormData): Promise<string> {
+  const profile = await getSessionProfile();
+  if (!profile?.is_platform_admin) redirect("/campanas?meta=no_autorizado");
+  const jobId = String(formData.get("job_id") ?? "");
+  if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(jobId)) redirect("/campanas?meta=orden_invalida");
+  return jobId;
+}
+
+function redirectWithMetaResult(kind: string, error: unknown): never {
+  const message = error instanceof Error ? error.message : "Meta no pudo completar la operacion.";
+  redirect(`/campanas?meta=${encodeURIComponent(kind)}&detail=${encodeURIComponent(message.slice(0, 240))}`);
 }
