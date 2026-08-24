@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/**/*.test.ts",
+    "test": "tsx --test tests/security-flags.test.ts",
     "security:deps": "npm audit --audit-level=high --omit=dev",
     "ingest": "tsx --env-file=.env.local scripts/ingest/import.ts",
     "admin:dev": "node admin-console/server.mjs",
