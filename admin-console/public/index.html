@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Consola local · Ad Mavericks One</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main id="login-view" class="login-screen">
+    <div class="console-brand"><span>AD MAVERICKS</span><b>ONE</b></div>
+    <section class="login-card">
+      <div class="local-chip"><i></i> SOLO ESTA COMPUTADORA</div>
+      <h1>Consola de usuarios.</h1>
+      <p>Esta herramienta escucha únicamente en <code>127.0.0.1</code>. La clave de servicio nunca llega al navegador.</p>
+      <form id="login-form">
+        <label for="admin-password">Frase de acceso local</label>
+        <input id="admin-password" type="password" autocomplete="current-password" placeholder="Tu frase de administración" required>
+        <div id="login-error" class="alert error hidden" role="alert"></div>
+        <button class="button primary" type="submit">Abrir consola <span>→</span></button>
+      </form>
+    </section>
+    <footer>AD MAVERICKS · Administración interna · No exponer en Internet</footer>
+  </main>
+
+  <div id="app-view" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="console-brand"><span>AD MAVERICKS</span><b>ADMIN</b></div>
+      <nav>
+        <button class="active"><span class="nav-icon">U</span> Usuarios</button>
+        <button disabled><span class="nav-icon">E</span> Empresas <small>Próximo</small></button>
+        <button disabled><span class="nav-icon">A</span> Auditoría <small>Próximo</small></button>
+      </nav>
+      <div class="sidebar-spacer"></div>
+      <div class="security-note"><i></i><div><strong>Conexión local</strong><span>Clave de servicio protegida</span></div></div>
+      <button id="logout-button" class="logout-button">Cerrar consola</button>
+    </aside>
+
+    <section class="content">
+      <header class="topbar">
+        <div><span class="eyebrow">Control de acceso</span><h1>Usuarios y permisos</h1><p>Altas controladas para el inicio de sesión de Ad Mavericks One.</p></div>
+        <button id="refresh-button" class="button secondary small">Actualizar</button>
+      </header>
+
+      <div id="toast" class="toast hidden" role="status"></div>
+
+      <section class="stat-grid">
+        <article><span>Usuarios visibles</span><strong id="stat-users">—</strong><small>Perfiles registrados</small></article>
+        <article><span>Activos</span><strong id="stat-active">—</strong><small>Con acceso habilitado</small></article>
+        <article><span>Empresas</span><strong id="stat-companies">—</strong><small>Disponibles para asignar</small></article>
+      </section>
+
+      <div class="main-grid">
+        <section class="panel form-panel">
+          <header><span class="eyebrow">Alta manual</span><h2>Agregar un usuario</h2><p>El correo quedará confirmado y podrá ingresar inmediatamente con la contraseña temporal.</p></header>
+          <form id="user-form">
+            <label for="full-name">Nombre completo</label>
+            <input id="full-name" name="fullName" placeholder="Nombre y apellido" required minlength="2" maxlength="120">
+
+            <label for="email">Correo de acceso</label>
+            <input id="email" name="email" type="email" autocomplete="off" placeholder="nombre@empresa.com" required>
+
+            <label for="company">Empresa</label>
+            <select id="company" name="companyId" required></select>
+
+            <label for="role">Rol inicial</label>
+            <select id="role" name="role" required>
+              <option value="viewer">Solo lectura</option>
+              <option value="planner" selected>Planificador</option>
+              <option value="analyst">Analista</option>
+              <option value="admin">Administrador de empresa</option>
+            </select>
+
+            <label class="check-row" for="platform-admin">
+              <input id="platform-admin" name="isPlatformAdmin" type="checkbox">
+              <span><strong>Staff de Ad Mavericks</strong><small>Habilita acceso administrativo a toda la plataforma.</small></span>
+            </label>
+
+            <label for="password">Contraseña temporal</label>
+            <div class="password-row">
+              <input id="password" name="password" type="text" autocomplete="off" placeholder="Mínimo 12 caracteres" required minlength="12">
+              <button id="generate-password" type="button" class="generate-button">Generar</button>
+            </div>
+            <small class="field-note">Compártela por un canal seguro. La consola no la guarda ni la vuelve a mostrar.</small>
+
+            <div id="form-error" class="alert error hidden" role="alert"></div>
+            <button id="create-user-button" class="button primary full" type="submit" disabled>Crear usuario <span>→</span></button>
+          </form>
+        </section>
+
+        <section class="panel users-panel">
+          <header class="users-header"><div><span class="eyebrow">Directorio</span><h2>Usuarios registrados</h2></div><label class="search"><span>⌕</span><input id="user-search" placeholder="Buscar por nombre o correo"></label></header>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Usuario</th><th>Empresa</th><th>Rol</th><th>Estado</th></tr></thead>
+              <tbody id="users-body"></tbody>
+            </table>
+            <div id="empty-users" class="empty hidden">No hay usuarios que coincidan con la búsqueda.</div>
+          </div>
+        </section>
+      </div>
+    </section>
+  </div>
+  <script src="/app.js" defer></script>
+</body>
+</html>

@@ -9,14 +9,15 @@ De una demostracion a un producto real, seguro y multiempresa.
 
 | Modulo | Estado | Descripcion |
 | --- | --- | --- |
-| **Sitio publico** | base lista | Landing de marca (identidad Ad Mavericks). |
-| **Base de datos (Supabase)** | SQL listo | Esquema multiempresa con aislamiento (RLS) + base de inversion publicitaria. |
-| **Consola de Alta de Clientes** | en progreso | Panel del equipo Ad Mavericks para dar de alta clientes y generar codigos. |
-| **Ingreso de clientes / plataforma** | siguiente | Login por invitacion, roles y cuenta aislada por empresa. |
+| **Sitio publico** | listo | Landing y precios con identidad Ad Mavericks. |
+| **Plataforma autenticada** | lista | Login, panel, planificador, campanas y mercado con aislamiento por empresa. |
+| **Base de datos (Supabase)** | SQL listo | Esquema multiempresa con RLS, datos operativos y archivo auditable de los Excel. |
+| **Consola web de clientes** | lista | Alta de empresas, codigos y cupos para el equipo Ad Mavericks. |
+| **Consola local de usuarios** | lista | Alta directa de usuarios; escucha solo en `127.0.0.1`. |
 
 ## Stack
 
-- **Next.js 15** (App Router) + **React 19** + **TypeScript**
+- **Next.js 15.5** (App Router) + **React 19** + **TypeScript**
 - **Tailwind CSS** con los tokens del manual de marca (forest / signal green, Nunito Sans)
 - **Supabase** — Postgres, Auth y RLS (datos y acceso)
 - **AWS** — infraestructura: WAF, respaldos y monitoreo (fase de despliegue)
@@ -36,6 +37,8 @@ npm run dev                  # http://localhost:3000
 3. En el **SQL Editor** de Supabase, pegar y ejecutar:
    - `supabase/schema.sql` (tablas, RLS, funciones y triggers)
    - `supabase/seed.sql` (primer admin + fuentes de datos)
+4. Para cargar la conversion completa y auditable de los dos Excel, seguir
+   [`supabase/imports/excel_2026/README.md`](supabase/imports/excel_2026/README.md).
 
 Detalle completo en [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md).
 
@@ -47,6 +50,23 @@ Detalle completo en [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md).
 | `npm run build` | Build de produccion |
 | `npm run start` | Servir el build |
 | `npm run typecheck` | Verificar tipos |
+| `npm run admin:dev` | Abrir la consola de usuarios en `127.0.0.1:4177` |
+| `npm run sql:generate` | Regenerar los SQL desde los dos Excel fuente |
+
+## Consola local de usuarios
+
+La consola local no forma parte de las rutas de Next.js y no se publica en
+AWS Amplify. Para usarla:
+
+```powershell
+Copy-Item admin-console/.env.example admin-console/.env.local
+npm run admin:dev
+```
+
+Completar el archivo local con la URL de Supabase, la `service_role` y una frase
+de acceso de al menos 16 caracteres. La clave de servicio permanece en el
+proceso Node local y no llega al navegador. Ver
+[`admin-console/README.md`](admin-console/README.md).
 
 ## Marca
 

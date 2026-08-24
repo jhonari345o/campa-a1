@@ -29,12 +29,18 @@ Navegador ──▶ Next.js (App Router)
                        │
                        ▼
               Infraestructura AWS (WAF, respaldos, monitoreo)
+
+Equipo Ad Mavericks ──▶ Consola local (127.0.0.1)
+                              │ service_role solo en el proceso local
+                              └──────────────▶ Supabase Auth + Postgres
 ```
 
 - **Supabase** provee la base de datos, la autenticacion y el aislamiento por
   RLS. Es la fuente de verdad de datos y acceso.
 - **AWS** aporta el escudo (WAF), respaldos automaticos con recuperacion a un
   punto en el tiempo, y vigilancia. El sitio Next.js se despliega aqui.
+- **Consola local** permite crear usuarios sin publicar esa herramienta ni su
+  `service_role`; corre como un proceso Node separado y escucha solo en loopback.
 
 ## 3. Modelo de datos
 

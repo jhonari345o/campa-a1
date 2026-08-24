@@ -92,7 +92,7 @@ export default async function CampanasPage() {
               <a href="/planificador" className="font-black text-signal-dark hover:underline">
                 Planificador
               </a>{" "}
-              y usa "Ejecutar con Mavi".
+              y usa “Ejecutar con Mavi”.
             </p>
           </>
         ) : (

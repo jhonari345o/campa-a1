@@ -47,7 +47,9 @@ export function MaviTour({ isAdmin = false }: { isAdmin?: boolean }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!window.localStorage.getItem(STORAGE_KEY)) setOpen(true);
+    if (window.localStorage.getItem(STORAGE_KEY)) return;
+    const timer = window.setTimeout(() => setOpen(true), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   function close() {

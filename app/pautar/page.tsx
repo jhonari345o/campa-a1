@@ -42,7 +42,7 @@ export default async function PautarPage({
       <main className="mx-auto max-w-2xl px-6 py-10">
         <h1 className="text-3xl font-black tracking-tight">Pautar con Mavi</h1>
         <p className="mt-1 text-muted">
-          Mavi te pide lo necesario y crea la orden de pauta. La sigues en "Mis campanas".
+          Mavi te pide lo necesario y crea la orden de pauta. La sigues en “Mis campanas”.
         </p>
 
         {!metaConectada && (

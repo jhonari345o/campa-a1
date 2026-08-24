@@ -9,6 +9,10 @@ frontend:
         - npm ci
     build:
       commands:
+        # Next.js carga estas variables en el runtime SSR. No usar next.config
+        # `env` para secretos: esa opcion los incorpora al bundle JavaScript.
+        - rm -f .env.production
+        - env | grep -E '^(NEXT_PUBLIC_|SUPABASE_SERVICE_ROLE_KEY|LLM_BASE_URL|LLM_MODEL|LLM_API_KEY|BEDROCK_REGION|BEDROCK_MODEL_ID|AGENT_WORKER_TOKEN|AGENT_TRIGGER_URL|META_ACCESS_TOKEN|GOOGLE_ADS_)=' >> .env.production
         - npm run build
   artifacts:
     baseDirectory: .next
