@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { MaviAvatar } from "@/components/Mavi";
 import { crearPauta } from "./actions";
-import { computeCharge, money, SERVICE_FEE_LABEL } from "@/lib/pricing";
+import { EcuadorTargetMap, type GeoTarget } from "./EcuadorTargetMap";
+import { computeCharge, money, SERVICE_FEE_LABEL, TAX_LABEL } from "@/lib/pricing";
 
 type Bubble = { from: "mavi" | "user"; text: string };
 
@@ -13,8 +14,6 @@ const REDES = [
   { id: "facebook", label: "Facebook", emoji: "👍" },
   { id: "tiktok", label: "TikTok", emoji: "🎵" },
 ];
-
-const CIUDADES = ["Guayaquil", "Quito", "Cuenca"];
 
 type Step = "red" | "link" | "geo" | "monto" | "pago" | "hecho";
 
@@ -43,7 +42,7 @@ export function PautarChat({
   const [step, setStep] = useState<Step>(prefilled ? "link" : "red");
   const [red, setRed] = useState(initialRed ?? "");
   const [postUrl, setPostUrl] = useState("");
-  const [cities, setCities] = useState<string[]>([]);
+  const [geoTarget, setGeoTarget] = useState<GeoTarget | null>(null);
   const [monto, setMonto] = useState(initialMonto ?? 0);
   const [objetivo] = useState(initialObjetivo ?? "");
   const [text, setText] = useState("");
@@ -75,13 +74,9 @@ export function PautarChat({
     setStep("link");
   }
 
-  function toggleCity(c: string) {
-    setCities((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
-  }
-
-  function confirmCities() {
-    if (cities.length === 0) return;
-    push({ from: "user", text: cities.join(", ") });
+  function confirmGeoTarget() {
+    if (!geoTarget) return;
+    push({ from: "user", text: `${geoTarget.label} · radio ${geoTarget.radiusKm} km` });
     if (monto > 0) {
       // Presupuesto ya venia de la campana: pasamos directo al pago.
       const ch = computeCharge(monto);
@@ -108,7 +103,10 @@ export function PautarChat({
         return;
       }
       setPostUrl(value);
-      push({ from: "mavi", text: "¡Anotado! ¿En que publicos quieres mostrar el anuncio? Elige una o varias ciudades." });
+      push({
+        from: "mavi",
+        text: "¡Anotado! Marca el centro en el mapa de Ecuador y ajusta el radio donde quieres mostrar el anuncio.",
+      });
       setStep("geo");
     } else if (step === "monto") {
       const n = Number(value.replace(/[^0-9.]/g, ""));
@@ -127,12 +125,19 @@ export function PautarChat({
   }
 
   async function pagar() {
+    if (!geoTarget) {
+      setError("Selecciona la geolocalizacion y el radio de la pauta.");
+      return;
+    }
     setSending(true);
     setError(null);
     const res = await crearPauta({
       red,
       postUrl,
-      geo: cities.join(", "),
+      geo: `${geoTarget.label} · ${geoTarget.latitude.toFixed(6)}, ${geoTarget.longitude.toFixed(6)} · ${geoTarget.radiusKm} km`,
+      latitude: geoTarget.latitude,
+      longitude: geoTarget.longitude,
+      radiusKm: geoTarget.radiusKm,
       presupuesto: monto,
       objetivo: objetivo || undefined,
     });
@@ -203,30 +208,11 @@ export function PautarChat({
 
         {step === "geo" && (
           <div>
-            <div className="flex flex-wrap gap-2">
-              {CIUDADES.map((c) => {
-                const on = cities.includes(c);
-                return (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => toggleCity(c)}
-                    className={
-                      "rounded-full border px-4 py-1.5 text-sm font-black transition-colors " +
-                      (on
-                        ? "border-signal bg-signal/15 text-signal-dark"
-                        : "border-border bg-white text-forest hover:border-signal")
-                    }
-                  >
-                    {on ? "✓ " : ""}📍 {c}
-                  </button>
-                );
-              })}
-            </div>
+            <EcuadorTargetMap value={geoTarget} onChange={setGeoTarget} />
             <button
               type="button"
-              onClick={confirmCities}
-              disabled={cities.length === 0}
+              onClick={confirmGeoTarget}
+              disabled={!geoTarget}
               className="btn btn-primary mt-3 disabled:opacity-50"
             >
               Continuar →
@@ -243,6 +229,7 @@ export function PautarChat({
 
             <div className="mt-3 space-y-1.5 text-sm">
               <Row label={`Inversion en anuncios (${red || "red"})`} value={money(charge.base)} />
+              <Row label={TAX_LABEL} value={money(charge.tax)} />
               <Row label={SERVICE_FEE_LABEL} value={money(charge.fee)} />
               <div className="my-2 border-t border-border" />
               <Row label="Total a pagar" value={money(charge.total)} bold />

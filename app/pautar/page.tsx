@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { getSessionProfile } from "@/lib/auth";
 import { PautarChat } from "./PautarChat";
-import { computeCharge, money, SERVICE_FEE_PCT } from "@/lib/pricing";
+import { computeCharge, money, SERVICE_FEE_PCT, TAX_PCT } from "@/lib/pricing";
 
 export const metadata = { title: "Pautar con Mavi" };
 
@@ -67,6 +67,7 @@ export default async function PautarPage({
 function ModeloMonetizacion() {
   const ej = computeCharge(200);
   const pct = Math.round(SERVICE_FEE_PCT * 100);
+  const taxPct = Math.round(TAX_PCT * 100);
   return (
     <details className="mt-4 rounded-panel border border-forest/30 bg-forest/5 p-5 shadow-panel">
       <summary className="cursor-pointer text-sm font-black text-forest">
@@ -74,17 +75,20 @@ function ModeloMonetizacion() {
       </summary>
       <p className="mt-3 text-sm text-muted">
         El cliente recarga lo que quiere invertir en anuncios. Sobre esa recarga cobramos una
-        comision de servicio del <strong className="text-forest">{pct}%</strong>: esa es la ganancia
-        de Ad Mavericks. La recarga completa se acredita a la pauta.
+        impuestos y costos regulatorios del <strong className="text-forest">{taxPct}%</strong>, mas
+        una comision de servicio del <strong className="text-forest">{pct}%</strong>: esa es la
+        ganancia de Ad Mavericks. La recarga completa se acredita a la pauta.
       </p>
-      <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+      <div className="mt-4 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
         <Box label="Recarga (a ads)" value={money(ej.base)} tone="fog" />
+        <Box label={`Impuestos ${taxPct}%`} value={money(ej.tax)} tone="fog" />
         <Box label={`Comision ${pct}%`} value={money(ej.fee)} tone="signal" />
         <Box label="Paga el cliente" value={money(ej.total)} tone="forest" />
       </div>
       <p className="mt-3 text-xs text-muted">
         Ejemplo: recarga {money(ej.base)} → paga {money(ej.total)} → van {money(ej.base)} a los
-        anuncios y {money(ej.fee)} es nuestra ganancia.
+        anuncios, {money(ej.tax)} corresponden a impuestos/costos y {money(ej.fee)} es nuestra
+        ganancia.
       </p>
     </details>
   );

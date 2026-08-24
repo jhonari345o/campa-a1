@@ -11,6 +11,8 @@ De una demostracion a un producto real, seguro y multiempresa.
 | --- | --- | --- |
 | **Sitio publico** | listo | Landing y precios con identidad Ad Mavericks. |
 | **Plataforma autenticada** | lista | Login, panel, planificador, campanas y mercado con aislamiento por empresa. |
+| **Mavi (IA)** | lista para configurar | Asistente conectado a Amazon Bedrock o a un endpoint LLM compatible. |
+| **Pauta externa** | flujo listo | URL del anuncio, segmentacion en mapa de Ecuador con radio, pago demo, 22% de impuestos/costos y 25% de comision. |
 | **Base de datos (Supabase)** | SQL listo | Esquema multiempresa con RLS, datos operativos y archivo auditable de los Excel. |
 | **Consola web de clientes** | lista | Alta de empresas, codigos y cupos para el equipo Ad Mavericks. |
 | **Consola local de usuarios** | lista | Alta directa de usuarios; escucha solo en `127.0.0.1`. |

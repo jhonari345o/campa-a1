@@ -41,6 +41,13 @@ Equipo Ad Mavericks ──▶ Consola local (127.0.0.1)
   punto en el tiempo, y vigilancia. El sitio Next.js se despliega aqui.
 - **Consola local** permite crear usuarios sin publicar esa herramienta ni su
   `service_role`; corre como un proceso Node separado y escucha solo en loopback.
+- **Mavi** usa Amazon Bedrock (preferido en AWS) o un endpoint LLM compatible y
+  conserva el flujo de generacion y ejecucion supervisada de campanas.
+- **Pauta externa** recibe el URL de la publicacion, un centro y radio de
+  geolocalizacion en Ecuador y la inversion. La orden guarda el objetivo
+  geografico en `campaign_jobs.spec`; el total suma 22% de impuestos/costos y
+  25% de comision sobre la inversion base. El pago sigue marcado como
+  demostracion hasta conectar una pasarela real.
 
 ## 3. Modelo de datos
 

@@ -10,6 +10,9 @@ export type PautaInput = {
   red: string; // instagram | facebook | tiktok
   postUrl: string;
   geo: string;
+  latitude: number;
+  longitude: number;
+  radiusKm: number;
   presupuesto: number;
   objetivo?: string;
 };
@@ -48,6 +51,22 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
   if (!input.geo?.trim()) {
     return { ok: false, error: "Indica la ubicacion donde quieres pautar." };
   }
+  const latitude = Number(input.latitude);
+  const longitude = Number(input.longitude);
+  const radiusKm = Number(input.radiusKm);
+  if (
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude) ||
+    latitude < -6.2 ||
+    latitude > 2.7 ||
+    longitude < -93.5 ||
+    longitude > -74.2
+  ) {
+    return { ok: false, error: "Selecciona un punto valido dentro del mapa de Ecuador." };
+  }
+  if (!Number.isFinite(radiusKm) || radiusKm < 1 || radiusKm > 200) {
+    return { ok: false, error: "El radio de geolocalizacion debe estar entre 1 y 200 km." };
+  }
 
   const charge = computeCharge(presupuesto);
 
@@ -64,8 +83,15 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
         red: input.red,
         post_url: input.postUrl.trim(),
         geo: input.geo.trim(),
+        geo_target: {
+          country: "EC",
+          center: { latitude, longitude },
+          radius_km: radiusKm,
+        },
         presupuesto_usd: charge.base,
-        // Modelo de monetizacion (demostracion): comision + total pagado.
+        // Modelo de monetizacion (demostracion): impuestos + comision + total.
+        impuestos_pct: charge.taxPct,
+        impuestos_usd: charge.tax,
         comision_pct: charge.feePct,
         comision_usd: charge.fee,
         total_pagado_usd: charge.total,

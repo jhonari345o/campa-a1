@@ -42,6 +42,11 @@ en las variables del proyecto. La `service_role` de Supabase y otros tokens
 siguen siendo secretos de alto impacto: limitar el acceso a los artefactos de
 despliegue y rotarlos ante cualquier sospecha de exposicion.
 
+Por compatibilidad con la instalacion existente, el build tambien reconoce
+`BEDROCK_ACCESS_KEY_ID` y `BEDROCK_SECRET_ACCESS_KEY` si ya estan configuradas en
+Amplify. Deben migrarse a un rol IAM y eliminarse despues de comprobar que Mavi
+responde con las credenciales temporales del runtime.
+
 ### 3. Desplegar
 - *Save and deploy*. Amplify instala, construye (`npm run build`) y publica.
 - Al terminar entrega una URL `https://<rama>.<appid>.amplifyapp.com`.
