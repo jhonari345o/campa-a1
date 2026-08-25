@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import test from "node:test";
 import {
   isAgentAutomationEnabled,
@@ -9,6 +11,13 @@ import {
 } from "../lib/commercial";
 import { canCompanyRole } from "../lib/permissions";
 import { filterPlanByMedia, mediaGroupForLabel } from "../lib/planner";
+import {
+  DIGITAL_PLATFORMS,
+  INFLUENCER_IMAGE_SLUGS,
+  OOH_PROVIDERS,
+  PRESS_OUTLETS,
+  TV_CHANNELS,
+} from "../lib/media-catalog";
 
 test("las operaciones economicas permanecen deshabilitadas por defecto", () => {
   delete process.env.COMMERCIAL_PAYMENTS_ENABLED;
@@ -50,4 +59,21 @@ test("el plan respeta los medios seleccionados y conserva el presupuesto", () =>
   assert.deepEqual(filtered.map((row) => mediaGroupForLabel(row.label)), ["television", "digital"]);
   assert.equal(Math.round(filtered.reduce((sum, row) => sum + row.pct, 0) * 100), 100);
   assert.equal(filtered.reduce((sum, row) => sum + Number(row.amount), 0), 1000);
+});
+
+test("los recursos visuales del catálogo existen en el paquete público", () => {
+  const catalogItems = [...DIGITAL_PLATFORMS, ...TV_CHANNELS, ...OOH_PROVIDERS, ...PRESS_OUTLETS];
+  for (const item of catalogItems.filter((entry) => entry.imagePath)) {
+    assert.equal(
+      existsSync(resolve("public", item.imagePath!.replace(/^\//, ""))),
+      true,
+      `Falta la imagen de ${item.name}`,
+    );
+  }
+
+  assert.equal(INFLUENCER_IMAGE_SLUGS.size, 30);
+  for (const slug of INFLUENCER_IMAGE_SLUGS) {
+    assert.equal(existsSync(resolve("public/providers/influencers", `${slug}.webp`)), true);
+  }
+  assert.equal(existsSync(resolve("public/providers/radio/los40/logo.png")), true);
 });

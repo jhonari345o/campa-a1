@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
   CATALOG_SECTIONS,
   DIGITAL_PLATFORMS,
+  INFLUENCER_IMAGE_SLUGS,
   OOH_PROVIDERS,
   PRESS_OUTLETS,
   STATUS_LABELS,
@@ -124,9 +126,7 @@ function DigitalCard({ item }: { item: DigitalPlatform }) {
   return (
     <article className="flex flex-col rounded-card border border-border bg-gradient-to-br from-white to-sky/5 p-5">
       <div className="flex items-start justify-between gap-3">
-        <div className="grid size-12 shrink-0 place-items-center rounded-2xl border border-border bg-white text-lg font-black text-signal-dark">
-          {initials(item.name)}
-        </div>
+        <ProviderMark item={item} size="small" />
         <span className="rounded-full bg-signal/10 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-signal-dark">
           {item.statusNote}
         </span>
@@ -212,11 +212,20 @@ function InfluencerSection({ profiles }: { profiles: InfluencerProfile[] }) {
 }
 
 function InfluencerCard({ profile }: { profile: InfluencerProfile }) {
+  const hasImage = INFLUENCER_IMAGE_SLUGS.has(profile.slug);
   return (
     <article className="flex flex-col rounded-card border border-signal/40 bg-forest p-5 text-white shadow-[0_6px_0_#071b12]">
       <div className="flex items-start gap-3">
-        <div className="grid size-14 shrink-0 place-items-center rounded-2xl border-2 border-signal bg-white text-lg font-black text-forest">
-          {initials(profile.name)}
+        <div className="relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-2xl border-2 border-signal bg-white text-lg font-black text-forest shadow-sm">
+          {hasImage ? (
+            <Image
+              src={`/providers/influencers/${profile.slug}.webp`}
+              alt={`Foto de ${profile.name}`}
+              fill
+              sizes="64px"
+              className="object-cover"
+            />
+          ) : initials(profile.name)}
         </div>
         <div className="min-w-0">
           <span className="text-[10px] font-black uppercase tracking-wide text-[#91f58d]">{profile.category}</span>
@@ -290,7 +299,14 @@ function RadioSection({ stations }: { stations: RadioStation[] }) {
           {shown.map((station, index) => (
             <article key={station.name} className="rounded-card border border-border bg-fog p-4">
               <div className="flex items-start justify-between gap-3">
-                <div><span className="text-xs font-black text-signal-dark">{String(index + 1).padStart(2, "0")}</span><h3 className="font-black">{station.name}</h3><p className="text-xs text-muted">{station.genre ?? "Género por confirmar"}</p></div>
+                <div className="flex min-w-0 items-center gap-3">
+                  {isLos40(station.name) && (
+                    <div className="relative size-12 shrink-0 overflow-hidden rounded-xl border border-border bg-white">
+                      <Image src="/providers/radio/los40/logo.png" alt="Logo de LOS40 Ecuador" fill sizes="48px" className="object-contain p-1" />
+                    </div>
+                  )}
+                  <div><span className="text-xs font-black text-signal-dark">{String(index + 1).padStart(2, "0")}</span><h3 className="font-black">{station.name}</h3><p className="text-xs text-muted">{station.genre ?? "Género por confirmar"}</p></div>
+                </div>
                 <strong className="text-right text-lg">{mode === "audience" ? compact(station.audience) : percent(station.reachPct)}</strong>
               </div>
               <dl className="mt-3 flex gap-4 text-xs text-muted">
@@ -317,7 +333,7 @@ function DirectorySection({ eyebrow, title, description, items, countLabel }: { 
       <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {matches.map((item) => (
           <article key={item.slug} className="rounded-card border border-border bg-fog p-5">
-            <div className="flex items-start justify-between gap-3"><div className="grid size-12 place-items-center rounded-2xl bg-forest font-black text-white">{initials(item.name)}</div><Status status={item.status} /></div>
+            <div className="flex items-start justify-between gap-3"><ProviderMark item={item} size="large" /><Status status={item.status} /></div>
             <h3 className="mt-4 text-xl font-black">{item.name}</h3>
             <p className="mt-1 text-xs font-black uppercase tracking-wide text-signal-dark">{item.statusNote}</p>
             <p className="mt-3 text-sm text-muted">{item.summary}</p>
@@ -352,7 +368,15 @@ function Summary({ label, value, note }: { label: string; value: string; note: s
 function Toggle({ pressed, onClick, children }: { pressed: boolean; onClick: () => void; children: ReactNode }) { return <button type="button" aria-pressed={pressed} onClick={onClick} className={`btn ${pressed ? "btn-ghost" : "btn-secondary"}`}>{children}</button>; }
 function EmptyData({ message }: { message: string }) { return <p className="mt-6 rounded-card border border-dashed border-border bg-fog p-6 text-center text-sm text-muted">{message}</p>; }
 function ListBlock({ title, items }: { title: string; items: string[] }) { return <div className="mt-4"><strong className="text-xs">{title}</strong><ul className="mt-1 space-y-1 text-xs text-muted">{items.map((item) => <li key={item}>✓ {item}</li>)}</ul></div>; }
+function ProviderMark({ item, size }: { item: CatalogItem; size: "small" | "large" }) {
+  const box = size === "small" ? "size-12" : "h-16 w-24";
+  const background = item.slug === "duoprint" ? "bg-forest" : "bg-white";
+  return <div className={`relative grid shrink-0 place-items-center overflow-hidden rounded-2xl border border-border font-black text-forest ${background} ${box}`}>
+    {item.imagePath ? <Image src={item.imagePath} alt={`Logo de ${item.name}`} fill sizes={size === "small" ? "48px" : "96px"} className="object-contain p-2" /> : initials(item.name)}
+  </div>;
+}
 function initials(name: string) { return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase(); }
+function isLos40(name: string) { return name.toLocaleLowerCase("es").replace(/\s+/g, "").includes("los40"); }
 function compact(value: number | null) { return value == null ? "Por confirmar" : new Intl.NumberFormat("es-EC", { notation: "compact", maximumFractionDigits: 1 }).format(value); }
 function percent(value: number | null) { return value == null ? "Por confirmar" : `${new Intl.NumberFormat("es-EC", { maximumFractionDigits: 2 }).format(value)}%`; }
 function money(value: number) { return new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value); }
