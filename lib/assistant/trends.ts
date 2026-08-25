@@ -7,9 +7,16 @@ export type LiveTrendSource = {
 
 const LIVE_INTENT = /\b(tendenc|actual|hoy|ahora|momento|viral|noticia|temporada|coyuntura|reciente|esta semana|ultimo)\w*/i;
 const STOPWORDS = new Set([
-  "para", "como", "quiero", "puedo", "dime", "cuales", "sobre", "esto", "esta",
+  "para", "como", "cómo", "quiero", "puedo", "dime", "cuales", "cuáles", "sobre", "esto", "esta",
   "tendencias", "tendencia", "actual", "actuales", "momento", "ahora", "publicidad",
-  "campana", "campanas", "ecuador", "necesito", "buscar", "internet",
+  "campana", "campanas", "ecuador", "necesito", "buscar", "internet", "qué", "que",
+  "hay", "hoy", "podria", "podría", "usar", "usarlas", "usarles", "una", "uno", "unos",
+  "unas", "del", "las", "los", "con", "por", "desde", "marca", "negocio", "ayuda",
+]);
+const GEO_TERMS = new Set([
+  "guayaquil", "quito", "cuenca", "loja", "manta", "portoviejo", "ambato", "riobamba",
+  "machala", "daule", "samborondon", "milagro", "quevedo", "babahoyo", "esmeraldas",
+  "ibarra", "latacunga", "tulcan", "guayas", "pichincha", "manabi", "azuay", "ecuador",
 ]);
 
 export function shouldUseLiveTrends(message: string): boolean {
@@ -20,16 +27,21 @@ export async function buildLiveTrendContext(message: string): Promise<{
   context: string;
   sources: LiveTrendSource[];
 }> {
-  const query = searchTerms(message);
+  const terms = searchTerms(message);
+  const query = terms.join(" ");
   const [trendSources, newsSources] = await Promise.all([
-    readRss("https://trends.google.com/trending/rss?geo=EC", 6, true),
+    readRss("https://trends.google.com/trending/rss?geo=EC", 12, true),
     readRss(
-      `https://news.google.com/rss/search?q=${encodeURIComponent(`${query} Ecuador`)}&hl=es-419&gl=EC&ceid=EC:es-419`,
-      6,
+      `https://news.google.com/rss/search?q=${encodeURIComponent(`${query} Ecuador when:180d`)}&hl=es-419&gl=EC&ceid=EC:es-419`,
+      10,
       false,
     ),
   ]);
-  const sources = dedupe([...newsSources, ...trendSources]).slice(0, 8);
+  const relevantNews = newsSources.filter((item) => isRelevant(item.title, terms));
+  const relevantTrends = trendSources.filter((item) => isRelevant(item.title, terms));
+  const sources = dedupe([...relevantNews, ...relevantTrends])
+    .filter((item) => !isLowSignalSource(item))
+    .slice(0, 8);
   if (!sources.length) return { context: "No fue posible obtener fuentes actuales en esta consulta.", sources: [] };
 
   const checkedAt = new Intl.DateTimeFormat("es-EC", {
@@ -113,13 +125,31 @@ function safeHttpUrl(value: string): boolean {
   }
 }
 
-function searchTerms(message: string): string {
+function searchTerms(message: string): string[] {
   const clean = message
     .replace(/https?:\/\/\S+/gi, " ")
     .replace(/[\w.+-]+@[\w.-]+/gi, " ")
     .replace(/[^\p{L}\p{N}\s-]/gu, " ");
-  const words = clean.split(/\s+/).filter((word) => word.length > 2 && !STOPWORDS.has(word.toLowerCase()));
-  return words.slice(0, 8).join(" ") || "marketing consumo";
+  const words = clean
+    .split(/\s+/)
+    .map((word) => word.toLocaleLowerCase("es"))
+    .filter((word) => word.length > 2 && !STOPWORDS.has(word));
+  return [...new Set(words)].slice(0, 6).length ? [...new Set(words)].slice(0, 6) : ["marketing", "consumo"];
+}
+
+function isRelevant(title: string, terms: string[]): boolean {
+  const normalized = normalizeText(title);
+  const subjectTerms = terms.filter((term) => !GEO_TERMS.has(normalizeText(term)));
+  const candidates = subjectTerms.length ? subjectTerms : terms;
+  return candidates.some((term) => term.length >= 4 && normalized.includes(normalizeText(term).slice(0, 6)));
+}
+
+function isLowSignalSource(item: LiveTrendSource): boolean {
+  return /facebook|instagram|tiktok|youtube|x\.com/i.test(`${item.source} ${item.title}`);
+}
+
+function normalizeText(value: string): string {
+  return value.toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 function dedupe(items: LiveTrendSource[]): LiveTrendSource[] {
