@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { generarPlan, type PlanResult } from "./actions";
+import type { ReactNode } from "react";
+import { generarPlan, guardarPlan, type PlanResult } from "./actions";
 import type { PlanRow } from "@/lib/planner";
 import type { Campaign } from "@/lib/campaigns";
 import { ejecutarCampana } from "@/app/campanas/actions";
@@ -22,10 +23,81 @@ export function PlanForm() {
           Con esto usamos patrones agregados del mercado y armamos una recomendacion para revision.
         </p>
         <form action={formAction} className="mt-5 space-y-4">
-          <Field name="keyword" label="Giro del negocio *" placeholder="Cafeteria, banco, farmacia…" required />
-          <Field name="audience" label="Publico al que quieres llegar" placeholder="Jovenes 18-30, Guayaquil…" />
-          <Field name="objective" label="Objetivo" placeholder="Mas ventas, dar a conocer la marca…" />
-          <Field name="budget" label="Presupuesto mensual (USD)" placeholder="3000" type="number" />
+          <Field name="brand" label="Marca" placeholder="Nombre de la marca" />
+          <Field name="keyword" label="Giro o categoría *" placeholder="Cafetería, banco, farmacia…" required />
+          <SelectField name="objective" label="Objetivo principal" defaultValue="Ventas">
+            {[
+              "Reconocimiento", "Alcance", "Consideración", "Tráfico", "Interacción", "Reproducciones",
+              "Generación de leads", "Mensajes", "Ventas", "Visitas al local", "Descargas de app",
+              "Retención", "Otro",
+            ].map((option) => <option key={option}>{option}</option>)}
+          </SelectField>
+          <SelectField name="priority" label="Prioridad del plan" defaultValue="Eficiencia">
+            {["Cobertura", "Frecuencia", "Eficiencia", "Conversión", "Afinidad", "Presencia local", "Balance"].map((option) => <option key={option}>{option}</option>)}
+          </SelectField>
+
+          <div className="border-t border-border pt-4">
+            <p className="text-xs font-black uppercase tracking-wide text-muted">Audiencia</p>
+          </div>
+          <SelectField name="audienceType" label="Tipo" defaultValue="B2C">
+            <option>B2C</option><option>B2B</option><option>Mixta</option>
+          </SelectField>
+          <Field name="audience" label="Intereses, cargos o comportamiento" placeholder="Jóvenes que compran en línea…" />
+          <SelectField name="ageRange" label="Edad" defaultValue="Personas 18+">
+            {["Todas las edades", "13-17", "18-24", "25-34", "35-44", "45-54", "55-64", "65+", "18-34", "25-54", "Personas 18+"].map((option) => <option key={option}>{option}</option>)}
+          </SelectField>
+          <SelectField name="sex" label="Sexo" defaultValue="Todas las personas">
+            {["Todas las personas", "Mujeres", "Hombres", "No binario", "Mujeres prioritario", "Hombres prioritario", "Por definir"].map((option) => <option key={option}>{option}</option>)}
+          </SelectField>
+          <SelectField name="socioeconomic" label="Nivel socioeconómico" defaultValue="Todos los NSE">
+            {["Todos los NSE", "A", "B", "C+", "C-", "D", "A/B", "B/C+", "C+/C-", "C-/D", "Por definir"].map((option) => <option key={option}>{option}</option>)}
+          </SelectField>
+
+          <div className="border-t border-border pt-4">
+            <p className="text-xs font-black uppercase tracking-wide text-muted">Geografía, fechas y presupuesto</p>
+          </div>
+          <Field name="geography" label="Cobertura" placeholder="Ecuador, Guayas, Quito o cantones prioritarios" />
+          <div className="grid grid-cols-2 gap-3">
+            <Field name="startDate" label="Inicio" type="date" />
+            <Field name="endDate" label="Fin" type="date" />
+          </div>
+          <Field name="budget" label="Presupuesto antes de impuestos (USD)" placeholder="3000" type="number" />
+
+          <fieldset className="rounded-xl border border-border bg-fog p-4">
+            <legend className="px-1 text-sm font-black text-forest">Medios a considerar *</legend>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {[
+                ["television", "Televisión"], ["radio", "Radio"], ["ooh", "Vía pública"],
+                ["press", "Prensa"], ["digital", "Digital"], ["influencers", "Influenciadores"],
+              ].map(([value, label]) => (
+                <label key={value} className="flex items-center gap-2 text-sm font-bold text-forest">
+                  <input name="selectedMedia" value={value} type="checkbox" defaultChecked className="h-4 w-4 accent-signal" />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <details className="rounded-xl border border-border p-4">
+            <summary className="cursor-pointer text-sm font-black text-forest">Contexto de negocio y preparación digital</summary>
+            <div className="mt-4 space-y-4">
+              <SelectField name="businessModel" label="Modelo de negocio" defaultValue="">
+                <option value="">Por definir</option>
+                {["E-commerce", "Retail", "Generación de leads", "App", "B2B", "Servicios", "Otro"].map((option) => <option key={option}>{option}</option>)}
+              </SelectField>
+              <SelectField name="conversionModel" label="Modelo de conversión" defaultValue="">
+                <option value="">Por definir</option>
+                {["Checkout", "Formulario", "WhatsApp", "Tienda física", "Marketplace", "Venta consultiva", "Otro"].map((option) => <option key={option}>{option}</option>)}
+              </SelectField>
+              <Field name="digitalDestination" label="Destino o landing" placeholder="https://…" type="url" />
+              <SelectField name="trackingStatus" label="Estado de medición" defaultValue="">
+                <option value="">Por definir</option><option>Implementado</option><option>Parcial</option><option>No implementado</option>
+              </SelectField>
+              <SelectField name="adAccountsStatus" label="Cuentas publicitarias" defaultValue="">
+                <option value="">Por definir</option><option>Listas y con acceso</option><option>Existen sin acceso</option><option>Por crear</option>
+              </SelectField>
+            </div>
+          </details>
           <button type="submit" disabled={pending} className="btn btn-primary w-full disabled:opacity-60">
             {pending ? "Armando tu plan…" : "Generar plan de medios →"}
           </button>
@@ -53,6 +125,24 @@ export function PlanForm() {
 
 function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> }) {
   const { plan, keyword } = result;
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState<null | { ok: boolean; message: string; id?: string }>(null);
+
+  async function saveDraft() {
+    setSaving(true);
+    setSaved(null);
+    try {
+      const response = await guardarPlan(result);
+      setSaved(response.ok
+        ? { ok: true, id: response.id, message: "Plan guardado como borrador privado." }
+        : { ok: false, message: response.error });
+    } catch {
+      setSaved({ ok: false, message: "No se pudo guardar el plan." });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="rounded-panel border border-border bg-white p-6 shadow-panel">
@@ -80,6 +170,13 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
             </li>
           ))}
         </ul>
+        <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-4">
+          <button type="button" onClick={saveDraft} disabled={saving} className="btn btn-primary disabled:opacity-60">
+            {saving ? "Guardando…" : "Guardar plan privado"}
+          </button>
+          {saved?.ok && <a href="/planificador?view=plans" className="btn btn-secondary">Ver planes guardados →</a>}
+          {saved && <p className={`text-sm font-bold ${saved.ok ? "text-signal-dark" : "text-[#a13b31]"}`}>{saved.message}</p>}
+        </div>
       </div>
 
       <div className="rounded-panel border border-border bg-white p-6 shadow-panel">
@@ -113,7 +210,7 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
       </div>
 
       {/* Campanas sugeridas por Mavi */}
-      <div>
+      {result.campaigns.length > 0 && <div>
         <div className="flex items-center gap-2">
           <span aria-hidden className="text-xl">🦎</span>
           <h3 className="text-lg font-black tracking-tight">Campanas sugeridas por Mavi</h3>
@@ -127,7 +224,7 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
             <CampaignCard key={c.platform} c={c} />
           ))}
         </div>
-      </div>
+      </div>}
 
       {/* Contacto con Ad Mavericks */}
       <div className="rounded-panel bg-forest p-6 text-white">
@@ -301,6 +398,32 @@ function Field({
         placeholder={placeholder}
         className="mt-1 w-full rounded-xl border border-border bg-fog px-4 py-3 outline-none focus:border-signal focus:ring-2 focus:ring-signal/30"
       />
+    </div>
+  );
+}
+
+function SelectField({
+  name,
+  label,
+  defaultValue,
+  children,
+}: {
+  name: string;
+  label: string;
+  defaultValue?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div>
+      <label htmlFor={name} className="block text-sm font-black text-forest">{label}</label>
+      <select
+        id={name}
+        name={name}
+        defaultValue={defaultValue}
+        className="mt-1 w-full rounded-xl border border-border bg-fog px-4 py-3 outline-none focus:border-signal focus:ring-2 focus:ring-signal/30"
+      >
+        {children}
+      </select>
     </div>
   );
 }
