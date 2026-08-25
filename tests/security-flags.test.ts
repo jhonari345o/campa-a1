@@ -5,12 +5,14 @@ import test from "node:test";
 import {
   isAgentAutomationEnabled,
   isAiAssistantEnabled,
+  isAiWebTrendsEnabled,
   isCommercialPaymentsEnabled,
   isMetaPausedDraftsEnabled,
   isMetaRealSpendEnabled,
 } from "../lib/commercial";
 import { canCompanyRole } from "../lib/permissions";
-import { filterPlanByMedia, mediaGroupForLabel } from "../lib/planner";
+import { filterPlanByMedia, mediaGroupForLabel, strategicProfileFor } from "../lib/planner";
+import { shouldUseLiveTrends } from "../lib/assistant/trends";
 import {
   DIGITAL_PLATFORMS,
   INFLUENCER_IMAGE_SLUGS,
@@ -25,12 +27,14 @@ test("las operaciones economicas permanecen deshabilitadas por defecto", () => {
   delete process.env.META_REAL_SPEND_ENABLED;
   delete process.env.AGENT_AUTOMATION_ENABLED;
   delete process.env.AI_ASSISTANT_ENABLED;
+  delete process.env.AI_WEB_TRENDS_ENABLED;
 
   assert.equal(isCommercialPaymentsEnabled(), false);
   assert.equal(isMetaPausedDraftsEnabled(), false);
   assert.equal(isMetaRealSpendEnabled(), false);
   assert.equal(isAgentAutomationEnabled(), false);
   assert.equal(isAiAssistantEnabled(), false);
+  assert.equal(isAiWebTrendsEnabled(), false);
 });
 
 test("solo el valor true explicito habilita un interruptor", () => {
@@ -59,6 +63,19 @@ test("el plan respeta los medios seleccionados y conserva el presupuesto", () =>
   assert.deepEqual(filtered.map((row) => mediaGroupForLabel(row.label)), ["television", "digital"]);
   assert.equal(Math.round(filtered.reduce((sum, row) => sum + row.pct, 0) * 100), 100);
   assert.equal(filtered.reduce((sum, row) => sum + Number(row.amount), 0), 1000);
+});
+
+test("el perfil estratégico cambia según el giro y reconoce plataformas digitales", () => {
+  assert.equal(strategicProfileFor("cafetería artesanal").id, "gastronomia");
+  assert.equal(strategicProfileFor("software contable", "B2B").id, "b2b");
+  assert.equal(strategicProfileFor("farmacia barrial").id, "salud");
+  assert.equal(mediaGroupForLabel("Spotify Ads"), "digital");
+  assert.equal(mediaGroupForLabel("LinkedIn Ads"), "digital");
+});
+
+test("Mavi consulta Internet solo cuando la pregunta pide actualidad", () => {
+  assert.equal(shouldUseLiveTrends("¿Qué tendencias hay hoy en Ecuador?"), true);
+  assert.equal(shouldUseLiveTrends("Hazme un guion de radio"), false);
 });
 
 test("los recursos visuales del catálogo existen en el paquete público", () => {

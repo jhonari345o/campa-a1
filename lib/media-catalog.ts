@@ -31,6 +31,7 @@ export type RadioStation = {
   reachPct: number | null;
   audienceRank: number | null;
   reachRank: number | null;
+  imagePath: string | null;
 };
 
 export type InfluencerRate = { format: string; amountUsd: number };

@@ -18,6 +18,7 @@ export type PautaInput = {
   latitude: number;
   longitude: number;
   radiusKm: number;
+  targetScope: "radius" | "country";
   presupuesto: number;
   objetivo?: string;
 };
@@ -77,6 +78,7 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
   const latitude = Number(input.latitude);
   const longitude = Number(input.longitude);
   const radiusKm = Number(input.radiusKm);
+  const targetScope = input.targetScope === "country" ? "country" : "radius";
   if (
     !Number.isFinite(latitude) ||
     !Number.isFinite(longitude) ||
@@ -87,7 +89,7 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
   ) {
     return { ok: false, error: "Selecciona un punto valido dentro del mapa de Ecuador." };
   }
-  if (!Number.isFinite(radiusKm) || radiusKm < 1 || radiusKm > 200) {
+  if (targetScope === "radius" && (!Number.isFinite(radiusKm) || radiusKm < 1 || radiusKm > 200)) {
     return { ok: false, error: "El radio de geolocalizacion debe estar entre 1 y 200 km." };
   }
 
@@ -122,8 +124,9 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
         geo: input.geo.trim(),
         geo_target: {
           country: "EC",
+          mode: targetScope,
           center: { latitude, longitude },
-          radius_km: radiusKm,
+          radius_km: targetScope === "radius" ? radiusKm : null,
         },
         presupuesto_usd: charge.base,
         // Modelo de monetizacion calculado en servidor.

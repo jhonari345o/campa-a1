@@ -1,4 +1,4 @@
-import type { MediaPlan } from "@/lib/planner";
+import { strategicProfileFor, type MediaPlan } from "@/lib/planner";
 
 export type Campaign = {
   key: "meta" | "google" | "tiktok" | "whatsapp";
@@ -19,6 +19,13 @@ export type CampaignInput = {
   keyword: string; // giro
   audience: string;
   objective: string;
+  brand?: string;
+  geography?: string;
+  audienceType?: string;
+  ageRange?: string;
+  socioeconomic?: string;
+  businessModel?: string;
+  conversionModel?: string;
 };
 
 function titulo(s: string) {
@@ -49,101 +56,115 @@ function shuffle<T>(arr: T[]): T[] {
 export function buildCampaigns(input: CampaignInput, plan: MediaPlan): Campaign[] {
   const giro = titulo(input.keyword || "tu negocio");
   const kw = input.keyword?.trim() || "tu negocio";
-  const publico = input.audience?.trim() || "tu publico objetivo";
+  const marca = input.brand?.trim() || giro;
+  const zona = input.geography?.trim() || "la zona prioritaria";
+  const publicoBase = input.audience?.trim() || `${input.audienceType || "personas"} interesadas en ${kw}`;
+  const publico = `${publicoBase} · ${input.ageRange || "edad por validar"} · ${zona}`;
   const objetivo = input.objective?.trim() || "mas ventas y clientes";
+  const conversion = input.conversionModel?.trim() || "mensaje, visita o compra";
+  const profile = strategicProfileFor(kw, input.audienceType, input.businessModel);
 
   // ---- Meta: distintos angulos de venta ----
   const metaIdeas = shuffle([
     [
-      `Titular: ${giro} que estabas buscando`,
-      `Cuerpo: En ${giro} te damos justo lo que necesitas. Escribenos y recibe atencion al instante. Promo de bienvenida por tiempo limitado.`,
-      `CTA: Enviar mensaje`,
+      `Ángulo: beneficio específico · ${profile.promise}`,
+      `Titular: ${marca}: ${profile.promise}`,
+      `Cuerpo: Mostramos ${profile.proof} para que ${publicoBase} entienda la diferencia. La pieza aterriza en ${conversion} y se limita a ${zona}.`,
+      `CTA: Conocer la propuesta`,
     ].join("\n"),
     [
-      `Titular: Lo que dicen nuestros clientes 💬`,
-      `Cuerpo: Cientos de personas ya confian en ${giro}. Calidad, buen trato y resultados. Suma tu experiencia hoy.`,
-      `CTA: Quiero probarlo`,
+      `Ángulo: evidencia antes que promesa`,
+      `Titular: Mira cómo funciona ${marca}`,
+      `Cuerpo: Secuencia de ${profile.proof}. Evita frases genéricas: incluye un dato, condición o demostración que la marca pueda comprobar.`,
+      `CTA: Ver cómo funciona`,
     ].join("\n"),
     [
-      `Titular: ¿Cansado de lo mismo? Prueba ${giro}`,
-      `Cuerpo: Resolvemos ${objetivo} sin complicarte. Rapido, cercano y a tu medida. Te mostramos como en 1 mensaje.`,
-      `CTA: Escribir ahora`,
+      `Ángulo: problema → solución`,
+      `Titular: Una forma más clara de lograr ${objetivo.toLowerCase()}`,
+      `Cuerpo: Abre con una tensión real del público y demuestra cómo ${marca} la resuelve mediante ${profile.promise}. Cierra hacia ${profile.offer}.`,
+      `CTA: Dar el siguiente paso`,
     ].join("\n"),
     [
-      `Titular: Solo por esta semana 🔥`,
-      `Cuerpo: Beneficio especial para nuevos clientes de ${giro}. Cupos limitados: aprovecha antes de que se acabe.`,
-      `CTA: Aprovechar promo`,
+      `Ángulo: oferta verificable`,
+      `Titular: ${profile.offer}`,
+      `Cuerpo: Publica una condición real —vigencia, cobertura en ${zona} y restricciones—. Sin escasez inventada ni resultados garantizados.`,
+      `CTA: Revisar condiciones`,
     ].join("\n"),
     [
-      `Titular: Hecho para ${publico}`,
-      `Cuerpo: Pensamos ${giro} justo para ti. Descubre por que somos la mejor opcion y da el primer paso hoy.`,
-      `CTA: Ver mas`,
+      `Ángulo: relevancia local`,
+      `Titular: ${marca} en ${zona}`,
+      `Cuerpo: Adapta la escena, vocabulario y prueba a ${publicoBase}. La ubicación tiene que sentirse parte de la idea, no solo de la segmentación.`,
+      `CTA: Encontrar la opción cercana`,
     ].join("\n"),
   ]);
 
   // ---- Google: intencion de busqueda ----
   const googleIdeas = shuffle([
     [
-      `Titular 1: ${giro} cerca de ti`,
-      `Titular 2: Calidad y buen precio`,
-      `Titular 3: Contactanos hoy`,
-      `Descripcion: ${giro} con atencion rapida y confiable. Escribenos o llama y reserva ahora.`,
+      `Grupo: intención alta · ${zona}`,
+      `Titular 1: ${giro} en ${zona}`,
+      `Titular 2: ${marca} · ${profile.promise}`,
+      `Titular 3: ${profile.offer}`,
+      `Descripción: Responde la búsqueda con ${profile.proof} y lleva a ${conversion}.`,
     ].join("\n"),
     [
-      `Titular 1: El mejor ${kw} de la ciudad`,
-      `Titular 2: Miles de clientes felices`,
-      `Titular 3: Pide en linea`,
-      `Descripcion: Descubre por que somos la opcion #1 en ${kw}. Facil, rapido y seguro.`,
+      `Grupo: problema o necesidad`,
+      `Titular 1: Solución de ${kw}`,
+      `Titular 2: Compara antes de decidir`,
+      `Titular 3: Habla con ${marca}`,
+      `Descripción: Explica una diferencia comprobable y la condición de ${profile.offer}.`,
     ].join("\n"),
     [
-      `Titular 1: ${giro} a domicilio`,
-      `Titular 2: Rapido y sin filas`,
-      `Titular 3: Ordena ahora`,
-      `Descripcion: Te lo llevamos donde estes. ${giro} con la comodidad que buscabas.`,
+      `Grupo: marca y confianza`,
+      `Titular 1: ${marca} oficial`,
+      `Titular 2: ${profile.proof}`,
+      `Titular 3: Información y condiciones`,
+      `Descripción: Protege búsquedas de marca y dirige a una página coherente con ${conversion}.`,
     ].join("\n"),
     [
-      `Titular 1: ${giro} con descuento`,
-      `Titular 2: Promo por tiempo limitado`,
-      `Titular 3: Reserva hoy`,
-      `Descripcion: Aprovecha precios especiales en ${kw}. Cupos limitados, no te quedes fuera.`,
+      `Grupo: categoría + decisión`,
+      `Titular 1: Opciones de ${kw}`,
+      `Titular 2: Elige con información clara`,
+      `Titular 3: Cotiza en ${zona}`,
+      `Descripción: Usa extensiones de ubicación, llamada y precio solo cuando los datos estén vigentes.`,
     ].join("\n"),
   ]);
 
   // ---- TikTok: estilos de gancho ----
   const tiktokIdeas = shuffle([
     [
-      `Gancho (0-3s): Esto es lo que nadie te cuenta de ${kw}...`,
-      `Desarrollo (3-12s): muestra tu producto/servicio en accion, real y cercano.`,
-      `CTA (12-15s): Siguenos y escribenos para probarlo hoy.`,
+      `Gancho (0-3s): ¿Qué cambia cuando eliges ${marca}?`,
+      `Desarrollo (3-12s): demuestra ${profile.proof} en una situación real de ${zona}.`,
+      `CTA (12-15s): ${profile.offer}.`,
     ].join("\n"),
     [
-      `Gancho (0-3s): POV: encontraste el mejor ${kw} de la ciudad 👀`,
-      `Desarrollo (3-12s): plano corto y dinamico del antes/despues o del momento "wow".`,
-      `CTA (12-15s): Comenta "yo" y te escribimos.`,
+      `Gancho (0-3s): POV: necesitas ${profile.promise}`,
+      `Desarrollo (3-12s): presenta problema, uso y evidencia; rótulos con datos que la marca pueda verificar.`,
+      `CTA (12-15s): Escribe para ${conversion}.`,
     ].join("\n"),
     [
-      `Gancho (0-3s): 3 razones para elegir ${giro} 👇`,
-      `Desarrollo (3-12s): tres cortes rapidos, cada uno con un beneficio.`,
-      `CTA (12-15s): Guarda el video y visitanos.`,
+      `Gancho (0-3s): 3 señales para elegir ${kw} sin equivocarte`,
+      `Desarrollo (3-12s): tres criterios útiles; el tercero conecta de forma natural con ${marca}.`,
+      `CTA (12-15s): Guarda la guía y revisa ${profile.offer}.`,
     ].join("\n"),
     [
-      `Gancho (0-3s): Story time: como ${giro} salvo mi dia`,
-      `Desarrollo (3-12s): narra el problema y como lo resolviste con tu servicio.`,
-      `CTA (12-15s): Escribenos y vive tu propia historia.`,
+      `Gancho (0-3s): Lo probamos en ${zona}: esto pasó`,
+      `Desarrollo (3-12s): microhistoria con contexto, demostración y resultado sin exagerar causalidad.`,
+      `CTA (12-15s): Conoce cómo funciona ${marca}.`,
     ].join("\n"),
     [
-      `Gancho (0-3s): Reto: prueba ${kw} y no te va a decepcionar`,
-      `Desarrollo (3-12s): muestra la reaccion real de un cliente.`,
-      `CTA (12-15s): Etiqueta a un amigo y vengan juntos.`,
+      `Gancho (0-3s): Pregunta real de un cliente sobre ${kw}`,
+      `Desarrollo (3-12s): responde con ${profile.proof}, subtítulos y una objeción concreta.`,
+      `CTA (12-15s): Envía tu pregunta a ${marca}.`,
     ].join("\n"),
   ]);
 
   // ---- WhatsApp: flujos de conversacion ----
   const whatsappIdeas = shuffle([
     [
-      `Mensaje 1: Hola 👋 gracias por escribir a ${giro}. ¿En que te ayudo?`,
-      `Mensaje 2: Mira nuestro catalogo y promos de hoy [enlace].`,
-      `Mensaje 3: ¿Te agendo / preparo tu pedido? Responde y lo cerramos.`,
+      `Mensaje 1: Hola 👋 Soy del equipo de ${marca}. ¿Buscas información, precio o disponibilidad en ${zona}?`,
+      `Mensaje 2: Según tu respuesta, comparte una sola opción con condiciones y ${profile.proof}.`,
+      `Mensaje 3: ¿Avanzamos con ${conversion}?`,
     ].join("\n"),
     [
       `Mensaje 1: ¡Que bueno verte por aqui! 🎉 En ${giro} tenemos algo para ti.`,

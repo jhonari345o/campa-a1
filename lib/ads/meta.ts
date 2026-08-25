@@ -21,6 +21,7 @@ export type MetaCampaignInput = {
   latitude: number;
   longitude: number;
   radiusKm: number;
+  targetScope: "radius" | "country";
   budgetCents: number;
   objective?: string;
 };
@@ -90,27 +91,30 @@ export async function createPausedMetaCampaign(
   const endsAt = new Date(
     startsAt.getTime() + getMetaCampaignDurationDays() * 24 * 60 * 60 * 1000,
   );
+  const geoLocations = input.targetScope === "country"
+    ? { countries: ["EC"], location_types: ["home", "recent"] }
+    : {
+        custom_locations: [
+          {
+            latitude: input.latitude,
+            longitude: input.longitude,
+            radius: Math.max(1, Math.round(input.radiusKm)),
+            distance_unit: "kilometer",
+          },
+        ],
+        location_types: ["home", "recent"],
+      };
   const targeting: Record<string, unknown> = {
     age_min: 18,
     age_max: 65,
-    geo_locations: {
-      custom_locations: [
-        {
-          latitude: input.latitude,
-          longitude: input.longitude,
-          radius: Math.max(1, Math.round(input.radiusKm)),
-          distance_unit: "kilometer",
-        },
-      ],
-      location_types: ["home", "recent"],
-    },
+    geo_locations: geoLocations,
     publisher_platforms: input.red === "instagram" ? ["instagram"] : ["facebook"],
   };
 
   let adsetId = progress.adsetId;
   if (!adsetId) {
     const adset = await metaPost<MetaIdResponse>(config, `${config.adAccountId}/adsets`, {
-      name: `${name} · radio ${Math.round(input.radiusKm)} km`,
+      name: input.targetScope === "country" ? `${name} · Ecuador` : `${name} · radio ${Math.round(input.radiusKm)} km`,
       campaign_id: campaignId,
       optimization_goal: "REACH",
       billing_event: "IMPRESSIONS",

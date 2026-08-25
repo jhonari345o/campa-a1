@@ -98,9 +98,31 @@ export async function generarPlan(
   };
 
   try {
-    const plan = await buildMediaPlan({ keyword, budgetUsd, selectedMedia });
+    const plan = await buildMediaPlan({
+      keyword,
+      budgetUsd,
+      selectedMedia,
+      objective: brief.objective,
+      priority: brief.priority,
+      audienceType: brief.audienceType,
+      geography: brief.geography,
+      businessModel: brief.businessModel,
+      conversionModel: brief.conversionModel,
+      trackingStatus: brief.trackingStatus,
+    });
     const campaigns = selectedMedia.includes("digital")
-      ? buildCampaigns({ keyword, audience, objective }, plan)
+      ? buildCampaigns({
+          keyword,
+          audience,
+          objective,
+          brand: brief.brand,
+          geography: brief.geography,
+          audienceType: brief.audienceType,
+          ageRange: brief.ageRange,
+          socioeconomic: brief.socioeconomic,
+          businessModel: brief.businessModel,
+          conversionModel: brief.conversionModel,
+        }, plan)
       : [];
     const safePlan = profile.is_platform_admin
       ? plan
@@ -147,7 +169,12 @@ export async function guardarPlan(input: Extract<PlanResult, { ok: true }>): Pro
       version: 1,
       progress: 60,
       brief: input.brief,
-      analysis: { basis: input.plan.basis, benchmark: input.plan.benchmark },
+      analysis: {
+        basis: input.plan.basis,
+        benchmark: input.plan.benchmark,
+        profileLabel: input.plan.profileLabel,
+        strategySummary: input.plan.strategySummary,
+      },
       proposal: { plan: input.plan.plan, campaigns: input.campaigns },
     })
     .select("id")

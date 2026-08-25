@@ -44,7 +44,8 @@ export async function preparePaidMetaJob(jobId: string) {
   const latitude = Number(center.latitude);
   const longitude = Number(center.longitude);
   const radiusKm = Number(geoTarget.radius_km);
-  if (!red || !postUrl || ![latitude, longitude, radiusKm].every(Number.isFinite)) {
+  const targetScope = geoTarget.mode === "country" ? "country" : "radius";
+  if (!red || !postUrl || ![latitude, longitude].every(Number.isFinite) || (targetScope === "radius" && !Number.isFinite(radiusKm))) {
     throw new Error("La orden no contiene una publicacion o geolocalizacion valida.");
   }
 
@@ -66,7 +67,8 @@ export async function preparePaidMetaJob(jobId: string) {
         postUrl,
         latitude,
         longitude,
-        radiusKm,
+        radiusKm: targetScope === "country" ? 0 : radiusKm,
+        targetScope,
         budgetCents: context.payment.base_cents,
         objective: typeof spec.objetivo === "string" ? spec.objetivo : undefined,
       },

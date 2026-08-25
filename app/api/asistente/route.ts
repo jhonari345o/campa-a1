@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getSessionProfile } from "@/lib/auth";
 import { buildMarketContext } from "@/lib/assistant/context";
 import { chatCompletion, type LlmMessage } from "@/lib/assistant/llm";
-import { isAiAssistantEnabled } from "@/lib/commercial";
+import { buildLiveTrendContext, shouldUseLiveTrends } from "@/lib/assistant/trends";
+import { isAiAssistantEnabled, isAiWebTrendsEnabled } from "@/lib/commercial";
 
 export const runtime = "nodejs";
 
@@ -13,8 +14,9 @@ Eres una guia de medios y creativa. Ayudas a los clientes a PREPARAR su plan de 
 les indicas que canales evaluar y por que, y GENERAS borradores y guiones (video, redes,
 television, radio, WhatsApp).
 
-Tus unicas fuentes son el CONTEXTO que se te entrega (inversion del mercado, giros de negocio,
-canales y plantillas de campana). NO tienes acceso a Internet.
+Tus fuentes son el CONTEXTO interno que se te entrega (inversion del mercado, giros de negocio,
+canales y plantillas de campana) y, cuando aparezca la sección FUENTES ACTUALES DE INTERNET,
+las fuentes enlazadas y fechadas de esa sección.
 
 Que haces:
 - Partes del plan/presupuesto del cliente. Si no lo tienes, preguntale su giro, presupuesto y
@@ -28,6 +30,10 @@ Reglas:
 - Solo hablas de publicidad, medios y campanas. Si preguntan otra cosa, reencauza con amabilidad.
 - Datos honestos: si algo no esta en el contexto, dilo; no inventes cifras ni prometas
   resultados garantizados.
+- Cuando uses tendencias actuales, separa el hecho publicado de tu inferencia publicitaria,
+  menciona la fecha de consulta y explica por que la señal es o no pertinente para el negocio.
+- No repitas una respuesta estándar: adapta la recomendación al giro, objetivo, audiencia,
+  geografía, presupuesto y momento de la conversación. Explica el porqué de cada canal.
 - Nunca afirmas que compraste, reservaste, publicaste o activaste pauta. Toda recomendacion,
   presupuesto y borrador requiere revision y aprobacion humana.
 - No conviertes ranking de radio, OTS, circulacion, seguidores o impresiones en alcance
@@ -88,14 +94,18 @@ export async function POST(request: Request) {
   // 3. Contexto de datos + llamada al modelo propio.
   try {
     const context = await buildMarketContext();
+    const lastUserMessage = history[history.length - 1].content;
+    const live = isAiWebTrendsEnabled() && shouldUseLiveTrends(lastUserMessage)
+      ? await buildLiveTrendContext(lastUserMessage)
+      : { context: "", sources: [] };
     const messages: LlmMessage[] = [
-      { role: "system", content: `${SYSTEM}\n\n${context}` },
+      { role: "system", content: `${SYSTEM}\n\n${context}${live.context ? `\n\n${live.context}` : ""}` },
       ...history.map((m) => ({ role: m.role, content: m.content }) as LlmMessage),
     ];
 
     const reply = await chatCompletion(messages, { maxTokens: 1024 });
     return NextResponse.json(
-      { reply: reply || "No pude generar una respuesta. Intenta de nuevo." },
+      { reply: reply || "No pude generar una respuesta. Intenta de nuevo.", sources: live.sources },
       { headers },
     );
   } catch (err) {

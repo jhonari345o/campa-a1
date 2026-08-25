@@ -1,4 +1,3 @@
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { InfluencerProfile, RadioStation } from "@/lib/media-catalog";
 
@@ -14,6 +13,18 @@ export type SavedMediaPlan = {
   updated_at: string;
 };
 
+type RadioCatalogRow = {
+  station_name: unknown;
+  genre: unknown;
+  rating: unknown;
+  share: unknown;
+  rating_audience: unknown;
+  reach_audience: unknown;
+  reach_pct: unknown;
+  audience_rank: unknown;
+  reach_rank: unknown;
+};
+
 /**
  * Devuelve el ranking derivado para el catálogo autenticado. La vista cruda
  * continúa siendo administrativa; el navegador recibe solo métricas por
@@ -21,16 +32,10 @@ export type SavedMediaPlan = {
  */
 export async function getRadioCatalog(): Promise<RadioStation[]> {
   try {
-    const db = createAdminClient();
-    const { data, error } = await db
-      .from("current_radio_station_metrics")
-      .select(
-        "station_name, genre, rating, share, rating_audience, reach_audience, reach_pct, audience_rank, reach_rank",
-      )
-      .order("audience_rank", { ascending: true, nullsFirst: false })
-      .limit(150);
+    const db = await createClient();
+    const { data, error } = await db.rpc("get_radio_catalog");
     if (error) return [];
-    return (data ?? []).map((row) => ({
+    return ((data ?? []) as RadioCatalogRow[]).map((row) => ({
       name: String(row.station_name),
       genre: row.genre ? String(row.genre) : null,
       rating: numberOrNull(row.rating),
@@ -40,10 +45,23 @@ export async function getRadioCatalog(): Promise<RadioStation[]> {
       reachPct: numberOrNull(row.reach_pct),
       audienceRank: numberOrNull(row.audience_rank),
       reachRank: numberOrNull(row.reach_rank),
+      imagePath: radioImagePath(String(row.station_name)),
     }));
   } catch {
     return [];
   }
+}
+
+function radioImagePath(name: string): string | null {
+  const normalized = name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  return normalized === "los 40" || normalized === "los40"
+    ? "/providers/radio/los40/logo.png"
+    : null;
 }
 
 export async function getInfluencerCatalog(): Promise<InfluencerProfile[]> {

@@ -68,7 +68,7 @@ export function PautarChat({
 
   function confirmGeoTarget() {
     if (!geoTarget) return;
-    push({ from: "user", text: `${geoTarget.label} · radio ${geoTarget.radiusKm} km` });
+    push({ from: "user", text: geoTarget.scope === "country" ? "Todo Ecuador" : `${geoTarget.label} · radio ${geoTarget.radiusKm} km` });
     if (monto > 0) {
       // Presupuesto ya venia de la campana: pasamos directo al pago.
       const ch = computeCharge(monto);
@@ -97,7 +97,7 @@ export function PautarChat({
       setPostUrl(value);
       push({
         from: "mavi",
-        text: "¡Anotado! Marca el centro en el mapa de Ecuador y ajusta el radio donde quieres mostrar el anuncio.",
+        text: "¡Anotado! Busca una ciudad, usa tu ubicación o selecciona Todo Ecuador. Después ajusta el radio donde quieres mostrar el anuncio.",
       });
       setStep("geo");
     } else if (step === "monto") {
@@ -126,10 +126,13 @@ export function PautarChat({
     const res = await crearPauta({
       red,
       postUrl,
-      geo: `${geoTarget.label} · ${geoTarget.latitude.toFixed(6)}, ${geoTarget.longitude.toFixed(6)} · ${geoTarget.radiusKm} km`,
+      geo: geoTarget.scope === "country"
+        ? "Todo Ecuador"
+        : `${geoTarget.label} · ${geoTarget.latitude.toFixed(6)}, ${geoTarget.longitude.toFixed(6)} · ${geoTarget.radiusKm} km`,
       latitude: geoTarget.latitude,
       longitude: geoTarget.longitude,
       radiusKm: geoTarget.radiusKm,
+      targetScope: geoTarget.scope,
       presupuesto: monto,
       objetivo: objetivo || undefined,
     });

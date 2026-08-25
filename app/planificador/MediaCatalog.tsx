@@ -300,11 +300,11 @@ function RadioSection({ stations }: { stations: RadioStation[] }) {
             <article key={station.name} className="rounded-card border border-border bg-fog p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  {isLos40(station.name) && (
+                  {station.imagePath ? (
                     <div className="relative size-12 shrink-0 overflow-hidden rounded-xl border border-border bg-white">
-                      <Image src="/providers/radio/los40/logo.png" alt="Logo de LOS40 Ecuador" fill sizes="48px" className="object-contain p-1" />
+                      <Image src={station.imagePath} alt={`Logo de ${station.name}`} fill sizes="48px" className="object-contain p-1" />
                     </div>
-                  )}
+                  ) : <StationMonogram name={station.name} />}
                   <div><span className="text-xs font-black text-signal-dark">{String(index + 1).padStart(2, "0")}</span><h3 className="font-black">{station.name}</h3><p className="text-xs text-muted">{station.genre ?? "Género por confirmar"}</p></div>
                 </div>
                 <strong className="text-right text-lg">{mode === "audience" ? compact(station.audience) : percent(station.reachPct)}</strong>
@@ -376,7 +376,7 @@ function ProviderMark({ item, size }: { item: CatalogItem; size: "small" | "larg
   </div>;
 }
 function initials(name: string) { return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase(); }
-function isLos40(name: string) { return name.toLocaleLowerCase("es").replace(/\s+/g, "").includes("los40"); }
+function StationMonogram({ name }: { name: string }) { return <div aria-hidden className="grid size-12 shrink-0 place-items-center rounded-xl bg-forest text-sm font-black text-white">{initials(name)}</div>; }
 function compact(value: number | null) { return value == null ? "Por confirmar" : new Intl.NumberFormat("es-EC", { notation: "compact", maximumFractionDigits: 1 }).format(value); }
 function percent(value: number | null) { return value == null ? "Por confirmar" : `${new Intl.NumberFormat("es-EC", { maximumFractionDigits: 2 }).format(value)}%`; }
 function money(value: number) { return new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value); }

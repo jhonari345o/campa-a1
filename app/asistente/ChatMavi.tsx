@@ -3,13 +3,15 @@
 import { useRef, useState } from "react";
 import { MaviAvatar } from "@/components/Mavi";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Source = { title: string; url: string; source: string; publishedAt: string | null };
+type Msg = { role: "user" | "assistant"; content: string; sources?: Source[] };
 
 const SUGERENCIAS = [
   "Tengo una cafeteria y $2000 al mes. ¿En que canales invierto?",
   "Hazme un guion para un reel de Instagram de mi restaurante.",
   "Escribe una cuna de radio de 30s para mi farmacia.",
   "¿Como armo una campana de WhatsApp para vender mas?",
+  "¿Qué tendencias de hoy en Ecuador puedo aprovechar para mi marca?",
 ];
 
 export function ChatMavi() {
@@ -48,7 +50,7 @@ export function ChatMavi() {
       if (!res.ok) {
         setError(data.error ?? "No pude responder.");
       } else {
-        setMessages((m) => [...m, { role: "assistant", content: data.reply }]);
+        setMessages((m) => [...m, { role: "assistant", content: data.reply, sources: data.sources ?? [] }]);
       }
     } catch {
       setError("Problema de conexion. Intenta de nuevo.");
@@ -62,7 +64,7 @@ export function ChatMavi() {
     <div className="flex h-[calc(100vh-160px)] flex-col rounded-panel border border-border bg-white shadow-panel">
       <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-6">
         {messages.map((m, i) => (
-          <Bubble key={i} role={m.role} content={m.content} />
+          <Bubble key={i} role={m.role} content={m.content} sources={m.sources} />
         ))}
         {loading && <Bubble role="assistant" content="Mavi esta pensando…" muted />}
         {error && (
@@ -101,7 +103,8 @@ export function ChatMavi() {
             className="mt-0.5"
           />
           <span>
-            Autorizo procesar esta consulta con el proveedor de IA configurado. No incluire
+            Autorizo procesar esta consulta con el proveedor de IA configurado y, cuando pregunte
+            por actualidad, consultar fuentes públicas de Internet. No incluiré
             contrasenas, datos personales, contratos, tarifarios ni informacion licenciada.
           </span>
         </label>
@@ -126,10 +129,12 @@ function Bubble({
   role,
   content,
   muted,
+  sources,
 }: {
   role: "user" | "assistant";
   content: string;
   muted?: boolean;
+  sources?: Source[];
 }) {
   const isUser = role === "user";
   return (
@@ -143,6 +148,20 @@ function Bubble({
         }`}
       >
         {content}
+        {sources && sources.length > 0 && (
+          <div className="mt-3 border-t border-border pt-3">
+            <p className="text-[10px] font-black uppercase tracking-wide text-muted">Fuentes actuales consultadas</p>
+            <ul className="mt-2 space-y-1.5">
+              {sources.map((item) => (
+                <li key={`${item.url}-${item.title}`}>
+                  <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-signal-dark hover:underline">
+                    {item.title} · {item.source}{item.publishedAt ? ` · ${item.publishedAt}` : ""} ↗
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

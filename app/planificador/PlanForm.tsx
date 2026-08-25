@@ -150,7 +150,12 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
         <p className="mt-1 text-sm text-muted">
           {plan.basis === "giro"
             ? `Basado en patrones agregados de negocios comparables a "${keyword}".`
-            : `No encontramos una base comparable suficiente para "${keyword}"; usamos una referencia agregada del mercado.`}
+            : plan.basis === "sector"
+              ? `Basado en el sector ${plan.profileLabel.toLowerCase()} y en el brief ingresado.`
+              : `Usamos el mercado agregado como referencia y lo ajustamos al perfil ${plan.profileLabel.toLowerCase()}, al objetivo y a la prioridad del brief.`}
+        </p>
+        <p className="mt-4 rounded-xl border border-signal/25 bg-signal/5 p-4 text-sm font-bold text-forest">
+          {plan.strategySummary}
         </p>
 
         <h3 className="mt-6 text-sm font-black uppercase tracking-wide text-muted">Distribucion recomendada por canal</h3>
@@ -167,6 +172,7 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
               <div className="mt-1 h-2 rounded-full bg-fog">
                 <div className="h-2 rounded-full bg-signal" style={{ width: `${Math.min(100, r.pct * 100)}%` }} />
               </div>
+              {r.rationale && <p className="mt-1 text-xs leading-relaxed text-muted">{r.rationale}</p>}
             </li>
           ))}
         </ul>

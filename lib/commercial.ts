@@ -22,6 +22,10 @@ export function isAiAssistantEnabled(): boolean {
   return enabled(process.env.AI_ASSISTANT_ENABLED);
 }
 
+export function isAiWebTrendsEnabled(): boolean {
+  return enabled(process.env.AI_WEB_TRENDS_ENABLED);
+}
+
 function enabled(value: string | undefined): boolean {
   return value?.trim().toLowerCase() === "true";
 }
