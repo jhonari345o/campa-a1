@@ -286,6 +286,26 @@ function RadioSection({ stations }: { stations: RadioStation[] }) {
         <Summary label="Líder en alcance" value={stations.find((s) => s.reachRank === 1)?.name ?? "Galaxia Super Stereo"} note="Alcance por emisora" />
         <Summary label="Estado del corte" value="Por confirmar" note="Target, plaza, período y franja" />
       </div>
+      <div className="mt-5 rounded-card border border-border bg-fog p-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="relative size-16 shrink-0 overflow-hidden rounded-2xl border border-border bg-white">
+              <Image src="/providers/radio/los40/logo.png" alt="Logo de LOS40 Ecuador" fill sizes="64px" className="object-contain p-2" />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-signal-dark">Directorio público destacado</p>
+              <h3 className="mt-1 text-xl font-black">LOS40 Ecuador</h3>
+              <p className="text-sm text-muted">Música, entretenimiento y actualidad para cobertura nacional.</p>
+            </div>
+          </div>
+          <span className="rounded-full bg-signal/15 px-3 py-1 text-[10px] font-black uppercase text-signal-dark">Cotizable</span>
+        </div>
+        <div className="mt-4 grid gap-3 text-xs sm:grid-cols-3">
+          <p><strong>Cobertura:</strong> Ecuador</p>
+          <p><strong>Formatos:</strong> cuñas, menciones y contenido</p>
+          <p><strong>Condición:</strong> disponibilidad y tarifa por confirmar</p>
+        </div>
+      </div>
       <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label="Lectura del ranking">
         <Toggle pressed={mode === "audience"} onClick={() => { setMode("audience"); setExpanded(false); }}>Audiencia promedio</Toggle>
         <Toggle pressed={mode === "reach"} onClick={() => { setMode("reach"); setExpanded(false); }}>Alcance por emisora</Toggle>
