@@ -19,6 +19,7 @@ import {
   type InfluencerProfile,
   type RadioStation,
 } from "@/lib/media-catalog";
+import { TV_RATE_CATALOGS, type TvOffer, type TvRateCatalog } from "@/lib/tv-rate-catalog";
 
 export function MediaCatalog({
   section,
@@ -82,6 +83,7 @@ export function MediaCatalog({
           description="Explora cada canal y llévalo al plan para definir programas, frecuencia e inversión. Las tarifas no constituyen reserva ni orden de compra."
           items={TV_CHANNELS}
           countLabel="7 canales nacionales · 23 canales locales por provincia"
+          catalogs={TV_RATE_CATALOGS}
         />
       )}
       {section === "ooh" && (
@@ -343,16 +345,18 @@ function RadioSection({ stations }: { stations: RadioStation[] }) {
   );
 }
 
-function DirectorySection({ eyebrow, title, description, items, countLabel }: { eyebrow: string; title: string; description: string; items: CatalogItem[]; countLabel: string }) {
+function DirectorySection({ eyebrow, title, description, items, countLabel, catalogs }: { eyebrow: string; title: string; description: string; items: CatalogItem[]; countLabel: string; catalogs?: Record<string, TvRateCatalog> }) {
   const [query, setQuery] = useState("");
+  const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const matches = items.filter((item) => `${item.name} ${item.summary} ${item.coverage ?? ""}`.toLocaleLowerCase("es").includes(query.toLocaleLowerCase("es")));
+  const selectedItem = items.find((item) => item.slug === selectedSlug) ?? null;
   return (
     <section className="rounded-panel border border-border bg-white p-6 shadow-panel sm:p-8">
       <SectionHeading eyebrow={eyebrow} title={title} description={description} count={countLabel} />
       <label className="mt-5 block text-sm font-black">Buscar en el catálogo<input value={query} onChange={(event) => setQuery(event.target.value)} className="mt-1 w-full rounded-xl border border-border bg-fog px-4 py-3 font-normal outline-none focus:border-signal" /></label>
       <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {matches.map((item) => (
-          <article key={item.slug} className="rounded-card border border-border bg-fog p-5">
+          <article key={item.slug} className={`flex flex-col rounded-card border p-5 transition ${selectedSlug === item.slug ? "border-signal bg-signal/5 ring-2 ring-signal/15" : "border-border bg-fog hover:border-signal/50"}`}>
             <div className="flex items-start justify-between gap-3"><ProviderMark item={item} size="large" /><Status status={item.status} /></div>
             <h3 className="mt-4 text-xl font-black">{item.name}</h3>
             <p className="mt-1 text-xs font-black uppercase tracking-wide text-signal-dark">{item.statusNote}</p>
@@ -361,11 +365,143 @@ function DirectorySection({ eyebrow, title, description, items, countLabel }: { 
             {item.coverage && <p className="mt-3 text-xs"><strong>Cobertura:</strong> {item.coverage}</p>}
             {item.incorporated && <ListBlock title="Incorporado" items={item.incorporated} />}
             {item.pending && <ListBlock title="Antes de ordenar" items={item.pending} />}
-            {item.count != null && <span className="mt-4 inline-flex rounded-full bg-signal/10 px-3 py-1 text-xs font-black text-signal-dark">{item.count} registros incorporados</span>}
+            {item.count != null && <span className="mt-4 inline-flex self-start rounded-full bg-signal/10 px-3 py-1 text-xs font-black text-signal-dark">{item.count} registros incorporados</span>}
+            {catalogs?.[item.slug] && <p className="mt-3 text-xs text-muted">{catalogs[item.slug].offers.length} programas, formatos y paquetes auditados.</p>}
+            <button
+              type="button"
+              aria-expanded={selectedSlug === item.slug}
+              aria-controls="catalog-detail"
+              onClick={() => setSelectedSlug((current) => current === item.slug ? null : item.slug)}
+              className="btn btn-secondary mt-5 w-full"
+            >
+              {selectedSlug === item.slug ? "Cerrar catálogo" : catalogs?.[item.slug] ? "Ver catálogo y presupuestar" : "Ver ficha completa"}
+            </button>
           </article>
         ))}
       </div>
+      {selectedItem && (
+        catalogs?.[selectedItem.slug]
+          ? <TvCatalogPanel item={selectedItem} catalog={catalogs[selectedItem.slug]} onClose={() => setSelectedSlug(null)} />
+          : <GenericCatalogPanel item={selectedItem} onClose={() => setSelectedSlug(null)} />
+      )}
       <CatalogConditions />
+    </section>
+  );
+}
+
+function TvCatalogPanel({ item, catalog, onClose }: { item: CatalogItem; catalog: TvRateCatalog; onClose: () => void }) {
+  const [query, setQuery] = useState("");
+  const [kind, setKind] = useState<"todos" | TvOffer["kind"]>("todos");
+  const [day, setDay] = useState("todos");
+  const firstPriced = catalog.offers.find((offer) => offer.priceUsd != null)?.id ?? null;
+  const [selectedOfferId, setSelectedOfferId] = useState<string | null>(firstPriced);
+  const [quantity, setQuantity] = useState(1);
+  const days = Array.from(new Set(catalog.offers.map((offer) => offer.day)));
+  const normalizedQuery = query.trim().toLocaleLowerCase("es");
+  const filtered = catalog.offers.filter((offer) => {
+    const text = `${offer.title} ${offer.schedule} ${offer.market ?? ""} ${offer.day}`.toLocaleLowerCase("es");
+    return (kind === "todos" || offer.kind === kind)
+      && (day === "todos" || offer.day === day)
+      && (!normalizedQuery || text.includes(normalizedQuery));
+  });
+  const selectedOffer = catalog.offers.find((offer) => offer.id === selectedOfferId && offer.priceUsd != null) ?? null;
+  const estimatedSubtotal = (selectedOffer?.priceUsd ?? 0) * quantity;
+  const pricedCount = catalog.offers.filter((offer) => offer.priceUsd != null).length;
+
+  return (
+    <section id="catalog-detail" aria-labelledby="catalog-detail-title" className="mt-7 scroll-mt-24 overflow-hidden rounded-card border border-forest bg-white shadow-panel">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border bg-forest p-5 text-white sm:p-6">
+        <div className="flex items-start gap-4">
+          <ProviderMark item={item} size="large" />
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#91f58d]">Catálogo comercial auditado</p>
+            <h3 id="catalog-detail-title" className="mt-1 text-2xl font-black">{item.name}</h3>
+            <p className="mt-1 text-sm text-white/70">{catalog.priceBasis} · Verificado: {catalog.lastVerified}</p>
+          </div>
+        </div>
+        <button type="button" onClick={onClose} className="rounded-xl border border-white/30 px-4 py-2 text-sm font-black hover:bg-white/10">Cerrar ×</button>
+      </div>
+
+      <div className="p-5 sm:p-6">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Summary label="Oferta auditada" value={`${catalog.offers.length} registros`} note="Programas, formatos y paquetes" />
+          <Summary label="Con precio" value={`${pricedCount} registros`} note="Referenciales, no constituyen reserva" />
+          <Summary label="Por confirmar" value={`${catalog.offers.length - pricedCount} registros`} note="Se cotizan directamente con el medio" />
+        </div>
+
+        <p className="mt-4 rounded-xl border border-amber/30 bg-amber/10 p-4 text-xs text-[#654900]">
+          <strong>Importante:</strong> {catalog.sourceNote}
+        </p>
+
+        <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_auto_auto]">
+          <label className="text-sm font-black">Buscar programa u horario
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ej. noticiero, 21:00 o Quito" className="mt-1 w-full rounded-xl border border-border bg-fog px-4 py-3 font-normal outline-none focus:border-signal" />
+          </label>
+          <label className="text-sm font-black">Tipo
+            <select value={kind} onChange={(event) => setKind(event.target.value as "todos" | TvOffer["kind"])} className="mt-1 block w-full rounded-xl border border-border bg-fog px-4 py-3 font-normal outline-none focus:border-signal">
+              <option value="todos">Todos</option>
+              <option value="programa">Programas</option>
+              <option value="paquete">Paquetes</option>
+              <option value="formato">Formatos</option>
+            </select>
+          </label>
+          <label className="text-sm font-black">Día / grupo
+            <select value={day} onChange={(event) => setDay(event.target.value)} className="mt-1 block w-full rounded-xl border border-border bg-fog px-4 py-3 font-normal outline-none focus:border-signal">
+              <option value="todos">Todos</option>
+              {days.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
+        </div>
+
+        <div className="mt-5 overflow-x-auto rounded-2xl border border-border">
+          <table className="w-full min-w-[820px] border-collapse text-left text-sm">
+            <thead className="bg-fog text-[10px] uppercase tracking-wide text-muted">
+              <tr><th className="p-3">Presupuestar</th><th className="p-3">Programa / producto</th><th className="p-3">Día</th><th className="p-3">Horario / detalle</th><th className="p-3">Plaza</th><th className="p-3 text-right">Tarifa</th></tr>
+            </thead>
+            <tbody>
+              {filtered.map((offer) => (
+                <tr key={offer.id} className={`border-t border-border ${selectedOfferId === offer.id ? "bg-signal/5" : "bg-white"}`}>
+                  <td className="p-3">
+                    <button type="button" disabled={offer.priceUsd == null} aria-pressed={selectedOfferId === offer.id} onClick={() => setSelectedOfferId(offer.id)} className={`rounded-lg px-3 py-2 text-xs font-black ${offer.priceUsd == null ? "cursor-not-allowed bg-concrete text-muted" : selectedOfferId === offer.id ? "bg-signal text-forest" : "border border-border bg-white text-forest hover:border-signal"}`}>
+                      {offer.priceUsd == null ? "Pendiente" : selectedOfferId === offer.id ? "Elegido" : "Elegir"}
+                    </button>
+                  </td>
+                  <td className="p-3"><strong className="block text-forest">{offer.title}</strong><span className="text-[10px] uppercase text-muted">{offer.kind}</span></td>
+                  <td className="p-3 text-muted">{offer.day}</td>
+                  <td className="p-3 text-muted">{offer.schedule}{offer.note ? <span className="mt-1 block text-[10px] text-[#735000]">{offer.note}</span> : null}</td>
+                  <td className="p-3 text-muted">{offer.market ?? "—"}</td>
+                  <td className="p-3 text-right"><strong>{offer.priceUsd == null ? "Por confirmar" : moneyPrecise(offer.priceUsd)}</strong><span className="block text-[10px] text-muted">{offer.unit}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {filtered.length === 0 && <p className="p-6 text-center text-sm text-muted">No hay registros que coincidan con esos filtros.</p>}
+        </div>
+
+        <div className="mt-5 grid gap-4 rounded-card border border-signal/40 bg-forest p-5 text-white lg:grid-cols-[1fr_160px_240px] lg:items-end">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-wide text-[#91f58d]">Estimación rápida</p>
+            <h4 className="mt-1 text-lg font-black">{selectedOffer?.title ?? "Elige una fila con tarifa"}</h4>
+            <p className="text-xs text-white/65">{selectedOffer ? `${moneyPrecise(selectedOffer.priceUsd!)} por ${selectedOffer.unit}` : "Los registros pendientes requieren cotización directa."}</p>
+          </div>
+          <label className="text-sm font-black">Cantidad
+            <input type="number" min={1} max={999} value={quantity} onChange={(event) => setQuantity(Math.min(999, Math.max(1, Number(event.target.value) || 1)))} className="mt-1 w-full rounded-xl border border-white/20 bg-white px-4 py-3 text-forest outline-none focus:border-signal" />
+          </label>
+          <div className="rounded-xl bg-white/10 p-4 text-right"><span className="block text-[10px] font-black uppercase text-white/60">Subtotal referencial</span><strong className="text-2xl">{selectedOffer ? moneyPrecise(estimatedSubtotal) : "—"}</strong><span className="block text-[10px] text-white/55">Sin IVA ni negociación final</span></div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function GenericCatalogPanel({ item, onClose }: { item: CatalogItem; onClose: () => void }) {
+  return (
+    <section id="catalog-detail" aria-labelledby="catalog-detail-title" className="mt-7 rounded-card border border-border bg-fog p-5 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div><p className="text-xs font-black uppercase tracking-wide text-signal-dark">Ficha comercial</p><h3 id="catalog-detail-title" className="mt-1 text-2xl font-black">{item.name}</h3><p className="mt-2 max-w-3xl text-sm text-muted">{item.detail}</p></div>
+        <button type="button" onClick={onClose} className="btn btn-secondary">Cerrar ×</button>
+      </div>
+      <p className="mt-5 rounded-xl border border-dashed border-border bg-white p-5 text-sm text-muted">El medio está incorporado al directorio, pero su catálogo detallado todavía no tiene tarifas verificadas. Se solicitará cotización vigente antes de añadirlo como inversión confirmada.</p>
     </section>
   );
 }
@@ -400,3 +536,4 @@ function StationMonogram({ name }: { name: string }) { return <div aria-hidden c
 function compact(value: number | null) { return value == null ? "Por confirmar" : new Intl.NumberFormat("es-EC", { notation: "compact", maximumFractionDigits: 1 }).format(value); }
 function percent(value: number | null) { return value == null ? "Por confirmar" : `${new Intl.NumberFormat("es-EC", { maximumFractionDigits: 2 }).format(value)}%`; }
 function money(value: number) { return new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value); }
+function moneyPrecise(value: number) { return new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value); }
