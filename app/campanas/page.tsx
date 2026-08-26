@@ -44,7 +44,7 @@ type Job = {
     metrics_actualizadas_at?: string;
   } | null;
   companies: { name: string } | null;
-  payment?: { status: string; total_cents: number } | null;
+  payment?: { provider: string; status: string; total_cents: number } | null;
   delivery?: {
     status: string;
     provider_campaign_id: string | null;
@@ -53,7 +53,7 @@ type Job = {
   } | null;
 };
 
-type PaymentRow = { job_id: string; status: string; total_cents: number };
+type PaymentRow = { job_id: string; provider: string; status: string; total_cents: number };
 type DeliveryRow = {
   job_id: string;
   status: string;
@@ -86,7 +86,7 @@ export default async function CampanasPage({
   const jobIds = jobs.map((job) => job.id);
   if (jobIds.length > 0) {
     const [{ data: payments }, { data: deliveries }] = await Promise.all([
-      supabase.from("campaign_payments").select("job_id, status, total_cents").in("job_id", jobIds),
+      supabase.from("campaign_payments").select("job_id, provider, status, total_cents").in("job_id", jobIds),
       supabase
         .from("campaign_deliveries")
         .select("job_id, status, provider_campaign_id, provider_ad_id, error")
@@ -199,7 +199,7 @@ export default async function CampanasPage({
 
                   {j.payment && (
                     <p className="mt-2 text-xs font-bold text-forest">
-                      PayPhone: {paymentLabel(j.payment.status)} · ${(j.payment.total_cents / 100).toFixed(2)}
+                      {paymentProviderLabel(j.payment.provider)}: {paymentLabel(j.payment.status)} · ${(j.payment.total_cents / 100).toFixed(2)}
                     </p>
                   )}
 
@@ -328,6 +328,10 @@ function paymentLabel(status: string): string {
     reversed: "reversado",
   };
   return labels[status] ?? status;
+}
+
+function paymentProviderLabel(provider: string): string {
+  return provider === "dlocal" ? "dLocal Go" : provider === "payphone" ? "PayPhone (histórico)" : provider;
 }
 
 function MetricsPanel({

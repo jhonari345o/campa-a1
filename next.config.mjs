@@ -52,9 +52,6 @@ const nextConfig = {
         headers: securityHeaders,
       },
       ...privateRoutes.map((source) => ({ source: `${source}/:path*`, headers: privateHeaders })),
-      // PayPhone valida que el enlace nazca exactamente del dominio registrado.
-      { source: "/pautar", headers: [{ key: "Referrer-Policy", value: "origin" }] },
-      { source: "/pautar/:path*", headers: [{ key: "Referrer-Policy", value: "origin" }] },
     ];
   },
 };

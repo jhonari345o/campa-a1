@@ -30,8 +30,9 @@ y entrega HTTPS, dominio y CDN. Alternativa por contenedor (ECS/Fargate) al fina
 | `META_REAL_SPEND_ENABLED` | `false` hasta aprobar pauta con gasto |
 | `AI_ASSISTANT_ENABLED` | `false` hasta aprobar proveedor y tratamiento de datos |
 | `AGENT_AUTOMATION_ENABLED` | `false` hasta aprobar el worker automatizado |
-| `PAYPHONE_TOKEN` | Bearer Token de la aplicacion WEB PayPhone (solo servidor) |
-| `PAYPHONE_STORE_ID` | StoreID del comercio PayPhone |
+| `DLOCALGO_ENV` | `sandbox` hasta aprobar la prueba; luego `live` |
+| `DLOCALGO_API_KEY` | API Key de dLocal Go (solo servidor) |
+| `DLOCALGO_SECRET_KEY` | Secret Key de dLocal Go (solo servidor) |
 | `META_ACCESS_TOKEN` | token de Marketing API (solo servidor) |
 | `META_AD_ACCOUNT_ID` | cuenta `act_...` que pagara la pauta |
 | `META_PAGE_ID` | pagina de Facebook vinculada |
@@ -84,12 +85,13 @@ Para un control mas fino (o correr detras de ALB + WAF propio):
 
 ## Checklist previo a abrir a clientes (regla de oro)
 - [ ] `schema.sql` y `seed.sql` ejecutados en Supabase.
-- [ ] Migraciones `0001` a `0007` ejecutadas y politicas RLS verificadas.
+- [ ] Migraciones hasta `0010_dlocal_go_checkout.sql` ejecutadas y políticas RLS verificadas.
 - [ ] Primer platform admin creado y verificado.
 - [ ] Autorregistro desactivado en Supabase Auth; usuarios creados solo por administracion.
 - [ ] Variables de entorno cargadas en Amplify (o secrets en ECS).
-- [ ] Aplicacion WEB PayPhone ligada al dominio y URL de respuesta de produccion.
-- [ ] Preparacion y confirmacion PayPhone probadas en ambiente controlado.
+- [ ] dLocal Go configurado primero en sandbox, con `notification_url` pública y HTTPS.
+- [ ] Firma HMAC, retorno, reintentos e idempotencia dLocal probados con una orden controlada.
+- [ ] Conciliación contable aprobada: cobro dLocal y factura Meta son movimientos separados.
 - [ ] Meta Marketing API aprobada; campaña de prueba creada en `PAUSED` sin gasto.
 - [ ] `COMMERCIAL_PAYMENTS_ENABLED=false` y `META_REAL_SPEND_ENABLED=false`
       hasta que los controles P0/P1 tengan evidencia aprobada.

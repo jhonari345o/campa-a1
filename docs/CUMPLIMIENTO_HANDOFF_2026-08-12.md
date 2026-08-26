@@ -11,8 +11,8 @@ necesita configuracion, evidencia o desarrollo adicional.
 | Datos crudos y licenciados restringidos | Aplicado y verificado | Una sesion simulada de miembro normal obtuvo cero filas crudas y solo sus empresas/campanas. |
 | Roles y separacion crear/aprobar | Parcial | Rol `approver` y permiso separado; falta un flujo completo de aprobacion/versiones. |
 | Auditoria inmutable | Parcial | Esquema append-only y contexto adicional; falta instrumentar todos los eventos y exportacion. |
-| Cobro sin capturar tarjetas | Implementado | PayPhone alojado; se elimino el formulario simulado de tarjeta. |
-| Cobro real y conciliacion | Bloqueado | Interruptor apagado; faltan credenciales, pruebas controladas, webhooks firmados y ledger. |
+| Cobro sin capturar tarjetas | Implementado | Checkout alojado de dLocal Go; la aplicación no solicita datos de tarjeta. |
+| Cobro real y conciliación | Implementado con bloqueo | Webhook HMAC, consulta oficial, idempotencia y desglose contable listos; faltan migración aplicada, credenciales y prueba sandbox. |
 | Meta en pausa y activacion humana | Implementado con bloqueo | Dos pasos separados; borrador y gasto estan apagados por defecto. |
 | IA explicable y supervisada | Parcial | Consentimiento, minimizacion y bloqueo por variable; falta contrato/DPA y evaluacion formal. |
 | Metricas con fuente y metodologia | Parcial | Meta muestra fuente, periodo y metodo; catalogo cross-media homologado sigue pendiente. |

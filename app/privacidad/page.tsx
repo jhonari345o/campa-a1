@@ -24,7 +24,7 @@ export default function PrivacyPage() {
         <p>Cuando Mavi consulta fuentes públicas de Internet, enviamos únicamente el contexto necesario para responder; no se deben introducir secretos, credenciales ni datos sensibles en el chat.</p>
       </LegalSection>
       <LegalSection title="4. Proveedores y transferencias">
-        <p>Podemos encargar tratamientos necesarios a proveedores de infraestructura, base de datos, inteligencia artificial, medición, pago y medios, entre ellos AWS, Supabase, Meta y PayPhone, según las funciones activadas. Cada proveedor trata la información bajo sus propias condiciones y controles. No vendemos datos personales.</p>
+        <p>Podemos encargar tratamientos necesarios a proveedores de infraestructura, base de datos, inteligencia artificial, medición, pago y medios, entre ellos AWS, Supabase, Meta y dLocal Go, según las funciones activadas. Cada proveedor trata la información bajo sus propias condiciones y controles. No vendemos datos personales.</p>
         <p>Algunos proveedores pueden procesar datos fuera de Ecuador. Aplicamos medidas contractuales y técnicas razonables para protegerlos conforme a la normativa aplicable.</p>
       </LegalSection>
       <LegalSection title="5. Cookies, conservación y seguridad">
@@ -41,4 +41,3 @@ export default function PrivacyPage() {
     </LegalPage>
   );
 }
-

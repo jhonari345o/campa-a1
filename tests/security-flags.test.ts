@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
@@ -21,6 +22,8 @@ import {
   TV_CHANNELS,
 } from "../lib/media-catalog";
 import { TV_RATE_CATALOGS } from "../lib/tv-rate-catalog";
+import { verifyDlocalNotificationSignature } from "../lib/payments/dlocal-signature";
+import { computeCharge } from "../lib/pricing";
 
 test("las operaciones economicas permanecen deshabilitadas por defecto", () => {
   delete process.env.COMMERCIAL_PAYMENTS_ENABLED;
@@ -36,6 +39,32 @@ test("las operaciones economicas permanecen deshabilitadas por defecto", () => {
   assert.equal(isAgentAutomationEnabled(), false);
   assert.equal(isAiAssistantEnabled(), false);
   assert.equal(isAiWebTrendsEnabled(), false);
+});
+
+test("el cobro separa inversión, 22% y 25% sin reducir el presupuesto Meta", () => {
+  const charge = computeCharge(200);
+  assert.deepEqual(charge, {
+    base: 200,
+    taxPct: 0.22,
+    tax: 44,
+    feePct: 0.25,
+    fee: 50,
+    total: 294,
+  });
+});
+
+test("el webhook dLocal Go exige la firma HMAC del cuerpo crudo", () => {
+  const apiKey = "test-api-key";
+  const secretKey = "test-secret-key";
+  const rawBody = '{"payment_id":"DP-123"}';
+  const signature = createHmac("sha256", secretKey)
+    .update(`${apiKey}${rawBody}`, "utf8")
+    .digest("hex");
+  const header = `V2-HMAC-SHA256, Signature: ${signature}`;
+
+  assert.equal(verifyDlocalNotificationSignature(rawBody, header, apiKey, secretKey), true);
+  assert.equal(verifyDlocalNotificationSignature(`${rawBody} `, header, apiKey, secretKey), false);
+  assert.equal(verifyDlocalNotificationSignature(rawBody, "V2-HMAC-SHA256, Signature: 00", apiKey, secretKey), false);
 });
 
 test("solo el valor true explicito habilita un interruptor", () => {

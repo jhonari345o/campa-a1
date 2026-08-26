@@ -6,7 +6,7 @@ import { getSessionProfile } from "@/lib/auth";
 import { getMyCompanies } from "@/lib/company";
 import { computeCharge } from "@/lib/pricing";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { preparePayPhonePayment } from "@/lib/payments/payphone";
+import { createDlocalCheckout, getDlocalCredentials } from "@/lib/payments/dlocal";
 import { getMaxMetaBudgetUsd } from "@/lib/ads/config";
 import { isCommercialPaymentsEnabled } from "@/lib/commercial";
 import { canCompanyRole } from "@/lib/permissions";
@@ -24,12 +24,12 @@ export type PautaInput = {
 };
 
 export type PautaResult =
-  | { ok: true; id: string; payWithCard: string; payWithPayPhone: string }
+  | { ok: true; id: string; checkoutUrl: string }
   | { ok: false; error: string };
 
 /**
- * Crea una orden y prepara el Boton de Pago de PayPhone. La orden queda fuera
- * de la cola de publicacion hasta confirmar la transaccion con la API oficial.
+ * Crea una orden y prepara el Checkout estándar alojado de dLocal Go. La orden
+ * queda fuera de la cola de publicación hasta conciliarla con la API oficial.
  */
 export async function crearPauta(input: PautaInput): Promise<PautaResult> {
   const profile = await getSessionProfile();
@@ -96,10 +96,12 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
   const charge = computeCharge(presupuesto);
   const siteUrl = getSiteUrl();
   if (!siteUrl) {
-    return { ok: false, error: "Falta configurar NEXT_PUBLIC_SITE_URL para regresar desde PayPhone." };
+    return { ok: false, error: "Falta configurar NEXT_PUBLIC_SITE_URL para regresar desde dLocal Go." };
   }
-  if (!process.env.PAYPHONE_TOKEN || !process.env.PAYPHONE_STORE_ID) {
-    return { ok: false, error: "PayPhone aun no esta configurado en el servidor." };
+  try {
+    getDlocalCredentials();
+  } catch {
+    return { ok: false, error: "dLocal Go aún no está configurado en el servidor." };
   }
 
   let admin: ReturnType<typeof createAdminClient>;
@@ -135,7 +137,7 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
         comision_pct: charge.feePct,
         comision_usd: charge.fee,
         total_a_pagar_usd: charge.total,
-        pago: "payphone_pendiente",
+        pago: "dlocal_pendiente",
         objetivo: input.objetivo?.trim() || "Promocionar publicacion",
       },
     })
@@ -157,6 +159,7 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
     .insert({
       job_id: data.id,
       company_id: company.id,
+      provider: "dlocal",
       client_transaction_id: clientTransactionId,
       status: "payment_preparing",
       currency: "usd",
@@ -178,52 +181,53 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
   }
 
   try {
-    const links = await preparePayPhonePayment({
+    const checkout = await createDlocalCheckout({
       jobId: data.id,
-      clientTransactionId,
-      customerEmail: profile.email,
+      orderId: clientTransactionId,
+      amountCents: amounts.baseCents + amounts.taxCents + amounts.feeCents,
       red,
-      ...amounts,
-      responseUrl: `${siteUrl}/api/payments/payphone/confirm`,
-      cancellationUrl: `${siteUrl}/pautar?checkout=cancelled&job=${encodeURIComponent(data.id)}`,
-      latitude,
-      longitude,
+      successUrl: `${siteUrl}/api/payments/dlocal/return?job=${encodeURIComponent(data.id)}`,
+      backUrl: `${siteUrl}/pautar?checkout=cancelled&job=${encodeURIComponent(data.id)}`,
+      notificationUrl: `${siteUrl}/api/payments/dlocal/notifications`,
     });
 
-    await admin
+    const { error: checkoutSaveError } = await admin
       .from("campaign_payments")
       .update({
-        provider_payment_id: links.paymentId,
-        checkout_url: links.payWithCard,
+        provider_payment_id: checkout.id,
+        checkout_url: checkout.redirect_url,
         status: "payment_open",
         metadata: {
           red,
           created_by: profile.id,
-          pay_with_payphone_url: links.payWithPayPhone,
+          dlocal_environment: process.env.DLOCALGO_ENV?.toLowerCase() === "live" ? "live" : "sandbox",
+          dlocal_status: checkout.status,
         },
       })
       .eq("id", payment.id);
+    if (checkoutSaveError) {
+      throw new Error("No se pudo guardar la referencia segura del checkout dLocal Go.");
+    }
 
     revalidatePath("/campanas");
     return {
       ok: true,
       id: data.id,
-      payWithCard: links.payWithCard,
-      payWithPayPhone: links.payWithPayPhone,
+      checkoutUrl: checkout.redirect_url!,
     };
   } catch (checkoutError) {
-    const detail = checkoutError instanceof Error ? checkoutError.message : "Error desconocido de PayPhone";
+    const detail = checkoutError instanceof Error ? checkoutError.message : "Error desconocido de dLocal Go";
     await Promise.all([
       admin
         .from("campaign_payments")
-        .update({ status: "failed", metadata: { red, payphone_error: detail.slice(0, 500) } })
+        .update({ status: "failed", metadata: { red, dlocal_error: detail.slice(0, 500) } })
         .eq("id", payment.id),
       admin
         .from("campaign_jobs")
-        .update({ status: "error", log: "PayPhone no pudo abrir la pagina de pago." })
+        .update({ status: "error", log: "dLocal Go no pudo abrir la página de pago." })
         .eq("id", data.id),
     ]);
-    return { ok: false, error: "No fue posible abrir PayPhone. No se realizo ningun cobro." };
+    return { ok: false, error: "No fue posible abrir dLocal Go. No se realizó ningún cobro." };
   }
 }
 

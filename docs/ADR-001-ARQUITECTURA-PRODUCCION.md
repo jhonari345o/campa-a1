@@ -18,10 +18,13 @@ dinero ni se active inventario o pauta real hasta cerrar los controles P0/P1.
    identificables son exclusivos del equipo; el cliente recibe derivados.
 3. Los roles de empresa son `admin`, `planner`, `analyst`, `approver` y
    `viewer`. Crear y aprobar son permisos separados.
-4. PayPhone usa su experiencia alojada; la aplicacion nunca solicita ni guarda
-   numero de tarjeta o CVC.
+4. dLocal Go usa su Checkout estándar alojado; la aplicación nunca solicita ni
+   guarda número de tarjeta o CVC. El webhook firmado se vuelve a comprobar
+   contra la API antes de marcar la orden como pagada.
 5. Meta siempre se crea primero en `PAUSED`. Preparar un borrador y activar
    gasto son operaciones distintas y requieren habilitaciones independientes.
+   dLocal liquida a Ad Mavericks y no paga automáticamente a Meta: la inversión
+   base se reserva en el ledger y Meta la factura por su propio método de pago.
 6. Mavi orienta y prepara borradores. No compra ni publica sola. Antes de enviar
    texto a un proveedor de IA se exige consentimiento y se minimiza el contexto.
 7. Cobro, borradores Meta, gasto Meta, IA y worker automatico tienen

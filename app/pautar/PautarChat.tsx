@@ -49,10 +49,7 @@ export function PautarChat({
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [paymentLinks, setPaymentLinks] = useState<{
-    payWithCard: string;
-    payWithPayPhone: string;
-  } | null>(null);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
 
   function push(b: Bubble) {
     setChat((c) => [...c, b]);
@@ -141,11 +138,11 @@ export function PautarChat({
       setError(res.error);
       return;
     }
-    setPaymentLinks({
-      payWithCard: res.payWithCard,
-      payWithPayPhone: res.payWithPayPhone,
+    setCheckoutUrl(res.checkoutUrl);
+    push({
+      from: "mavi",
+      text: "dLocal Go preparó el checkout seguro. Continúa allí para elegir el medio de pago disponible.",
     });
-    push({ from: "mavi", text: "PayPhone preparo el pago. Elige tarjeta o la app PayPhone; el enlace vence en 10 minutos." });
   }
 
   const charge = computeCharge(monto);
@@ -249,7 +246,7 @@ export function PautarChat({
                   Solicitar revisión humana →
                 </a>
               </div>
-            ) : !paymentLinks ? (
+            ) : !checkoutUrl ? (
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -262,31 +259,24 @@ export function PautarChat({
                   disabled={sending}
                   className="btn btn-primary mt-1 w-full disabled:opacity-50"
                 >
-                  {sending ? "Preparando PayPhone..." : `Continuar a PayPhone · ${money(charge.total)}`}
+                  {sending ? "Preparando dLocal Go..." : `Continuar a dLocal Go · ${money(charge.total)}`}
                 </button>
               </form>
             ) : (
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <div className="mt-4">
                 <button
                   type="button"
-                  onClick={() => window.location.assign(paymentLinks.payWithCard)}
-                  className="btn btn-primary"
+                  onClick={() => window.location.assign(checkoutUrl)}
+                  className="btn btn-primary w-full"
                 >
-                  Pagar con tarjeta
-                </button>
-                <button
-                  type="button"
-                  onClick={() => window.location.assign(paymentLinks.payWithPayPhone)}
-                  className="btn btn-secondary"
-                >
-                  Pagar con app PayPhone
+                  Abrir checkout seguro de dLocal Go
                 </button>
               </div>
             )}
 
             <p className="mt-2 text-center text-[11px] text-muted">
               {commercialPaymentsEnabled
-                ? "🔒 PayPhone procesa el pago en su pagina segura. Ad Mavericks no recibe los datos de la tarjeta."
+                ? "🔒 dLocal Go procesa el pago en su página segura. Ad Mavericks no recibe los datos de la tarjeta."
                 : "No se solicitan ni almacenan datos de tarjeta durante el modo controlado."}
             </p>
           </div>

@@ -48,11 +48,16 @@ Equipo Ad Mavericks ──▶ Consola local (127.0.0.1)
 - **Pauta externa** recibe el URL de la publicacion, un centro y radio de
   geolocalizacion en Ecuador y la inversion. La orden guarda el objetivo
   geografico en `campaign_jobs.spec`; el total suma 22% de impuestos/costos y
-  25% de comision sobre la inversion base. PayPhone aloja el pago y la app
-  confirma el resultado contra su API antes de habilitar la entrega. Meta crea
+  25% de comisión sobre la inversión base. dLocal Go aloja el pago; la app
+  valida la firma y concilia el resultado contra su API antes de habilitar la entrega. Meta crea
   la campana en pausa; el equipo revisa y confirma por separado la activacion
   que inicia gasto. Los tres pasos tienen interruptores de lanzamiento
   independientes y permanecen apagados por defecto.
+- **Separación financiera:** dLocal Go recauda el total y liquida el neto al
+  comercio. No transfiere la inversión a Meta. `base_cents` queda reservado para
+  medios; `tax_cents` y `fee_cents` quedan separados; la comisión propia de
+  dLocal se guarda aparte. Meta factura la inversión mediante su propio método
+  de pago y la conciliación evita confundir ambos movimientos.
 
 ## 3. Modelo de datos
 

@@ -4,6 +4,7 @@ import { getSessionProfile } from "@/lib/auth";
 import { PautarChat } from "./PautarChat";
 import { computeCharge, money, SERVICE_FEE_PCT, TAX_PCT } from "@/lib/pricing";
 import { isCommercialPaymentsEnabled } from "@/lib/commercial";
+import { isDlocalConfigured } from "@/lib/payments/dlocal";
 
 export const metadata = { title: "Pautar con Mavi" };
 
@@ -11,7 +12,6 @@ const supabaseConfigured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 );
 
-const payPhoneConectado = Boolean(process.env.PAYPHONE_TOKEN && process.env.PAYPHONE_STORE_ID);
 const metaConectada = Boolean(
   process.env.META_ACCESS_TOKEN &&
     process.env.META_AD_ACCOUNT_ID &&
@@ -42,6 +42,7 @@ export default async function PautarPage({
   const initialMonto = Number.isFinite(montoNum) && montoNum > 0 ? montoNum : undefined;
   const initialObjetivo = sp.objetivo?.slice(0, 120) || undefined;
   const commercialPaymentsEnabled = isCommercialPaymentsEnabled();
+  const dlocalConectado = isDlocalConfigured();
 
   return (
     <div className="min-h-screen">
@@ -66,26 +67,32 @@ export default async function PautarPage({
 
         {sp.checkout === "success" && (
           <p className="mt-4 rounded-xl border border-signal/40 bg-signal/10 px-4 py-3 text-sm font-bold text-forest">
-            ✅ PayPhone confirmo el pago. La orden ya esta disponible en “Mis campanas” para preparar
+            ✅ dLocal Go confirmó el pago. La orden ya está disponible en “Mis campañas” para preparar
             el borrador pausado de Meta.
           </p>
         )}
         {sp.checkout === "cancelled" && (
           <p className="mt-4 rounded-xl border border-amber/40 bg-amber/10 px-4 py-3 text-sm font-bold text-forest">
-            Pago cancelado. PayPhone no habilito la pauta; puedes crear una nueva orden cuando quieras.
+            Pago cancelado. dLocal Go no habilitó la pauta; puedes crear una nueva orden cuando quieras.
+          </p>
+        )}
+
+        {sp.checkout === "pending" && (
+          <p className="mt-4 rounded-xl border border-amber/40 bg-amber/10 px-4 py-3 text-sm font-bold text-forest">
+            El pago sigue pendiente en dLocal Go. La pauta se habilitará únicamente cuando la API lo confirme.
           </p>
         )}
 
         {["failed", "attention", "invalid"].includes(sp.checkout ?? "") && (
           <p className="mt-4 rounded-xl border border-coral/40 bg-coral/10 px-4 py-3 text-sm font-bold text-[#a13b31]">
-            {sp.detail || "PayPhone no pudo confirmar el pago. La pauta no fue habilitada."}
+            {sp.detail || "dLocal Go no pudo confirmar el pago. La pauta no fue habilitada."}
           </p>
         )}
 
-        {(!payPhoneConectado || !metaConectada) && (
+        {(!dlocalConectado || !metaConectada) && (
           <p className="mt-4 rounded-xl border border-amber/40 bg-amber/10 px-4 py-3 text-sm font-bold text-forest">
-            🔌 Integracion pendiente de credenciales: {!payPhoneConectado ? "PayPhone" : ""}
-            {!payPhoneConectado && !metaConectada ? " y " : ""}
+            🔌 Integración pendiente de credenciales: {!dlocalConectado ? "dLocal Go" : ""}
+            {!dlocalConectado && !metaConectada ? " y " : ""}
             {!metaConectada ? "Meta" : ""}. No se simulan tarjetas ni publicaciones.
           </p>
         )}
