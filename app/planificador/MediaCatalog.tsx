@@ -404,7 +404,10 @@ function TvCatalogPanel({ item, catalog, onClose }: { item: CatalogItem; catalog
       && (day === "todos" || offer.day === day)
       && (!normalizedQuery || text.includes(normalizedQuery));
   });
-  const selectedOffer = catalog.offers.find((offer) => offer.id === selectedOfferId && offer.priceUsd != null) ?? null;
+  const selectedOffer = filtered.find((offer) => offer.id === selectedOfferId && offer.priceUsd != null)
+    ?? filtered.find((offer) => offer.priceUsd != null)
+    ?? null;
+  const effectiveSelectedOfferId = selectedOffer?.id ?? null;
   const estimatedSubtotal = (selectedOffer?.priceUsd ?? 0) * quantity;
   const pricedCount = catalog.offers.filter((offer) => offer.priceUsd != null).length;
 
@@ -460,10 +463,10 @@ function TvCatalogPanel({ item, catalog, onClose }: { item: CatalogItem; catalog
             </thead>
             <tbody>
               {filtered.map((offer) => (
-                <tr key={offer.id} className={`border-t border-border ${selectedOfferId === offer.id ? "bg-signal/5" : "bg-white"}`}>
+                <tr key={offer.id} className={`border-t border-border ${effectiveSelectedOfferId === offer.id ? "bg-signal/5" : "bg-white"}`}>
                   <td className="p-3">
-                    <button type="button" disabled={offer.priceUsd == null} aria-pressed={selectedOfferId === offer.id} onClick={() => setSelectedOfferId(offer.id)} className={`rounded-lg px-3 py-2 text-xs font-black ${offer.priceUsd == null ? "cursor-not-allowed bg-concrete text-muted" : selectedOfferId === offer.id ? "bg-signal text-forest" : "border border-border bg-white text-forest hover:border-signal"}`}>
-                      {offer.priceUsd == null ? "Pendiente" : selectedOfferId === offer.id ? "Elegido" : "Elegir"}
+                    <button type="button" disabled={offer.priceUsd == null} aria-pressed={effectiveSelectedOfferId === offer.id} onClick={() => setSelectedOfferId(offer.id)} className={`rounded-lg px-3 py-2 text-xs font-black ${offer.priceUsd == null ? "cursor-not-allowed bg-concrete text-muted" : effectiveSelectedOfferId === offer.id ? "bg-signal text-forest" : "border border-border bg-white text-forest hover:border-signal"}`}>
+                      {offer.priceUsd == null ? "Pendiente" : effectiveSelectedOfferId === offer.id ? "Elegido" : "Elegir"}
                     </button>
                   </td>
                   <td className="p-3"><strong className="block text-forest">{offer.title}</strong><span className="text-[10px] uppercase text-muted">{offer.kind}</span></td>
