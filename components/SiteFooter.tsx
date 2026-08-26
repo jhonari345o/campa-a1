@@ -28,6 +28,9 @@ export function SiteFooter() {
           <ul className="mt-4 space-y-2 text-sm text-white/80">
             <li><a href="#contacto" className="hover:text-signal">Solicitar acceso</a></li>
             <li><a href="/ingresar" className="hover:text-signal">Ingresar a mi cuenta</a></li>
+            <li><a href="/privacidad" className="hover:text-signal">Privacidad</a></li>
+            <li><a href="/terminos" className="hover:text-signal">Términos</a></li>
+            <li><a href="/eliminacion-datos" className="hover:text-signal">Eliminar mis datos</a></li>
           </ul>
         </div>
       </div>
