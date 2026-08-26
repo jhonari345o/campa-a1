@@ -12,6 +12,7 @@ import {
   actualizarMetricasMeta,
   pausarPautaMeta,
   prepararPautaMeta,
+  verificarConexionMeta,
 } from "./actions";
 
 export const metadata = { title: "Mis campanas" };
@@ -142,6 +143,17 @@ export default async function CampanasPage({
                 : "La creacion de borradores y el gasto real siguen bloqueados hasta completar la validacion tecnica y comercial."}
             </p>
           </div>
+        )}
+
+        {isAdmin && (
+          <form action={verificarConexionMeta} className="mt-4">
+            <button type="submit" className="btn btn-secondary text-xs">
+              Verificar conexion con Meta
+            </button>
+            <p className="mt-1 text-xs text-muted">
+              Prueba token, cuenta publicitaria, pagina, Instagram y permisos sin crear anuncios ni iniciar gasto.
+            </p>
+          </form>
         )}
 
         {sp.meta && <MetaResultNotice result={sp.meta} detail={sp.detail} />}
@@ -304,8 +316,11 @@ function MetaResultNotice({ result, detail }: { result: string; detail?: string 
     orden_invalida: "La orden seleccionada no es valida.",
     bloqueada_cumplimiento:
       "Operacion bloqueada por el control de lanzamiento. Completa las validaciones antes de habilitar pauta real.",
+    conexion_lista: "Conexion de Meta validada para una prueba pausada.",
+    conexion_permisos: "Meta respondio, pero la credencial no tiene todos los permisos necesarios.",
+    conexion_error: "No se pudo validar la conexion con Meta.",
   };
-  const isError = ["error", "falta_confirmacion", "bloqueada_cumplimiento"].includes(result);
+  const isError = ["error", "falta_confirmacion", "bloqueada_cumplimiento", "conexion_permisos", "conexion_error"].includes(result);
   return (
     <p
       className={`mt-5 rounded-xl border px-4 py-3 text-sm font-bold ${

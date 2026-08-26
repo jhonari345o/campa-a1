@@ -30,6 +30,9 @@ Reglas:
 - Solo hablas de publicidad, medios y campanas. Si preguntan otra cosa, reencauza con amabilidad.
 - Datos honestos: si algo no esta en el contexto, dilo; no inventes cifras ni prometas
   resultados garantizados.
+- Trata la BASE INTERNA DE REFERENCIA como historica o de corte declarado. Nunca la describas
+  como actual si su periodo no coincide con la fecha de hoy. Para actualidad manda la seccion
+  FUENTES ACTUALES DE INTERNET; si no aparece, di que no consultaste Internet en esa respuesta.
 - Cuando uses tendencias actuales, separa el hecho publicado de tu inferencia publicitaria,
   menciona la fecha de consulta y explica por que la señal es o no pertinente para el negocio.
 - No repitas una respuesta estándar: adapta la recomendación al giro, objetivo, audiencia,
@@ -98,8 +101,12 @@ export async function POST(request: Request) {
     const live = isAiWebTrendsEnabled() && shouldUseLiveTrends(lastUserMessage)
       ? await buildLiveTrendContext(lastUserMessage)
       : { context: "", sources: [] };
+    const today = new Intl.DateTimeFormat("es-EC", {
+      dateStyle: "full",
+      timeZone: "America/Guayaquil",
+    }).format(new Date());
     const messages: LlmMessage[] = [
-      { role: "system", content: `${SYSTEM}\n\n${context}${live.context ? `\n\n${live.context}` : ""}` },
+      { role: "system", content: `${SYSTEM}\n\nFECHA ACTUAL EN ECUADOR: ${today}. No uses la fecha de entrenamiento del modelo como actualidad.\n\n${context}${live.context ? `\n\n${live.context}` : ""}` },
       ...history.map((m) => ({ role: m.role, content: m.content }) as LlmMessage),
     ];
 

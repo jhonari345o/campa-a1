@@ -5,13 +5,19 @@ export type LiveTrendSource = {
   publishedAt: string | null;
 };
 
+type RssTrendSource = LiveTrendSource & { publishedAtMs: number | null };
+
 const LIVE_INTENT = /\b(tendenc|actual|hoy|ahora|momento|viral|noticia|temporada|coyuntura|reciente|esta semana|ultimo)\w*/i;
+const STRATEGY_INTENT = /\b(recomiend|invertir|invierto|inversion|presupuesto|canal|medio|audiencia|mercado|competencia|segment|publico|estrateg|plan de medios|oportunidad|campana)\w*/i;
+const NEWS_LOOKBACK_DAYS = 120;
 const STOPWORDS = new Set([
   "para", "como", "cómo", "quiero", "puedo", "dime", "cuales", "cuáles", "sobre", "esto", "esta",
   "tendencias", "tendencia", "actual", "actuales", "momento", "ahora", "publicidad",
   "campana", "campanas", "ecuador", "necesito", "buscar", "internet", "qué", "que",
   "hay", "hoy", "podria", "podría", "usar", "usarlas", "usarles", "una", "uno", "unos",
   "unas", "del", "las", "los", "con", "por", "desde", "marca", "negocio", "ayuda",
+  "tengo", "este", "estos", "trimestre", "mes", "medios", "medio", "canales", "canal",
+  "invierto", "invertir", "inversion", "presupuesto", "audiencia", "recomienda", "recomiendame",
 ]);
 const GEO_TERMS = new Set([
   "guayaquil", "quito", "cuenca", "loja", "manta", "portoviejo", "ambato", "riobamba",
@@ -20,7 +26,7 @@ const GEO_TERMS = new Set([
 ]);
 
 export function shouldUseLiveTrends(message: string): boolean {
-  return LIVE_INTENT.test(message);
+  return LIVE_INTENT.test(message) || STRATEGY_INTENT.test(normalizeText(message));
 }
 
 export async function buildLiveTrendContext(message: string): Promise<{
@@ -32,16 +38,20 @@ export async function buildLiveTrendContext(message: string): Promise<{
   const [trendSources, newsSources] = await Promise.all([
     readRss("https://trends.google.com/trending/rss?geo=EC", 12, true),
     readRss(
-      `https://news.google.com/rss/search?q=${encodeURIComponent(`${query} Ecuador when:180d`)}&hl=es-419&gl=EC&ceid=EC:es-419`,
+      `https://news.google.com/rss/search?q=${encodeURIComponent(`${query} Ecuador when:${NEWS_LOOKBACK_DAYS}d`)}&hl=es-419&gl=EC&ceid=EC:es-419`,
       10,
       false,
     ),
   ]);
-  const relevantNews = newsSources.filter((item) => isRelevant(item.title, terms));
-  const relevantTrends = trendSources.filter((item) => isRelevant(item.title, terms));
-  const sources = dedupe([...relevantNews, ...relevantTrends])
+  const freshNews = newsSources.filter((item) => isFresh(item, NEWS_LOOKBACK_DAYS));
+  const relevantNews = freshNews.filter((item) => isRelevant(item.title, terms));
+  const relevantTrends = trendSources
+    .filter((item) => isFresh(item, 14, true))
+    .filter((item) => isRelevant(item.title, terms));
+  const sources = dedupe([...(relevantNews.length ? relevantNews : freshNews.slice(0, 4)), ...relevantTrends])
     .filter((item) => !isLowSignalSource(item))
-    .slice(0, 8);
+    .slice(0, 8)
+    .map(toPublicSource);
   if (!sources.length) return { context: "No fue posible obtener fuentes actuales en esta consulta.", sources: [] };
 
   const checkedAt = new Intl.DateTimeFormat("es-EC", {
@@ -56,6 +66,7 @@ export async function buildLiveTrendContext(message: string): Promise<{
     context: [
       `FUENTES ACTUALES DE INTERNET consultadas el ${checkedAt}:`,
       ...lines,
+      `Ventana editorial: ultimos ${NEWS_LOOKBACK_DAYS} dias. No presentes informacion anterior como actualidad.`,
       "Úsalas solo si son pertinentes. Son señales editoriales y de búsqueda, no evidencia de ventas ni garantía de desempeño.",
       "Distingue claramente hechos publicados, inferencias de marketing y recomendaciones.",
     ].join("\n"),
@@ -63,7 +74,7 @@ export async function buildLiveTrendContext(message: string): Promise<{
   };
 }
 
-async function readRss(url: string, limit: number, googleTrends: boolean): Promise<LiveTrendSource[]> {
+async function readRss(url: string, limit: number, googleTrends: boolean): Promise<RssTrendSource[]> {
   try {
     const response = await fetch(url, {
       headers: { "User-Agent": "AdMavericksOne/1.0 (+https://one.ad-mavericks.com)" },
@@ -75,23 +86,25 @@ async function readRss(url: string, limit: number, googleTrends: boolean): Promi
     return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)]
       .slice(0, limit)
       .map((match) => parseItem(match[1], googleTrends))
-      .filter((item): item is LiveTrendSource => item !== null);
+      .filter((item): item is RssTrendSource => item !== null);
   } catch {
     return [];
   }
 }
 
-function parseItem(block: string, googleTrends: boolean): LiveTrendSource | null {
+function parseItem(block: string, googleTrends: boolean): RssTrendSource | null {
   const title = tag(block, googleTrends ? "ht:news_item_title" : "title") || tag(block, "title");
   const url = tag(block, googleTrends ? "ht:news_item_url" : "link") || tag(block, "link");
   const source = tag(block, googleTrends ? "ht:news_item_source" : "source") || (googleTrends ? "Google Trends Ecuador" : "Google News");
   const publishedAt = tag(block, "pubDate");
+  const publishedAtMs = publishedAt ? new Date(publishedAt).getTime() : Number.NaN;
   if (!title || !safeHttpUrl(url)) return null;
   return {
     title: decodeXml(title).slice(0, 220),
     url,
     source: decodeXml(source).slice(0, 100),
     publishedAt: publishedAt ? displayDate(publishedAt) : null,
+    publishedAtMs: Number.isNaN(publishedAtMs) ? null : publishedAtMs,
   };
 }
 
@@ -152,7 +165,22 @@ function normalizeText(value: string): string {
   return value.toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
-function dedupe(items: LiveTrendSource[]): LiveTrendSource[] {
+function isFresh(item: RssTrendSource, days: number, allowUndated = false): boolean {
+  if (item.publishedAtMs === null) return allowUndated;
+  const ageMs = Date.now() - item.publishedAtMs;
+  return ageMs >= -24 * 60 * 60 * 1000 && ageMs <= days * 24 * 60 * 60 * 1000;
+}
+
+function toPublicSource(item: RssTrendSource): LiveTrendSource {
+  return {
+    title: item.title,
+    url: item.url,
+    source: item.source,
+    publishedAt: item.publishedAt,
+  };
+}
+
+function dedupe<T extends LiveTrendSource>(items: T[]): T[] {
   const seen = new Set<string>();
   return items.filter((item) => {
     const key = `${item.title.toLowerCase()}|${item.url}`;

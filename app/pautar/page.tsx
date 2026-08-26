@@ -5,17 +5,12 @@ import { PautarChat } from "./PautarChat";
 import { computeCharge, money, SERVICE_FEE_PCT, TAX_PCT } from "@/lib/pricing";
 import { isCommercialPaymentsEnabled } from "@/lib/commercial";
 import { isDlocalConfigured } from "@/lib/payments/dlocal";
+import { isMetaConfigured } from "@/lib/ads/meta";
 
 export const metadata = { title: "Pautar con Mavi" };
 
 const supabaseConfigured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-);
-
-const metaConectada = Boolean(
-  process.env.META_ACCESS_TOKEN &&
-    process.env.META_AD_ACCOUNT_ID &&
-    process.env.META_PAGE_ID,
 );
 
 const REDES_VALIDAS = ["instagram", "facebook"];
@@ -43,6 +38,7 @@ export default async function PautarPage({
   const initialObjetivo = sp.objetivo?.slice(0, 120) || undefined;
   const commercialPaymentsEnabled = isCommercialPaymentsEnabled();
   const dlocalConectado = isDlocalConfigured();
+  const metaConectada = isMetaConfigured();
 
   return (
     <div className="min-h-screen">

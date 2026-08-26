@@ -64,3 +64,15 @@ retorno del navegador nunca basta para aprobar un pago.
 
 Nunca registrar API keys, tarjetas, CVC, cookies de sesión ni tokens Meta en
 logs, documentación o tablas de negocio.
+
+## Validacion de Meta
+
+La app de Meta ya debe tener el caso de uso **Crear y administrar anuncios con
+la API de marketing**. La credencial de servidor necesita, como minimo,
+`ads_management`, `ads_read`, `business_management`, `pages_read_engagement` y
+`pages_show_list`; para Instagram tambien `instagram_basic`.
+
+En **Campanas**, un administrador puede pulsar **Verificar conexion con Meta**.
+La comprobacion es de solo lectura: valida token, cuenta publicitaria, pagina,
+cuenta profesional de Instagram y permisos, sin crear anuncios ni iniciar
+gasto. El token nunca se devuelve al navegador.

@@ -103,8 +103,10 @@ test("el perfil estratégico cambia según el giro y reconoce plataformas digita
   assert.equal(mediaGroupForLabel("LinkedIn Ads"), "digital");
 });
 
-test("Mavi consulta Internet solo cuando la pregunta pide actualidad", () => {
+test("Mavi consulta Internet para actualidad y recomendaciones de medios", () => {
   assert.equal(shouldUseLiveTrends("¿Qué tendencias hay hoy en Ecuador?"), true);
+  assert.equal(shouldUseLiveTrends("Tengo una cafetería, ¿en qué medios invierto este trimestre?"), true);
+  assert.equal(shouldUseLiveTrends("Recomiéndame canales según mi presupuesto y audiencia"), true);
   assert.equal(shouldUseLiveTrends("Hazme un guion de radio"), false);
 });
 

@@ -29,11 +29,13 @@ y entrega HTTPS, dominio y CDN. Alternativa por contenedor (ECS/Fargate) al fina
 | `META_PAUSED_DRAFTS_ENABLED` | `false` hasta aprobar la prueba pausada |
 | `META_REAL_SPEND_ENABLED` | `false` hasta aprobar pauta con gasto |
 | `AI_ASSISTANT_ENABLED` | `false` hasta aprobar proveedor y tratamiento de datos |
+| `AI_WEB_TRENDS_ENABLED` | `true` solo si Mavi puede consultar fuentes publicas recientes |
 | `AGENT_AUTOMATION_ENABLED` | `false` hasta aprobar el worker automatizado |
 | `DLOCALGO_ENV` | `sandbox` hasta aprobar la prueba; luego `live` |
 | `DLOCALGO_API_KEY` | API Key de dLocal Go (solo servidor) |
 | `DLOCALGO_SECRET_KEY` | Secret Key de dLocal Go (solo servidor) |
 | `META_ACCESS_TOKEN` | token de Marketing API (solo servidor) |
+| `META_APP_ID` | ID publico de la app de Meta |
 | `META_AD_ACCOUNT_ID` | cuenta `act_...` que pagara la pauta |
 | `META_PAGE_ID` | pagina de Facebook vinculada |
 | `META_INSTAGRAM_USER_ID` | cuenta profesional de Instagram vinculada |
@@ -93,6 +95,8 @@ Para un control mas fino (o correr detras de ALB + WAF propio):
 - [ ] Firma HMAC, retorno, reintentos e idempotencia dLocal probados con una orden controlada.
 - [ ] Conciliación contable aprobada: cobro dLocal y factura Meta son movimientos separados.
 - [ ] Meta Marketing API aprobada; campaña de prueba creada en `PAUSED` sin gasto.
+- [ ] Boton **Verificar conexion con Meta** confirma activos y permisos sin crear anuncios.
+- [ ] Mavi muestra fuentes fechadas de los ultimos 120 dias y declara el periodo de la base interna.
 - [ ] `COMMERCIAL_PAYMENTS_ENABLED=false` y `META_REAL_SPEND_ENABLED=false`
       hasta que los controles P0/P1 tengan evidencia aprobada.
 - [ ] Pruebas de aislamiento entre dos empresas y roles ejecutadas.

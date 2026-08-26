@@ -5,16 +5,14 @@
  *   npx tsx --env-file=.env.local scripts/ingest/connectors/meta-ads.ts <advertiser> <year> [month]
  *
  * Requiere en el entorno:
- *   META_ADS_ACCESS_TOKEN   (token de acceso con permiso ads_read)
- *   META_ADS_ACCOUNT_ID     (id de la cuenta publicitaria, sin el prefijo act_)
+ *   META_ACCESS_TOKEN       (token de acceso con permiso ads_read)
+ *   META_AD_ACCOUNT_ID      (id de la cuenta publicitaria, con o sin act_)
  *
  * Los datos entran como "pendiente": son metricas propias de una cuenta y
  * deben verificarse antes de tratarlas como definitivas.
  */
 import { admin } from "../env";
 import { upsertAdvertiser, upsertMetric, ensureSource } from "../upsert";
-
-const API_VERSION = "v21.0";
 
 type MetaInsight = {
   impressions?: string;
@@ -34,11 +32,13 @@ function monthRange(year: number, month?: number) {
 }
 
 export async function fetchMetaInsights(year: number, month?: number): Promise<MetaInsight | null> {
-  const token = process.env.META_ADS_ACCESS_TOKEN;
-  const account = process.env.META_ADS_ACCOUNT_ID;
+  const token = process.env.META_ACCESS_TOKEN ?? process.env.META_ADS_ACCESS_TOKEN;
+  const rawAccount = process.env.META_AD_ACCOUNT_ID ?? process.env.META_ADS_ACCOUNT_ID;
+  const account = rawAccount?.replace(/^act_/, "");
+  const apiVersion = process.env.META_GRAPH_API_VERSION?.trim() || "v25.0";
   if (!token || !account) {
     throw new Error(
-      "Configura META_ADS_ACCESS_TOKEN y META_ADS_ACCOUNT_ID en .env.local para usar este conector.",
+      "Configura META_ACCESS_TOKEN y META_AD_ACCOUNT_ID en .env.local para usar este conector.",
     );
   }
   const { since, until } = monthRange(year, month);
@@ -47,7 +47,7 @@ export async function fetchMetaInsights(year: number, month?: number): Promise<M
     time_range: JSON.stringify({ since, until }),
     access_token: token,
   });
-  const url = `https://graph.facebook.com/${API_VERSION}/act_${account}/insights?${params}`;
+  const url = `https://graph.facebook.com/${apiVersion}/act_${account}/insights?${params}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Meta API ${res.status}: ${await res.text()}`);
   const json = (await res.json()) as { data?: MetaInsight[] };

@@ -17,6 +17,7 @@ import {
   isMetaRealSpendEnabled,
 } from "@/lib/commercial";
 import { canCompanyRole } from "@/lib/permissions";
+import { validateMetaConnection } from "@/lib/ads/meta";
 
 export type JobInput = {
   platform: string;
@@ -140,6 +141,27 @@ export async function actualizarMetricasMeta(formData: FormData): Promise<void> 
   }
   revalidatePath("/campanas");
   redirect("/campanas?meta=metricas_actualizadas");
+}
+
+export async function verificarConexionMeta(): Promise<void> {
+  const profile = await getSessionProfile();
+  if (!profile?.is_platform_admin) redirect("/campanas?meta=no_autorizado");
+
+  let result = "conexion_error";
+  let detail = "Meta no pudo validar la credencial y los activos configurados. Revisa el token, la cuenta publicitaria y la pagina.";
+  try {
+    const status = await validateMetaConnection();
+    if (status.connected) {
+      result = "conexion_lista";
+      detail = `Meta respondio correctamente con ${status.apiVersion}: Facebook${status.instagramReady ? " e Instagram" : ""} estan listos para una prueba pausada.`;
+    } else {
+      result = "conexion_permisos";
+      detail = `La credencial responde, pero faltan permisos otorgados: ${status.missingPermissions.join(", ") || "activos de Instagram"}.`;
+    }
+  } catch {
+    // El detalle del proveedor no se envia por URL ni al navegador.
+  }
+  redirect(`/campanas?meta=${encodeURIComponent(result)}&detail=${encodeURIComponent(detail)}`);
 }
 
 async function requireAdminJobId(formData: FormData): Promise<string> {

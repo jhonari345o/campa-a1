@@ -19,7 +19,7 @@ export function ChatMavi() {
     {
       role: "assistant",
       content:
-        "¡Hola! Soy Mavi. Cuentame tu negocio y tu presupuesto, y te ayudo a evaluar canales y preparar un borrador para revision humana. Tambien te propongo guiones para redes, TV o radio.",
+        "¡Hola! Soy Mavi. Cuéntame tu negocio y tu presupuesto. Para decisiones de medios consulto fuentes públicas recientes y separo esas señales de la base interna histórica; también preparo guiones para redes, TV o radio.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -104,7 +104,8 @@ export function ChatMavi() {
           />
           <span>
             Autorizo procesar esta consulta con el proveedor de IA configurado y, cuando pregunte
-            por actualidad, consultar fuentes públicas de Internet. No incluiré
+            por actualidad, inversión, canales o estrategia, consultar fuentes públicas de los
+            últimos meses en Internet. No incluiré
             contrasenas, datos personales, contratos, tarifarios ni informacion licenciada.
           </span>
         </label>
