@@ -26,6 +26,7 @@ import { verifyDlocalNotificationSignature } from "../lib/payments/dlocal-signat
 import { computeCharge } from "../lib/pricing";
 import { buildPlanAnalysis, type PlanAnalysisInput } from "../lib/plan-analysis";
 import { buildDetailedMediaRecommendation } from "../lib/detailed-plan";
+import { buildCampaigns } from "../lib/campaigns";
 import {
   BUSINESS_CATEGORY_OPTIONS,
   COMMERCIAL_GOAL_UNIT_OPTIONS,
@@ -140,6 +141,33 @@ test("Mavi consulta Internet para actualidad y recomendaciones de medios", () =>
   assert.equal(shouldUseLiveTrends("Tengo una cafetería, ¿en qué medios invierto este trimestre?"), true);
   assert.equal(shouldUseLiveTrends("Recomiéndame canales según mi presupuesto y audiencia"), true);
   assert.equal(shouldUseLiveTrends("Hazme un guion de radio"), false);
+});
+
+test("las campañas son únicas por plataforma y exponen una calificación estratégica", () => {
+  const plan = {
+    matched: 4,
+    totalRef: 10_000,
+    basis: "sector" as const,
+    benchmark: [],
+    profileLabel: "Gastronomía",
+    strategySummary: "Prueba",
+    plan: [
+      { label: "Meta — Facebook e Instagram", pct: 0.5, amount: 500 },
+      { label: "Google — Búsqueda y YouTube", pct: 0.5, amount: 500 },
+    ],
+  };
+  const campaigns = buildCampaigns({
+    keyword: "Restaurantes, alimentos y bebidas",
+    audience: "Profesionales de 25 a 45 años",
+    objective: "Ventas",
+    geography: "Guayaquil · 20 km alrededor",
+    brand: "Marca prueba",
+  }, plan);
+  assert.deepEqual(campaigns.map((campaign) => campaign.key), ["meta", "google"]);
+  assert.ok(campaigns.every((campaign) => campaign.ideas.length === 1));
+  assert.equal(new Set(campaigns.map((campaign) => campaign.copy)).size, campaigns.length);
+  assert.ok(campaigns.every((campaign) => campaign.insight.total >= 0 && campaign.insight.total <= 100));
+  assert.ok(campaigns.every((campaign) => campaign.insight.basis === "datos"));
 });
 
 test("los recursos visuales del catálogo existen en el paquete público", () => {

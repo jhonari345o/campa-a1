@@ -444,15 +444,14 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
         </p>
       </div>
 
-      {/* Campanas sugeridas por Mavi */}
+      {/* Campañas actuales y calificadas por Mavi */}
       {result.campaigns.length > 0 && <div>
         <div className="flex items-center gap-2">
           <span aria-hidden className="text-xl">🦎</span>
-          <h3 className="text-lg font-black tracking-tight">Campanas sugeridas por Mavi</h3>
+          <h3 className="text-lg font-black tracking-tight">Campañas actuales y calificadas por Mavi</h3>
         </div>
         <p className="mt-1 text-sm text-muted">
-          Borradores para revisar segun tu plan. Mavi ayuda a prepararlos; la disponibilidad,
-          aprobacion y publicacion siempre se confirman con una persona responsable.
+          Cada propuesta parte del rubro, la audiencia, el objetivo y el presupuesto; cuando existe una señal reciente pertinente, muestra su fuente. La aprobación y publicación siempre se confirman con una persona responsable.
         </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {result.campaigns.map((c) => (
@@ -524,6 +523,7 @@ function DetailedPlanView({ result }: { result: Extract<PlanResult, { ok: true }
                     <div><dt>Presupuesto</dt><dd>{money(execution.budgetUsd)}</dd></div>
                     <div><dt>Referencia</dt><dd>{execution.referenceUnitPriceUsd == null ? execution.unit : `${money(execution.referenceUnitPriceUsd)} · ${execution.unit}`}{execution.estimatedUnits != null ? ` · aprox. ${execution.estimatedUnits} unidad${execution.estimatedUnits === 1 ? "" : "es"}` : ""}</dd></div>
                   </dl>
+                  {execution.geo && <OohLocationPreview title={execution.location} geo={execution.geo} />}
                   <p className="planner-execution-evidence"><b>Evidencia:</b> {execution.evidence}</p>
                   <p className="planner-execution-next"><b>Antes de ordenar:</b> {execution.nextStep}</p>
                 </div>
@@ -554,9 +554,7 @@ function CampaignCard({ c }: { c: Campaign }) {
   const [copied, setCopied] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState<null | { ok: boolean; msg: string }>(null);
-  const ideas = c.ideas?.length ? c.ideas : [c.copy];
-  const [ideaIndex, setIdeaIndex] = useState(0);
-  const currentCopy = ideas[ideaIndex] ?? c.copy;
+  const currentCopy = c.copy;
 
   async function ejecutar() {
     setSending(true);
@@ -617,20 +615,18 @@ function CampaignCard({ c }: { c: Campaign }) {
         <div><dt className="inline font-black text-forest">Formato: </dt><dd className="inline">{c.formato}</dd></div>
       </dl>
 
-      <div className="mt-3 flex items-center justify-between">
-        <span className="text-[11px] font-black uppercase tracking-wide text-muted">
-          Idea {ideaIndex + 1} de {ideas.length}
-        </span>
-        {ideas.length > 1 && (
-          <button
-            type="button"
-            onClick={() => setIdeaIndex((i) => (i + 1) % ideas.length)}
-            className="text-xs font-black text-signal-dark hover:underline"
-          >
-            Otra idea ✨
-          </button>
-        )}
+      <div className="campaign-current-insight">
+        <div className="campaign-current-score"><strong>{c.insight.total}</strong><span>/100</span></div>
+        <div><b>Calificación estratégica actual</b><p>{c.insight.rationale}</p></div>
       </div>
+      <div className="campaign-score-grid">
+        <span>Rubro <b>{c.insight.industryFit}</b></span>
+        <span>Actualidad <b>{c.insight.currentRelevance}</b></span>
+        <span>Audiencia <b>{c.insight.audienceFit}</b></span>
+        <span>Factibilidad <b>{c.insight.feasibility}</b></span>
+      </div>
+      <aside className="campaign-trend-signal"><b>Señal usada</b><p>{c.insight.trendSignal}</p></aside>
+      {c.insight.sources.length > 0 && <div className="campaign-source-list">{c.insight.sources.map((source) => <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer">{source.title} · {source.source}{source.publishedAt ? ` · ${source.publishedAt}` : ""} ↗</a>)}</div>}
       <pre className="mt-2 whitespace-pre-wrap rounded-xl border border-border bg-fog px-3 py-3 text-xs text-forest">
         {currentCopy}
       </pre>
@@ -696,6 +692,26 @@ function Field({
       />
     </div>
   );
+}
+
+function OohLocationPreview({ title, geo }: { title: string; geo: NonNullable<import("@/lib/detailed-plan").DetailedExecution["geo"]> }) {
+  const embedKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY;
+  const latitude = geo.latitude.toFixed(6);
+  const longitude = geo.longitude.toFixed(6);
+  const embedUrl = embedKey
+    ? `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(embedKey)}&q=${encodeURIComponent(`${latitude},${longitude}`)}&zoom=17&maptype=satellite`
+    : `https://www.openstreetmap.org/export/embed.html?bbox=${geo.longitude - 0.006}%2C${geo.latitude - 0.004}%2C${geo.longitude + 0.006}%2C${geo.latitude + 0.004}&layer=mapnik&marker=${latitude}%2C${longitude}`;
+  return <section className="planner-ooh-map-card">
+    <div className="planner-ooh-map-frame"><iframe src={embedUrl} title={`Mapa de ${title}`} loading="lazy" allowFullScreen referrerPolicy="no-referrer-when-downgrade" /></div>
+    <div className="planner-ooh-map-copy">
+      <header><span>{geo.locationStatus === "inventory" ? "ACTIVO EN INVENTARIO" : "ZONA CANDIDATA"}</span><strong>{geo.fitScore}/100</strong></header>
+      <p><b>Afinidad:</b> {geo.audienceFit}</p>
+      <p><b>Movilidad:</b> {geo.trafficEvidence}</p>
+      <p><b>Presupuesto:</b> {geo.priceFit}</p>
+      <div><a href={geo.mapUrl} target="_blank" rel="noopener noreferrer">Abrir en Google Maps ↗</a><a href={geo.streetViewUrl} target="_blank" rel="noopener noreferrer">Probar vista 360 ↗</a></div>
+      <small>La vista 360 depende de la cobertura disponible en Google Street View.</small>
+    </div>
+  </section>;
 }
 
 function SelectField({

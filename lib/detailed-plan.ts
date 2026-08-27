@@ -25,6 +25,19 @@ export type DetailedExecution = {
   status: "cotizable" | "validacion";
   evidence: string;
   nextStep: string;
+  geo?: OohGeoRecommendation;
+};
+
+export type OohGeoRecommendation = {
+  latitude: number;
+  longitude: number;
+  mapUrl: string;
+  streetViewUrl: string;
+  locationStatus: "inventory" | "zone_candidate";
+  fitScore: number;
+  audienceFit: string;
+  priceFit: string;
+  trafficEvidence: string;
 };
 
 export type DetailedChannelPlan = {
@@ -73,6 +86,29 @@ type OohCatalogRow = {
   media_catalog_rates?: CatalogRate[] | null;
 };
 
+type OohLocationRow = {
+  id?: unknown;
+  asset_code?: unknown;
+  status?: unknown;
+  provider_name?: unknown;
+  asset_name?: unknown;
+  city?: unknown;
+  province?: unknown;
+  address?: unknown;
+  latitude?: unknown;
+  longitude?: unknown;
+  format?: unknown;
+  monthly_rate_usd?: unknown;
+  production_rate_usd?: unknown;
+  audience_tags?: unknown;
+  context_tags?: unknown;
+  affluence_index?: unknown;
+  affluence_source?: unknown;
+  street_view_pano_id?: unknown;
+  source_note?: unknown;
+  verified_at?: unknown;
+};
+
 type InfluencerRow = {
   id?: unknown;
   name?: unknown;
@@ -90,18 +126,20 @@ export async function buildDetailedMediaRecommendation(
   plan: MediaPlan,
 ): Promise<DetailedMediaRecommendation> {
   const selectedGroups = new Set(plan.plan.map((row) => mediaGroupForLabel(row.label)).filter(Boolean));
-  const [radio, ooh, influencers] = await Promise.all([
+  const [radio, ooh, oohLocations, influencers] = await Promise.all([
     selectedGroups.has("radio") ? readRadioMetrics() : Promise.resolve([]),
     selectedGroups.has("ooh") ? readOohInventory() : Promise.resolve([]),
+    selectedGroups.has("ooh") ? readOohLocations() : Promise.resolve([]),
     selectedGroups.has("influencers") ? readInfluencers() : Promise.resolve([]),
   ]);
 
-  const channelPlans = plan.plan.map((row) => buildChannelPlan(row, brief, radio, ooh, influencers));
+  const channelPlans = plan.plan.map((row) => buildChannelPlan(row, brief, radio, ooh, oohLocations, influencers));
   const checks = [
     "Los presupuestos por ejecución conservan el total recomendado para cada medio.",
     "Tarifas y cantidades son referencias de planificación; disponibilidad, IVA y negociación se reconfirman antes de ordenar.",
     "Ratings, reach, rankings, OTS, seguidores e impresiones permanecen en sus propias metodologías y no se suman como alcance único.",
     "Las ubicaciones de vía pública solo se presentan como exactas cuando existen en el inventario; lo demás queda marcado para validación.",
+    "Google Maps y Street View muestran el punto geográfico; la cobertura 360 depende de la disponibilidad de imágenes de Google.",
   ];
   const live = isAiWebTrendsEnabled()
     ? await buildLiveTrendContext(`${brief.keyword} ${brief.objective} ${brief.audience} ${brief.geography} tendencias mercado consumo`)
@@ -115,6 +153,7 @@ function buildChannelPlan(
   brief: PlanAnalysisInput,
   radio: RadioMetric[],
   ooh: OohCatalogRow[],
+  oohLocations: OohLocationRow[],
   influencers: InfluencerRow[],
 ): DetailedChannelPlan {
   const kind = mediaGroupForLabel(row.label) ?? "digital";
@@ -127,7 +166,10 @@ function buildChannelPlan(
   };
   if (kind === "television") return { ...common, executions: televisionExecutions(row, brief) };
   if (kind === "radio") return { ...common, executions: radioExecutions(row, brief, radio) };
-  if (kind === "ooh") return { ...common, executions: oohExecutions(row, brief, ooh) };
+  if (kind === "ooh") {
+    const located = oohLocationExecutions(row, brief, oohLocations);
+    return { ...common, executions: located.length ? located : oohExecutions(row, brief, ooh) };
+  }
   if (kind === "press") return { ...common, executions: pressExecutions(row, brief) };
   if (kind === "influencers") return { ...common, executions: influencerExecutions(row, brief, influencers) };
   return { ...common, executions: digitalExecutions(row, brief) };
@@ -193,6 +235,71 @@ function radioExecutions(row: PlanRow, brief: PlanAnalysisInput, radio: RadioMet
       status: "validacion",
       evidence: [rank ? `ranking de audiencia #${rank}` : "ranking pendiente", rating ? `rating ${rating}` : null, reach ? `reach ${reach}%` : null].filter(Boolean).join(" · "),
       nextStep: "Solicitar tarifario, cobertura técnica, franja, frecuencia y vigencia antes de emitir la orden.",
+    };
+  });
+}
+
+function oohLocationExecutions(row: PlanRow, brief: PlanAnalysisInput, locations: OohLocationRow[]): DetailedExecution[] {
+  if (!locations.length) return [];
+  const ranked = locations
+    .map((location) => ({ location, ...scoreOohLocation(location, brief, row.amount) }))
+    .sort((a, b) => b.score - a.score || (numeric(a.location.monthly_rate_usd) ?? Infinity) - (numeric(b.location.monthly_rate_usd) ?? Infinity));
+  const geographicallyMatched = ranked.filter((item) => item.geographyScore > 0);
+  const pool = geographicallyMatched.length ? geographicallyMatched : ranked;
+  const affordable = pool.filter((item) => {
+    const rate = numeric(item.location.monthly_rate_usd);
+    return rate != null && row.amount != null && rate <= row.amount;
+  });
+  const chosen = (affordable.length ? affordable : pool).slice(0, 3);
+  const budgets = allocate(row.amount, chosen.length);
+
+  return chosen.map((item, index) => {
+    const location = item.location;
+    const latitude = numeric(location.latitude)!;
+    const longitude = numeric(location.longitude)!;
+    const status = value(location.status) === "inventory" ? "inventory" : "zone_candidate";
+    const rate = numeric(location.monthly_rate_usd);
+    const budget = budgets[index];
+    const assetName = value(location.asset_name) || value(location.asset_code) || "Punto de vía pública";
+    const city = value(location.city) || marketFromGeography(brief.geography);
+    const address = value(location.address);
+    const provider = value(location.provider_name);
+    const mapUrls = googleMapUrls(latitude, longitude, value(location.street_view_pano_id));
+    const audienceFit = item.audienceReason || "Afinidad pendiente de validar con una fuente de movilidad o audiencia.";
+    const priceFit = rate == null
+      ? "Tarifa pendiente: todavía no se puede comparar una alternativa más barata."
+      : budget != null && rate <= budget
+        ? `La referencia de ${moneyText(rate)} cabe en la asignación de ${moneyText(budget)}.`
+        : `La referencia de ${moneyText(rate)} supera ${budget == null ? "un presupuesto todavía no declarado" : `la asignación de ${moneyText(budget)}`}; buscar un activo más económico.`;
+    const affluence = numeric(location.affluence_index);
+    const trafficEvidence = affluence != null && value(location.affluence_source)
+      ? `Índice de afluencia ${displayNumber(affluence)}/100 · ${value(location.affluence_source)}`
+      : "Afluencia y composición etaria todavía no medidas; la afinidad mostrada es una hipótesis de planificación.";
+    return {
+      id: `ooh-location-${slug(value(location.asset_code) || assetName)}`,
+      provider: provider || (status === "zone_candidate" ? `Zona candidata · ${city}` : "Proveedor por confirmar"),
+      product: value(location.format) || (status === "inventory" ? "Activo de vía pública" : "Zona para búsqueda de inventario"),
+      location: [assetName, address, city].filter(Boolean).join(" · "),
+      schedule: status === "inventory" ? "Periodo del brief · disponibilidad por confirmar" : "Muestreo geográfico preliminar",
+      budgetUsd: budget,
+      referenceUnitPriceUsd: rate,
+      estimatedUnits: rate != null && budget != null && budget >= rate ? Math.floor(budget / rate) : null,
+      unit: rate != null ? "mes de exhibición" : "zona de prospección",
+      status: status === "inventory" && rate != null ? "cotizable" : "validacion",
+      evidence: value(location.source_note) || "Registro geográfico cargado en Supabase.",
+      nextStep: status === "inventory"
+        ? "Reconfirmar foto, cara, sentido, visibilidad, flujo, disponibilidad, tarifa, producción, permisos e IVA."
+        : "Solicitar a proveedores los activos disponibles alrededor de este punto y cargar tarifa, foto, cara, flujo y disponibilidad antes de cotizar.",
+      geo: {
+        latitude,
+        longitude,
+        ...mapUrls,
+        locationStatus: status,
+        fitScore: item.score,
+        audienceFit,
+        priceFit,
+        trafficEvidence,
+      },
     };
   });
 }
@@ -362,6 +469,19 @@ async function readOohInventory(): Promise<OohCatalogRow[]> {
   }
 }
 
+async function readOohLocations(): Promise<OohLocationRow[]> {
+  try {
+    const { data, error } = await createAdminClient()
+      .from("ooh_locations")
+      .select("id, asset_code, status, provider_name, asset_name, city, province, address, latitude, longitude, format, monthly_rate_usd, production_rate_usd, audience_tags, context_tags, affluence_index, affluence_source, street_view_pano_id, source_note, verified_at")
+      .eq("active", true)
+      .neq("status", "inactive");
+    return error ? [] : (data ?? []) as OohLocationRow[];
+  } catch {
+    return [];
+  }
+}
+
 async function readInfluencers(): Promise<InfluencerRow[]> {
   try {
     const { data, error } = await createAdminClient()
@@ -524,6 +644,57 @@ function marketFromStation(station: string, geography: string): string {
   return marketFromGeography(geography);
 }
 
+function scoreOohLocation(location: OohLocationRow, brief: PlanAnalysisInput, budget: number | null) {
+  const city = value(location.city);
+  const province = value(location.province);
+  const address = value(location.address);
+  const wanted = normalize(marketFromGeography(brief.geography));
+  const candidatePlace = normalize(`${city} ${province} ${address}`);
+  let geographyScore = 0;
+  if (!wanted || wanted === "todo ecuador") geographyScore = 5;
+  else if (candidatePlace.includes(wanted)) geographyScore = 15;
+  else if (wanted.includes("guayaquil") && /samborondon|daule|duran/.test(candidatePlace)) geographyScore = 9;
+  else if (wanted.includes("quito") && /cumbaya|tumbaco/.test(candidatePlace)) geographyScore = 8;
+
+  const audienceTags = stringArray(location.audience_tags);
+  const contextTags = stringArray(location.context_tags);
+  const target = normalize(`${brief.keyword} ${brief.audience} ${brief.ageRange} ${brief.socioeconomic} ${brief.businessModel}`);
+  const matchedAudience = audienceTags.filter((tag) => overlapWords(target, normalize(tag)) > 0);
+  const matchedContext = contextTags.filter((tag) => overlapWords(target, normalize(tag)) > 0);
+  let audienceScore = Math.min(8, matchedAudience.length * 3);
+  if (/25-34|35-44|25-54|25-45/.test(target) && audienceTags.some((tag) => /25-45/.test(tag))) audienceScore += 5;
+  const contextScore = Math.min(6, matchedContext.length * 2);
+  const rate = numeric(location.monthly_rate_usd);
+  const priceScore = rate == null || budget == null ? 0 : rate <= budget / 3 ? 10 : rate <= budget ? 7 : -6;
+  const inventoryScore = value(location.status) === "inventory" ? 7 : 0;
+  const affluenceScore = (numeric(location.affluence_index) ?? 0) / 10;
+  const raw = geographyScore + audienceScore + contextScore + priceScore + inventoryScore + affluenceScore;
+  const score = Math.max(0, Math.min(100, Math.round(35 + raw * 1.45)));
+  const audienceReason = [...matchedAudience, ...matchedContext].length
+    ? `Coincide con: ${[...matchedAudience, ...matchedContext].slice(0, 4).join(", ")}.`
+    : audienceTags.length
+      ? `Hipótesis disponible: ${audienceTags.slice(0, 3).join(", ")}; requiere fuente de movilidad.`
+      : "No existe segmentación de audiencia para este punto todavía.";
+  return { score, geographyScore, audienceReason };
+}
+
+function googleMapUrls(latitude: number, longitude: number, panoramaId: string) {
+  const viewpoint = encodeURIComponent(`${latitude},${longitude}`);
+  const mapUrl = `https://www.google.com/maps/search/?api=1&query=${viewpoint}`;
+  const pano = panoramaId ? `&pano=${encodeURIComponent(panoramaId)}` : "";
+  const streetViewUrl = `https://www.google.com/maps/@?api=1&map_action=pano${pano}&viewpoint=${viewpoint}`;
+  return { mapUrl, streetViewUrl };
+}
+
+function overlapWords(left: string, right: string): number {
+  const leftWords = new Set(left.split(/[^a-z0-9]+/).filter((word) => word.length >= 4));
+  return right.split(/[^a-z0-9]+/).filter((word) => word.length >= 4 && leftWords.has(word)).length;
+}
+
+function stringArray(input: unknown): string[] {
+  return Array.isArray(input) ? input.map(value).filter(Boolean) : [];
+}
+
 function locationScore(candidate: string, geography: string): number {
   const wanted = normalize(marketFromGeography(geography));
   if (!wanted || wanted === "todo ecuador") return /nacional|ecuador/.test(normalize(candidate)) ? 3 : 1;
@@ -534,6 +705,10 @@ function coordinatesFrom(metadata: Record<string, unknown>): string {
   const lat = numeric(metadata.latitude ?? metadata.lat);
   const lng = numeric(metadata.longitude ?? metadata.lng ?? metadata.lon);
   return lat != null && lng != null ? `${lat.toFixed(5)}, ${lng.toFixed(5)}` : "";
+}
+
+function moneyText(input: number): string {
+  return new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(input);
 }
 
 function firstText(metadata: Record<string, unknown>, keys: string[]): string {

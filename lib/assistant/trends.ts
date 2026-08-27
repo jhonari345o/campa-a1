@@ -9,7 +9,7 @@ type RssTrendSource = LiveTrendSource & { publishedAtMs: number | null };
 
 const LIVE_INTENT = /\b(tendenc|actual|hoy|ahora|momento|viral|noticia|temporada|coyuntura|reciente|esta semana|ultimo)\w*/i;
 const STRATEGY_INTENT = /\b(recomiend|invertir|invierto|inversion|presupuesto|canal|medio|audiencia|mercado|competencia|segment|publico|estrateg|plan de medios|oportunidad|campana)\w*/i;
-const NEWS_LOOKBACK_DAYS = 120;
+const NEWS_LOOKBACK_DAYS = 90;
 const STOPWORDS = new Set([
   "para", "como", "cómo", "quiero", "puedo", "dime", "cuales", "cuáles", "sobre", "esto", "esta",
   "tendencias", "tendencia", "actual", "actuales", "momento", "ahora", "publicidad",
@@ -48,7 +48,9 @@ export async function buildLiveTrendContext(message: string): Promise<{
   const relevantTrends = trendSources
     .filter((item) => isFresh(item, 14, true))
     .filter((item) => isRelevant(item.title, terms));
-  const sources = dedupe([...(relevantNews.length ? relevantNews : freshNews.slice(0, 4)), ...relevantTrends])
+  // Nunca sustituimos una señal pertinente por noticias generales: eso haría
+  // parecer actual una idea que en realidad no está conectada con el rubro.
+  const sources = dedupe([...relevantNews, ...relevantTrends])
     .filter((item) => !isLowSignalSource(item))
     .slice(0, 8)
     .map(toPublicSource);

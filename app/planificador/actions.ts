@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getSessionProfile } from "@/lib/auth";
 import { buildMediaPlan, type MediaPlan, type PlanRow } from "@/lib/planner";
-import { buildCampaigns, type Campaign } from "@/lib/campaigns";
+import { buildCurrentCampaigns, type Campaign } from "@/lib/campaigns";
 import { getMyCompanies } from "@/lib/company";
 import { canCompanyRole } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
@@ -183,7 +183,7 @@ export async function generarPlan(
       trackingStatus: brief.trackingStatus,
     });
     const campaigns = selectedMedia.includes("digital")
-      ? buildCampaigns({
+      ? await buildCurrentCampaigns({
           keyword,
           audience,
           objective,
@@ -318,7 +318,7 @@ export async function aprobarPlan(
   const budget = input.brief.budgetUsd && input.brief.budgetUsd > 0 ? input.brief.budgetUsd : null;
   const rows = clean.map((row) => ({ ...row, amount: budget ? row.pct * budget : null }));
   const campaigns = input.brief.selectedMedia.includes("digital")
-    ? buildCampaigns({
+    ? await buildCurrentCampaigns({
         keyword: input.brief.keyword,
         audience: input.brief.audience,
         objective: input.brief.objective,
