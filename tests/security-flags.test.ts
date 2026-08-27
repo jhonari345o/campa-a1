@@ -25,6 +25,7 @@ import { TV_RATE_CATALOGS } from "../lib/tv-rate-catalog";
 import { verifyDlocalNotificationSignature } from "../lib/payments/dlocal-signature";
 import { computeCharge } from "../lib/pricing";
 import { buildPlanAnalysis, type PlanAnalysisInput } from "../lib/plan-analysis";
+import { buildDetailedMediaRecommendation } from "../lib/detailed-plan";
 
 test("las operaciones economicas permanecen deshabilitadas por defecto", () => {
   delete process.env.COMMERCIAL_PAYMENTS_ENABLED;
@@ -142,7 +143,7 @@ test("el catálogo de televisión conserva programas, horarios y tarifas auditad
   assert.equal(ecuavisaDestiny?.unit, "spot 30 s");
 });
 
-test("el análisis conserva KPI por medio y separa Idea WOW del presupuesto", () => {
+test("el análisis conserva KPI por medio y separa Idea WOW del presupuesto", async () => {
   const input: PlanAnalysisInput = {
     keyword: "retail", objective: "Ventas", priority: "Maximizar alcance único", audienceType: "B2C",
     audience: "Compradores frecuentes", ageRange: "Personas 18+", sex: "Todas las personas",
@@ -171,4 +172,13 @@ test("el análisis conserva KPI por medio y separa Idea WOW del presupuesto", ()
   assert.equal(analysis.signals.find((signal) => signal.kind === "digital")?.status, "requiere_preparacion");
   assert.equal(analysis.wowCase?.budget, "2000");
   assert.equal(plan.plan.reduce((sum, row) => sum + Number(row.amount), 0), 10_000);
+
+  delete process.env.AI_ASSISTANT_ENABLED;
+  const detail = await buildDetailedMediaRecommendation(input, plan);
+  const television = detail.channelPlans.find((channel) => channel.kind === "television");
+  assert.equal(television?.executions.length, 3);
+  assert.equal(new Set(television?.executions.map((item) => item.provider)).size, 3);
+  assert.equal(television?.executions.reduce((sum, item) => sum + Number(item.budgetUsd), 0), 6000);
+  assert.ok(television?.executions.every((item) => item.product && item.referenceUnitPriceUsd));
+  assert.equal(detail.channelPlans.find((channel) => channel.kind === "digital")?.executions[0].status, "validacion");
 });

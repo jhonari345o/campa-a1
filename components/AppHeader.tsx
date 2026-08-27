@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Wordmark } from "./Wordmark";
 import { cerrarSesion } from "@/app/consola/actions";
+import { MaviFloatingAssistant } from "./MaviFloatingAssistant";
 
-type ActivePage = "mercado" | "consola" | "panel" | "asistente" | "planificador" | "campanas" | "pautar";
+type ActivePage = "mercado" | "consola" | "panel" | "asistente" | "planificador" | "campanas" | "pautar" | "reportes";
 
 type AppHeaderProps = {
   name: string;
@@ -38,6 +39,7 @@ const PAGE_TITLES: Record<ActivePage, string> = {
   asistente: "Mavi",
   mercado: "Inteligencia de mercado",
   consola: "Consola de administración",
+  reportes: "Reportes",
 };
 
 export function AppHeader({ name, isAdmin, active = "panel", title, catalogSection }: AppHeaderProps) {
@@ -71,8 +73,8 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
                 </Link>
               );
             })}
-            <span className="portal-nav-item is-disabled"><span>04</span><strong>Órdenes</strong><em>Próximamente</em></span>
-            <span className="portal-nav-item is-disabled"><span>05</span><strong>Reportes</strong><em>Próximamente</em></span>
+            <Link href="/campanas" onClick={close} className={`portal-nav-item ${active === "campanas" ? "is-active" : ""}`}><span>04</span><strong>Órdenes</strong></Link>
+            <ReportNavigationItem active={active === "reportes"} onClick={close} />
           </nav>
 
           <nav className="portal-catalog-nav" aria-label="Catálogo general de medios">
@@ -96,7 +98,6 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
           <nav className="portal-utility-nav" aria-label="Herramientas de la cuenta">
             <Link href="/pautar" onClick={close}>Pautar con Mavi</Link>
             <Link href="/campanas" onClick={close}>Campañas</Link>
-            <Link href="/asistente" onClick={close}>Mavi</Link>
             {isAdmin && <Link href="/mercado" onClick={close}>Inteligencia de mercado</Link>}
             {isAdmin && <Link href="/consola" onClick={close}>Administración</Link>}
           </nav>
@@ -127,6 +128,20 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
           </details>
         </div>
       </header>
+      <MaviFloatingAssistant />
     </>
   );
+}
+
+function ReportNavigationItem({ active, onClick }: { active: boolean; onClick: () => void }) {
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => {
+    fetch("/api/account/campaign-status", { headers: { Accept: "application/json" } })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => setEnabled(Boolean(data?.hasCampaigns)))
+      .catch(() => setEnabled(false));
+  }, []);
+  return enabled
+    ? <Link href="/reportes" onClick={onClick} className={`portal-nav-item ${active ? "is-active" : ""}`}><span>05</span><strong>Reportes</strong></Link>
+    : <span className="portal-nav-item is-disabled"><span>05</span><strong>Reportes</strong><em>Tras tu primera campaña</em></span>;
 }

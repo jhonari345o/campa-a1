@@ -399,6 +399,8 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
         </div>
       </div>
 
+      <DetailedPlanView result={result} />
+
       <div className="rounded-panel border border-border bg-white p-6 shadow-panel">
         <h3 className="text-sm font-black uppercase tracking-wide text-muted">
           Como invierte tu giro (referencia)
@@ -460,6 +462,66 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
         </a>
       </div>
     </div>
+  );
+}
+
+function DetailedPlanView({ result }: { result: Extract<PlanResult, { ok: true }> }) {
+  const { detail } = result;
+  return (
+    <section className="planner-detailed-plan">
+      <header className="planner-detailed-heading">
+        <div>
+          <p>Plan específico de ejecución</p>
+          <h3>Medios, proveedores, productos, plazas y presupuesto.</h3>
+          <span>La recomendación cruza el brief con las bases internas y conserva las validaciones pendientes.</span>
+        </div>
+        <b>{detail.engine === "datos+ia" ? `DATOS + IA${detail.liveSources.length ? " + INTERNET" : ""}` : detail.liveSources.length ? "DATOS + INTERNET" : "MOTOR DE DATOS"}</b>
+      </header>
+
+      {detail.aiNarrative && (
+        <aside className="planner-ai-verdict">
+          <span aria-hidden>✦</span>
+          <div><strong>Dictamen de Mavi</strong><p>{detail.aiNarrative}</p></div>
+        </aside>
+      )}
+
+      {detail.liveSources.length > 0 && (
+        <aside className="planner-live-sources"><strong>Señales actuales consultadas</strong><div>{detail.liveSources.map((source) => <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer">{source.title} · {source.source}{source.publishedAt ? ` · ${source.publishedAt}` : ""} ↗</a>)}</div></aside>
+      )}
+
+      <div className="planner-detailed-channels">
+        {detail.channelPlans.map((channel) => (
+          <article key={channel.label}>
+            <header>
+              <div><span>{channel.label}</span><p>{channel.objective}</p></div>
+              <strong>{money(channel.budgetUsd)}</strong>
+            </header>
+            <p className="planner-detailed-rationale">{channel.rationale}</p>
+            <div className="planner-execution-list">
+              {channel.executions.map((execution) => (
+                <div key={execution.id} className="planner-execution-row">
+                  <div className="planner-execution-main">
+                    <span className={`planner-execution-status is-${execution.status}`}>{execution.status === "cotizable" ? "Cotizable" : "Validar"}</span>
+                    <strong>{execution.provider}</strong>
+                    <p>{execution.product}</p>
+                  </div>
+                  <dl>
+                    <div><dt>Ubicación</dt><dd>{execution.location}</dd></div>
+                    <div><dt>Franja / periodo</dt><dd>{execution.schedule}</dd></div>
+                    <div><dt>Presupuesto</dt><dd>{money(execution.budgetUsd)}</dd></div>
+                    <div><dt>Referencia</dt><dd>{execution.referenceUnitPriceUsd == null ? execution.unit : `${money(execution.referenceUnitPriceUsd)} · ${execution.unit}`}{execution.estimatedUnits != null ? ` · aprox. ${execution.estimatedUnits} unidad${execution.estimatedUnits === 1 ? "" : "es"}` : ""}</dd></div>
+                  </dl>
+                  <p className="planner-execution-evidence"><b>Evidencia:</b> {execution.evidence}</p>
+                  <p className="planner-execution-next"><b>Antes de ordenar:</b> {execution.nextStep}</p>
+                </div>
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <aside className="planner-detailed-checks"><strong>Control metodológico</strong><ul>{detail.checks.map((check) => <li key={check}>✓ {check}</li>)}</ul></aside>
+    </section>
   );
 }
 

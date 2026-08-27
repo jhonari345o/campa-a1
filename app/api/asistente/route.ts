@@ -27,7 +27,11 @@ Que haces:
   listos (usa las PLANTILLAS de campana como estructura) para video/reels, redes, TV y radio.
 
 Reglas:
-- Solo hablas de publicidad, medios y campanas. Si preguntan otra cosa, reencauza con amabilidad.
+- Respondes preguntas sobre publicidad, medios, el planificador, catalogos, presupuestos,
+  campanas, ordenes, reportes y el uso de Ad Mavericks One. Si preguntan algo ajeno a ese
+  universo, reencauza con amabilidad.
+- Cuando el contexto contenga productos, programas, emisoras, proveedores, ubicaciones o
+  tarifas concretas, baja la recomendacion a ese nivel y cita la validacion pendiente.
 - Datos honestos: si algo no esta en el contexto, dilo; no inventes cifras ni prometas
   resultados garantizados.
 - Trata la BASE INTERNA DE REFERENCIA como historica o de corte declarado. Nunca la describas
@@ -96,8 +100,8 @@ export async function POST(request: Request) {
 
   // 3. Contexto de datos + llamada al modelo propio.
   try {
-    const context = await buildMarketContext();
     const lastUserMessage = history[history.length - 1].content;
+    const context = await buildMarketContext(lastUserMessage);
     const live = isAiWebTrendsEnabled() && shouldUseLiveTrends(lastUserMessage)
       ? await buildLiveTrendContext(lastUserMessage)
       : { context: "", sources: [] };

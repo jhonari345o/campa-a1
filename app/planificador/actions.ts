@@ -8,6 +8,10 @@ import { getMyCompanies } from "@/lib/company";
 import { canCompanyRole } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { buildPlanAnalysis, type PlanAnalysis } from "@/lib/plan-analysis";
+import {
+  buildDetailedMediaRecommendation,
+  type DetailedMediaRecommendation,
+} from "@/lib/detailed-plan";
 
 export type PlanBrief = {
   brand: string;
@@ -69,6 +73,7 @@ export type PlanResult =
       plan: MediaPlan;
       campaigns: Campaign[];
       analysis: PlanAnalysis;
+      detail: DetailedMediaRecommendation;
       keyword: string;
       objective: string;
       audience: string;
@@ -191,10 +196,11 @@ export async function generarPlan(
         }, plan)
       : [];
     const analysis = buildPlanAnalysis(brief, plan);
+    const detail = await buildDetailedMediaRecommendation(brief, plan);
     const safePlan = profile.is_platform_admin
       ? plan
       : { ...plan, matched: 0, totalRef: 0 };
-    return { ok: true, plan: safePlan, campaigns, analysis, keyword, objective, audience, brief };
+    return { ok: true, plan: safePlan, campaigns, analysis, detail, keyword, objective, audience, brief };
   } catch (err) {
     if (err instanceof Error && err.message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
       return { ok: false, error: "El planificador aun no esta habilitado (falta la clave de servicio)." };
@@ -223,6 +229,7 @@ export async function guardarPlan(input: Extract<PlanResult, { ok: true }>): Pro
     brief: input.brief,
     plan: input.plan,
     campaigns: input.campaigns,
+    detail: input.detail,
   };
   const { data, error } = await db
     .from("media_plans")
@@ -242,7 +249,7 @@ export async function guardarPlan(input: Extract<PlanResult, { ok: true }>): Pro
         benchmark: input.plan.benchmark,
         strategySummary: input.plan.strategySummary,
       },
-      proposal: { plan: input.plan.plan, campaigns: input.campaigns },
+      proposal: { plan: input.plan.plan, campaigns: input.campaigns, detail: input.detail },
     })
     .select("id")
     .single();
@@ -324,9 +331,10 @@ export async function aprobarPlan(
       }, { ...canonicalPlan, plan: rows })
     : [];
   const analysis = buildPlanAnalysis(input.brief, { ...canonicalPlan, plan: rows });
+  const detail = await buildDetailedMediaRecommendation(input.brief, { ...canonicalPlan, plan: rows });
   const db = await createClient();
   const name = (input.brief.brand || input.keyword || "Plan sin marca").slice(0, 120);
-  const snapshot = { brief: input.brief, analysis, proposal: { ...canonicalPlan, plan: rows }, campaigns };
+  const snapshot = { brief: input.brief, analysis, proposal: { ...canonicalPlan, plan: rows, detail }, campaigns };
   const { data, error } = await db.from("media_plans").insert({
     owner_id: profile.id,
     company_id: company?.id ?? null,
@@ -338,7 +346,7 @@ export async function aprobarPlan(
     progress: 100,
     brief: input.brief,
     analysis,
-    proposal: { plan: rows, campaigns, approved_at: new Date().toISOString() },
+    proposal: { plan: rows, campaigns, detail, approved_at: new Date().toISOString() },
   }).select("id").single();
   if (error || !data) return { ok: false, error: "No se pudo registrar la aprobación del plan." };
   await db.from("media_plan_versions").insert({ plan_id: data.id, version: 1, actor_id: profile.id, snapshot });

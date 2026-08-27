@@ -3,17 +3,58 @@ import { BedrockRuntimeClient, ConverseCommand } from "@aws-sdk/client-bedrock-r
 export type LlmMessage = { role: "system" | "user" | "assistant"; content: string };
 
 /**
- * Cerebro de Mavi. Soporta dos proveedores:
+ * Cerebro de Mavi. Soporta proveedores intercambiables:
  *  1) Amazon Bedrock (recomendado): modelos abiertos (Llama/Mistral/Nova) en TU
  *     cuenta AWS, sin servidor. Se activa con BEDROCK_MODEL_ID.
- *  2) Endpoint compatible con OpenAI (vLLM/Ollama/TGI): se activa con LLM_BASE_URL.
+ *  2) OpenRouter Free Router: OPENROUTER_API_KEY, con openrouter/free por defecto.
+ *  3) DeepSeek directo: compatible, pero su API comercial no se trata como gratuita.
+ *  4) Endpoint compatible con OpenAI (vLLM/Ollama/TGI): LLM_BASE_URL.
  */
 export async function chatCompletion(
   messages: LlmMessage[],
   opts?: { maxTokens?: number; temperature?: number },
 ): Promise<string> {
+  const preferred = process.env.AI_PROVIDER?.trim().toLowerCase();
+  const openRouter = () => openaiChat(messages, opts, {
+    baseUrl: "https://openrouter.ai/api/v1",
+    model: process.env.OPENROUTER_MODEL || "openrouter/free",
+    apiKey: process.env.OPENROUTER_API_KEY,
+    headers: {
+      "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://one.ad-mavericks.com",
+      "X-OpenRouter-Title": "Ad Mavericks One · Mavi",
+    },
+  });
+  const deepSeek = () => openaiChat(messages, opts, {
+    baseUrl: "https://api.deepseek.com",
+    model: process.env.DEEPSEEK_MODEL || "deepseek-chat",
+    apiKey: process.env.DEEPSEEK_API_KEY,
+  });
+
+  if (preferred === "openrouter" && process.env.OPENROUTER_API_KEY) return openRouter();
+  if (preferred === "deepseek" && process.env.DEEPSEEK_API_KEY) return deepSeek();
+  if (preferred === "bedrock" && process.env.BEDROCK_MODEL_ID) return bedrockChat(messages, opts);
+  if (preferred && !["openrouter", "deepseek", "bedrock", "compatible"].includes(preferred)) {
+    throw new Error("MODELO_NO_CONFIGURADO");
+  }
+  if (preferred === "compatible" && process.env.LLM_BASE_URL && process.env.LLM_MODEL) {
+    return openaiChat(messages, opts, {
+      baseUrl: process.env.LLM_BASE_URL,
+      model: process.env.LLM_MODEL,
+      apiKey: process.env.LLM_API_KEY,
+    });
+  }
+  if (preferred) throw new Error("MODELO_NO_CONFIGURADO");
+
   if (process.env.BEDROCK_MODEL_ID) return bedrockChat(messages, opts);
-  if (process.env.LLM_BASE_URL && process.env.LLM_MODEL) return openaiChat(messages, opts);
+  if (process.env.OPENROUTER_API_KEY) return openRouter();
+  if (process.env.DEEPSEEK_API_KEY) return deepSeek();
+  if (process.env.LLM_BASE_URL && process.env.LLM_MODEL) {
+    return openaiChat(messages, opts, {
+      baseUrl: process.env.LLM_BASE_URL,
+      model: process.env.LLM_MODEL,
+      apiKey: process.env.LLM_API_KEY,
+    });
+  }
   throw new Error("MODELO_NO_CONFIGURADO");
 }
 
@@ -67,16 +108,20 @@ async function bedrockChat(messages: LlmMessage[], opts?: { maxTokens?: number; 
 }
 
 // ---- Endpoint compatible con OpenAI (vLLM / Ollama / TGI) ----
-async function openaiChat(messages: LlmMessage[], opts?: { maxTokens?: number; temperature?: number }) {
-  const base = process.env.LLM_BASE_URL!;
-  const res = await fetch(`${base.replace(/\/$/, "")}/chat/completions`, {
+async function openaiChat(
+  messages: LlmMessage[],
+  opts: { maxTokens?: number; temperature?: number } | undefined,
+  provider: { baseUrl: string; model: string; apiKey?: string; headers?: Record<string, string> },
+) {
+  const res = await fetch(`${provider.baseUrl.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(process.env.LLM_API_KEY ? { Authorization: `Bearer ${process.env.LLM_API_KEY}` } : {}),
+      ...(provider.apiKey ? { Authorization: `Bearer ${provider.apiKey}` } : {}),
+      ...provider.headers,
     },
     body: JSON.stringify({
-      model: process.env.LLM_MODEL,
+      model: provider.model,
       messages,
       max_tokens: opts?.maxTokens ?? 1024,
       temperature: opts?.temperature ?? 0.4,

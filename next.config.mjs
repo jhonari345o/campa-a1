@@ -38,6 +38,7 @@ const privateRoutes = [
   "/asistente",
   "/campanas",
   "/pautar",
+  "/reportes",
 ];
 
 /** @type {import('next').NextConfig} */
