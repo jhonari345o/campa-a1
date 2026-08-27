@@ -1,5 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { MEDIA_TYPE_LABELS } from "@/lib/market";
+import { mediaGroupForLabel, type MediaGroup } from "@/lib/media-groups";
+
+export { mediaGroupForLabel } from "@/lib/media-groups";
 
 export type PlanInput = {
   keyword: string;
@@ -31,7 +34,6 @@ export type MediaPlan = {
   strategySummary: string;
 };
 
-type MediaGroup = "television" | "radio" | "ooh" | "press" | "digital" | "influencers";
 type DigitalKey = "meta" | "google" | "whatsapp" | "tiktok" | "linkedin" | "spotify" | "programmatic" | "pinterest";
 
 export type StrategicProfile = {
@@ -181,17 +183,6 @@ function containsTerm(haystack: string, term: string): boolean {
   const needle = comparable(term);
   if (needle.length > 3) return haystack.includes(needle);
   return haystack.split(/[^a-z0-9]+/).includes(needle);
-}
-
-export function mediaGroupForLabel(label: string): string | null {
-  const value = comparable(label);
-  if (["meta", "google", "whatsapp", "tiktok", "linkedin", "spotify", "pinterest", "programmatic", "buscador", "redes sociales", "streaming", "sitios y apps"].some((key) => value.includes(key))) return "digital";
-  if (value.includes("tv") || value.includes("television")) return "television";
-  if (value.includes("radio")) return "radio";
-  if (value.includes("prensa") || value.includes("revista") || value.includes("periodico")) return "press";
-  if (value.includes("via publica") || value.includes("exterior") || value.includes("ooh")) return "ooh";
-  if (value.includes("influencer")) return "influencers";
-  return null;
 }
 
 export function filterPlanByMedia(rows: PlanRow[], selectedMedia: string[] | undefined, budget: number | null): PlanRow[] {

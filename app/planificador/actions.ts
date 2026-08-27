@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSessionProfile } from "@/lib/auth";
-import { buildMediaPlan, type MediaPlan } from "@/lib/planner";
+import { buildMediaPlan, type MediaPlan, type PlanRow } from "@/lib/planner";
 import { buildCampaigns, type Campaign } from "@/lib/campaigns";
 import { getMyCompanies } from "@/lib/company";
 import { canCompanyRole } from "@/lib/permissions";
@@ -256,6 +256,94 @@ export async function guardarPlan(input: Extract<PlanResult, { ok: true }>): Pro
   });
   revalidatePath("/planificador");
   return { ok: true, id: String(data.id) };
+}
+
+export async function aprobarPlan(
+  input: Extract<PlanResult, { ok: true }>,
+  customizedRows: PlanRow[],
+): Promise<{ ok: true; id: string; rows: PlanRow[] } | { ok: false; error: string }> {
+  const profile = await getSessionProfile();
+  if (!profile) return { ok: false, error: "Debes iniciar sesión." };
+  const companies = await getMyCompanies(profile.id);
+  const approvingCompany = companies.find(
+    (item) => item.status === "activa" && canCompanyRole(item.role, "plan") && canCompanyRole(item.role, "campaign:approve"),
+  );
+  const company = profile.is_platform_admin
+    ? companies.find((item) => item.status === "activa" && canCompanyRole(item.role, "plan"))
+    : approvingCompany;
+  const canApprove = profile.is_platform_admin || Boolean(approvingCompany);
+  if (!canApprove) return { ok: false, error: "El plan debe ser aprobado por un usuario autorizador." };
+
+  let canonicalPlan: MediaPlan;
+  try {
+    canonicalPlan = await buildMediaPlan({
+      keyword: input.brief.keyword,
+      budgetUsd: input.brief.budgetUsd,
+      selectedMedia: input.brief.selectedMedia,
+      objective: input.brief.objective,
+      priority: input.brief.priority,
+      audienceType: input.brief.audienceType,
+      geography: input.brief.geography,
+      businessModel: input.brief.businessModel,
+      conversionModel: input.brief.conversionModel,
+      trackingStatus: input.brief.trackingStatus,
+    });
+  } catch {
+    return { ok: false, error: "No se pudo volver a validar la propuesta antes de aprobarla." };
+  }
+
+  const canonicalRows = new Map(canonicalPlan.plan.map((row) => [row.label, row]));
+  const allowedLabels = new Set(canonicalRows.keys());
+  const clean = customizedRows
+    .filter((row) => allowedLabels.has(row.label) && Number.isFinite(row.pct) && row.pct >= 0)
+    .map((row) => ({
+      label: row.label,
+      pct: Number(row.pct),
+      amount: null,
+      rationale: canonicalRows.get(row.label)?.rationale,
+    }));
+  const total = clean.reduce((sum, row) => sum + row.pct, 0);
+  const uniqueLabels = new Set(clean.map((row) => row.label));
+  if (clean.length !== canonicalPlan.plan.length || uniqueLabels.size !== clean.length || Math.abs(total - 1) > 0.002) {
+    return { ok: false, error: "La personalización debe distribuir exactamente el 100% entre los medios propuestos." };
+  }
+  const budget = input.brief.budgetUsd && input.brief.budgetUsd > 0 ? input.brief.budgetUsd : null;
+  const rows = clean.map((row) => ({ ...row, amount: budget ? row.pct * budget : null }));
+  const campaigns = input.brief.selectedMedia.includes("digital")
+    ? buildCampaigns({
+        keyword: input.brief.keyword,
+        audience: input.brief.audience,
+        objective: input.brief.objective,
+        brand: input.brief.brand,
+        geography: input.brief.geography,
+        audienceType: input.brief.audienceType,
+        ageRange: input.brief.ageRange,
+        socioeconomic: input.brief.socioeconomic,
+        businessModel: input.brief.businessModel,
+        conversionModel: input.brief.conversionModel,
+      }, { ...canonicalPlan, plan: rows })
+    : [];
+  const analysis = buildPlanAnalysis(input.brief, { ...canonicalPlan, plan: rows });
+  const db = await createClient();
+  const name = (input.brief.brand || input.keyword || "Plan sin marca").slice(0, 120);
+  const snapshot = { brief: input.brief, analysis, proposal: { ...canonicalPlan, plan: rows }, campaigns };
+  const { data, error } = await db.from("media_plans").insert({
+    owner_id: profile.id,
+    company_id: company?.id ?? null,
+    name,
+    status: "aprobado",
+    mode: "guiado",
+    stage: "aprobado",
+    version: 1,
+    progress: 100,
+    brief: input.brief,
+    analysis,
+    proposal: { plan: rows, campaigns, approved_at: new Date().toISOString() },
+  }).select("id").single();
+  if (error || !data) return { ok: false, error: "No se pudo registrar la aprobación del plan." };
+  await db.from("media_plan_versions").insert({ plan_id: data.id, version: 1, actor_id: profile.id, snapshot });
+  revalidatePath("/planificador");
+  return { ok: true, id: String(data.id), rows };
 }
 
 function text(formData: FormData, key: string) {

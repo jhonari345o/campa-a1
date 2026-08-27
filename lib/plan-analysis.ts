@@ -1,4 +1,5 @@
-import { mediaGroupForLabel, type MediaPlan } from "@/lib/planner";
+import type { MediaPlan } from "@/lib/planner";
+import { mediaGroupForLabel } from "@/lib/media-groups";
 
 export type AnalysisStatus = "listo" | "por_validar" | "requiere_preparacion";
 
