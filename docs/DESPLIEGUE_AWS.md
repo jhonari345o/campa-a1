@@ -30,6 +30,9 @@ y entrega HTTPS, dominio y CDN. Alternativa por contenedor (ECS/Fargate) al fina
 | `META_REAL_SPEND_ENABLED` | `false` hasta aprobar pauta con gasto |
 | `AI_ASSISTANT_ENABLED` | `false` hasta aprobar proveedor y tratamiento de datos |
 | `AI_WEB_TRENDS_ENABLED` | `true` solo si Mavi puede consultar fuentes publicas recientes |
+| `AI_PROVIDER` | `openrouter`, `bedrock`, `deepseek` o `compatible` |
+| `OPENROUTER_API_KEY` | clave API de inferencia; no usar una Management Key |
+| `OPENROUTER_MODEL` | router/modelo aprobado, por ejemplo `openrouter/free` |
 | `AGENT_AUTOMATION_ENABLED` | `false` hasta aprobar el worker automatizado |
 | `DLOCALGO_ENV` | `sandbox` hasta aprobar la prueba; luego `live` |
 | `DLOCALGO_API_KEY` | API Key de dLocal Go (solo servidor) |
@@ -49,15 +52,10 @@ y entrega HTTPS, dominio y CDN. Alternativa por contenedor (ECS/Fargate) al fina
 > `.env.production` de runtime con una lista cerrada de variables.
 
 Para Bedrock, asignar permisos al rol IAM del runtime de Amplify y definir solo
-`BEDROCK_REGION` y `BEDROCK_MODEL_ID`. No guardar access keys AWS de larga vida
-en las variables del proyecto. La `service_role` de Supabase y otros tokens
-siguen siendo secretos de alto impacto: limitar el acceso a los artefactos de
-despliegue y rotarlos ante cualquier sospecha de exposicion.
-
-Por compatibilidad con la instalacion existente, el build tambien reconoce
-`BEDROCK_ACCESS_KEY_ID` y `BEDROCK_SECRET_ACCESS_KEY` si ya estan configuradas en
-Amplify. Deben migrarse a un rol IAM y eliminarse despues de comprobar que Mavi
-responde con las credenciales temporales del runtime.
+`BEDROCK_REGION` y `BEDROCK_MODEL_ID`. El build rechaza el uso de access keys AWS
+de larga vida como variables del proyecto. La `service_role` de Supabase y otros
+tokens siguen siendo secretos de alto impacto: limitar el acceso a los artefactos
+de despliegue y rotarlos ante cualquier sospecha de exposicion.
 
 ### 3. Desplegar
 - *Save and deploy*. Amplify instala, construye (`npm run build`) y publica.
@@ -87,7 +85,7 @@ Para un control mas fino (o correr detras de ALB + WAF propio):
 
 ## Checklist previo a abrir a clientes (regla de oro)
 - [ ] `schema.sql` y `seed.sql` ejecutados en Supabase.
-- [ ] Migraciones hasta `0010_dlocal_go_checkout.sql` ejecutadas y políticas RLS verificadas.
+- [ ] Migraciones hasta `0011_ooh_geographic_inventory.sql` ejecutadas y políticas RLS verificadas.
 - [ ] Primer platform admin creado y verificado.
 - [ ] Autorregistro desactivado en Supabase Auth; usuarios creados solo por administracion.
 - [ ] Variables de entorno cargadas en Amplify (o secrets en ECS).
@@ -96,7 +94,7 @@ Para un control mas fino (o correr detras de ALB + WAF propio):
 - [ ] Conciliación contable aprobada: cobro dLocal y factura Meta son movimientos separados.
 - [ ] Meta Marketing API aprobada; campaña de prueba creada en `PAUSED` sin gasto.
 - [ ] Boton **Verificar conexion con Meta** confirma activos y permisos sin crear anuncios.
-- [ ] Mavi muestra fuentes fechadas de los ultimos 120 dias y declara el periodo de la base interna.
+- [ ] Mavi muestra fuentes pertinentes de los ultimos 90 dias y declara el periodo de la base interna.
 - [ ] `COMMERCIAL_PAYMENTS_ENABLED=false` y `META_REAL_SPEND_ENABLED=false`
       hasta que los controles P0/P1 tengan evidencia aprobada.
 - [ ] Pruebas de aislamiento entre dos empresas y roles ejecutadas.

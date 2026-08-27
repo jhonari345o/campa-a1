@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
 import {
@@ -141,6 +141,12 @@ test("Mavi consulta Internet para actualidad y recomendaciones de medios", () =>
   assert.equal(shouldUseLiveTrends("Tengo una cafetería, ¿en qué medios invierto este trimestre?"), true);
   assert.equal(shouldUseLiveTrends("Recomiéndame canales según mi presupuesto y audiencia"), true);
   assert.equal(shouldUseLiveTrends("Hazme un guion de radio"), false);
+});
+
+test("Amplify entrega OpenRouter al servidor sin incorporar credenciales AWS estáticas", () => {
+  const buildSpec = readFileSync(resolve("amplify.yml"), "utf8");
+  assert.match(buildSpec, /AI_PROVIDER\|OPENROUTER_API_KEY\|OPENROUTER_MODEL/);
+  assert.doesNotMatch(buildSpec, /BEDROCK_ACCESS_KEY_ID|BEDROCK_SECRET_ACCESS_KEY/);
 });
 
 test("las campañas son únicas por plataforma y exponen una calificación estratégica", () => {
