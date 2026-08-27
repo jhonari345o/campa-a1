@@ -8,6 +8,16 @@ import { mediaGroupForLabel } from "@/lib/media-groups";
 import type { Campaign } from "@/lib/campaigns";
 import { ejecutarCampana } from "@/app/campanas/actions";
 import { EcuadorTargetMap, type GeoTarget } from "@/app/pautar/EcuadorTargetMap";
+import {
+  BUSINESS_CATEGORY_OPTIONS,
+  COMMERCIAL_GOAL_UNIT_OPTIONS,
+  COMMERCIAL_KPI_OPTIONS,
+  CONVERSION_EVENT_OPTIONS,
+  PRODUCT_SEASON_OPTIONS,
+  WOW_FORMAT_OPTIONS,
+  WOW_SURFACE_OPTIONS,
+  type CatalogOption,
+} from "@/lib/form-catalogs";
 
 const money = (n: number | null) =>
   n == null ? "—" : new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
@@ -62,7 +72,10 @@ export function PlanForm() {
           <SectionNumber number="01" title="Objetivo de la campaña" description="Define la marca, su categoría y el resultado que debe priorizar el plan." />
           <div className="planner-fields planner-fields-two">
             <Field name="brand" label="Marca" placeholder="Nombre de la marca" />
-            <Field name="keyword" label="Giro o categoría *" placeholder="Busca entre categorías: cafetería, banco, farmacia…" required />
+            <SelectField name="keyword" label="Rubro o giro principal *" defaultValue="" required>
+              <option value="" disabled>Selecciona el rubro principal</option>
+              <CatalogOptions options={BUSINESS_CATEGORY_OPTIONS} />
+            </SelectField>
             <SelectField name="objective" label="Objetivo principal" defaultValue="Ventas">
               {["Reconocimiento", "Alcance", "Consideración", "Tráfico", "Interacción", "Reproducciones", "Generación de leads", "Mensajes", "Ventas", "Visitas al local", "Descargas de app", "Retención", "Otro"].map((option) => <option key={option}>{option}</option>)}
             </SelectField>
@@ -114,8 +127,8 @@ export function PlanForm() {
               <Field name="wowBudget" label="Presupuesto independiente (USD)" type="number" placeholder="No se descuenta del plan principal" />
               <Field name="wowMunicipality" label="Municipio o ciudad" placeholder="Ej. Guayaquil" />
               <Field name="wowExactLocation" label="Ubicación exacta o coordenadas" placeholder="Dirección, edificio o punto propuesto" />
-              <Field name="wowFormat" label="Tipo de formato" placeholder="Mapping, mural, corpóreo, banderines…" />
-              <Field name="wowSurface" label="Superficie o soporte" placeholder="Fachada, espacio público, propiedad privada…" />
+              <SelectField name="wowFormat" label="Tipo de formato" defaultValue=""><option value="">Seleccionar formato</option><CatalogOptions options={WOW_FORMAT_OPTIONS} /></SelectField>
+              <SelectField name="wowSurface" label="Superficie o soporte" defaultValue=""><option value="">Seleccionar soporte</option><CatalogOptions options={WOW_SURFACE_OPTIONS} /></SelectField>
               <SelectField name="wowOwnership" label="Titularidad o autorización" defaultValue=""><option value="">Por confirmar</option><option>Propiedad privada autorizada</option><option>Espacio público</option><option>Autorización en gestión</option><option>Titularidad pendiente</option></SelectField>
               <Field name="wowMeasurements" label="Medidas y factibilidad técnica" placeholder="Dimensiones, iluminación, montaje y restricciones" />
             </div>
@@ -135,11 +148,11 @@ export function PlanForm() {
                 <SelectField name="conversionModel" label="Modelo de venta o conversión" defaultValue=""><option value="">Seleccionar</option>{["Checkout online", "Formulario o lead", "WhatsApp", "Tienda física", "Marketplace", "Venta consultiva", "Otro"].map((option) => <option key={option}>{option}</option>)}</SelectField>
                 <SelectField name="commercialGoalType" label="Meta comercial" defaultValue=""><option value="">No declarada</option><option value="units">En unidades</option><option value="currency">En valor (USD)</option></SelectField>
                 <Field name="commercialGoalAmount" label="Cantidad o valor objetivo" placeholder="Ej. 250000" type="number" />
-                <Field name="commercialGoalUnit" label="Unidad de medida" placeholder="Ventas, leads, matrículas, reservas…" />
+                <SelectField name="commercialGoalUnit" label="Unidad de medida" defaultValue=""><option value="">Seleccionar unidad</option><CatalogOptions options={COMMERCIAL_GOAL_UNIT_OPTIONS} /></SelectField>
                 <Field name="averageTicket" label="Ticket promedio o valor por lead (USD)" placeholder="Ej. 85" type="number" />
                 <Field name="grossMargin" label="Margen bruto o comisión (%)" placeholder="Ej. 32" type="number" />
                 <SelectField name="operationalCapacity" label="Capacidad operativa" defaultValue=""><option value="">Seleccionar</option><option>Alta</option><option>Media</option><option>Limitada</option><option>Por confirmar</option></SelectField>
-                <Field name="commercialKpi" label="KPI comercial prioritario" placeholder="Ventas, leads calificados, CAC o visitas" />
+                <SelectField name="commercialKpi" label="KPI comercial prioritario" defaultValue=""><option value="">Seleccionar KPI</option><CatalogOptions options={COMMERCIAL_KPI_OPTIONS} /></SelectField>
                 <TextArea name="valueProposition" label="Propuesta de valor y razones para creer" placeholder="Diferenciadores, beneficios y pruebas verificables de la marca." />
                 <Field name="competitors" label="Competidores principales" placeholder="Marca A, Marca B y sustitutos relevantes" />
                 <TextArea name="restrictions" label="Restricciones comerciales, legales o de marca" placeholder="Promociones, claims, regulación, logística o canales que debemos evitar." />
@@ -165,7 +178,7 @@ export function PlanForm() {
                     <Field name="productPrice" label="Precio (USD)" placeholder="0,00" type="number" />
                     <Field name="productMargin" label="Margen (%)" placeholder="0" type="number" />
                     <Field name="productCapacity" label="Stock o capacidad" placeholder="Ej. 5.000 unidades o 80 cupos" />
-                    <Field name="productSeason" label="Temporada" placeholder="Todo el año o regreso a clases" />
+                    <SelectField name="productSeason" label="Temporada" defaultValue=""><option value="">Seleccionar temporada</option><CatalogOptions options={PRODUCT_SEASON_OPTIONS} /></SelectField>
                     <Field name="productNotes" label="Notas" placeholder="Prioridad, promoción o condición especial" />
                   </div>
                 </div>)}
@@ -183,7 +196,7 @@ export function PlanForm() {
               <p className="planner-details-note">Este bloque prepara la implementación y el forecast. Nunca pediremos contraseñas; si algo falta, se convertirá en requerimiento antes de activar campañas.</p>
               <div className="planner-fields planner-fields-three">
                 <SelectField name="digitalObjective" label="Objetivo digital principal" defaultValue=""><option value="">Seleccionar</option>{["Alcance", "Reproducciones de video", "Tráfico", "Interacción", "Mensajes", "Leads", "Ventas", "Instalaciones", "Retención"].map((option) => <option key={option}>{option}</option>)}</SelectField>
-                <Field name="conversionEvent" label="Conversión o evento principal" placeholder="Compra, lead calificado o mensaje iniciado" />
+                <SelectField name="conversionEvent" label="Conversión o evento principal" defaultValue=""><option value="">Seleccionar evento</option><CatalogOptions options={CONVERSION_EVENT_OPTIONS} /></SelectField>
                 <Field name="digitalDestination" label="Destino o landing" placeholder="URL, WhatsApp, app o formulario" />
                 <SelectField name="trackingStatus" label="Estado del tracking" defaultValue=""><option value="">Seleccionar</option><option>Implementado y validado</option><option>Implementado parcialmente</option><option>No implementado</option><option>Por confirmar</option></SelectField>
                 <SelectField name="adAccountsStatus" label="Estado de las cuentas publicitarias" defaultValue=""><option value="">Seleccionar</option><option>Existen y tenemos acceso</option><option>Existen, falta acceso</option><option>Deben crearse</option><option>Por confirmar</option></SelectField>
@@ -689,11 +702,13 @@ function SelectField({
   name,
   label,
   defaultValue,
+  required,
   children,
 }: {
   name: string;
   label: string;
   defaultValue?: string;
+  required?: boolean;
   children: ReactNode;
 }) {
   const fieldId = useId();
@@ -704,12 +719,17 @@ function SelectField({
         id={fieldId}
         name={name}
         defaultValue={defaultValue}
+        required={required}
         className="mt-1 w-full rounded-xl border border-border bg-fog px-4 py-3 outline-none focus:border-signal focus:ring-2 focus:ring-signal/30"
       >
         {children}
       </select>
     </div>
   );
+}
+
+function CatalogOptions({ options }: { options: readonly CatalogOption[] }) {
+  return options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>);
 }
 
 function TextArea({ name, label, placeholder }: { name: string; label: string; placeholder?: string }) {

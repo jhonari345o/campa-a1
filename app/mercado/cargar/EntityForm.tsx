@@ -7,7 +7,7 @@ export type Field = {
   name: string;
   label: string;
   type?: "text" | "number" | "email";
-  options?: { value: string; label: string }[]; // si viene, es un <select>
+  options?: readonly { value: string; label: string }[]; // si viene, es un <select>
   required?: boolean;
   placeholder?: string;
   colSpan?: 1 | 2;
@@ -44,8 +44,8 @@ export function EntityForm({ title, description, action, fields, submitLabel }: 
                 defaultValue=""
                 className="mt-1 w-full rounded-xl border border-border bg-fog px-4 py-3 outline-none focus:border-signal focus:ring-2 focus:ring-signal/30"
               >
-                <option value="" disabled>
-                  Selecciona…
+                <option value="" disabled={f.required}>
+                  {f.required ? "Selecciona…" : "Sin especificar"}
                 </option>
                 {f.options.map((o) => (
                   <option key={o.value} value={o.value}>

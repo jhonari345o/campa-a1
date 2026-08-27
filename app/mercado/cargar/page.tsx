@@ -2,6 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { getSessionProfile } from "@/lib/auth";
+import {
+  BUSINESS_CATEGORY_OPTIONS,
+  ECUADOR_PROVINCE_OPTIONS,
+  MONTH_OPTIONS,
+  PERIOD_YEAR_OPTIONS,
+} from "@/lib/form-catalogs";
 import { getAdvertisers, MEDIA_TYPE_LABELS, MEDIA_TYPES } from "@/lib/market";
 import { crearAnunciante, crearMedio, crearInversion, crearMetrica } from "../actions";
 import { EntityForm, STATUS_OPTIONS, type Field } from "./EntityForm";
@@ -30,8 +36,8 @@ export default async function CargarPage() {
   const anuncianteFields: Field[] = [
     { name: "name", label: "Nombre", required: true, colSpan: 2, placeholder: "Cerveceria del Litoral" },
     { name: "legal_id", label: "RUC", placeholder: "0990000000001" },
-    { name: "sector", label: "Sector", placeholder: "Bebidas" },
-    { name: "province", label: "Provincia", placeholder: "Guayas" },
+    { name: "sector", label: "Rubro o sector", options: BUSINESS_CATEGORY_OPTIONS },
+    { name: "province", label: "Provincia", options: ECUADOR_PROVINCE_OPTIONS },
     { name: "status", label: "Estado", options: STATUS_OPTIONS },
   ];
 
@@ -45,8 +51,8 @@ export default async function CargarPage() {
     { name: "advertiser_id", label: "Anunciante", options: advertiserOptions, required: true, colSpan: 2 },
     { name: "media_type", label: "Medio", options: mediaOptions },
     { name: "amount_usd", label: "Monto (USD)", type: "number", placeholder: "50000" },
-    { name: "period_year", label: "Anio", type: "number", required: true, placeholder: "2026" },
-    { name: "period_month", label: "Mes (1-12)", type: "number", placeholder: "8" },
+    { name: "period_year", label: "Año", options: PERIOD_YEAR_OPTIONS, required: true },
+    { name: "period_month", label: "Mes", options: MONTH_OPTIONS },
     { name: "status", label: "Estado", options: STATUS_OPTIONS },
     { name: "notes", label: "Notas", colSpan: 2 },
   ];
@@ -55,8 +61,8 @@ export default async function CargarPage() {
     { name: "advertiser_id", label: "Anunciante", options: advertiserOptions, required: true, colSpan: 2 },
     { name: "platform", label: "Plataforma", options: platformOptions, required: true },
     { name: "spend_usd", label: "Inversion (USD)", type: "number", placeholder: "12000" },
-    { name: "period_year", label: "Anio", type: "number", required: true, placeholder: "2026" },
-    { name: "period_month", label: "Mes (1-12)", type: "number", placeholder: "8" },
+    { name: "period_year", label: "Año", options: PERIOD_YEAR_OPTIONS, required: true },
+    { name: "period_month", label: "Mes", options: MONTH_OPTIONS },
     { name: "impressions", label: "Impresiones", type: "number" },
     { name: "clicks", label: "Clics", type: "number" },
     { name: "conversions", label: "Conversiones", type: "number" },

@@ -12,6 +12,7 @@ import {
   buildDetailedMediaRecommendation,
   type DetailedMediaRecommendation,
 } from "@/lib/detailed-plan";
+import { BUSINESS_CATEGORY_OPTIONS } from "@/lib/form-catalogs";
 
 export type PlanBrief = {
   brand: string;
@@ -106,8 +107,8 @@ export async function generarPlan(
   const budgetRaw = String(formData.get("budget") ?? "").replace(/[^0-9.]/g, "");
   const budgetUsd = budgetRaw ? Number(budgetRaw) : null;
 
-  if (keyword.length < 2) {
-    return { ok: false, error: "Escribe el giro de tu negocio (ej. cafeteria, banco, farmacia)." };
+  if (!BUSINESS_CATEGORY_OPTIONS.some((option) => option.value === keyword)) {
+    return { ok: false, error: "Selecciona el rubro o giro principal de tu negocio." };
   }
 
   const selectedMedia = formData.getAll("selectedMedia").map(String);

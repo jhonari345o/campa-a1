@@ -26,6 +26,16 @@ import { verifyDlocalNotificationSignature } from "../lib/payments/dlocal-signat
 import { computeCharge } from "../lib/pricing";
 import { buildPlanAnalysis, type PlanAnalysisInput } from "../lib/plan-analysis";
 import { buildDetailedMediaRecommendation } from "../lib/detailed-plan";
+import {
+  BUSINESS_CATEGORY_OPTIONS,
+  COMMERCIAL_GOAL_UNIT_OPTIONS,
+  COMMERCIAL_KPI_OPTIONS,
+  CONVERSION_EVENT_OPTIONS,
+  ECUADOR_PROVINCE_OPTIONS,
+  PRODUCT_SEASON_OPTIONS,
+  WOW_FORMAT_OPTIONS,
+  WOW_SURFACE_OPTIONS,
+} from "../lib/form-catalogs";
 
 test("las operaciones economicas permanecen deshabilitadas por defecto", () => {
   delete process.env.COMMERCIAL_PAYMENTS_ENABLED;
@@ -103,6 +113,26 @@ test("el perfil estratégico cambia según el giro y reconoce plataformas digita
   assert.equal(strategicProfileFor("farmacia barrial").id, "salud");
   assert.equal(mediaGroupForLabel("Spotify Ads"), "digital");
   assert.equal(mediaGroupForLabel("LinkedIn Ads"), "digital");
+});
+
+test("los campos categóricos usan catálogos cerrados, completos y sin duplicados", () => {
+  const catalogs = [
+    BUSINESS_CATEGORY_OPTIONS,
+    COMMERCIAL_GOAL_UNIT_OPTIONS,
+    COMMERCIAL_KPI_OPTIONS,
+    CONVERSION_EVENT_OPTIONS,
+    ECUADOR_PROVINCE_OPTIONS,
+    PRODUCT_SEASON_OPTIONS,
+    WOW_FORMAT_OPTIONS,
+    WOW_SURFACE_OPTIONS,
+  ];
+  for (const catalog of catalogs) {
+    assert.ok(catalog.length > 0);
+    assert.equal(new Set(catalog.map((option) => option.value)).size, catalog.length);
+    assert.ok(catalog.every((option) => option.value.trim() && option.label.trim()));
+  }
+  assert.equal(ECUADOR_PROVINCE_OPTIONS.length, 24);
+  assert.ok(BUSINESS_CATEGORY_OPTIONS.some((option) => option.value.includes("Restaurantes")));
 });
 
 test("Mavi consulta Internet para actualidad y recomendaciones de medios", () => {

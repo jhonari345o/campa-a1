@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/lib/auth";
+import { BUSINESS_CATEGORY_OPTIONS, ECUADOR_PROVINCE_OPTIONS } from "@/lib/form-catalogs";
 
 export type ActionResult = { ok: true; message: string } | { ok: false; error: string };
 
@@ -35,14 +36,22 @@ export async function crearAnunciante(
   if (!guard.ok) return { ok: false, error: guard.error };
 
   const name = String(formData.get("name") ?? "").trim();
+  const sector = String(formData.get("sector") ?? "").trim();
+  const province = String(formData.get("province") ?? "").trim();
   if (name.length < 2) return { ok: false, error: "Escribe el nombre del anunciante." };
+  if (sector && !BUSINESS_CATEGORY_OPTIONS.some((option) => option.value === sector)) {
+    return { ok: false, error: "Selecciona un rubro o sector válido." };
+  }
+  if (province && !ECUADOR_PROVINCE_OPTIONS.some((option) => option.value === province)) {
+    return { ok: false, error: "Selecciona una provincia válida." };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.from("advertisers").insert({
     name,
     legal_id: String(formData.get("legal_id") ?? "").trim() || null,
-    sector: String(formData.get("sector") ?? "").trim() || null,
-    province: String(formData.get("province") ?? "").trim() || null,
+    sector: sector || null,
+    province: province || null,
     status: formData.get("status") === "verificado" ? "verificado" : "pendiente",
   });
   if (error) return { ok: false, error: error.message };
