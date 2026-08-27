@@ -24,6 +24,7 @@ import {
 import { TV_RATE_CATALOGS } from "../lib/tv-rate-catalog";
 import { verifyDlocalNotificationSignature } from "../lib/payments/dlocal-signature";
 import { computeCharge } from "../lib/pricing";
+import { buildPlanAnalysis, type PlanAnalysisInput } from "../lib/plan-analysis";
 
 test("las operaciones economicas permanecen deshabilitadas por defecto", () => {
   delete process.env.COMMERCIAL_PAYMENTS_ENABLED;
@@ -139,4 +140,35 @@ test("el catálogo de televisión conserva programas, horarios y tarifas auditad
   );
   assert.equal(ecuavisaDestiny?.priceUsd, 4212);
   assert.equal(ecuavisaDestiny?.unit, "spot 30 s");
+});
+
+test("el análisis conserva KPI por medio y separa Idea WOW del presupuesto", () => {
+  const input: PlanAnalysisInput = {
+    keyword: "retail", objective: "Ventas", priority: "Maximizar alcance único", audienceType: "B2C",
+    audience: "Compradores frecuentes", ageRange: "Personas 18+", sex: "Todas las personas",
+    socioeconomic: "Todos los NSE", geography: "Guayaquil · 60 km alrededor", budgetUsd: 10_000,
+    selectedMedia: ["television", "digital"], businessDescription: "Cadena de tiendas", businessModel: "Retail",
+    conversionModel: "Checkout online", commercialGoalAmount: "500", averageTicket: "85", grossMargin: "30",
+    operationalCapacity: "Alta", commercialKpi: "Ventas", valueProposition: "Disponibilidad inmediata",
+    competitors: "Marca A", restrictions: "Claims verificables", learnings: "Video rindió mejor", products: [],
+    digitalObjective: "Ventas", conversionEvent: "Compra", digitalPlatforms: ["Meta"], digitalDestination: "https://example.com",
+    trackingStatus: "Implementado parcialmente", adAccountsStatus: "Existen, falta acceso", measurementStack: ["GA4"],
+    firstPartyData: "CRM", qualifiedLead: "", attributionModel: "Data-driven", consentStatus: "Requiere revisión",
+    managementNeed: "Ad Mavericks implementa y optimiza", wowEnabled: true, wowIdea: "Mapping de fachada", wowBudget: "2000",
+    wowMunicipality: "Guayaquil", wowExactLocation: "Centro", wowFormat: "Mapping", wowSurface: "Fachada",
+    wowOwnership: "Autorización en gestión", wowMeasurements: "20 x 10 m",
+  };
+  const plan = {
+    matched: 4, totalRef: 50_000, basis: "sector" as const, benchmark: [], profileLabel: "Retail y comercio",
+    strategySummary: "Mix verificable", plan: [
+      { label: "Televisión", pct: 0.6, amount: 6000, rationale: "Alcance audiovisual" },
+      { label: "Meta — Facebook e Instagram", pct: 0.4, amount: 4000, rationale: "Conversión medible" },
+    ],
+  };
+  const analysis = buildPlanAnalysis(input, plan);
+
+  assert.equal(analysis.signals.find((signal) => signal.kind === "television")?.planningKpi, "Alcance 1+ y frecuencia");
+  assert.equal(analysis.signals.find((signal) => signal.kind === "digital")?.status, "requiere_preparacion");
+  assert.equal(analysis.wowCase?.budget, "2000");
+  assert.equal(plan.plan.reduce((sum, row) => sum + Number(row.amount), 0), 10_000);
 });

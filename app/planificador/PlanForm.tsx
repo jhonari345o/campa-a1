@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useId, useState } from "react";
 import type { ReactNode } from "react";
 import { generarPlan, guardarPlan, type PlanResult } from "./actions";
 import type { PlanRow } from "@/lib/planner";
@@ -15,27 +15,43 @@ const pct = (n: number) => `${(n * 100).toFixed(0)}%`;
 export function PlanForm() {
   const [state, formAction, pending] = useActionState<PlanResult | null, FormData>(generarPlan, null);
   const [geoTarget, setGeoTarget] = useState<GeoTarget | null>(null);
+  const [stage, setStage] = useState<"brief" | "analysis" | "proposal">("brief");
+  const [productMatrixApplies, setProductMatrixApplies] = useState(false);
+  const [productRows, setProductRows] = useState([0]);
+  const [wowEnabled, setWowEnabled] = useState(false);
+  useEffect(() => {
+    if (state?.ok) {
+      setStage("analysis");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [state]);
   const geography = !geoTarget
     ? ""
     : geoTarget.scope === "country"
       ? "Todo Ecuador"
       : `${geoTarget.label} · ${geoTarget.radiusKm} km alrededor`;
+  const stageIndex = stage === "brief" ? 0 : stage === "analysis" ? 1 : 2;
+  const stageCopy = stage === "brief"
+    ? { eyebrow: "Nuevo plan", title: "Cuéntanos qué necesita tu marca.", description: "Completa el brief y Mavi construirá una recomendación con datos, contexto y criterios verificables." }
+    : stage === "analysis"
+      ? { eyebrow: "Research preparado", title: "Categoría, audiencia y medios bajo un solo criterio.", description: "Revisamos evidencia disponible, KPI válidos y todo lo que todavía requiere una fuente o validación humana." }
+      : { eyebrow: "Propuesta", title: "Un plan completo, explicado medio por medio.", description: "La inversión se distribuye sin superar el presupuesto y mantiene separadas las validaciones pendientes." };
 
   return (
     <div className="planner-portal-shell">
       <nav className="planner-progress" aria-label="Progreso del plan">
         {[["01", "Brief"], ["02", "Análisis"], ["03", "Propuesta"], ["04", "Personaliza"], ["05", "Aprobado"]].map(([number, label], index) => (
-          <div key={number} className={index === 0 ? "is-active" : ""}><span>{number}</span><strong>{label}</strong></div>
+          <div key={number} className={index === stageIndex ? "is-active" : index < stageIndex ? "is-complete" : ""}><span>{index < stageIndex ? "✓" : number}</span><strong>{label}</strong></div>
         ))}
         <button type="button">Guardar progreso</button>
       </nav>
 
       <header className="planner-hero">
-        <div><p>Nuevo plan</p><h1>Cuéntanos qué necesita tu marca.</h1><span>Completa el brief y Mavi construirá una recomendación con datos, contexto y criterios verificables.</span></div>
+        <div><p>{stageCopy.eyebrow}</p><h1>{stageCopy.title}</h1><span>{stageCopy.description}</span></div>
         <aside><small>Organización activa</small><strong>Ad Mavericks</strong><span>Workspace privado · Ecuador</span></aside>
       </header>
 
-      <form action={formAction} className="planner-form">
+      <form action={formAction} className={`planner-form ${stage === "brief" ? "" : "hidden"}`} aria-hidden={stage !== "brief"}>
         <section className="planner-form-section">
           <SectionNumber number="01" title="Objetivo de la campaña" description="Define la marca, su categoría y el resultado que debe priorizar el plan." />
           <div className="planner-fields planner-fields-two">
@@ -81,28 +97,98 @@ export function PlanForm() {
               ))}
             </div>
           </fieldset>
-          <aside className="planner-wow-card"><span>IDEA WOW</span><div><strong>Deja espacio para una activación memorable.</strong><p>Mavi podrá proponer una idea especial cruzando audiencia, territorio, calendario y medios seleccionados.</p></div></aside>
+          <aside className="planner-wow-card planner-independent-module">
+            <span>IDEA WOW</span>
+            <div><strong>Módulo adicional e independiente.</strong><p>Su presupuesto, factibilidad y métricas se trabajan aparte; nunca modifica la recomendación, la inversión ni los KPI del plan de medios.</p></div>
+            <label className="planner-module-toggle"><input name="wowEnabled" type="checkbox" checked={wowEnabled} onChange={(event) => setWowEnabled(event.target.checked)} /><b>{wowEnabled ? "Idea especial activada" : "Sí, quiero evaluar una idea especial"}</b></label>
+          </aside>
+          {wowEnabled && <div className="planner-optional-panel">
+            <div className="planner-fields planner-fields-two">
+              <TextArea name="wowIdea" label="Descripción de la idea" placeholder="Ej. mapping, corpóreo, intervención urbana o formato especial" />
+              <Field name="wowBudget" label="Presupuesto independiente (USD)" type="number" placeholder="No se descuenta del plan principal" />
+              <Field name="wowMunicipality" label="Municipio o ciudad" placeholder="Ej. Guayaquil" />
+              <Field name="wowExactLocation" label="Ubicación exacta o coordenadas" placeholder="Dirección, edificio o punto propuesto" />
+              <Field name="wowFormat" label="Tipo de formato" placeholder="Mapping, mural, corpóreo, banderines…" />
+              <Field name="wowSurface" label="Superficie o soporte" placeholder="Fachada, espacio público, propiedad privada…" />
+              <SelectField name="wowOwnership" label="Titularidad o autorización" defaultValue=""><option value="">Por confirmar</option><option>Propiedad privada autorizada</option><option>Espacio público</option><option>Autorización en gestión</option><option>Titularidad pendiente</option></SelectField>
+              <Field name="wowMeasurements" label="Medidas y factibilidad técnica" placeholder="Dimensiones, iluminación, montaje y restricciones" />
+            </div>
+            <p className="planner-module-disclaimer">Este intake prepara una prefactibilidad. No reserva espacios, no obtiene permisos y no promete aprobación municipal o técnica.</p>
+          </div>}
         </section>
 
         <section className="planner-form-section">
-          <SectionNumber number="04" title="Contexto del negocio" description="Información opcional que mejora la precisión de la estrategia y sus llamados a la acción." />
-          <details className="planner-details" open>
-            <summary>Modelo comercial y conversión <span>−</span></summary>
-            <div className="planner-fields planner-fields-two">
-              <SelectField name="businessModel" label="Modelo de negocio" defaultValue=""><option value="">Por definir</option>{["E-commerce", "Retail", "Generación de leads", "App", "B2B", "Servicios", "Otro"].map((option) => <option key={option}>{option}</option>)}</SelectField>
-              <SelectField name="conversionModel" label="Modelo de conversión" defaultValue=""><option value="">Por definir</option>{["Checkout", "Formulario", "WhatsApp", "Tienda física", "Marketplace", "Venta consultiva", "Otro"].map((option) => <option key={option}>{option}</option>)}</SelectField>
+          <SectionNumber number="04" title="Contexto comercial y portafolio" description="Estos datos son opcionales, pero funcionan como guardrails para priorizar sin convertir el plan en una promesa de ventas o ROI." />
+          <details className="planner-details">
+            <summary>Contexto comercial · opcional <span>+</span></summary>
+            <div>
+              <p className="planner-details-note">Ticket, margen, capacidad, competencia y aprendizajes mejoran la revisión estratégica. Puedes omitir cualquier dato sensible.</p>
+              <div className="planner-fields planner-fields-two">
+                <TextArea name="businessDescription" label="Descripción breve del negocio" placeholder="Qué vende, a quién y cómo genera ingresos." />
+                <SelectField name="businessModel" label="Modelo de negocio" defaultValue=""><option value="">Seleccionar</option>{["E-commerce", "Retail", "Lead Gen", "App", "B2B", "Servicios", "Otro"].map((option) => <option key={option}>{option}</option>)}</SelectField>
+                <SelectField name="conversionModel" label="Modelo de venta o conversión" defaultValue=""><option value="">Seleccionar</option>{["Checkout online", "Formulario o lead", "WhatsApp", "Tienda física", "Marketplace", "Venta consultiva", "Otro"].map((option) => <option key={option}>{option}</option>)}</SelectField>
+                <SelectField name="commercialGoalType" label="Meta comercial" defaultValue=""><option value="">No declarada</option><option value="units">En unidades</option><option value="currency">En valor (USD)</option></SelectField>
+                <Field name="commercialGoalAmount" label="Cantidad o valor objetivo" placeholder="Ej. 250000" type="number" />
+                <Field name="commercialGoalUnit" label="Unidad de medida" placeholder="Ventas, leads, matrículas, reservas…" />
+                <Field name="averageTicket" label="Ticket promedio o valor por lead (USD)" placeholder="Ej. 85" type="number" />
+                <Field name="grossMargin" label="Margen bruto o comisión (%)" placeholder="Ej. 32" type="number" />
+                <SelectField name="operationalCapacity" label="Capacidad operativa" defaultValue=""><option value="">Seleccionar</option><option>Alta</option><option>Media</option><option>Limitada</option><option>Por confirmar</option></SelectField>
+                <Field name="commercialKpi" label="KPI comercial prioritario" placeholder="Ventas, leads calificados, CAC o visitas" />
+                <TextArea name="valueProposition" label="Propuesta de valor y razones para creer" placeholder="Diferenciadores, beneficios y pruebas verificables de la marca." />
+                <Field name="competitors" label="Competidores principales" placeholder="Marca A, Marca B y sustitutos relevantes" />
+                <TextArea name="restrictions" label="Restricciones comerciales, legales o de marca" placeholder="Promociones, claims, regulación, logística o canales que debemos evitar." />
+                <TextArea name="learnings" label="Aprendizajes previos" placeholder="Qué funcionó, qué no y cualquier inversión reciente que debamos considerar." />
+              </div>
+            </div>
+          </details>
+
+          <details className="planner-details mt-4">
+            <summary>Productos o servicios · si aplica <span>{productMatrixApplies ? `${productRows.length} fila${productRows.length === 1 ? "" : "s"}` : "No aplica"}</span></summary>
+            <div>
+              <p className="planner-details-note">Registra el portafolio que participará en la campaña. Precio, margen, capacidad y temporada orientan la priorización del planner.</p>
+              <input type="hidden" name="productMatrixApplies" value={String(productMatrixApplies)} />
+              <div className="planner-segmented-control">
+                <button type="button" onClick={() => setProductMatrixApplies(true)} className={productMatrixApplies ? "is-active" : ""}>Sí, agregar matriz</button>
+                <button type="button" onClick={() => setProductMatrixApplies(false)} className={!productMatrixApplies ? "is-active" : ""}>No aplica</button>
+              </div>
+              {productMatrixApplies && <div className="planner-product-matrix">
+                {productRows.map((row, index) => <div key={row} className="planner-product-row">
+                  <div className="planner-product-row-head"><strong>Producto o servicio {index + 1}</strong><button type="button" disabled={productRows.length === 1} onClick={() => setProductRows((rows) => rows.filter((item) => item !== row))}>Quitar fila</button></div>
+                  <div className="planner-fields planner-fields-three">
+                    <Field name="productName" label="Nombre" placeholder="Ej. Detergente líquido 1 L" />
+                    <Field name="productPrice" label="Precio (USD)" placeholder="0,00" type="number" />
+                    <Field name="productMargin" label="Margen (%)" placeholder="0" type="number" />
+                    <Field name="productCapacity" label="Stock o capacidad" placeholder="Ej. 5.000 unidades o 80 cupos" />
+                    <Field name="productSeason" label="Temporada" placeholder="Todo el año o regreso a clases" />
+                    <Field name="productNotes" label="Notas" placeholder="Prioridad, promoción o condición especial" />
+                  </div>
+                </div>)}
+                <button type="button" className="btn btn-secondary w-full" onClick={() => setProductRows((rows) => [...rows, Math.max(...rows) + 1])}>+ Agregar otro producto o servicio</button>
+              </div>}
             </div>
           </details>
         </section>
 
         <section className="planner-form-section">
           <SectionNumber number="05" title="Preparación digital" description="Confirma el destino y el estado de medición antes de convertir el plan en campañas." />
-          <details className="planner-details" open>
-            <summary>Destino, tracking y cuentas <span>−</span></summary>
-            <div className="planner-fields planner-fields-three">
-              <Field name="digitalDestination" label="Destino o landing" placeholder="https://…" type="url" />
-              <SelectField name="trackingStatus" label="Estado de medición" defaultValue=""><option value="">Por definir</option><option>Implementado</option><option>Parcial</option><option>No implementado</option></SelectField>
-              <SelectField name="adAccountsStatus" label="Cuentas publicitarias" defaultValue=""><option value="">Por definir</option><option>Listas y con acceso</option><option>Existen sin acceso</option><option>Por crear</option></SelectField>
+          <details className="planner-details">
+            <summary>Configuración digital · opcional <span>+</span></summary>
+            <div>
+              <p className="planner-details-note">Este bloque prepara la implementación y el forecast. Nunca pediremos contraseñas; si algo falta, se convertirá en requerimiento antes de activar campañas.</p>
+              <div className="planner-fields planner-fields-three">
+                <SelectField name="digitalObjective" label="Objetivo digital principal" defaultValue=""><option value="">Seleccionar</option>{["Alcance", "Reproducciones de video", "Tráfico", "Interacción", "Mensajes", "Leads", "Ventas", "Instalaciones", "Retención"].map((option) => <option key={option}>{option}</option>)}</SelectField>
+                <Field name="conversionEvent" label="Conversión o evento principal" placeholder="Compra, lead calificado o mensaje iniciado" />
+                <Field name="digitalDestination" label="Destino o landing" placeholder="URL, WhatsApp, app o formulario" />
+                <SelectField name="trackingStatus" label="Estado del tracking" defaultValue=""><option value="">Seleccionar</option><option>Implementado y validado</option><option>Implementado parcialmente</option><option>No implementado</option><option>Por confirmar</option></SelectField>
+                <SelectField name="adAccountsStatus" label="Estado de las cuentas publicitarias" defaultValue=""><option value="">Seleccionar</option><option>Existen y tenemos acceso</option><option>Existen, falta acceso</option><option>Deben crearse</option><option>Por confirmar</option></SelectField>
+                <SelectField name="attributionModel" label="Modelo de atribución" defaultValue=""><option value="">Seleccionar</option><option>Data-driven</option><option>Último clic</option><option>Primera interacción</option><option>MMM</option><option>Otro</option><option>No definido</option></SelectField>
+                <SelectField name="consentStatus" label="Consentimiento y privacidad" defaultValue=""><option value="">Seleccionar</option><option>Consentimiento documentado</option><option>Requiere revisión</option><option>No usaremos datos propios</option><option>No sé · lo revisamos juntos</option></SelectField>
+                <SelectField name="managementNeed" label="Necesidad de gestión" defaultValue=""><option value="">Seleccionar</option><option>Ad Mavericks implementa y optimiza</option><option>El cliente implementa</option><option>Trabajo compartido</option><option>Solo compra de medios</option><option>Por definir</option></SelectField>
+                <Field name="qualifiedLead" label="Definición de lead calificado" placeholder="Condiciones para considerarlo válido o comercialmente útil" />
+              </div>
+              <Checklist name="digitalPlatforms" label="Plataformas previstas" options={["Meta", "Google Ads", "YouTube", "TikTok", "Programmatic / DV360", "Retail Media"]} />
+              <Checklist name="measurementStack" label="Activos de medición disponibles" options={["GA4", "Google Tag Manager", "Meta Pixel", "CAPI", "CRM", "CDP", "POS", "Analytics de app"]} />
+              <div className="mt-5"><TextArea name="firstPartyData" label="Datos propios disponibles" placeholder="CRM, emails, clientes, leads, usuarios de app, POS o segmentos existentes." /></div>
             </div>
           </details>
         </section>
@@ -114,21 +200,57 @@ export function PlanForm() {
         {state?.ok === false && <p className="rounded-xl border border-coral/40 bg-coral/10 px-4 py-3 text-sm font-bold text-[#a13b31]">{state.error}</p>}
       </form>
 
-      <section className="planner-result">
-        {state?.ok ? (
-          <PlanResultView result={state} />
-        ) : (
-          <div className="flex h-full min-h-[300px] items-center justify-center rounded-panel border border-dashed border-border bg-fog/60 p-8 text-center text-muted">
-            Llena el formulario y genera tu plan de medios personalizado.
-          </div>
-        )}
-      </section>
+      {state?.ok && stage === "analysis" && <AnalysisStage result={state} onBack={() => setStage("brief")} onContinue={() => setStage("proposal")} />}
+      {state?.ok && stage === "proposal" && <section className="planner-result"><button type="button" onClick={() => setStage("analysis")} className="btn btn-secondary mb-5">← Volver al análisis</button><PlanResultView result={state} /></section>}
     </div>
   );
 }
 
 function SectionNumber({ number, title, description }: { number: string; title: string; description: string }) {
   return <header className="planner-section-heading"><span>{number}</span><div><h2>{title}</h2><p>{description}</p></div></header>;
+}
+
+function AnalysisStage({ result, onBack, onContinue }: { result: Extract<PlanResult, { ok: true }>; onBack: () => void; onContinue: () => void }) {
+  const { analysis } = result;
+  return <section className="planner-analysis-stage">
+    <div className="planner-analysis-intro">
+      <div><p>Análisis estratégico</p><h2>{analysis.profileLabel}</h2><span>{analysis.category} · {analysis.periodLabel}</span></div>
+      <button type="button" className="btn btn-secondary" onClick={onBack}>Editar brief</button>
+    </div>
+
+    <div className="planner-analysis-context">
+      <article><span>Grupo objetivo</span><strong>{analysis.targetLabel}</strong><small>Compatibilidad validada por fuente y medio</small></article>
+      <article><span>Cobertura</span><strong>{analysis.coverageLabel}</strong><small>Rutas e inventario se reconfirman</small></article>
+      <article><span>Contexto comercial</span><strong>{analysis.commercialReadiness}% completo</strong><small>No bloquea la recomendación</small></article>
+      <article><span>Preparación digital</span><strong>{analysis.digitalReadiness == null ? "No aplica" : `${analysis.digitalReadiness}% completa`}</strong><small>Solo influye cuando Digital está seleccionado</small></article>
+    </div>
+
+    <div className="planner-analysis-findings">
+      {analysis.findings.map((finding) => <article key={finding.label} className={`status-${finding.status}`}>
+        <span>{finding.label}</span><strong>{finding.value}</strong><p>{finding.detail}</p><small>{analysisStatus(finding.status)}</small>
+      </article>)}
+    </div>
+
+    <div className="planner-analysis-section-heading"><div><p>Estrategia</p><h2>Categoría, target y rol de medios en un solo criterio.</h2><span>El consumo y la inversión observados ordenan el mix; no se transforman automáticamente en alcance o resultados.</span></div></div>
+    <div className="planner-analysis-media-grid">
+      {analysis.signals.map((signal) => <article key={signal.kind} className={`role-${signal.role}`}>
+        <header><span>{signal.label}</span><b>{signal.role === "principal" ? "Rol principal" : signal.role === "complementario" ? "Rol de apoyo" : "Rol por validar"}</b></header>
+        <div className="planner-analysis-allocation"><strong>{pct(signal.share)}</strong><span>{signal.amount == null ? "Sin inversión declarada" : money(signal.amount)}</span></div>
+        <p>{signal.rationale}</p>
+        <dl><div><dt>KPI de planificación</dt><dd>{signal.planningKpi}</dd></div><div><dt>Evidencia disponible</dt><dd>{signal.evidence}</dd></div><div><dt>Antes de ordenar</dt><dd>{signal.validation}</dd></div></dl>
+        <small className={`analysis-status status-${signal.status}`}>{analysisStatus(signal.status)}</small>
+      </article>)}
+    </div>
+
+    {analysis.wowCase && <aside className="planner-analysis-wow"><span>IDEA WOW · INDEPENDIENTE</span><div><strong>{analysis.wowCase.idea}</strong><p>{analysis.wowCase.budget} · {analysis.wowCase.status}</p>{analysis.wowCase.missing.length > 0 && <small>Falta: {analysis.wowCase.missing.join(", ")}.</small>}</div></aside>}
+
+    <aside className="planner-analysis-rules"><strong>Reglas de confianza</strong><ul>{analysis.guardrails.map((rule) => <li key={rule}>✓ {rule}</li>)}</ul></aside>
+    <div className="planner-submit-bar"><div><small>Siguiente etapa</small><strong>Convertir el análisis en una propuesta comprable</strong></div><button type="button" onClick={onContinue} className="btn btn-primary">Ver recomendación de medios →</button></div>
+  </section>;
+}
+
+function analysisStatus(status: "listo" | "por_validar" | "requiere_preparacion") {
+  return status === "listo" ? "Listo para revisión" : status === "requiere_preparacion" ? "Requiere preparación" : "Validación específica pendiente";
 }
 
 function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> }) {
@@ -399,13 +521,14 @@ function Field({
   type?: string;
   required?: boolean;
 }) {
+  const fieldId = useId();
   return (
     <div>
-      <label htmlFor={name} className="block text-sm font-black text-forest">
+      <label htmlFor={fieldId} className="block text-sm font-black text-forest">
         {label}
       </label>
       <input
-        id={name}
+        id={fieldId}
         name={name}
         type={type}
         required={required}
@@ -427,11 +550,12 @@ function SelectField({
   defaultValue?: string;
   children: ReactNode;
 }) {
+  const fieldId = useId();
   return (
     <div>
-      <label htmlFor={name} className="block text-sm font-black text-forest">{label}</label>
+      <label htmlFor={fieldId} className="block text-sm font-black text-forest">{label}</label>
       <select
-        id={name}
+        id={fieldId}
         name={name}
         defaultValue={defaultValue}
         className="mt-1 w-full rounded-xl border border-border bg-fog px-4 py-3 outline-none focus:border-signal focus:ring-2 focus:ring-signal/30"
@@ -440,4 +564,14 @@ function SelectField({
       </select>
     </div>
   );
+}
+
+function TextArea({ name, label, placeholder }: { name: string; label: string; placeholder?: string }) {
+  const fieldId = useId();
+  return <div><label htmlFor={fieldId} className="block text-sm font-black text-forest">{label}</label><textarea id={fieldId} name={name} rows={3} placeholder={placeholder} className="mt-1 w-full resize-y rounded-xl border border-border bg-fog px-4 py-3 outline-none focus:border-signal focus:ring-2 focus:ring-signal/30" /></div>;
+}
+
+function Checklist({ name, label, options }: { name: string; label: string; options: string[] }) {
+  const baseId = useId();
+  return <fieldset className="planner-checklist"><legend>{label}</legend><div>{options.map((option, index) => <label key={option} htmlFor={`${baseId}-${index}`}><input id={`${baseId}-${index}`} type="checkbox" name={name} value={option} /><span>✓</span>{option}</label>)}</div></fieldset>;
 }

@@ -7,6 +7,7 @@ import { buildCampaigns, type Campaign } from "@/lib/campaigns";
 import { getMyCompanies } from "@/lib/company";
 import { canCompanyRole } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
+import { buildPlanAnalysis, type PlanAnalysis } from "@/lib/plan-analysis";
 
 export type PlanBrief = {
   brand: string;
@@ -23,11 +24,43 @@ export type PlanBrief = {
   endDate: string;
   budgetUsd: number | null;
   selectedMedia: string[];
+  businessDescription: string;
   businessModel: string;
   conversionModel: string;
+  commercialGoalType: string;
+  commercialGoalAmount: string;
+  commercialGoalUnit: string;
+  averageTicket: string;
+  grossMargin: string;
+  operationalCapacity: string;
+  commercialKpi: string;
+  valueProposition: string;
+  competitors: string;
+  restrictions: string;
+  learnings: string;
+  productMatrixApplies: boolean;
+  products: Array<{ name: string; price: string; margin: string; capacity: string; season: string; notes: string }>;
+  digitalObjective: string;
+  conversionEvent: string;
+  digitalPlatforms: string[];
   digitalDestination: string;
   trackingStatus: string;
   adAccountsStatus: string;
+  measurementStack: string[];
+  firstPartyData: string;
+  qualifiedLead: string;
+  attributionModel: string;
+  consentStatus: string;
+  managementNeed: string;
+  wowEnabled: boolean;
+  wowIdea: string;
+  wowBudget: string;
+  wowMunicipality: string;
+  wowExactLocation: string;
+  wowFormat: string;
+  wowSurface: string;
+  wowOwnership: string;
+  wowMeasurements: string;
 };
 
 export type PlanResult =
@@ -35,6 +68,7 @@ export type PlanResult =
       ok: true;
       plan: MediaPlan;
       campaigns: Campaign[];
+      analysis: PlanAnalysis;
       keyword: string;
       objective: string;
       audience: string;
@@ -90,11 +124,43 @@ export async function generarPlan(
     endDate: String(formData.get("endDate") ?? ""),
     budgetUsd,
     selectedMedia,
+    businessDescription: text(formData, "businessDescription"),
     businessModel: String(formData.get("businessModel") ?? ""),
     conversionModel: String(formData.get("conversionModel") ?? ""),
+    commercialGoalType: text(formData, "commercialGoalType"),
+    commercialGoalAmount: text(formData, "commercialGoalAmount"),
+    commercialGoalUnit: text(formData, "commercialGoalUnit"),
+    averageTicket: text(formData, "averageTicket"),
+    grossMargin: text(formData, "grossMargin"),
+    operationalCapacity: text(formData, "operationalCapacity"),
+    commercialKpi: text(formData, "commercialKpi"),
+    valueProposition: text(formData, "valueProposition"),
+    competitors: text(formData, "competitors"),
+    restrictions: text(formData, "restrictions"),
+    learnings: text(formData, "learnings"),
+    productMatrixApplies: formData.get("productMatrixApplies") === "true",
+    products: readProducts(formData),
+    digitalObjective: text(formData, "digitalObjective"),
+    conversionEvent: text(formData, "conversionEvent"),
+    digitalPlatforms: formData.getAll("digitalPlatforms").map(String),
     digitalDestination: String(formData.get("digitalDestination") ?? "").trim(),
     trackingStatus: String(formData.get("trackingStatus") ?? ""),
     adAccountsStatus: String(formData.get("adAccountsStatus") ?? ""),
+    measurementStack: formData.getAll("measurementStack").map(String),
+    firstPartyData: text(formData, "firstPartyData"),
+    qualifiedLead: text(formData, "qualifiedLead"),
+    attributionModel: text(formData, "attributionModel"),
+    consentStatus: text(formData, "consentStatus"),
+    managementNeed: text(formData, "managementNeed"),
+    wowEnabled: formData.get("wowEnabled") === "on",
+    wowIdea: text(formData, "wowIdea"),
+    wowBudget: text(formData, "wowBudget"),
+    wowMunicipality: text(formData, "wowMunicipality"),
+    wowExactLocation: text(formData, "wowExactLocation"),
+    wowFormat: text(formData, "wowFormat"),
+    wowSurface: text(formData, "wowSurface"),
+    wowOwnership: text(formData, "wowOwnership"),
+    wowMeasurements: text(formData, "wowMeasurements"),
   };
 
   try {
@@ -124,10 +190,11 @@ export async function generarPlan(
           conversionModel: brief.conversionModel,
         }, plan)
       : [];
+    const analysis = buildPlanAnalysis(brief, plan);
     const safePlan = profile.is_platform_admin
       ? plan
       : { ...plan, matched: 0, totalRef: 0 };
-    return { ok: true, plan: safePlan, campaigns, keyword, objective, audience, brief };
+    return { ok: true, plan: safePlan, campaigns, analysis, keyword, objective, audience, brief };
   } catch (err) {
     if (err instanceof Error && err.message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
       return { ok: false, error: "El planificador aun no esta habilitado (falta la clave de servicio)." };
@@ -170,9 +237,9 @@ export async function guardarPlan(input: Extract<PlanResult, { ok: true }>): Pro
       progress: 60,
       brief: input.brief,
       analysis: {
+        ...input.analysis,
         basis: input.plan.basis,
         benchmark: input.plan.benchmark,
-        profileLabel: input.plan.profileLabel,
         strategySummary: input.plan.strategySummary,
       },
       proposal: { plan: input.plan.plan, campaigns: input.campaigns },
@@ -189,4 +256,21 @@ export async function guardarPlan(input: Extract<PlanResult, { ok: true }>): Pro
   });
   revalidatePath("/planificador");
   return { ok: true, id: String(data.id) };
+}
+
+function text(formData: FormData, key: string) {
+  return String(formData.get(key) ?? "").trim();
+}
+
+function readProducts(formData: FormData): PlanBrief["products"] {
+  const names = formData.getAll("productName").map(String);
+  const prices = formData.getAll("productPrice").map(String);
+  const margins = formData.getAll("productMargin").map(String);
+  const capacities = formData.getAll("productCapacity").map(String);
+  const seasons = formData.getAll("productSeason").map(String);
+  const notes = formData.getAll("productNotes").map(String);
+  return names.map((name, index) => ({
+    name: name.trim(), price: prices[index]?.trim() ?? "", margin: margins[index]?.trim() ?? "",
+    capacity: capacities[index]?.trim() ?? "", season: seasons[index]?.trim() ?? "", notes: notes[index]?.trim() ?? "",
+  })).filter((product) => Object.values(product).some(Boolean));
 }
