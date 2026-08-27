@@ -1,59 +1,132 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { Wordmark } from "./Wordmark";
 import { cerrarSesion } from "@/app/consola/actions";
+
+type ActivePage = "mercado" | "consola" | "panel" | "asistente" | "planificador" | "campanas" | "pautar";
 
 type AppHeaderProps = {
   name: string;
   isAdmin: boolean;
-  /** Ruta activa para resaltar el enlace. */
-  active?: "mercado" | "consola" | "panel" | "asistente" | "planificador" | "campanas" | "pautar";
+  active?: ActivePage;
+  title?: string;
+  catalogSection?: "tv" | "radio" | "ooh" | "press" | "digital" | "influencers";
 };
 
-/** Encabezado del area autenticada (mercado, consola). */
-export function AppHeader({ name, isAdmin, active }: AppHeaderProps) {
+const CREATION = [
+  { number: "01", label: "Inicio", href: "/panel", id: "panel" },
+  { number: "02", label: "Planificador", href: "/planificador?view=planner", id: "planificador" },
+  { number: "03", label: "Planes guardados", href: "/planificador?view=plans", id: "plans" },
+] as const;
+
+const CATALOG = [
+  { mark: "TV", label: "Televisión", detail: "Canales y grupos", id: "tv" },
+  { mark: "RA", label: "Radio", detail: "Cobertura y rankings", id: "radio" },
+  { mark: "VP", label: "Vía pública", detail: "Proveedores e inventario", id: "ooh" },
+  { mark: "PR", label: "Prensa", detail: "Medios por cobertura", id: "press" },
+  { mark: "DI", label: "Digital", detail: "Plataformas y objetivos", id: "digital" },
+  { mark: "IN", label: "Influenciadores", detail: "Perfiles por categoría", id: "influencers" },
+] as const;
+
+const PAGE_TITLES: Record<ActivePage, string> = {
+  panel: "Inicio",
+  planificador: "Planificador de medios",
+  pautar: "Pautar con Mavi",
+  campanas: "Órdenes y campañas",
+  asistente: "Mavi",
+  mercado: "Inteligencia de mercado",
+  consola: "Consola de administración",
+};
+
+export function AppHeader({ name, isAdmin, active = "panel", title, catalogSection }: AppHeaderProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const close = () => setMenuOpen(false);
+  const displayTitle = title ?? PAGE_TITLES[active];
+  const initial = (name.trim()[0] || "A").toUpperCase();
+
   return (
-    <header className="border-b border-border bg-white/80 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
-        <div className="flex items-center gap-6">
-          <Link href="/panel" className="text-lg">
-            <Wordmark one />
+    <>
+      <a href="#workspace-content" className="portal-skip-link">Saltar al contenido principal</a>
+      <aside className={`portal-sidebar ${menuOpen ? "is-open" : ""}`} aria-label="Navegación principal">
+        <button type="button" className="portal-sidebar-close" onClick={close} aria-label="Cerrar menú">×</button>
+        <Link href="/panel" onClick={close} className="portal-sidebar-brand" aria-label="Ir al inicio de Ad Mavericks One">
+          <Wordmark one invert className="text-[18px]" />
+        </Link>
+        <span className="portal-private-badge">Beta privada</span>
+
+        <div className="portal-sidebar-scroll">
+          <nav className="portal-nav" aria-label="Creación y gestión">
+            {CREATION.map((item) => {
+              const showingSavedPlans = Boolean(title?.toLocaleLowerCase("es").includes("guardado"));
+              const selected = item.id === "plans"
+                ? showingSavedPlans
+                : item.id === "planificador"
+                  ? active === "planificador" && !showingSavedPlans
+                  : active === item.id;
+              return (
+                <Link key={item.id} href={item.href} onClick={close} className={`portal-nav-item ${selected ? "is-active" : ""}`}>
+                  <span>{item.number}</span><strong>{item.label}</strong>
+                </Link>
+              );
+            })}
+            <span className="portal-nav-item is-disabled"><span>04</span><strong>Órdenes</strong><em>Próximamente</em></span>
+            <span className="portal-nav-item is-disabled"><span>05</span><strong>Reportes</strong><em>Próximamente</em></span>
+          </nav>
+
+          <nav className="portal-catalog-nav" aria-label="Catálogo general de medios">
+            <div className="portal-catalog-title"><span>Explorar inventario</span><strong>CATÁLOGO GENERAL</strong><b>−</b></div>
+            {CATALOG.map((item) => (
+              <Link
+                key={item.id}
+                href={`/planificador?view=media&section=${item.id}`}
+                onClick={close}
+                className={`portal-catalog-link ${catalogSection === item.id ? "is-active" : ""}`}
+              >
+                <span>{item.mark}</span><div><strong>{item.label}</strong><small>{item.detail}</small></div>
+              </Link>
+            ))}
+          </nav>
+
+          <Link href="/planificador?view=planner" onClick={close} className="portal-custom-plan-link">
+            <span>Configura medio por medio</span><strong>CREA EL PLAN A TU MANERA</strong><b>→</b>
           </Link>
-          <nav className="hidden items-center gap-5 md:flex">
-            <HeaderLink href="/panel" label="Panel" active={active === "panel"} />
-            <HeaderLink href="/planificador" label="Planificador" active={active === "planificador"} />
-            <HeaderLink href="/pautar" label="Pautar" active={active === "pautar"} />
-            <HeaderLink href="/campanas" label="Campanas" active={active === "campanas"} />
-            <HeaderLink href="/asistente" label="Mavi" active={active === "asistente"} />
-            {isAdmin && (
-              <HeaderLink href="/mercado" label="Mercado" active={active === "mercado"} />
-            )}
-            {isAdmin && (
-              <HeaderLink href="/consola" label="Consola" active={active === "consola"} />
-            )}
+
+          <nav className="portal-utility-nav" aria-label="Herramientas de la cuenta">
+            <Link href="/pautar" onClick={close}>Pautar con Mavi</Link>
+            <Link href="/campanas" onClick={close}>Campañas</Link>
+            <Link href="/asistente" onClick={close}>Mavi</Link>
+            {isAdmin && <Link href="/mercado" onClick={close}>Inteligencia de mercado</Link>}
+            {isAdmin && <Link href="/consola" onClick={close}>Administración</Link>}
           </nav>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="hidden text-sm font-bold text-muted sm:block">{name}</span>
-          <form action={cerrarSesion}>
-            <button type="submit" className="text-sm font-black text-forest hover:text-signal-dark">
-              Salir
-            </button>
-          </form>
-        </div>
-      </div>
-    </header>
-  );
-}
 
-function HeaderLink({ href, label, active }: { href: string; label: string; active?: boolean }) {
-  return (
-    <Link
-      href={href}
-      className={`text-sm font-black transition-colors ${
-        active ? "text-signal-dark" : "text-forest hover:text-signal-dark"
-      }`}
-    >
-      {label}
-    </Link>
+        <div className="portal-sidebar-foot">
+          <p>Workspace privado</p><strong>Ad Mavericks</strong><span>Comprador autorizado · Datos controlados</span>
+        </div>
+      </aside>
+
+      {menuOpen && <button type="button" className="portal-sidebar-backdrop" onClick={close} aria-label="Cerrar menú" />}
+
+      <header className="portal-topbar">
+        <button type="button" className="portal-menu-button" onClick={() => setMenuOpen(true)} aria-label="Abrir menú" aria-expanded={menuOpen}>
+          <span /><span /><span />
+        </button>
+        <div className="portal-topbar-copy"><p>Ad Mavericks One</p><strong>{displayTitle}</strong></div>
+        <div className="portal-topbar-account">
+          <span className="portal-license-pill"><i />Licencia activa</span>
+          <details className="portal-account-menu">
+            <summary aria-label={`Abrir menú de cuenta de ${name}`}><span>{initial}</span><b>{name}</b><i>⌄</i></summary>
+            <div>
+              <strong>{name}</strong>
+              <small>{isAdmin ? "Administrador de plataforma" : "Usuario autorizado"}</small>
+              <p>Ad Mavericks One · workspace privado</p>
+              <form action={cerrarSesion}><button type="submit">Cerrar sesión</button></form>
+            </div>
+          </details>
+        </div>
+      </header>
+    </>
   );
 }

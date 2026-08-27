@@ -31,86 +31,60 @@ export function MediaCatalog({
   influencers: InfluencerProfile[];
 }) {
   return (
-    <div className="space-y-6">
-      <header className="rounded-panel border border-border bg-white p-6 shadow-panel sm:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-5">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-signal-dark">Medios</p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight">Directorio para construir tu plan</h1>
-            <p className="mt-2 max-w-3xl text-sm text-muted">
+    <div className="media-portal-shell">
+      <header className="media-portal-header">
+        <div className="media-portal-header-copy">
+          <p>Medios</p>
+          <h1>Directorio para construir tu plan</h1>
+          <p className="media-portal-header-description">
               Explora canales, emisoras, proveedores, cabeceras, plataformas y creadores antes
               de armar una recomendación multimedios.
-            </p>
+          </p>
+          <div className="media-portal-header-legend" aria-label="Estados de la información del catálogo">
+            <Status status="cotizable" />
+            <Status status="validacion" />
+            <Status status="directorio" />
           </div>
-          <Link href="/planificador?view=planner" className="btn btn-primary">
-            Armar plan de medios →
-          </Link>
         </div>
-        <div className="mt-5 flex flex-wrap gap-2" aria-label="Estados de la información del catálogo">
-          <Status status="cotizable" />
-          <Status status="validacion" />
-          <Status status="directorio" />
-        </div>
+        <Link href="/planificador?view=planner" className="media-portal-plan-button">Armar plan de medios <span>→</span></Link>
       </header>
 
-      <nav className="grid gap-2 rounded-panel border border-border bg-white p-2 shadow-panel sm:grid-cols-2 lg:grid-cols-6" aria-label="Tipos de medios">
+      <nav className="media-portal-tabs" aria-label="Tipos de medios" role="tablist">
         {CATALOG_SECTIONS.map((item) => (
           <Link
             key={item.id}
             href={`/planificador?view=media&section=${item.id}`}
             aria-current={section === item.id ? "page" : undefined}
-            className={`min-h-[74px] rounded-[20px] border px-4 py-3 transition-colors ${
-              section === item.id
-                ? "border-forest bg-forest text-white"
-                : "border-transparent bg-fog text-forest hover:border-border"
-            }`}
+            role="tab"
+            aria-selected={section === item.id}
+            className={`media-portal-tab ${section === item.id ? "is-active" : ""}`}
           >
-            <strong className="block text-sm font-black">{item.label}</strong>
-            <span className={`mt-1 block text-xs ${section === item.id ? "text-white/70" : "text-muted"}`}>
-              {item.description}
-            </span>
+            <strong>{item.label}</strong><span>{item.description}</span>
           </Link>
         ))}
       </nav>
 
-      {section === "digital" && <DigitalSection />}
-      {section === "influencers" && <InfluencerSection profiles={influencers} />}
-      {section === "radio" && <RadioSection stations={radio} />}
-      {section === "tv" && (
-        <DirectorySection
-          eyebrow="Televisión"
-          title="Canales para construir el mix"
-          description="Explora cada canal y llévalo al plan para definir programas, frecuencia e inversión. Las tarifas no constituyen reserva ni orden de compra."
-          items={TV_CHANNELS}
-          countLabel="7 canales nacionales · 23 canales locales por provincia"
-          catalogs={TV_RATE_CATALOGS}
-        />
-      )}
-      {section === "ooh" && (
-        <DirectorySection
-          eyebrow="Vía pública"
-          title="Proveedor, provincia y activo"
-          description="Navega por proveedor y cobertura. Ubicaciones, producción, impuestos y disponibilidad se reconfirman antes de emitir una orden."
-          items={OOH_PROVIDERS}
-          countLabel="7 proveedores · 312 fichas incorporadas"
-        />
-      )}
-      {section === "press" && (
-        <DirectorySection
-          eyebrow="Prensa"
-          title="Prensa por cobertura"
-          description="Revisa cabeceras nacionales y publicaciones locales; fecha de publicación, edición, circulación, IVA y disponibilidad se confirman al cotizar."
-          items={PRESS_OUTLETS}
-          countLabel="7 medios en directorio"
-        />
-      )}
+      <div className="media-portal-panel" role="tabpanel">
+        {section === "digital" && <DigitalSection />}
+        {section === "influencers" && <InfluencerSection profiles={influencers} />}
+        {section === "radio" && <RadioSection stations={radio} />}
+        {section === "tv" && (
+          <DirectorySection eyebrow="Televisión" title="Canales para construir el mix" description="Explora cada canal y luego llévalo al plan para definir programas, frecuencia e inversión." items={TV_CHANNELS} countLabel="7 opciones" catalogs={TV_RATE_CATALOGS} />
+        )}
+        {section === "ooh" && (
+          <DirectorySection eyebrow="Vía pública" title="Proveedor, provincia y activo" description="Navega por proveedor y cobertura. Ubicaciones, producción, impuestos y disponibilidad se reconfirman antes de emitir una orden." items={OOH_PROVIDERS} countLabel="7 proveedores · 312 fichas incorporadas" />
+        )}
+        {section === "press" && (
+          <DirectorySection eyebrow="Prensa" title="Prensa por cobertura" description="Revisa cabeceras nacionales y publicaciones locales; fecha de publicación, edición, circulación, IVA y disponibilidad se confirman al cotizar." items={PRESS_OUTLETS} countLabel="7 medios en directorio" />
+        )}
+      </div>
     </div>
   );
 }
 
 function DigitalSection() {
   return (
-    <section className="rounded-panel border border-border bg-white p-6 shadow-panel sm:p-8">
+    <section className="media-portal-section">
       <SectionHeading
         eyebrow="Digital"
         title="Plataformas según el objetivo"
@@ -126,7 +100,7 @@ function DigitalSection() {
 
 function DigitalCard({ item }: { item: DigitalPlatform }) {
   return (
-    <article className="flex flex-col rounded-card border border-border bg-gradient-to-br from-white to-sky/5 p-5">
+    <article className="media-portal-digital-card">
       <div className="flex items-start justify-between gap-3">
         <ProviderMark item={item} size="small" />
         <span className="rounded-full bg-signal/10 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-signal-dark">
@@ -157,7 +131,7 @@ function InfluencerSection({ profiles }: { profiles: InfluencerProfile[] }) {
   const shown = expanded ? matches : matches.slice(0, 9);
 
   return (
-    <section className="rounded-panel border border-border bg-white p-6 shadow-panel sm:p-8">
+    <section className="media-portal-section">
       <SectionHeading
         eyebrow="Influenciadores"
         title="Encuentra el perfil desde su territorio creativo"
@@ -216,7 +190,7 @@ function InfluencerSection({ profiles }: { profiles: InfluencerProfile[] }) {
 function InfluencerCard({ profile }: { profile: InfluencerProfile }) {
   const hasImage = INFLUENCER_IMAGE_SLUGS.has(profile.slug);
   return (
-    <article className="flex flex-col rounded-card border border-signal/40 bg-forest p-5 text-white shadow-[0_6px_0_#071b12]">
+    <article className="media-portal-influencer-card flex flex-col text-white">
       <div className="flex items-start gap-3">
         <div className="relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-2xl border-2 border-signal bg-white text-lg font-black text-forest shadow-sm">
           {hasImage ? (
@@ -280,7 +254,7 @@ function RadioSection({ stations }: { stations: RadioStation[] }) {
   const shown = expanded ? sorted : sorted.slice(0, 10);
 
   return (
-    <section className="rounded-panel border border-border bg-white p-6 shadow-panel sm:p-8">
+    <section className="media-portal-section">
       <SectionHeading eyebrow="Radio" title="Audiencia y alcance por emisora" description="Dos lecturas complementarias para ordenar alternativas sin sumar audiencias ni inventar alcance deduplicado." count={`${stations.length || 104} emisoras`} />
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Summary label="Emisoras observadas" value={String(stations.length || 104)} note="Directorio analizado" />
@@ -347,41 +321,44 @@ function RadioSection({ stations }: { stations: RadioStation[] }) {
 
 function DirectorySection({ eyebrow, title, description, items, countLabel, catalogs }: { eyebrow: string; title: string; description: string; items: CatalogItem[]; countLabel: string; catalogs?: Record<string, TvRateCatalog> }) {
   const [query, setQuery] = useState("");
-  const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+  const [selectedSlug, setSelectedSlug] = useState<string | null>(catalogs ? (items[0]?.slug ?? null) : null);
   const matches = items.filter((item) => `${item.name} ${item.summary} ${item.coverage ?? ""}`.toLocaleLowerCase("es").includes(query.toLocaleLowerCase("es")));
   const selectedItem = items.find((item) => item.slug === selectedSlug) ?? null;
   return (
-    <section className="rounded-panel border border-border bg-white p-6 shadow-panel sm:p-8">
+    <section className="media-portal-section">
       <SectionHeading eyebrow={eyebrow} title={title} description={description} count={countLabel} />
-      <label className="mt-5 block text-sm font-black">Buscar en el catálogo<input value={query} onChange={(event) => setQuery(event.target.value)} className="mt-1 w-full rounded-xl border border-border bg-fog px-4 py-3 font-normal outline-none focus:border-signal" /></label>
-      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {matches.map((item) => (
-          <article key={item.slug} className={`flex flex-col rounded-card border p-5 transition ${selectedSlug === item.slug ? "border-signal bg-signal/5 ring-2 ring-signal/15" : "border-border bg-fog hover:border-signal/50"}`}>
-            <div className="flex items-start justify-between gap-3"><ProviderMark item={item} size="large" /><Status status={item.status} /></div>
-            <h3 className="mt-4 text-xl font-black">{item.name}</h3>
-            <p className="mt-1 text-xs font-black uppercase tracking-wide text-signal-dark">{item.statusNote}</p>
-            <p className="mt-3 text-sm text-muted">{item.summary}</p>
-            <p className="mt-3 border-t border-border pt-3 text-xs text-muted">{item.detail}</p>
-            {item.coverage && <p className="mt-3 text-xs"><strong>Cobertura:</strong> {item.coverage}</p>}
-            {item.incorporated && <ListBlock title="Incorporado" items={item.incorporated} />}
-            {item.pending && <ListBlock title="Antes de ordenar" items={item.pending} />}
-            {item.count != null && <span className="mt-4 inline-flex self-start rounded-full bg-signal/10 px-3 py-1 text-xs font-black text-signal-dark">{item.count} registros incorporados</span>}
-            {catalogs?.[item.slug] && <p className="mt-3 text-xs text-muted">{catalogs[item.slug].offers.length} programas, formatos y paquetes auditados.</p>}
-            <button
-              type="button"
-              aria-expanded={selectedSlug === item.slug}
-              aria-controls="catalog-detail"
-              onClick={() => setSelectedSlug((current) => current === item.slug ? null : item.slug)}
-              className="btn btn-secondary mt-5 w-full"
-            >
-              {selectedSlug === item.slug ? "Cerrar catálogo" : catalogs?.[item.slug] ? "Ver catálogo y presupuestar" : "Ver ficha completa"}
-            </button>
-          </article>
-        ))}
-      </div>
+      {catalogs ? (
+        <>
+          <div className="media-tv-selector" aria-label="Canales disponibles">
+            {items.map((item) => (
+              <button key={item.slug} type="button" aria-pressed={selectedSlug === item.slug} onClick={() => setSelectedSlug(item.slug)} className={selectedSlug === item.slug ? "is-active" : ""}>
+                <ProviderMark item={item} size="small" /><span><strong>{item.name}</strong><small>{catalogs[item.slug]?.offers.length ?? 0} opciones</small></span>
+              </button>
+            ))}
+          </div>
+          {selectedItem && <article className="media-tv-channel-summary"><ProviderMark item={selectedItem} size="large" /><div><Status status={selectedItem.status} /><h3>{selectedItem.name}</h3><p>{selectedItem.summary}</p><span>{selectedItem.coverage ?? "Cobertura por confirmar"}</span></div></article>}
+        </>
+      ) : (
+        <>
+          <label className="media-catalog-search">Buscar en el catálogo<input value={query} onChange={(event) => setQuery(event.target.value)} /></label>
+          <div className="media-directory-grid">
+            {matches.map((item) => (
+              <article key={item.slug} className={`media-directory-card ${selectedSlug === item.slug ? "is-active" : ""}`}>
+                <div className="flex items-start justify-between gap-3"><ProviderMark item={item} size="large" /><Status status={item.status} /></div>
+                <h3>{item.name}</h3><p className="media-directory-status">{item.statusNote}</p><p>{item.summary}</p><p className="media-directory-detail">{item.detail}</p>
+                {item.coverage && <p><strong>Cobertura:</strong> {item.coverage}</p>}
+                {item.incorporated && <ListBlock title="Incorporado" items={item.incorporated} />}
+                {item.pending && <ListBlock title="Antes de ordenar" items={item.pending} />}
+                {item.count != null && <span className="media-directory-count">{item.count} registros incorporados</span>}
+                <button type="button" aria-expanded={selectedSlug === item.slug} aria-controls="catalog-detail" onClick={() => setSelectedSlug((current) => current === item.slug ? null : item.slug)} className="btn btn-secondary mt-5 w-full">{selectedSlug === item.slug ? "Cerrar ficha" : "Ver ficha completa"}</button>
+              </article>
+            ))}
+          </div>
+        </>
+      )}
       {selectedItem && (
         catalogs?.[selectedItem.slug]
-          ? <TvCatalogPanel item={selectedItem} catalog={catalogs[selectedItem.slug]} onClose={() => setSelectedSlug(null)} />
+          ? <TvCatalogPanel item={selectedItem} catalog={catalogs[selectedItem.slug]} />
           : <GenericCatalogPanel item={selectedItem} onClose={() => setSelectedSlug(null)} />
       )}
       <CatalogConditions />
@@ -389,7 +366,7 @@ function DirectorySection({ eyebrow, title, description, items, countLabel, cata
   );
 }
 
-function TvCatalogPanel({ item, catalog, onClose }: { item: CatalogItem; catalog: TvRateCatalog; onClose: () => void }) {
+function TvCatalogPanel({ item, catalog }: { item: CatalogItem; catalog: TvRateCatalog }) {
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<"todos" | TvOffer["kind"]>("todos");
   const [day, setDay] = useState("todos");
@@ -422,7 +399,6 @@ function TvCatalogPanel({ item, catalog, onClose }: { item: CatalogItem; catalog
             <p className="mt-1 text-sm text-white/70">{catalog.priceBasis} · Verificado: {catalog.lastVerified}</p>
           </div>
         </div>
-        <button type="button" onClick={onClose} className="rounded-xl border border-white/30 px-4 py-2 text-sm font-black hover:bg-white/10">Cerrar ×</button>
       </div>
 
       <div className="p-5 sm:p-6">

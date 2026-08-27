@@ -6,6 +6,7 @@ import { generarPlan, guardarPlan, type PlanResult } from "./actions";
 import type { PlanRow } from "@/lib/planner";
 import type { Campaign } from "@/lib/campaigns";
 import { ejecutarCampana } from "@/app/campanas/actions";
+import { EcuadorTargetMap, type GeoTarget } from "@/app/pautar/EcuadorTargetMap";
 
 const money = (n: number | null) =>
   n == null ? "—" : new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
@@ -13,104 +14,107 @@ const pct = (n: number) => `${(n * 100).toFixed(0)}%`;
 
 export function PlanForm() {
   const [state, formAction, pending] = useActionState<PlanResult | null, FormData>(generarPlan, null);
+  const [geoTarget, setGeoTarget] = useState<GeoTarget | null>(null);
+  const geography = !geoTarget
+    ? ""
+    : geoTarget.scope === "country"
+      ? "Todo Ecuador"
+      : `${geoTarget.label} · ${geoTarget.radiusKm} km alrededor`;
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[360px_minmax(0,1fr)]">
-      {/* Formulario */}
-      <section className="rounded-panel border border-border bg-white p-6 shadow-panel">
-        <h2 className="text-lg font-black tracking-tight">Cuentanos de tu negocio</h2>
-        <p className="mt-1 text-sm text-muted">
-          Con esto usamos patrones agregados del mercado y armamos una recomendacion para revision.
-        </p>
-        <form action={formAction} className="mt-5 space-y-4">
-          <Field name="brand" label="Marca" placeholder="Nombre de la marca" />
-          <Field name="keyword" label="Giro o categoría *" placeholder="Cafetería, banco, farmacia…" required />
-          <SelectField name="objective" label="Objetivo principal" defaultValue="Ventas">
-            {[
-              "Reconocimiento", "Alcance", "Consideración", "Tráfico", "Interacción", "Reproducciones",
-              "Generación de leads", "Mensajes", "Ventas", "Visitas al local", "Descargas de app",
-              "Retención", "Otro",
-            ].map((option) => <option key={option}>{option}</option>)}
-          </SelectField>
-          <SelectField name="priority" label="Prioridad del plan" defaultValue="Eficiencia">
-            {["Cobertura", "Frecuencia", "Eficiencia", "Conversión", "Afinidad", "Presencia local", "Balance"].map((option) => <option key={option}>{option}</option>)}
-          </SelectField>
+    <div className="planner-portal-shell">
+      <nav className="planner-progress" aria-label="Progreso del plan">
+        {[["01", "Brief"], ["02", "Análisis"], ["03", "Propuesta"], ["04", "Personaliza"], ["05", "Aprobado"]].map(([number, label], index) => (
+          <div key={number} className={index === 0 ? "is-active" : ""}><span>{number}</span><strong>{label}</strong></div>
+        ))}
+        <button type="button">Guardar progreso</button>
+      </nav>
 
-          <div className="border-t border-border pt-4">
-            <p className="text-xs font-black uppercase tracking-wide text-muted">Audiencia</p>
-          </div>
-          <SelectField name="audienceType" label="Tipo" defaultValue="B2C">
-            <option>B2C</option><option>B2B</option><option>Mixta</option>
-          </SelectField>
-          <Field name="audience" label="Intereses, cargos o comportamiento" placeholder="Jóvenes que compran en línea…" />
-          <SelectField name="ageRange" label="Edad" defaultValue="Personas 18+">
-            {["Todas las edades", "13-17", "18-24", "25-34", "35-44", "45-54", "55-64", "65+", "18-34", "25-54", "Personas 18+"].map((option) => <option key={option}>{option}</option>)}
-          </SelectField>
-          <SelectField name="sex" label="Sexo" defaultValue="Todas las personas">
-            {["Todas las personas", "Mujeres", "Hombres", "No binario", "Mujeres prioritario", "Hombres prioritario", "Por definir"].map((option) => <option key={option}>{option}</option>)}
-          </SelectField>
-          <SelectField name="socioeconomic" label="Nivel socioeconómico" defaultValue="Todos los NSE">
-            {["Todos los NSE", "A", "B", "C+", "C-", "D", "A/B", "B/C+", "C+/C-", "C-/D", "Por definir"].map((option) => <option key={option}>{option}</option>)}
-          </SelectField>
+      <header className="planner-hero">
+        <div><p>Nuevo plan</p><h1>Cuéntanos qué necesita tu marca.</h1><span>Completa el brief y Mavi construirá una recomendación con datos, contexto y criterios verificables.</span></div>
+        <aside><small>Organización activa</small><strong>Ad Mavericks</strong><span>Workspace privado · Ecuador</span></aside>
+      </header>
 
-          <div className="border-t border-border pt-4">
-            <p className="text-xs font-black uppercase tracking-wide text-muted">Geografía, fechas y presupuesto</p>
+      <form action={formAction} className="planner-form">
+        <section className="planner-form-section">
+          <SectionNumber number="01" title="Objetivo de la campaña" description="Define la marca, su categoría y el resultado que debe priorizar el plan." />
+          <div className="planner-fields planner-fields-two">
+            <Field name="brand" label="Marca" placeholder="Nombre de la marca" />
+            <Field name="keyword" label="Giro o categoría *" placeholder="Busca entre categorías: cafetería, banco, farmacia…" required />
+            <SelectField name="objective" label="Objetivo principal" defaultValue="Ventas">
+              {["Reconocimiento", "Alcance", "Consideración", "Tráfico", "Interacción", "Reproducciones", "Generación de leads", "Mensajes", "Ventas", "Visitas al local", "Descargas de app", "Retención", "Otro"].map((option) => <option key={option}>{option}</option>)}
+            </SelectField>
+            <SelectField name="priority" label="Prioridad del plan" defaultValue="Eficiencia">
+              {["Cobertura", "Frecuencia", "Eficiencia", "Conversión", "Afinidad", "Presencia local", "Balance"].map((option) => <option key={option}>{option}</option>)}
+            </SelectField>
           </div>
-          <Field name="geography" label="Cobertura" placeholder="Ecuador, Guayas, Quito o cantones prioritarios" />
-          <div className="grid grid-cols-2 gap-3">
+          <Field name="audience" label="Personas, necesidades o comportamientos que importan" placeholder="Ej. Jóvenes profesionales que compran en línea y viven cerca de puntos de venta" />
+        </section>
+
+        <section className="planner-form-section">
+          <SectionNumber number="02" title="Audiencia y geografía" description="Delimita a quién debe llegar la campaña y dónde tiene sentido invertir." />
+          <div className="planner-fields planner-fields-four">
+            <SelectField name="audienceType" label="Tipo de audiencia" defaultValue="B2C"><option>B2C</option><option>B2B</option><option>Mixta</option></SelectField>
+            <SelectField name="ageRange" label="Edad" defaultValue="Personas 18+">{["Todas las edades", "13-17", "18-24", "25-34", "35-44", "45-54", "55-64", "65+", "18-34", "25-54", "Personas 18+"].map((option) => <option key={option}>{option}</option>)}</SelectField>
+            <SelectField name="sex" label="Sexo" defaultValue="Todas las personas">{["Todas las personas", "Mujeres", "Hombres", "No binario", "Mujeres prioritario", "Hombres prioritario", "Por definir"].map((option) => <option key={option}>{option}</option>)}</SelectField>
+            <SelectField name="socioeconomic" label="Nivel socioeconómico" defaultValue="Todos los NSE">{["Todos los NSE", "A", "B", "C+", "C-", "D", "A/B", "B/C+", "C+/C-", "C-/D", "Por definir"].map((option) => <option key={option}>{option}</option>)}</SelectField>
+          </div>
+          <div className="planner-map-card">
+            <div><strong>Movilidad geográfica</strong><span>Busca una ciudad, marca un punto o selecciona todo Ecuador; el círculo representa el radio real de cobertura.</span></div>
+            <input type="hidden" name="geography" value={geography} />
+            <EcuadorTargetMap value={geoTarget} onChange={setGeoTarget} />
+          </div>
+        </section>
+
+        <section className="planner-form-section">
+          <SectionNumber number="03" title="Fechas, inversión y medios" description="Fija el marco de inversión y los canales que Mavi puede combinar." />
+          <div className="planner-fields planner-fields-three">
             <Field name="startDate" label="Inicio" type="date" />
             <Field name="endDate" label="Fin" type="date" />
+            <Field name="budget" label="Presupuesto antes de impuestos (USD)" placeholder="3000" type="number" />
           </div>
-          <Field name="budget" label="Presupuesto antes de impuestos (USD)" placeholder="3000" type="number" />
-
-          <fieldset className="rounded-xl border border-border bg-fog p-4">
-            <legend className="px-1 text-sm font-black text-forest">Medios a considerar *</legend>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              {[
-                ["television", "Televisión"], ["radio", "Radio"], ["ooh", "Vía pública"],
-                ["press", "Prensa"], ["digital", "Digital"], ["influencers", "Influenciadores"],
-              ].map(([value, label]) => (
-                <label key={value} className="flex items-center gap-2 text-sm font-bold text-forest">
-                  <input name="selectedMedia" value={value} type="checkbox" defaultChecked className="h-4 w-4 accent-signal" />
-                  {label}
-                </label>
+          <fieldset className="planner-media-selector">
+            <legend>Medios a considerar *</legend>
+            <div>
+              {[["television", "TV", "Televisión"], ["radio", "RA", "Radio"], ["ooh", "VP", "Vía pública"], ["press", "PR", "Prensa"], ["digital", "DI", "Digital"], ["influencers", "IN", "Influenciadores"]].map(([value, mark, label]) => (
+                <label key={value}><input name="selectedMedia" value={value} type="checkbox" defaultChecked /><span>{mark}</span><strong>{label}</strong><i>✓</i></label>
               ))}
             </div>
           </fieldset>
+          <aside className="planner-wow-card"><span>IDEA WOW</span><div><strong>Deja espacio para una activación memorable.</strong><p>Mavi podrá proponer una idea especial cruzando audiencia, territorio, calendario y medios seleccionados.</p></div></aside>
+        </section>
 
-          <details className="rounded-xl border border-border p-4">
-            <summary className="cursor-pointer text-sm font-black text-forest">Contexto de negocio y preparación digital</summary>
-            <div className="mt-4 space-y-4">
-              <SelectField name="businessModel" label="Modelo de negocio" defaultValue="">
-                <option value="">Por definir</option>
-                {["E-commerce", "Retail", "Generación de leads", "App", "B2B", "Servicios", "Otro"].map((option) => <option key={option}>{option}</option>)}
-              </SelectField>
-              <SelectField name="conversionModel" label="Modelo de conversión" defaultValue="">
-                <option value="">Por definir</option>
-                {["Checkout", "Formulario", "WhatsApp", "Tienda física", "Marketplace", "Venta consultiva", "Otro"].map((option) => <option key={option}>{option}</option>)}
-              </SelectField>
-              <Field name="digitalDestination" label="Destino o landing" placeholder="https://…" type="url" />
-              <SelectField name="trackingStatus" label="Estado de medición" defaultValue="">
-                <option value="">Por definir</option><option>Implementado</option><option>Parcial</option><option>No implementado</option>
-              </SelectField>
-              <SelectField name="adAccountsStatus" label="Cuentas publicitarias" defaultValue="">
-                <option value="">Por definir</option><option>Listas y con acceso</option><option>Existen sin acceso</option><option>Por crear</option>
-              </SelectField>
+        <section className="planner-form-section">
+          <SectionNumber number="04" title="Contexto del negocio" description="Información opcional que mejora la precisión de la estrategia y sus llamados a la acción." />
+          <details className="planner-details" open>
+            <summary>Modelo comercial y conversión <span>−</span></summary>
+            <div className="planner-fields planner-fields-two">
+              <SelectField name="businessModel" label="Modelo de negocio" defaultValue=""><option value="">Por definir</option>{["E-commerce", "Retail", "Generación de leads", "App", "B2B", "Servicios", "Otro"].map((option) => <option key={option}>{option}</option>)}</SelectField>
+              <SelectField name="conversionModel" label="Modelo de conversión" defaultValue=""><option value="">Por definir</option>{["Checkout", "Formulario", "WhatsApp", "Tienda física", "Marketplace", "Venta consultiva", "Otro"].map((option) => <option key={option}>{option}</option>)}</SelectField>
             </div>
           </details>
-          <button type="submit" disabled={pending} className="btn btn-primary w-full disabled:opacity-60">
-            {pending ? "Armando tu plan…" : "Generar plan de medios →"}
-          </button>
-        </form>
-        {state?.ok === false && (
-          <p className="mt-4 rounded-xl border border-coral/40 bg-coral/10 px-4 py-3 text-sm font-bold text-[#a13b31]">
-            {state.error}
-          </p>
-        )}
-      </section>
+        </section>
 
-      {/* Resultado */}
-      <section>
+        <section className="planner-form-section">
+          <SectionNumber number="05" title="Preparación digital" description="Confirma el destino y el estado de medición antes de convertir el plan en campañas." />
+          <details className="planner-details" open>
+            <summary>Destino, tracking y cuentas <span>−</span></summary>
+            <div className="planner-fields planner-fields-three">
+              <Field name="digitalDestination" label="Destino o landing" placeholder="https://…" type="url" />
+              <SelectField name="trackingStatus" label="Estado de medición" defaultValue=""><option value="">Por definir</option><option>Implementado</option><option>Parcial</option><option>No implementado</option></SelectField>
+              <SelectField name="adAccountsStatus" label="Cuentas publicitarias" defaultValue=""><option value="">Por definir</option><option>Listas y con acceso</option><option>Existen sin acceso</option><option>Por crear</option></SelectField>
+            </div>
+          </details>
+        </section>
+
+        <div className="planner-submit-bar">
+          <div><small>Siguiente etapa</small><strong>Análisis de audiencia, mercado y combinación de medios</strong></div>
+          <button type="submit" disabled={pending} className="btn btn-primary disabled:opacity-60">{pending ? "Armando tu plan…" : "Generar plan de medios →"}</button>
+        </div>
+        {state?.ok === false && <p className="rounded-xl border border-coral/40 bg-coral/10 px-4 py-3 text-sm font-bold text-[#a13b31]">{state.error}</p>}
+      </form>
+
+      <section className="planner-result">
         {state?.ok ? (
           <PlanResultView result={state} />
         ) : (
@@ -121,6 +125,10 @@ export function PlanForm() {
       </section>
     </div>
   );
+}
+
+function SectionNumber({ number, title, description }: { number: string; title: string; description: string }) {
+  return <header className="planner-section-heading"><span>{number}</span><div><h2>{title}</h2><p>{description}</p></div></header>;
 }
 
 function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> }) {

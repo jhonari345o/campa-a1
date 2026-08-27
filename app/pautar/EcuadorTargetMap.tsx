@@ -220,7 +220,7 @@ export function EcuadorTargetMap({ value, onChange }: { value: GeoTarget | null;
 
   return (
     <div className="space-y-3">
-      <form onSubmit={(event) => { event.preventDefault(); findPlace(); }} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
         <label className="text-xs font-black text-forest">
           Buscar ciudad o cantón
           <input
@@ -232,8 +232,8 @@ export function EcuadorTargetMap({ value, onChange }: { value: GeoTarget | null;
           />
           <datalist id="ecuador-locations">{ECUADOR_LOCATIONS.map((item) => <option key={item.label} value={item.label}>{item.province}</option>)}</datalist>
         </label>
-        <button type="submit" className="btn btn-secondary self-end">Ubicar</button>
-      </form>
+        <button type="button" onClick={findPlace} className="btn btn-secondary self-end">Ubicar</button>
+      </div>
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={selectCountry} className={`rounded-full border px-3 py-1.5 text-xs font-black ${value?.scope === "country" ? "border-signal bg-signal/15 text-signal-dark" : "border-border bg-white text-forest"}`}>🇪🇨 Todo Ecuador</button>
         <button type="button" onClick={useMyLocation} disabled={locating} className="rounded-full border border-border bg-white px-3 py-1.5 text-xs font-black text-forest disabled:opacity-50">{locating ? "Ubicando…" : "◎ Usar mi ubicación"}</button>

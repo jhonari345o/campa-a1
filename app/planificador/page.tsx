@@ -5,7 +5,6 @@ import { getInfluencerCatalog, getMySavedPlans, getRadioCatalog } from "@/lib/me
 import type { CatalogSection } from "@/lib/media-catalog";
 import { MediaCatalog } from "./MediaCatalog";
 import { PlanForm } from "./PlanForm";
-import { PlannerWorkspaceNav } from "./PlannerWorkspaceNav";
 import { SavedPlans } from "./SavedPlans";
 
 export const metadata = { title: "Planificador de medios" };
@@ -41,9 +40,12 @@ export default async function PlanificadorPage({
         name={profile.full_name ?? profile.email ?? "Ad Mavericks"}
         isAdmin={profile.is_platform_admin}
         active="planificador"
+        catalogSection={view === "media" ? section : undefined}
+        title={view === "media"
+          ? `Catálogo · ${sectionLabel(section)}`
+          : view === "plans" ? "Planes guardados" : "Planificador de medios"}
       />
-      <main className={`mx-auto px-4 py-8 sm:px-6 ${view === "media" ? "max-w-[1500px]" : "max-w-6xl"}`}>
-        <PlannerWorkspaceNav view={view} />
+      <main id="workspace-content" className={`portal-page ${view === "media" ? "portal-page-wide" : "portal-page-planner"}`}>
         {view === "media" ? (
           <MediaCatalog section={section} radio={radio} influencers={influencers} />
         ) : view === "plans" ? (
@@ -61,4 +63,15 @@ export default async function PlanificadorPage({
       </main>
     </div>
   );
+}
+
+function sectionLabel(section: CatalogSection): string {
+  return ({
+    tv: "Televisión",
+    radio: "Radio",
+    ooh: "Vía pública",
+    press: "Prensa",
+    digital: "Digital",
+    influencers: "Influenciadores",
+  } as const)[section];
 }
