@@ -314,3 +314,14 @@ test("el análisis conserva KPI por medio y separa Idea WOW del presupuesto", as
   assert.ok(television?.executions.every((item) => item.product && item.referenceUnitPriceUsd));
   assert.equal(detail.channelPlans.find((channel) => channel.kind === "digital")?.executions[0].status, "validacion");
 });
+
+test("Laboratorio y el centro de procesos Mavi permanecen visibles en la navegación", () => {
+  const header = readFileSync(resolve("components/AppHeader.tsx"), "utf8");
+  const assistant = readFileSync(resolve("components/MaviFloatingAssistant.tsx"), "utf8");
+  assert.match(header, /label: "Laboratorio creativo"/);
+  assert.match(header, /label: "Centro Mavi"/);
+  assert.match(assistant, /Todos tus procesos aquí/);
+  assert.match(assistant, /Crear plan guiado/);
+  assert.match(assistant, /Revisar creatividad/);
+  assert.match(assistant, /Preparar pauta/);
+});

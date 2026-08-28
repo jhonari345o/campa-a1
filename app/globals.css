@@ -387,7 +387,7 @@ body {
 .mavi-floating-panel > header strong { font-size:13px; }
 .mavi-floating-panel > header span { color:#90a99b; font-size:8px; }
 .mavi-floating-panel > header > button { display:grid; width:32px; height:32px; place-items:center; border:0; border-radius:50%; background:rgb(255 255 255 / 10%); color:#fff; font-size:20px; }
-.mavi-floating-panel > nav { display:grid; grid-template-columns:repeat(2,1fr); border-bottom:1px solid #dce4df; background:#f1f5f2; padding:5px; }
+.mavi-floating-panel > nav { display:grid; grid-template-columns:repeat(3,1fr); border-bottom:1px solid #dce4df; background:#f1f5f2; padding:5px; }
 .mavi-floating-panel > nav button { border:0; border-radius:10px; background:transparent; padding:8px; color:#64736b; font-size:9px; font-weight:950; }
 .mavi-floating-panel > nav button.is-active { background:#fff; color:#007d0a; box-shadow:0 3px 12px rgb(23 40 31 / 8%); }
 .mavi-floating-messages { overflow-y:auto; padding:14px; }
@@ -416,6 +416,19 @@ body {
 .mavi-floating-campaign input,.mavi-floating-campaign select { display:block; width:100%; margin-top:4px; border:1px solid #d8e0db; border-radius:11px; background:#f3f6f4; padding:10px; color:#264033; font-size:9px; outline:none; }
 .mavi-floating-campaign .btn { width:100%; margin-top:15px; }
 .mavi-floating-campaign small { display:block; margin-top:10px; color:#7c8881; font-size:7px; line-height:1.5; }
+.mavi-process-hub { min-height:0; overflow-y:auto; padding:15px; }
+.mavi-process-intro { border-radius:16px; background:#18372b; padding:14px; color:#fff; }
+.mavi-process-intro strong { font-size:14px; }
+.mavi-process-intro p { margin:4px 0 0; color:rgb(255 255 255 / 62%); font-size:8px; line-height:1.5; }
+.mavi-process-grid { display:grid; gap:7px; margin-top:10px; }
+.mavi-process-grid > a { display:grid; grid-template-columns:28px minmax(0,1fr) auto; align-items:center; gap:9px; border:1px solid #dce4df; border-radius:13px; background:#f6f8f6; padding:9px; color:#244233; text-decoration:none; transition:transform .16s ease,border-color .16s ease,background .16s ease; }
+.mavi-process-grid > a:hover { transform:translateX(2px); border-color:#65cc70; background:#f0faf1; }
+.mavi-process-grid > a > span { display:grid; width:28px; height:28px; place-items:center; border-radius:9px; background:#18372b; color:#68e876; font-size:8px; font-weight:950; }
+.mavi-process-grid strong,.mavi-process-grid small { display:block; }
+.mavi-process-grid strong { font-size:9px; }
+.mavi-process-grid small { margin-top:2px; color:#748079; font-size:7px; line-height:1.35; }
+.mavi-process-grid b { color:#00a100; font-size:14px; }
+.mavi-process-question { width:100%; margin-top:10px; border:1px solid rgb(0 161 0 / 35%); border-radius:11px; background:rgb(0 161 0 / 8%); padding:9px; color:#007d0a; font-size:8px; font-weight:950; }
 .reports-locked { max-width:720px; margin:60px auto; border:1px solid #d8e1db; border-radius:28px; background:#fff; padding:48px; text-align:center; box-shadow:0 20px 60px rgb(23 40 31 / 8%); }
 .reports-locked > span { display:grid; width:62px; height:62px; margin:auto; place-items:center; border-radius:19px; background:#18372b; color:#77e581; font-size:18px; font-weight:950; }
 .reports-locked > p { margin:18px 0 0; color:#008c0c; font-size:9px; font-weight:950; letter-spacing:.15em; text-transform:uppercase; }
@@ -505,9 +518,13 @@ body {
   .planner-execution-row dl,.planner-detailed-checks ul { grid-template-columns:1fr; }
   .planner-ooh-map-card { grid-template-columns:1fr; }
   .campaign-score-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
-  .mavi-floating { right:10px; bottom:10px; }
-  .mavi-floating-trigger { min-width:0; border-radius:50%; padding:3px; }
-  .mavi-floating-trigger > span,.mavi-floating-trigger > b { display:none; }
+  .mavi-floating { right:8px; bottom:8px; }
+  .mavi-floating-trigger { min-width:176px; border-radius:19px; padding:4px 8px 4px 4px; }
+  .mavi-floating-trigger > img { width:44px !important; height:44px !important; }
+  .mavi-floating-trigger > span { display:block; }
+  .mavi-floating-trigger > b { display:none; }
+  .mavi-floating-trigger strong { font-size:10px; }
+  .mavi-floating-trigger small { font-size:7px; }
   .mavi-floating-panel { height:calc(100vh - 92px); }
   .reports-locked { margin:28px auto; padding:30px 20px; }
   .reports-locked > div { align-items:stretch; flex-direction:column; }

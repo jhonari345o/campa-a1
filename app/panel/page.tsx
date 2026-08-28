@@ -137,9 +137,29 @@ function QuickLinks() {
         href="/asistente"
         className="rounded-panel border border-border bg-white p-6 shadow-panel transition-transform hover:-translate-y-0.5"
       >
-        <h3 className="text-lg font-black text-forest">Pregunta a Mavi →</h3>
+        <h3 className="text-lg font-black text-forest">Centro de procesos Mavi →</h3>
         <p className="mt-1 text-sm text-muted">
-          Tu guia de medios: resuelve dudas de publicidad y planificacion.
+          Planifica, revisa creatividades, prepara pautas y consulta resultados.
+        </p>
+      </Link>
+      <Link
+        href="/laboratorio"
+        className="rounded-panel border border-border bg-white p-6 shadow-panel transition-transform hover:-translate-y-0.5"
+      >
+        <p className="text-xs font-black uppercase tracking-[.16em] text-signal-dark">Nuevo</p>
+        <h3 className="mt-1 text-lg font-black text-forest">Laboratorio creativo →</h3>
+        <p className="mt-1 text-sm text-muted">
+          Carga una pieza, valida su formato y crea una variante con Mavi antes de pautar.
+        </p>
+      </Link>
+      <Link
+        href="/planificador?view=diy"
+        className="rounded-panel border border-signal/30 bg-signal/10 p-6 shadow-panel transition-transform hover:-translate-y-0.5"
+      >
+        <p className="text-xs font-black uppercase tracking-[.16em] text-signal-dark">Simulación</p>
+        <h3 className="mt-1 text-lg font-black text-forest">Gemelo digital de campaña →</h3>
+        <p className="mt-1 text-sm text-muted">
+          Compara escenarios, riesgos y distribución de inversión antes de aprobar.
         </p>
       </Link>
     </section>
@@ -159,6 +179,12 @@ function AdminWelcome() {
         </Link>
         <Link href="/mercado" className="btn btn-secondary">
           Inteligencia de mercado →
+        </Link>
+        <Link href="/laboratorio" className="btn btn-secondary">
+          Laboratorio creativo →
+        </Link>
+        <Link href="/asistente" className="btn btn-secondary">
+          Abrir Centro Mavi →
         </Link>
       </div>
     </section>

@@ -20,6 +20,8 @@ const CREATION = [
   { number: "01", label: "Inicio", href: "/panel", id: "panel" },
   { number: "02", label: "Planificador", href: "/planificador?view=planner", id: "planificador" },
   { number: "03", label: "Planes guardados", href: "/planificador?view=plans", id: "plans" },
+  { number: "04", label: "Laboratorio creativo", href: "/laboratorio", id: "laboratorio" },
+  { number: "05", label: "Centro Mavi", href: "/asistente", id: "asistente" },
 ] as const;
 
 const CATALOG = [
@@ -74,7 +76,7 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
                 </Link>
               );
             })}
-            <Link href="/campanas" onClick={close} className={`portal-nav-item ${active === "campanas" ? "is-active" : ""}`}><span>04</span><strong>Órdenes</strong></Link>
+            <Link href="/campanas" onClick={close} className={`portal-nav-item ${active === "campanas" ? "is-active" : ""}`}><span>06</span><strong>Órdenes</strong></Link>
             <ReportNavigationItem active={active === "reportes"} onClick={close} />
           </nav>
 
@@ -97,7 +99,6 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
           </Link>
 
           <nav className="portal-utility-nav" aria-label="Herramientas de la cuenta">
-            <Link href="/laboratorio" onClick={close}>Laboratorio creativo</Link>
             <Link href="/pautar" onClick={close}>Pautar con Mavi</Link>
             <Link href="/campanas" onClick={close}>Campañas</Link>
             {isAdmin && <Link href="/mercado" onClick={close}>Inteligencia de mercado</Link>}
@@ -144,6 +145,6 @@ function ReportNavigationItem({ active, onClick }: { active: boolean; onClick: (
       .catch(() => setEnabled(false));
   }, []);
   return enabled
-    ? <Link href="/reportes" onClick={onClick} className={`portal-nav-item ${active ? "is-active" : ""}`}><span>05</span><strong>Reportes</strong></Link>
-    : <span className="portal-nav-item is-disabled"><span>05</span><strong>Reportes</strong><em>Tras tu primera campaña</em></span>;
+    ? <Link href="/reportes" onClick={onClick} className={`portal-nav-item ${active ? "is-active" : ""}`}><span>07</span><strong>Reportes</strong></Link>
+    : <span className="portal-nav-item is-disabled"><span>07</span><strong>Reportes</strong><em>Tras tu primera campaña</em></span>;
 }

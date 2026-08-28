@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { MaviAvatar } from "@/components/Mavi";
 import type { AssistantAction } from "@/lib/assistant/actions";
 
@@ -13,9 +14,18 @@ const STARTERS = [
   "Busca una tendencia actual",
 ];
 
+const PROCESS_LINKS = [
+  { href: "/planificador?view=planner&stage=brief", mark: "01", title: "Crear plan guiado", detail: "Brief, análisis, propuesta y aprobación" },
+  { href: "/planificador?view=diy", mark: "02", title: "Armar plan manual", detail: "Selecciona medios y simula escenarios" },
+  { href: "/laboratorio", mark: "03", title: "Revisar creatividad", detail: "Valida la pieza y genera variantes" },
+  { href: "/pautar", mark: "04", title: "Preparar pauta", detail: "Enlace, geografía, inversión y checkout" },
+  { href: "/campanas", mark: "05", title: "Ver órdenes", detail: "Seguimiento y coordinación de campañas" },
+  { href: "/reportes", mark: "06", title: "Leer resultados", detail: "Métricas y narrativa ejecutiva" },
+] as const;
+
 export function MaviFloatingAssistant() {
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<"ask" | "campaign">("ask");
+  const [mode, setMode] = useState<"processes" | "ask" | "campaign">("processes");
   const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", content: "Hola, soy Mavi. Pregúntame por tu plan, los catálogos, una campaña o una tendencia que pueda afectar a tu marca." },
   ]);
@@ -87,11 +97,29 @@ export function MaviFloatingAssistant() {
             <button type="button" onClick={() => setOpen(false)} aria-label="Cerrar Mavi">×</button>
           </header>
           <nav aria-label="Acciones de Mavi">
+            <button type="button" className={mode === "processes" ? "is-active" : ""} onClick={() => setMode("processes")}>Procesos</button>
             <button type="button" className={mode === "ask" ? "is-active" : ""} onClick={() => setMode("ask")}>Preguntar</button>
             <button type="button" className={mode === "campaign" ? "is-active" : ""} onClick={() => setMode("campaign")}>Pauta aparte</button>
           </nav>
 
-          {mode === "ask" ? (
+          {mode === "processes" ? (
+            <div className="mavi-process-hub">
+              <div className="mavi-process-intro">
+                <strong>¿Qué quieres hacer?</strong>
+                <p>Mavi te acompaña de la idea a la medición. Elige un proceso para empezar.</p>
+              </div>
+              <div className="mavi-process-grid">
+                {PROCESS_LINKS.map((process) => (
+                  <Link href={process.href} key={process.href}>
+                    <span>{process.mark}</span>
+                    <div><strong>{process.title}</strong><small>{process.detail}</small></div>
+                    <b>→</b>
+                  </Link>
+                ))}
+              </div>
+              <button type="button" className="mavi-process-question" onClick={() => setMode("ask")}>No sé por dónde empezar · Preguntar a Mavi →</button>
+            </div>
+          ) : mode === "ask" ? (
             <>
               <div ref={scrollRef} className="mavi-floating-messages">
                 {messages.map((message, index) => (
@@ -127,7 +155,7 @@ export function MaviFloatingAssistant() {
       )}
       <button type="button" className="mavi-floating-trigger" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-label={open ? "Cerrar asistente Mavi" : "Abrir asistente Mavi"}>
         <MaviAvatar size={54} />
-        <span><strong>Pregunta a Mavi</strong><small>Planifica o crea una pauta</small></span>
+        <span><strong>Centro Mavi</strong><small>Todos tus procesos aquí</small></span>
         <b>{open ? "×" : "+"}</b>
       </button>
     </div>
