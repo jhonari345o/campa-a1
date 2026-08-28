@@ -1,10 +1,19 @@
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { getSessionProfile } from "@/lib/auth";
-import { getInfluencerCatalog, getMySavedPlans, getRadioCatalog } from "@/lib/media-workspace";
+import {
+  getInfluencerCatalog,
+  getMyPlanVersions,
+  getMySavedPlan,
+  getMySavedPlans,
+  getOohLocationCatalog,
+  getRadioCatalog,
+} from "@/lib/media-workspace";
 import type { CatalogSection } from "@/lib/media-catalog";
+import { DiyPlanner } from "./DiyPlanner";
 import { MediaCatalog } from "./MediaCatalog";
 import { PlanForm } from "./PlanForm";
+import { PlanVersions } from "./PlanVersions";
 import { SavedPlans } from "./SavedPlans";
 
 export const metadata = { title: "Planificador de medios" };
@@ -16,22 +25,29 @@ const supabaseConfigured = Boolean(
 export default async function PlanificadorPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; section?: string }>;
+  searchParams: Promise<{ view?: string; section?: string; plan?: string }>;
 }) {
   if (!supabaseConfigured) redirect("/consola");
   const profile = await getSessionProfile();
   if (!profile) redirect("/ingresar");
   const params = await searchParams;
-  const view = params.view === "media" || params.view === "plans" ? params.view : "planner";
+  const view = ["media", "plans", "diy", "versions"].includes(params.view ?? "")
+    ? params.view!
+    : "planner";
   const allowedSections = new Set<CatalogSection>(["tv", "radio", "ooh", "press", "digital", "influencers"]);
   const section = allowedSections.has(params.section as CatalogSection)
     ? params.section as CatalogSection
     : "digital";
 
-  const [radio, influencers, plans] = await Promise.all([
-    view === "media" ? getRadioCatalog() : Promise.resolve([]),
-    view === "media" ? getInfluencerCatalog() : Promise.resolve([]),
+  const catalogNeeded = view === "media" || view === "diy";
+  const selectedPlanNeeded = (view === "planner" || view === "diy" || view === "versions") && Boolean(params.plan);
+  const [radio, influencers, plans, selectedPlan, versions, oohLocations] = await Promise.all([
+    catalogNeeded ? getRadioCatalog() : Promise.resolve([]),
+    catalogNeeded ? getInfluencerCatalog() : Promise.resolve([]),
     view === "plans" ? getMySavedPlans(profile.id) : Promise.resolve([]),
+    selectedPlanNeeded ? getMySavedPlan(profile.id, params.plan!) : Promise.resolve(null),
+    view === "versions" && params.plan ? getMyPlanVersions(profile.id, params.plan) : Promise.resolve([]),
+    view === "diy" ? getOohLocationCatalog() : Promise.resolve([]),
   ]);
 
   return (
@@ -43,13 +59,20 @@ export default async function PlanificadorPage({
         catalogSection={view === "media" ? section : undefined}
         title={view === "media"
           ? `Catálogo · ${sectionLabel(section)}`
-          : view === "plans" ? "Planes guardados" : "Planificador de medios"}
+          : view === "plans" ? "Planes guardados"
+            : view === "diy" ? "Plan personalizado"
+              : view === "versions" ? "Historial del plan"
+                : "Planificador de medios"}
       />
       <main id="workspace-content" className={`portal-page ${view === "media" ? "portal-page-wide" : "portal-page-planner"}`}>
         {view === "media" ? (
           <MediaCatalog section={section} radio={radio} influencers={influencers} />
         ) : view === "plans" ? (
           <SavedPlans plans={plans} />
+        ) : view === "diy" ? (
+          <DiyPlanner radio={radio} influencers={influencers} oohLocations={oohLocations} initialPlan={selectedPlan} />
+        ) : view === "versions" ? (
+          <PlanVersions plan={selectedPlan} versions={versions} />
         ) : (
           <>
             <h1 className="text-3xl font-black tracking-tight">Planificador de medios</h1>
@@ -57,7 +80,7 @@ export default async function PlanificadorPage({
               Completa el brief, revisa la recomendación y guarda un borrador privado.
               La plataforma recomienda; tu equipo conserva el control.
             </p>
-            <div className="mt-8"><PlanForm /></div>
+            <div className="mt-8"><PlanForm initialPlan={selectedPlan} /></div>
           </>
         )}
       </main>

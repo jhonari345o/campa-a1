@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useId, useState } from "react";
+import { useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
 import type { ReactNode } from "react";
 import { aprobarPlan, generarPlan, guardarPlan, type PlanResult } from "./actions";
 import type { PlanRow } from "@/lib/planner";
@@ -18,19 +18,27 @@ import {
   WOW_SURFACE_OPTIONS,
   type CatalogOption,
 } from "@/lib/form-catalogs";
+import type { SavedMediaPlan } from "@/lib/media-workspace";
+import { guardarProgresoBrief } from "./workspace-actions";
+import { PlanOrderButton } from "./PlanOrderButton";
 
 const money = (n: number | null) =>
   n == null ? "—" : new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 const pct = (n: number) => `${(n * 100).toFixed(0)}%`;
 
-export function PlanForm() {
+export function PlanForm({ initialPlan }: { initialPlan?: SavedMediaPlan | null }) {
+  const initialBrief = initialPlan?.brief ?? {};
   const [state, formAction, pending] = useActionState<PlanResult | null, FormData>(generarPlan, null);
-  const [geoTarget, setGeoTarget] = useState<GeoTarget | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [planId, setPlanId] = useState(initialPlan?.id ?? "");
+  const [saveMessage, setSaveMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [savingProgress, startSavingProgress] = useTransition();
+  const [geoTarget, setGeoTarget] = useState<GeoTarget | null>(() => parseGeoTarget(stringValue(initialBrief.geography)));
   const [stage, setStage] = useState<"brief" | "analysis" | "proposal" | "personalize" | "approved">("brief");
   const [approvedPlan, setApprovedPlan] = useState<{ id: string; rows: PlanRow[] } | null>(null);
-  const [productMatrixApplies, setProductMatrixApplies] = useState(false);
+  const [productMatrixApplies, setProductMatrixApplies] = useState(Boolean(initialBrief.productMatrixApplies));
   const [productRows, setProductRows] = useState([0]);
-  const [wowEnabled, setWowEnabled] = useState(false);
+  const [wowEnabled, setWowEnabled] = useState(Boolean(initialBrief.wowEnabled));
   useEffect(() => {
     if (state?.ok) {
       setStage("analysis");
@@ -42,6 +50,7 @@ export function PlanForm() {
     : geoTarget.scope === "country"
       ? "Todo Ecuador"
       : `${geoTarget.label} · ${geoTarget.radiusKm} km alrededor`;
+  const initialSelectedMedia = Array.isArray(initialBrief.selectedMedia) ? initialBrief.selectedMedia.map(String) : [];
   const stageIndex = stage === "brief" ? 0 : stage === "analysis" ? 1 : stage === "proposal" ? 2 : stage === "personalize" ? 3 : 4;
   const stageCopy = stage === "brief"
     ? { eyebrow: "Nuevo plan", title: "Cuéntanos qué necesita tu marca.", description: "Completa el brief y Mavi construirá una recomendación con datos, contexto y criterios verificables." }
@@ -53,46 +62,63 @@ export function PlanForm() {
           ? { eyebrow: "Personaliza", title: "Ajusta el peso de cada ejecución.", description: "Cada cambio redistribuye el presupuesto inmediatamente y conserva el 100% de la inversión." }
           : { eyebrow: "Aprobado", title: "Plan registrado y listo para coordinación.", description: "La versión aprobada queda guardada con su brief, análisis, propuesta y distribución final." };
 
+  function saveProgress() {
+    if (!formRef.current) return;
+    setSaveMessage(null);
+    const formData = new FormData(formRef.current);
+    const brief = formDataRecord(formData);
+    brief.geography = geography;
+    brief.budgetUsd = numberOrNull(brief.budget);
+    startSavingProgress(async () => {
+      const result = await guardarProgresoBrief({ planId: planId || null, name: stringValue(brief.brand) || initialPlan?.name, brief });
+      if (result.ok) {
+        setPlanId(result.id);
+        setSaveMessage({ ok: true, text: `Progreso guardado · versión ${result.version}` });
+      } else setSaveMessage({ ok: false, text: result.error });
+    });
+  }
+
   return (
     <div className="planner-portal-shell">
       <nav className="planner-progress" aria-label="Progreso del plan">
         {[["01", "Brief"], ["02", "Análisis"], ["03", "Propuesta"], ["04", "Personaliza"], ["05", "Aprobado"]].map(([number, label], index) => (
           <div key={number} className={index === stageIndex ? "is-active" : index < stageIndex ? "is-complete" : ""}><span>{index < stageIndex ? "✓" : number}</span><strong>{label}</strong></div>
         ))}
-        <button type="button">Guardar progreso</button>
+        <button type="button" onClick={saveProgress} disabled={savingProgress}>{savingProgress ? "Guardando…" : "Guardar progreso"}</button>
       </nav>
+      {saveMessage && <p className={`mb-4 rounded-xl border px-4 py-3 text-sm font-bold ${saveMessage.ok ? "border-signal/30 bg-signal/10 text-forest" : "border-coral/30 bg-coral/10 text-[#a13b31]"}`}>{saveMessage.text}</p>}
 
       <header className="planner-hero">
         <div><p>{stageCopy.eyebrow}</p><h1>{stageCopy.title}</h1><span>{stageCopy.description}</span></div>
         <aside><small>Organización activa</small><strong>Ad Mavericks</strong><span>Workspace privado · Ecuador</span></aside>
       </header>
 
-      <form action={formAction} className={`planner-form ${stage === "brief" ? "" : "hidden"}`} aria-hidden={stage !== "brief"}>
+      <form ref={formRef} action={formAction} className={`planner-form ${stage === "brief" ? "" : "hidden"}`} aria-hidden={stage !== "brief"}>
         <section className="planner-form-section">
           <SectionNumber number="01" title="Objetivo de la campaña" description="Define la marca, su categoría y el resultado que debe priorizar el plan." />
           <div className="planner-fields planner-fields-two">
-            <Field name="brand" label="Marca" placeholder="Nombre de la marca" />
-            <SelectField name="keyword" label="Rubro o giro principal *" defaultValue="" required>
+            <Field name="brand" label="Marca" placeholder="Nombre de la marca" defaultValue={stringValue(initialBrief.brand)} />
+            <SelectField name="keyword" label="Rubro o giro principal *" defaultValue={stringValue(initialBrief.keyword)} required>
               <option value="" disabled>Selecciona el rubro principal</option>
               <CatalogOptions options={BUSINESS_CATEGORY_OPTIONS} />
             </SelectField>
-            <SelectField name="objective" label="Objetivo principal" defaultValue="Ventas">
+            <SelectField name="objective" label="Objetivo principal" defaultValue={stringValue(initialBrief.objective) || "Ventas"}>
               {["Reconocimiento", "Alcance", "Consideración", "Tráfico", "Interacción", "Reproducciones", "Generación de leads", "Mensajes", "Ventas", "Visitas al local", "Descargas de app", "Retención", "Otro"].map((option) => <option key={option}>{option}</option>)}
             </SelectField>
-            <SelectField name="priority" label="Prioridad del plan" defaultValue="Eficiencia">
+            <SelectField name="priority" label="Prioridad del plan" defaultValue={stringValue(initialBrief.priority) || "Eficiencia"}>
               {["Cobertura", "Frecuencia", "Eficiencia", "Conversión", "Afinidad", "Presencia local", "Balance"].map((option) => <option key={option}>{option}</option>)}
             </SelectField>
           </div>
-          <Field name="audience" label="Personas, necesidades o comportamientos que importan" placeholder="Ej. Jóvenes profesionales que compran en línea y viven cerca de puntos de venta" />
+          <Field name="audience" label="Personas, necesidades o comportamientos que importan" placeholder="Ej. Jóvenes profesionales que compran en línea y viven cerca de puntos de venta" defaultValue={stringValue(initialBrief.audience)} />
         </section>
 
         <section className="planner-form-section">
           <SectionNumber number="02" title="Audiencia y geografía" description="Delimita a quién debe llegar la campaña y dónde tiene sentido invertir." />
           <div className="planner-fields planner-fields-four">
-            <SelectField name="audienceType" label="Tipo de audiencia" defaultValue="B2C"><option>B2C</option><option>B2B</option><option>Mixta</option></SelectField>
-            <SelectField name="ageRange" label="Edad" defaultValue="Personas 18+">{["Todas las edades", "13-17", "18-24", "25-34", "35-44", "45-54", "55-64", "65+", "18-34", "25-54", "Personas 18+"].map((option) => <option key={option}>{option}</option>)}</SelectField>
-            <SelectField name="sex" label="Sexo" defaultValue="Todas las personas">{["Todas las personas", "Mujeres", "Hombres", "No binario", "Mujeres prioritario", "Hombres prioritario", "Por definir"].map((option) => <option key={option}>{option}</option>)}</SelectField>
-            <SelectField name="socioeconomic" label="Nivel socioeconómico" defaultValue="Todos los NSE">{["Todos los NSE", "A", "B", "C+", "C-", "D", "A/B", "B/C+", "C+/C-", "C-/D", "Por definir"].map((option) => <option key={option}>{option}</option>)}</SelectField>
+            <SelectField name="audienceType" label="Tipo de audiencia" defaultValue={stringValue(initialBrief.audienceType) || "B2C"}><option>B2C</option><option>B2B</option><option>Mixta</option></SelectField>
+            <SelectField name="ageRange" label="Edad" defaultValue={stringValue(initialBrief.ageRange) || "Personas 18+"}>{["Todas las edades", "13-17", "18-24", "25-34", "35-44", "45-54", "55-64", "65+", "18-34", "25-54", "Personas 18+"].map((option) => <option key={option}>{option}</option>)}</SelectField>
+            <SelectField name="sex" label="Sexo" defaultValue={stringValue(initialBrief.sex) || "Todas las personas"}>{["Todas las personas", "Mujeres", "Hombres", "No binario", "Mujeres prioritario", "Hombres prioritario", "Por definir"].map((option) => <option key={option}>{option}</option>)}</SelectField>
+            <SelectField name="socioeconomic" label="Nivel socioeconómico" defaultValue={stringValue(initialBrief.socioeconomic) || "Todos los NSE"}>{["Todos los NSE", "A", "B", "C+", "C-", "D", "A/B", "B/C+", "C+/C-", "C-/D", "Por definir"].map((option) => <option key={option}>{option}</option>)}</SelectField>
           </div>
           <div className="planner-map-card">
             <div><strong>Movilidad geográfica</strong><span>Busca una ciudad, marca un punto o selecciona todo Ecuador; el círculo representa el radio real de cobertura.</span></div>
@@ -104,15 +130,15 @@ export function PlanForm() {
         <section className="planner-form-section">
           <SectionNumber number="03" title="Fechas, inversión y medios" description="Fija el marco de inversión y los canales que Mavi puede combinar." />
           <div className="planner-fields planner-fields-three">
-            <Field name="startDate" label="Inicio" type="date" />
-            <Field name="endDate" label="Fin" type="date" />
-            <Field name="budget" label="Presupuesto antes de impuestos (USD)" placeholder="3000" type="number" />
+            <Field name="startDate" label="Inicio" type="date" defaultValue={stringValue(initialBrief.startDate)} />
+            <Field name="endDate" label="Fin" type="date" defaultValue={stringValue(initialBrief.endDate)} />
+            <Field name="budget" label="Presupuesto antes de impuestos (USD)" placeholder="3000" type="number" defaultValue={stringValue(initialBrief.budgetUsd)} />
           </div>
           <fieldset className="planner-media-selector">
             <legend>Medios a considerar *</legend>
             <div>
               {[["television", "TV", "Televisión"], ["radio", "RA", "Radio"], ["ooh", "VP", "Vía pública"], ["press", "PR", "Prensa"], ["digital", "DI", "Digital"], ["influencers", "IN", "Influenciadores"]].map(([value, mark, label]) => (
-                <label key={value}><input name="selectedMedia" value={value} type="checkbox" defaultChecked /><span>{mark}</span><strong>{label}</strong><i>✓</i></label>
+                <label key={value}><input name="selectedMedia" value={value} type="checkbox" defaultChecked={initialSelectedMedia.length === 0 || initialSelectedMedia.includes(value)} /><span>{mark}</span><strong>{label}</strong><i>✓</i></label>
               ))}
             </div>
           </fieldset>
@@ -342,7 +368,7 @@ function ApprovedStage({ result, approved }: { result: Extract<PlanResult, { ok:
     <div className="planner-approved-summary"><div><span>Marca</span><strong>{result.brief.brand || result.keyword}</strong></div><div><span>Presupuesto</span><strong>{money(result.brief.budgetUsd)}</strong></div><div><span>Cobertura</span><strong>{result.brief.geography || "Por confirmar"}</strong></div><div><span>Medios</span><strong>{approved.rows.length}</strong></div></div>
     <div className="planner-approved-lines">{approved.rows.map((row) => <div key={row.label}><span>{row.label}</span><strong>{pct(row.pct)} · {money(row.amount)}</strong></div>)}</div>
     <p className="planner-approved-note">El equipo coordinará disponibilidad, negociación, cumplimiento, medición y ejecución. La aprobación del plan no sustituye las órdenes finales de cada proveedor o plataforma.</p>
-    <div className="flex flex-wrap gap-3"><a href="/planificador?view=plans" className="btn btn-primary">Ver planes guardados →</a><a href="/campanas" className="btn btn-secondary">Ir a campañas</a></div>
+    <div className="grid gap-3 sm:grid-cols-3"><a href="/planificador?view=plans" className="btn btn-secondary">Ver planes guardados</a><a href="/campanas" className="btn btn-secondary">Ir a campañas</a><PlanOrderButton planId={approved.id} /></div>
   </section>;
 }
 
@@ -669,12 +695,14 @@ function Field({
   placeholder,
   type = "text",
   required,
+  defaultValue,
 }: {
   name: string;
   label: string;
   placeholder?: string;
   type?: string;
   required?: boolean;
+  defaultValue?: string;
 }) {
   const fieldId = useId();
   return (
@@ -687,6 +715,7 @@ function Field({
         name={name}
         type={type}
         required={required}
+        defaultValue={defaultValue}
         placeholder={placeholder}
         className="mt-1 w-full rounded-xl border border-border bg-fog px-4 py-3 outline-none focus:border-signal focus:ring-2 focus:ring-signal/30"
       />
@@ -748,9 +777,33 @@ function CatalogOptions({ options }: { options: readonly CatalogOption[] }) {
   return options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>);
 }
 
-function TextArea({ name, label, placeholder }: { name: string; label: string; placeholder?: string }) {
+function TextArea({ name, label, placeholder, defaultValue }: { name: string; label: string; placeholder?: string; defaultValue?: string }) {
   const fieldId = useId();
-  return <div><label htmlFor={fieldId} className="block text-sm font-black text-forest">{label}</label><textarea id={fieldId} name={name} rows={3} placeholder={placeholder} className="mt-1 w-full resize-y rounded-xl border border-border bg-fog px-4 py-3 outline-none focus:border-signal focus:ring-2 focus:ring-signal/30" /></div>;
+  return <div><label htmlFor={fieldId} className="block text-sm font-black text-forest">{label}</label><textarea id={fieldId} name={name} rows={3} placeholder={placeholder} defaultValue={defaultValue} className="mt-1 w-full resize-y rounded-xl border border-border bg-fog px-4 py-3 outline-none focus:border-signal focus:ring-2 focus:ring-signal/30" /></div>;
+}
+
+function formDataRecord(formData: FormData): Record<string, unknown> {
+  const output: Record<string, unknown> = {};
+  for (const [key, raw] of formData.entries()) {
+    if (typeof raw !== "string") continue;
+    const value = raw.trim();
+    if (key in output) output[key] = Array.isArray(output[key]) ? [...output[key] as string[], value] : [String(output[key]), value];
+    else output[key] = value;
+  }
+  return output;
+}
+
+function stringValue(value: unknown) { return value == null ? "" : String(value); }
+function numberOrNull(value: unknown) { const number = Number(value); return Number.isFinite(number) && number > 0 ? number : null; }
+function parseGeoTarget(value: string): GeoTarget | null {
+  if (!value) return null;
+  if (value === "Todo Ecuador") return { scope: "country", label: "Todo Ecuador", latitude: -1.8312, longitude: -78.1834, radiusKm: 0 };
+  const match = value.match(/^(.+?) · (\d+(?:\.\d+)?) km alrededor$/);
+  if (!match) return null;
+  const known: Record<string, [number, number]> = { Guayaquil: [-2.170998, -79.922359], Quito: [-0.180653, -78.467834], Cuenca: [-2.900128, -79.005896], Manta: [-0.967653, -80.70891] };
+  const label = match[1]!.trim();
+  const coordinates = known[label] ?? [-1.8312, -78.1834];
+  return { scope: "radius", label, latitude: coordinates[0], longitude: coordinates[1], radiusKm: Number(match[2]) };
 }
 
 function Checklist({ name, label, options }: { name: string; label: string; options: string[] }) {

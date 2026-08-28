@@ -91,7 +91,7 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
             ))}
           </nav>
 
-          <Link href="/planificador?view=planner" onClick={close} className="portal-custom-plan-link">
+          <Link href="/planificador?view=diy" onClick={close} className="portal-custom-plan-link">
             <span>Configura medio por medio</span><strong>CREA EL PLAN A TU MANERA</strong><b>→</b>
           </Link>
 

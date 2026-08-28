@@ -10,7 +10,47 @@ export type SavedMediaPlan = {
   version: number;
   progress: number;
   brief: Record<string, unknown>;
+  analysis: Record<string, unknown>;
+  proposal: Record<string, unknown>;
+  selection: Record<string, unknown>;
   updated_at: string;
+};
+
+export type SavedPlanVersion = {
+  id: number;
+  version: number;
+  snapshot: Record<string, unknown>;
+  created_at: string;
+};
+
+export type OohLocationOption = {
+  id: string;
+  assetCode: string;
+  status: "inventory" | "zone_candidate";
+  providerName: string | null;
+  name: string;
+  city: string;
+  province: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  format: string | null;
+  monthlyRateUsd: number | null;
+  productionRateUsd: number | null;
+  audienceTags: string[];
+  contextTags: string[];
+  affluenceIndex: number | null;
+  sourceNote: string;
+  verifiedAt: string | null;
+};
+
+export type CatalogHealth = {
+  total: number;
+  cotizable: number;
+  validation: number;
+  directory: number;
+  stale: number;
+  withoutDate: number;
 };
 
 type RadioCatalogRow = {
@@ -97,7 +137,7 @@ export async function getMySavedPlans(userId: string): Promise<SavedMediaPlan[]>
   const db = await createClient();
   const { data, error } = await db
     .from("media_plans")
-    .select("id, name, status, mode, stage, version, progress, brief, updated_at")
+    .select("id, name, status, mode, stage, version, progress, brief, analysis, proposal, selection, updated_at")
     .eq("owner_id", userId)
     .order("updated_at", { ascending: false })
     .limit(50);
@@ -111,8 +151,107 @@ export async function getMySavedPlans(userId: string): Promise<SavedMediaPlan[]>
     version: Number(row.version),
     progress: Number(row.progress),
     brief: (row.brief ?? {}) as Record<string, unknown>,
+    analysis: (row.analysis ?? {}) as Record<string, unknown>,
+    proposal: (row.proposal ?? {}) as Record<string, unknown>,
+    selection: (row.selection ?? {}) as Record<string, unknown>,
     updated_at: String(row.updated_at),
   }));
+}
+
+export async function getMySavedPlan(userId: string, planId: string): Promise<SavedMediaPlan | null> {
+  if (!/^[0-9a-f-]{36}$/i.test(planId)) return null;
+  const db = await createClient();
+  const { data, error } = await db
+    .from("media_plans")
+    .select("id, name, status, mode, stage, version, progress, brief, analysis, proposal, selection, updated_at")
+    .eq("id", planId)
+    .eq("owner_id", userId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    id: String(data.id),
+    name: String(data.name),
+    status: String(data.status),
+    mode: String(data.mode),
+    stage: String(data.stage),
+    version: Number(data.version),
+    progress: Number(data.progress),
+    brief: (data.brief ?? {}) as Record<string, unknown>,
+    analysis: (data.analysis ?? {}) as Record<string, unknown>,
+    proposal: (data.proposal ?? {}) as Record<string, unknown>,
+    selection: (data.selection ?? {}) as Record<string, unknown>,
+    updated_at: String(data.updated_at),
+  };
+}
+
+export async function getMyPlanVersions(userId: string, planId: string): Promise<SavedPlanVersion[]> {
+  const plan = await getMySavedPlan(userId, planId);
+  if (!plan) return [];
+  const db = await createClient();
+  const { data, error } = await db
+    .from("media_plan_versions")
+    .select("id, version, snapshot, created_at")
+    .eq("plan_id", planId)
+    .order("version", { ascending: false })
+    .limit(50);
+  if (error) return [];
+  return (data ?? []).map((row) => ({
+    id: Number(row.id),
+    version: Number(row.version),
+    snapshot: (row.snapshot ?? {}) as Record<string, unknown>,
+    created_at: String(row.created_at),
+  }));
+}
+
+export async function getOohLocationCatalog(): Promise<OohLocationOption[]> {
+  const db = await createClient();
+  const { data, error } = await db
+    .from("ooh_locations")
+    .select("id, asset_code, status, provider_name, asset_name, city, province, address, latitude, longitude, format, monthly_rate_usd, production_rate_usd, audience_tags, context_tags, affluence_index, source_note, verified_at")
+    .eq("active", true)
+    .neq("status", "inactive")
+    .order("city")
+    .order("asset_name");
+  if (error) return [];
+  return (data ?? []).map((row) => ({
+    id: String(row.id),
+    assetCode: String(row.asset_code),
+    status: row.status === "inventory" ? "inventory" : "zone_candidate",
+    providerName: row.provider_name ? String(row.provider_name) : null,
+    name: String(row.asset_name),
+    city: String(row.city),
+    province: String(row.province),
+    address: String(row.address),
+    latitude: Number(row.latitude),
+    longitude: Number(row.longitude),
+    format: row.format ? String(row.format) : null,
+    monthlyRateUsd: numberOrNull(row.monthly_rate_usd),
+    productionRateUsd: numberOrNull(row.production_rate_usd),
+    audienceTags: Array.isArray(row.audience_tags) ? row.audience_tags.map(String) : [],
+    contextTags: Array.isArray(row.context_tags) ? row.context_tags.map(String) : [],
+    affluenceIndex: numberOrNull(row.affluence_index),
+    sourceNote: String(row.source_note),
+    verifiedAt: row.verified_at ? String(row.verified_at) : null,
+  }));
+}
+
+export async function getCatalogHealth(): Promise<CatalogHealth> {
+  const db = await createClient();
+  const { data, error } = await db
+    .from("media_catalog_items")
+    .select("status, valid_at, updated_at")
+    .eq("active", true);
+  if (error) return { total: 0, cotizable: 0, validation: 0, directory: 0, stale: 0, withoutDate: 0 };
+  const today = Date.now();
+  return (data ?? []).reduce<CatalogHealth>((health, row) => {
+    health.total += 1;
+    if (row.status === "cotizable") health.cotizable += 1;
+    else if (row.status === "validacion") health.validation += 1;
+    else health.directory += 1;
+    if (!row.valid_at) health.withoutDate += 1;
+    else if (today - new Date(String(row.valid_at)).getTime() > 90 * 86_400_000) health.stale += 1;
+    return health;
+  }, { total: 0, cotizable: 0, validation: 0, directory: 0, stale: 0, withoutDate: 0 });
 }
 
 function numberOrNull(value: unknown): number | null {

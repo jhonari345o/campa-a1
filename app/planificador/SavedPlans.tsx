@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { SavedMediaPlan } from "@/lib/media-workspace";
+import { PlanOrderButton } from "./PlanOrderButton";
 
 const STAGE_LABELS: Record<string, string> = {
   brief: "Brief",
@@ -32,6 +33,11 @@ export function SavedPlans({ plans }: { plans: SavedMediaPlan[] }) {
               <div className="mt-4 h-2 overflow-hidden rounded-full bg-concrete"><div className="h-full rounded-full bg-signal" style={{ width: `${plan.progress}%` }} /></div>
               <div className="mt-2 flex justify-between text-xs text-muted"><span>{plan.progress}%</span><strong className="text-forest">{STAGE_LABELS[plan.stage] ?? plan.stage}</strong></div>
               <dl className="mt-4 grid grid-cols-2 gap-3 text-xs"><div><dt className="text-muted">Último guardado</dt><dd className="font-bold">{new Intl.DateTimeFormat("es-EC", { dateStyle: "medium", timeStyle: "short" }).format(new Date(plan.updated_at))}</dd></div><div><dt className="text-muted">Modo</dt><dd className="font-bold capitalize">{plan.mode}</dd></div></dl>
+              <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                <Link href={`/planificador?view=${plan.mode === "manual" ? "diy" : "planner"}&plan=${plan.id}`} className="btn btn-secondary">Abrir y continuar</Link>
+                <Link href={`/planificador?view=versions&plan=${plan.id}`} className="btn btn-secondary">Ver versiones</Link>
+              </div>
+              {(plan.status === "revision" || plan.status === "aprobado") && <div className="mt-2"><PlanOrderButton planId={plan.id} /></div>}
             </li>
           ))}
         </ul>

@@ -25,6 +25,7 @@ export default async function PautarPage({
     checkout?: string;
     job?: string;
     detail?: string;
+    post?: string;
   }>;
 }) {
   if (!supabaseConfigured) redirect("/consola");
@@ -36,6 +37,7 @@ export default async function PautarPage({
   const montoNum = Number(sp.monto);
   const initialMonto = Number.isFinite(montoNum) && montoNum > 0 ? montoNum : undefined;
   const initialObjetivo = sp.objetivo?.slice(0, 120) || undefined;
+  const initialPostUrl = safePostUrl(sp.post);
   const commercialPaymentsEnabled = isCommercialPaymentsEnabled();
   const dlocalConectado = isDlocalConfigured();
   const metaConectada = isMetaConfigured();
@@ -101,12 +103,18 @@ export default async function PautarPage({
             initialRed={initialRed}
             initialMonto={initialMonto}
             initialObjetivo={initialObjetivo}
+            initialPostUrl={initialPostUrl}
             commercialPaymentsEnabled={commercialPaymentsEnabled}
           />
         </div>
       </main>
     </div>
   );
+}
+
+function safePostUrl(value?: string) {
+  if (!value || value.length > 2000) return undefined;
+  try { const url = new URL(value); return url.protocol === "https:" ? url.toString() : undefined; } catch { return undefined; }
 }
 
 /** Explica el modelo de negocio con un ejemplo. SOLO para el equipo (admin). */

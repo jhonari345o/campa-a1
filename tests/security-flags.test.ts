@@ -27,6 +27,9 @@ import { computeCharge } from "../lib/pricing";
 import { buildPlanAnalysis, type PlanAnalysisInput } from "../lib/plan-analysis";
 import { buildDetailedMediaRecommendation } from "../lib/detailed-plan";
 import { buildCampaigns } from "../lib/campaigns";
+import { buildPlanningScenarios } from "../lib/plan-optimizer";
+import { detectAssistantAction } from "../lib/assistant/actions";
+import { creativePreflight } from "../lib/creative-preflight";
 import {
   BUSINESS_CATEGORY_OPTIONS,
   COMMERCIAL_GOAL_UNIT_OPTIONS,
@@ -174,6 +177,39 @@ test("las campañas son únicas por plataforma y exponen una calificación estra
   assert.equal(new Set(campaigns.map((campaign) => campaign.copy)).size, campaigns.length);
   assert.ok(campaigns.every((campaign) => campaign.insight.total >= 0 && campaign.insight.total <= 100));
   assert.ok(campaigns.every((campaign) => campaign.insight.basis === "datos"));
+});
+
+test("los escenarios comparables conservan exactamente presupuesto y 100%", () => {
+  const scenarios = buildPlanningScenarios({
+    budgetUsd: 12_345,
+    selectedMedia: ["television", "radio", "ooh", "digital"],
+    objective: "Ventas",
+    priority: "Eficiencia",
+    audienceType: "B2C",
+    geographyCount: 3,
+    digitalReady: true,
+  });
+  assert.equal(scenarios.length, 3);
+  for (const scenario of scenarios) {
+    assert.equal(scenario.allocations.reduce((sum, item) => sum + item.amountUsd, 0), 12_345);
+    assert.ok(Math.abs(scenario.allocations.reduce((sum, item) => sum + item.pct, 0) - 1) < 0.0001);
+  }
+});
+
+test("Mavi convierte una solicitud natural de pauta en datos accionables", () => {
+  assert.deepEqual(
+    detectAssistantAction("Mavi, pauta este reel de Instagram por $500 para mensajes https://www.instagram.com/reel/ABC123/"),
+    { kind: "prepare_campaign", network: "instagram", budget: 500, objective: "Mensajes", postUrl: "https://www.instagram.com/reel/ABC123/" },
+  );
+  assert.equal(detectAssistantAction("Explícame la televisión abierta"), null);
+});
+
+test("el preflight creativo bloquea una URL de la plataforma equivocada", () => {
+  const blocked = creativePreflight({ postUrl: "https://www.youtube.com/watch?v=123", platform: "instagram" });
+  const accepted = creativePreflight({ postUrl: "https://www.instagram.com/reel/ABC123/", platform: "instagram", trackingReady: true });
+  assert.equal(blocked.status, "blocked");
+  assert.ok(blocked.checks.some((check) => check.id === "platform" && check.status === "fail"));
+  assert.notEqual(accepted.status, "blocked");
 });
 
 test("los recursos visuales del catálogo existen en el paquete público", () => {

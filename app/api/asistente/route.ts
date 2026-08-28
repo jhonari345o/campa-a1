@@ -4,6 +4,7 @@ import { buildMarketContext } from "@/lib/assistant/context";
 import { chatCompletion, type LlmMessage } from "@/lib/assistant/llm";
 import { buildLiveTrendContext, shouldUseLiveTrends } from "@/lib/assistant/trends";
 import { isAiAssistantEnabled, isAiWebTrendsEnabled } from "@/lib/commercial";
+import { detectAssistantAction } from "@/lib/assistant/actions";
 
 export const runtime = "nodejs";
 
@@ -101,6 +102,7 @@ export async function POST(request: Request) {
   // 3. Contexto de datos + llamada al modelo propio.
   try {
     const lastUserMessage = history[history.length - 1].content;
+    const action = detectAssistantAction(lastUserMessage);
     const context = await buildMarketContext(lastUserMessage);
     const live = isAiWebTrendsEnabled() && shouldUseLiveTrends(lastUserMessage)
       ? await buildLiveTrendContext(lastUserMessage)
@@ -116,7 +118,7 @@ export async function POST(request: Request) {
 
     const reply = await chatCompletion(messages, { maxTokens: 1024 });
     return NextResponse.json(
-      { reply: reply || "No pude generar una respuesta. Intenta de nuevo.", sources: live.sources },
+      { reply: reply || "No pude generar una respuesta. Intenta de nuevo.", sources: live.sources, action },
       { headers },
     );
   } catch (err) {

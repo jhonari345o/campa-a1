@@ -5,6 +5,7 @@ import { MaviAvatar } from "@/components/Mavi";
 import { crearPauta } from "./actions";
 import { EcuadorTargetMap, type GeoTarget } from "./EcuadorTargetMap";
 import { computeCharge, money, SERVICE_FEE_LABEL, TAX_LABEL } from "@/lib/pricing";
+import { creativePreflight, type CreativePreflight } from "@/lib/creative-preflight";
 
 type Bubble = { from: "mavi" | "user"; text: string };
 
@@ -20,29 +21,35 @@ export function PautarChat({
   initialRed,
   initialMonto,
   initialObjetivo,
+  initialPostUrl,
   commercialPaymentsEnabled = false,
 }: {
   initialRed?: string;
   initialMonto?: number;
   initialObjetivo?: string;
+  initialPostUrl?: string;
   commercialPaymentsEnabled?: boolean;
 } = {}) {
-  const prefilled = Boolean(initialRed && initialMonto && initialMonto > 0);
+  const prefilled = Boolean(initialRed);
+  const hasPost = Boolean(initialRed && initialPostUrl);
   const [chat, setChat] = useState<Bubble[]>(
     prefilled
       ? [
           {
             from: "mavi",
-            text: `¡Te prepare esta campana! 🦎 ${redLabel(initialRed!)} · ${money(initialMonto!)}${
+            text: hasPost
+              ? `¡Recibí la pauta para ${redLabel(initialRed!)}! 🦎 Ahora selecciona la ubicación y el radio de cobertura.`
+              : `¡Te prepare esta campana! 🦎 ${redLabel(initialRed!)}${initialMonto ? ` · ${money(initialMonto)}` : ""}${
               initialObjetivo ? ` · ${initialObjetivo}` : ""
             }. Solo pega el link de la publicacion que quieres pautar 👇`,
           },
         ]
       : [{ from: "mavi", text: "¡Listo para pautar! 🦎 Vamos paso a paso. Primero: ¿en que plataforma quieres pautar?" }],
   );
-  const [step, setStep] = useState<Step>(prefilled ? "link" : "red");
+  const [step, setStep] = useState<Step>(hasPost ? "geo" : prefilled ? "link" : "red");
   const [red, setRed] = useState(initialRed ?? "");
-  const [postUrl, setPostUrl] = useState("");
+  const [postUrl, setPostUrl] = useState(initialPostUrl ?? "");
+  const [preflight, setPreflight] = useState<CreativePreflight | null>(() => initialPostUrl && initialRed ? creativePreflight({ postUrl: initialPostUrl, platform: initialRed }) : null);
   const [geoTarget, setGeoTarget] = useState<GeoTarget | null>(null);
   const [monto, setMonto] = useState(initialMonto ?? 0);
   const [objetivo] = useState(initialObjetivo ?? "");
@@ -87,8 +94,10 @@ export function PautarChat({
     setText("");
 
     if (step === "link") {
-      if (!/^https?:\/\//i.test(value)) {
-        push({ from: "mavi", text: "Ese link no se ve bien. Debe empezar con http... Copialo de la publicacion e intenta de nuevo." });
+      const review = creativePreflight({ postUrl: value, platform: red, objective: objetivo });
+      setPreflight(review);
+      if (review.status === "blocked") {
+        push({ from: "mavi", text: review.checks.find((check) => check.status === "fail")?.detail ?? "El enlace no pasó la revisión preliminar." });
         return;
       }
       setPostUrl(value);
@@ -207,6 +216,7 @@ export function PautarChat({
 
         {step === "geo" && (
           <div>
+            {preflight && <PreflightCard review={preflight} />}
             <EcuadorTargetMap value={geoTarget} onChange={setGeoTarget} />
             <button
               type="button"
@@ -221,6 +231,7 @@ export function PautarChat({
 
         {step === "pago" && (
           <div className="rounded-xl border-2 border-signal/30 bg-signal/5 p-4">
+            {preflight && <PreflightCard review={preflight} />}
             <div className="flex items-center justify-between">
               <p className="text-xs font-black uppercase tracking-wide text-signal-dark">🔒 Pago seguro</p>
               <span className="text-lg" aria-hidden>💳</span>
@@ -303,4 +314,8 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
       <span className={bold ? "text-lg font-black text-forest" : "font-bold text-forest"}>{value}</span>
     </div>
   );
+}
+
+function PreflightCard({ review }: { review: CreativePreflight }) {
+  return <aside className="mb-4 rounded-xl border border-border bg-white p-3"><div className="flex items-center justify-between gap-2"><strong className="text-xs uppercase tracking-wide text-forest">Preflight creativo</strong><b className={review.status === "blocked" ? "text-[#a13b31]" : "text-signal-dark"}>{review.score}/100</b></div><ul className="mt-2 space-y-1 text-xs">{review.checks.map((check) => <li key={check.id} className={check.status === "fail" ? "text-[#a13b31]" : check.status === "warning" ? "text-amber-700" : "text-forest"}>{check.status === "pass" ? "✓" : check.status === "fail" ? "×" : "!"} <b>{check.label}:</b> {check.detail}</li>)}</ul><small className="mt-2 block text-muted">{review.disclaimer}</small></aside>;
 }

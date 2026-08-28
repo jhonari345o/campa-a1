@@ -17,17 +17,18 @@ type ReportJob = {
     metrics?: { impresiones?: number; alcance?: number; clics?: number; gasto_usd?: number } | null;
   } | null;
 };
+type ReportOrder = { id: string; status: string; media_budget_usd: number; created_at: string; summary: { plan_name?: string } | null };
 
 export default async function ReportesPage() {
   const profile = await getSessionProfile();
   if (!profile) redirect("/ingresar");
   const db = await createClient();
-  const { data } = await db
-    .from("campaign_jobs")
-    .select("id, platform, status, created_at, spec")
-    .order("created_at", { ascending: false })
-    .limit(100);
+  const [{ data }, { data: orderData }] = await Promise.all([
+    db.from("campaign_jobs").select("id, platform, status, created_at, spec").order("created_at", { ascending: false }).limit(100),
+    db.from("media_orders").select("id, status, media_budget_usd, created_at, summary").order("created_at", { ascending: false }).limit(100),
+  ]);
   const jobs = (data ?? []) as ReportJob[];
+  const orders = (orderData ?? []) as unknown as ReportOrder[];
   const metrics = jobs.reduce((total, job) => {
     const item = job.spec?.metrics;
     total.impressions += Number(item?.impresiones ?? 0);
@@ -43,7 +44,7 @@ export default async function ReportesPage() {
     <div className="min-h-screen">
       <AppHeader name={profile.full_name ?? profile.email ?? "Ad Mavericks"} isAdmin={profile.is_platform_admin} active="reportes" />
       <main id="workspace-content" className="portal-page portal-page-planner">
-        {jobs.length === 0 ? (
+        {jobs.length === 0 && orders.length === 0 ? (
           <section className="reports-locked">
             <span>05</span>
             <p>Reportes</p>
@@ -53,7 +54,7 @@ export default async function ReportesPage() {
           </section>
         ) : (
           <>
-            <header className="reports-heading"><div><p>Inteligencia de campaña</p><h1>Reportes</h1><span>Lectura consolidada de las campañas visibles para tu cuenta.</span></div><b>{jobs.length} campaña{jobs.length === 1 ? "" : "s"}</b></header>
+            <header className="reports-heading"><div><p>Inteligencia de campaña</p><h1>Reportes</h1><span>Lectura consolidada de campañas y órdenes visibles para tu cuenta.</span></div><b>{jobs.length} campaña{jobs.length === 1 ? "" : "s"} · {orders.length} orden{orders.length === 1 ? "" : "es"}</b></header>
             <section className="reports-summary">
               <Metric label="Impresiones" value={integer(metrics.impressions)} note="Suma reportada por plataforma" />
               <Metric label="Alcance" value={integer(metrics.reach)} note="No deduplicado entre campañas" />
@@ -62,6 +63,7 @@ export default async function ReportesPage() {
               <Metric label="Total pagado" value={money(metrics.paid)} note="Incluye los componentes del checkout" />
               <Metric label="Con métricas" value={`${withMetrics}/${jobs.length}`} note="Campañas sincronizadas" />
             </section>
+            {orders.length > 0 && <section className="reports-table-card"><div><h2>Órdenes de medios</h2><p>Trazabilidad comercial previa a la ejecución y a las métricas de entrega.</p></div><div className="reports-table-wrap"><table><thead><tr><th>Fecha</th><th>Plan</th><th>Estado</th><th>Presupuesto de medios</th></tr></thead><tbody>{orders.map((order) => <tr key={order.id}><td>{new Date(order.created_at).toLocaleDateString("es-EC")}</td><td>{order.summary?.plan_name ?? "Plan de medios"}</td><td><span>{orderStatus(order.status)}</span></td><td>{money(order.media_budget_usd)}</td></tr>)}</tbody></table></div><small>Una orden no genera métricas por sí sola. Los datos de entrega aparecen únicamente después de una ejecución conectada.</small></section>}
             <section className="reports-table-card">
               <div><h2>Campañas y órdenes</h2><p>Las cifras aparecen cuando la plataforma publicitaria entrega datos.</p></div>
               <div className="reports-table-wrap"><table><thead><tr><th>Fecha</th><th>Plataforma</th><th>Objetivo</th><th>Estado</th><th>Presupuesto</th><th>Impresiones</th><th>Clics</th><th>Gasto</th></tr></thead><tbody>{jobs.map((job) => <tr key={job.id}><td>{new Date(job.created_at).toLocaleDateString("es-EC")}</td><td>{platformLabel(job.platform)}</td><td>{job.spec?.objetivo || "—"}</td><td><span>{statusLabel(job.status)}</span></td><td>{money(job.spec?.presupuesto_usd ?? 0)}</td><td>{integer(job.spec?.metrics?.impresiones ?? 0)}</td><td>{integer(job.spec?.metrics?.clics ?? 0)}</td><td>{money(job.spec?.metrics?.gasto_usd ?? 0)}</td></tr>)}</tbody></table></div>
@@ -93,3 +95,5 @@ function platformLabel(platform: string) {
 function statusLabel(status: string) {
   return ({ pendiente: "Pendiente", en_proceso: "En proceso", esperando_pago: "Esperando pago", pagada: "Pagada", lista_para_publicar: "Lista", publicando: "Publicando", publicada: "Publicada", pausada: "Pausada", error: "Requiere revisión" } as Record<string, string>)[status] ?? status;
 }
+
+function orderStatus(status: string) { return ({ pending_review: "En revisión", quoting: "Cotizando", awaiting_client: "Esperando cliente", approved: "Aprobada", in_execution: "En ejecución", completed: "Completada", cancelled: "Cancelada" } as Record<string, string>)[status] ?? status; }

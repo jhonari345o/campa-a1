@@ -12,6 +12,7 @@ import {
   money,
   period,
 } from "@/lib/market";
+import { getCatalogHealth } from "@/lib/media-workspace";
 
 export const metadata = { title: "Inteligencia de mercado" };
 
@@ -27,11 +28,12 @@ export default async function MercadoPage() {
   // La data de mercado es solo para el equipo Ad Mavericks.
   if (!profile.is_platform_admin) redirect("/planificador");
 
-  const [overview, advertisers, investments, metrics] = await Promise.all([
+  const [overview, advertisers, investments, metrics, catalogHealth] = await Promise.all([
     getOverview(),
     getAdvertisers(12),
     getInvestments(12),
     getMetrics(10),
+    getCatalogHealth(),
   ]);
 
   return (
@@ -67,6 +69,8 @@ export default async function MercadoPage() {
             hint={`${overview.investments} registros de inversion`}
           />
         </div>
+
+        <section className="mt-6 rounded-panel border border-border bg-white p-5 shadow-panel"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-wide text-signal-dark">Salud del catálogo</p><h2 className="mt-1 text-lg font-black">Vigencia y nivel comercial</h2><p className="mt-1 text-sm text-muted">Evita que Mavi trate directorios históricos o precios vencidos como inventario comprable.</p></div><div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-5"><Health label="Total" value={catalogHealth.total} /><Health label="Cotizable" value={catalogHealth.cotizable} /><Health label="Por validar" value={catalogHealth.validation} /><Health label="Vencidos 90d" value={catalogHealth.stale} warning={catalogHealth.stale > 0} /><Health label="Sin fecha" value={catalogHealth.withoutDate} warning={catalogHealth.withoutDate > 0} /></div></div>{(catalogHealth.stale > 0 || catalogHealth.withoutDate > 0) && <p className="mt-4 rounded-xl border border-amber/40 bg-amber/10 px-4 py-3 text-xs font-bold text-forest">Hay referencias que deben reconfirmarse antes de mostrarse como cotizables. Permanecen visibles sólo como contexto o directorio.</p>}</section>
 
         {/* Inversion publicitaria */}
         <Panel title="Inversion publicitaria" subtitle="Ultimos registros por anunciante, medio y periodo.">
@@ -137,6 +141,8 @@ function Kpi({ label, value, hint }: { label: string; value: string; hint?: stri
     </div>
   );
 }
+
+function Health({ label, value, warning }: { label: string; value: number; warning?: boolean }) { return <div className={`min-w-20 rounded-xl px-3 py-2 ${warning ? "bg-amber/15 text-[#8a5c00]" : "bg-fog text-forest"}`}><strong className="block text-lg">{value}</strong><span className="text-[9px] font-black uppercase">{label}</span></div>; }
 
 function Panel({
   title,

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MaviAvatar } from "@/components/Mavi";
+import type { AssistantAction } from "@/lib/assistant/actions";
 
 type Source = { title: string; url: string; source: string; publishedAt: string | null };
 type Message = { role: "user" | "assistant"; content: string; sources?: Source[] };
@@ -25,13 +26,15 @@ export function MaviFloatingAssistant() {
   const [network, setNetwork] = useState("instagram");
   const [budget, setBudget] = useState("");
   const [objective, setObjective] = useState("Alcance");
+  const [postUrl, setPostUrl] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const campaignHref = useMemo(() => {
     const params = new URLSearchParams({ red: network });
     if (budget) params.set("monto", budget);
     if (objective) params.set("objetivo", objective);
+    if (postUrl) params.set("post", postUrl);
     return `/pautar?${params.toString()}`;
-  }, [network, budget, objective]);
+  }, [network, budget, objective, postUrl]);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("mavi") === "open") setOpen(true);
@@ -55,9 +58,18 @@ export function MaviFloatingAssistant() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: next, consent: true }),
       });
-      const data = await response.json() as { reply?: string; error?: string; sources?: Source[] };
+      const data = await response.json() as { reply?: string; error?: string; sources?: Source[]; action?: AssistantAction | null };
       if (!response.ok) setError(data.error ?? "Mavi no pudo responder.");
-      else setMessages((current) => [...current, { role: "assistant", content: data.reply ?? "No pude preparar la respuesta.", sources: data.sources ?? [] }]);
+      else {
+        setMessages((current) => [...current, { role: "assistant", content: data.reply ?? "No pude preparar la respuesta.", sources: data.sources ?? [] }]);
+        if (data.action?.kind === "prepare_campaign") {
+          setNetwork(data.action.network);
+          if (data.action.budget) setBudget(String(data.action.budget));
+          setObjective(data.action.objective);
+          if (data.action.postUrl) setPostUrl(data.action.postUrl);
+          setMode("campaign");
+        }
+      }
     } catch {
       setError("No pude conectarme. Intenta nuevamente.");
     } finally {
@@ -104,6 +116,7 @@ export function MaviFloatingAssistant() {
               <p>Prepara una pauta independiente. En el siguiente paso añadirás el enlace de la publicación, geografía y radio.</p>
               <label>Plataforma<select value={network} onChange={(event) => setNetwork(event.target.value)}><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="tiktok">TikTok</option></select></label>
               <label>Objetivo<select value={objective} onChange={(event) => setObjective(event.target.value)}><option>Alcance</option><option>Tráfico</option><option>Mensajes</option><option>Ventas</option></select></label>
+              <label>Enlace de la publicación<input type="url" value={postUrl} onChange={(event) => setPostUrl(event.target.value)} placeholder="https://instagram.com/reel/..." /></label>
               <label>Inversión para anuncios (USD)<input type="number" min="1" step="0.01" value={budget} onChange={(event) => setBudget(event.target.value)} placeholder="Ej. 500" /></label>
               <a href={campaignHref} className="btn btn-primary">Continuar con la pauta →</a>
               <small>El checkout calculará por separado inversión, 22% de impuestos/costos y 25% de asistencia.</small>

@@ -62,6 +62,7 @@ type DeliveryRow = {
   provider_ad_id: string | null;
   error: string | null;
 };
+type MediaOrder = { id: string; status: string; media_budget_usd: number; created_at: string; summary: { plan_name?: string; plan_version?: number; brief?: { geography?: string; selectedMedia?: string[] } } | null };
 
 const nfmt = (n: number) => new Intl.NumberFormat("es-EC").format(n);
 
@@ -78,12 +79,12 @@ export default async function CampanasPage({
   const metaSpendEnabled = isMetaRealSpendEnabled();
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("campaign_jobs")
-    .select("id, platform, status, log, created_at, spec, companies(name)")
-    .order("created_at", { ascending: false })
-    .limit(50);
+  const [{ data }, { data: orderData }] = await Promise.all([
+    supabase.from("campaign_jobs").select("id, platform, status, log, created_at, spec, companies(name)").order("created_at", { ascending: false }).limit(50),
+    supabase.from("media_orders").select("id, status, media_budget_usd, created_at, summary").order("created_at", { ascending: false }).limit(50),
+  ]);
   const jobs = (data ?? []) as unknown as Job[];
+  const mediaOrders = (orderData ?? []) as unknown as MediaOrder[];
   const jobIds = jobs.map((job) => job.id);
   if (jobIds.length > 0) {
     const [{ data: payments }, { data: deliveries }] = await Promise.all([
@@ -157,6 +158,8 @@ export default async function CampanasPage({
         )}
 
         {sp.meta && <MetaResultNotice result={sp.meta} detail={sp.detail} />}
+
+        {mediaOrders.length > 0 && <section className="mt-8 rounded-panel border border-border bg-white p-6 shadow-panel"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wide text-signal-dark">Órdenes multimedio</p><h2 className="mt-1 text-xl font-black">Planes enviados a coordinación</h2><p className="mt-1 text-sm text-muted">Disponibilidad, negociación, permisos y tarifas se validan antes de contratar.</p></div><b className="rounded-full bg-signal/10 px-3 py-1 text-xs text-forest">{mediaOrders.length} orden{mediaOrders.length === 1 ? "" : "es"}</b></div><ul className="mt-5 grid gap-3 sm:grid-cols-2">{mediaOrders.map((order) => <li key={order.id} className="rounded-card border border-border bg-fog p-4"><div className="flex items-center justify-between gap-3"><strong>{order.summary?.plan_name ?? "Plan de medios"}</strong><span className="rounded-full bg-white px-2 py-1 text-[10px] font-black uppercase text-forest">{orderStatus(order.status)}</span></div><p className="mt-2 text-sm font-black text-forest">{moneyUsd(order.media_budget_usd)}</p><p className="mt-1 text-xs text-muted">{order.summary?.brief?.geography ?? "Cobertura por confirmar"} · {order.summary?.brief?.selectedMedia?.length ?? 0} medios · v{order.summary?.plan_version ?? 1}</p><time className="mt-3 block text-[10px] text-muted">{new Date(order.created_at).toLocaleString("es-EC")}</time></li>)}</ul></section>}
 
         {jobs.length === 0 ? (
           <>
@@ -344,6 +347,9 @@ function paymentLabel(status: string): string {
   };
   return labels[status] ?? status;
 }
+
+function orderStatus(status: string) { return ({ pending_review: "En revisión", quoting: "Cotizando", awaiting_client: "Esperando cliente", approved: "Aprobada", in_execution: "En ejecución", completed: "Completada", cancelled: "Cancelada" } as Record<string, string>)[status] ?? status; }
+function moneyUsd(value: number) { return new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(Number(value) || 0); }
 
 function paymentProviderLabel(provider: string): string {
   return provider === "dlocal" ? "dLocal Go" : provider === "payphone" ? "PayPhone (histórico)" : provider;
