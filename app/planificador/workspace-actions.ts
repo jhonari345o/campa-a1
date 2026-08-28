@@ -182,6 +182,29 @@ export async function comentarPlan(planId: string, body: string): Promise<
   return { ok: true, message: "Comentario registrado en la trazabilidad del plan." };
 }
 
+export async function decidirPlan(planId: string, decision: "approved" | "changes_requested", note: string): Promise<
+  { ok: true; message: string } | { ok: false; error: string }
+> {
+  const profile = await getSessionProfile();
+  if (!profile) return { ok: false, error: "Debes iniciar sesión." };
+  if (!isUuid(planId) || !["approved", "changes_requested"].includes(decision)) return { ok: false, error: "La decisión no es válida." };
+  const db = await createClient();
+  const { data: plan, error: planError } = await db.from("media_plans").select("id, owner_id, company_id, version").eq("id", planId).maybeSingle();
+  if (planError || !plan) return { ok: false, error: "No se encontró el plan." };
+  const companies = await getMyCompanies(profile.id);
+  const companyApproval = companies.some((company) => company.id === plan.company_id && company.status === "activa" && canCompanyRole(company.role, "campaign:approve"));
+  if (!profile.is_platform_admin && plan.owner_id !== profile.id && !companyApproval) return { ok: false, error: "Tu rol no permite decidir sobre este plan." };
+  const cleanNote = cleanText(note, 2000) || null;
+  const { error } = await db.from("media_plan_approvals").insert({ plan_id: planId, actor_id: profile.id, decision, note: cleanNote, plan_version: Number(plan.version) });
+  if (error) return { ok: false, error: schemaMessage(error.message, "No se pudo registrar la decisión.") };
+  await db.from("media_plans").update(decision === "approved"
+    ? { status: "aprobado", stage: "aprobado", progress: 100 }
+    : { status: "revision", stage: "personaliza", progress: 85 }).eq("id", planId);
+  revalidatePath("/planificador");
+  revalidatePath("/campanas");
+  return { ok: true, message: decision === "approved" ? "Plan aprobado con trazabilidad." : "Cambios solicitados y enviados al historial." };
+}
+
 async function savePlanRecord(input: {
   planId?: string | null;
   ownerId: string;

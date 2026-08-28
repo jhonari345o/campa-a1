@@ -30,6 +30,10 @@ import { buildCampaigns } from "../lib/campaigns";
 import { buildPlanningScenarios } from "../lib/plan-optimizer";
 import { detectAssistantAction } from "../lib/assistant/actions";
 import { creativePreflight } from "../lib/creative-preflight";
+import { buildCampaignTwin } from "../lib/campaign-twin";
+import { directCampaign } from "../lib/campaign-director";
+import { reviewCreativeAsset } from "../lib/creative-lab";
+import { buildReportNarrative } from "../lib/report-narrative";
 import {
   BUSINESS_CATEGORY_OPTIONS,
   COMMERCIAL_GOAL_UNIT_OPTIONS,
@@ -210,6 +214,34 @@ test("el preflight creativo bloquea una URL de la plataforma equivocada", () => 
   assert.equal(blocked.status, "blocked");
   assert.ok(blocked.checks.some((check) => check.id === "platform" && check.status === "fail"));
   assert.notEqual(accepted.status, "blocked");
+});
+
+test("el gemelo digital conserva presupuesto y marca concentración", () => {
+  const twin = buildCampaignTwin({ budgetUsd: 10_000, allocations: [{ kind: "digital", pct: .75, amountUsd: 7500 }, { kind: "ooh", pct: .25, amountUsd: 2500 }], geographies: ["Guayaquil", "Quito"], digitalReady: true });
+  assert.equal(twin.media.reduce((sum, item) => sum + item.amountUsd, 0), 10_000);
+  assert.equal(twin.geographies.reduce((sum, item) => sum + item.amountUsd, 0), 10_000);
+  assert.equal(twin.media.find((item) => item.kind === "digital")?.risk, "saturado");
+  assert.ok(twin.modeledImpressions.high > twin.modeledImpressions.low);
+});
+
+test("Mavi Directora advierte cobertura amplia y conversión sin tracking", () => {
+  const creative = creativePreflight({ postUrl: "https://www.instagram.com/reel/ABC123/", platform: "instagram" });
+  const director = directCampaign({ platform: "instagram", budgetUsd: 150, targetScope: "country", radiusKm: null, objective: "Ventas", trackingReady: false, creative });
+  assert.equal(director.status, "warning");
+  assert.ok(director.findings.some((item) => item.label === "Cobertura"));
+  assert.ok(director.findings.some((item) => item.label === "Medición"));
+});
+
+test("el laboratorio bloquea derechos sin confirmar y evalúa formato vertical", () => {
+  const review = reviewCreativeAsset({ placement: "meta_reels", mimeType: "video/mp4", sizeBytes: 4_000_000, width: 1080, height: 1920, durationSeconds: 22, hasRights: false, hasSound: true, hasCaptions: true, cta: "Comprar" });
+  assert.equal(review.status, "blocked");
+  assert.ok(review.checks.some((item) => item.label === "Formato vertical" && item.status === "pass"));
+});
+
+test("el reporte narrado usa únicamente métricas observadas", () => {
+  const narrative = buildReportNarrative({ orderCount: 1, jobs: [{ platform: "meta", status: "publicada", spec: { presupuesto_usd: 500, metrics: { impresiones: 10_000, clics: 250, gasto_usd: 300 } } }, { platform: "google", status: "publicada", spec: { presupuesto_usd: 400, metrics: { impresiones: 8_000, clics: 80, gasto_usd: 200 } } }] });
+  assert.match(narrative.headline, /Meta/);
+  assert.match(narrative.summary, /2\.50%/);
 });
 
 test("los recursos visuales del catálogo existen en el paquete público", () => {

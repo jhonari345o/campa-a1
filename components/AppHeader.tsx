@@ -6,7 +6,7 @@ import { Wordmark } from "./Wordmark";
 import { cerrarSesion } from "@/app/consola/actions";
 import { MaviFloatingAssistant } from "./MaviFloatingAssistant";
 
-type ActivePage = "mercado" | "consola" | "panel" | "asistente" | "planificador" | "campanas" | "pautar" | "reportes";
+type ActivePage = "mercado" | "consola" | "panel" | "asistente" | "planificador" | "campanas" | "pautar" | "reportes" | "laboratorio";
 
 type AppHeaderProps = {
   name: string;
@@ -40,6 +40,7 @@ const PAGE_TITLES: Record<ActivePage, string> = {
   mercado: "Inteligencia de mercado",
   consola: "Consola de administración",
   reportes: "Reportes",
+  laboratorio: "Laboratorio creativo",
 };
 
 export function AppHeader({ name, isAdmin, active = "panel", title, catalogSection }: AppHeaderProps) {
@@ -96,6 +97,7 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
           </Link>
 
           <nav className="portal-utility-nav" aria-label="Herramientas de la cuenta">
+            <Link href="/laboratorio" onClick={close}>Laboratorio creativo</Link>
             <Link href="/pautar" onClick={close}>Pautar con Mavi</Link>
             <Link href="/campanas" onClick={close}>Campañas</Link>
             {isAdmin && <Link href="/mercado" onClick={close}>Inteligencia de mercado</Link>}

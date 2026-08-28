@@ -52,6 +52,8 @@ export type CatalogHealth = {
   stale: number;
   withoutDate: number;
 };
+export type PlanComment = { id: string; authorId: string; body: string; createdAt: string };
+export type PlanApproval = { id: string; actorId: string; decision: "approved" | "changes_requested"; note: string | null; planVersion: number; createdAt: string };
 
 type RadioCatalogRow = {
   station_name: unknown;
@@ -134,11 +136,11 @@ export async function getInfluencerCatalog(): Promise<InfluencerProfile[]> {
 }
 
 export async function getMySavedPlans(userId: string): Promise<SavedMediaPlan[]> {
+  void userId;
   const db = await createClient();
   const { data, error } = await db
     .from("media_plans")
     .select("id, name, status, mode, stage, version, progress, brief, analysis, proposal, selection, updated_at")
-    .eq("owner_id", userId)
     .order("updated_at", { ascending: false })
     .limit(50);
   if (error) return [];
@@ -159,13 +161,13 @@ export async function getMySavedPlans(userId: string): Promise<SavedMediaPlan[]>
 }
 
 export async function getMySavedPlan(userId: string, planId: string): Promise<SavedMediaPlan | null> {
+  void userId;
   if (!/^[0-9a-f-]{36}$/i.test(planId)) return null;
   const db = await createClient();
   const { data, error } = await db
     .from("media_plans")
     .select("id, name, status, mode, stage, version, progress, brief, analysis, proposal, selection, updated_at")
     .eq("id", planId)
-    .eq("owner_id", userId)
     .maybeSingle();
   if (error || !data) return null;
   return {
@@ -201,6 +203,20 @@ export async function getMyPlanVersions(userId: string, planId: string): Promise
     snapshot: (row.snapshot ?? {}) as Record<string, unknown>,
     created_at: String(row.created_at),
   }));
+}
+
+export async function getPlanCollaboration(userId: string, planId: string): Promise<{ comments: PlanComment[]; approvals: PlanApproval[] }> {
+  const plan = await getMySavedPlan(userId, planId);
+  if (!plan) return { comments: [], approvals: [] };
+  const db = await createClient();
+  const [{ data: comments }, { data: approvals }] = await Promise.all([
+    db.from("media_plan_comments").select("id, author_id, body, created_at").eq("plan_id", planId).order("created_at", { ascending: false }).limit(100),
+    db.from("media_plan_approvals").select("id, actor_id, decision, note, plan_version, created_at").eq("plan_id", planId).order("created_at", { ascending: false }).limit(100),
+  ]);
+  return {
+    comments: (comments ?? []).map((row) => ({ id: String(row.id), authorId: String(row.author_id), body: String(row.body), createdAt: String(row.created_at) })),
+    approvals: (approvals ?? []).map((row) => ({ id: String(row.id), actorId: String(row.actor_id), decision: row.decision === "approved" ? "approved" : "changes_requested", note: row.note ? String(row.note) : null, planVersion: Number(row.plan_version), createdAt: String(row.created_at) })),
+  };
 }
 
 export async function getOohLocationCatalog(): Promise<OohLocationOption[]> {

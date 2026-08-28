@@ -7,6 +7,7 @@ import {
   getMySavedPlan,
   getMySavedPlans,
   getOohLocationCatalog,
+  getPlanCollaboration,
   getRadioCatalog,
 } from "@/lib/media-workspace";
 import type { CatalogSection } from "@/lib/media-catalog";
@@ -41,13 +42,14 @@ export default async function PlanificadorPage({
 
   const catalogNeeded = view === "media" || view === "diy";
   const selectedPlanNeeded = (view === "planner" || view === "diy" || view === "versions") && Boolean(params.plan);
-  const [radio, influencers, plans, selectedPlan, versions, oohLocations] = await Promise.all([
+  const [radio, influencers, plans, selectedPlan, versions, oohLocations, collaboration] = await Promise.all([
     catalogNeeded ? getRadioCatalog() : Promise.resolve([]),
     catalogNeeded ? getInfluencerCatalog() : Promise.resolve([]),
     view === "plans" ? getMySavedPlans(profile.id) : Promise.resolve([]),
     selectedPlanNeeded ? getMySavedPlan(profile.id, params.plan!) : Promise.resolve(null),
     view === "versions" && params.plan ? getMyPlanVersions(profile.id, params.plan) : Promise.resolve([]),
     view === "diy" ? getOohLocationCatalog() : Promise.resolve([]),
+    view === "versions" && params.plan ? getPlanCollaboration(profile.id, params.plan) : Promise.resolve({ comments: [], approvals: [] }),
   ]);
 
   return (
@@ -72,7 +74,7 @@ export default async function PlanificadorPage({
         ) : view === "diy" ? (
           <DiyPlanner radio={radio} influencers={influencers} oohLocations={oohLocations} initialPlan={selectedPlan} />
         ) : view === "versions" ? (
-          <PlanVersions plan={selectedPlan} versions={versions} />
+          <PlanVersions plan={selectedPlan} versions={versions} comments={collaboration.comments} approvals={collaboration.approvals} />
         ) : (
           <>
             <h1 className="text-3xl font-black tracking-tight">Planificador de medios</h1>

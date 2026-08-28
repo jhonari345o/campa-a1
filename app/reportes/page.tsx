@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { getSessionProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { buildReportNarrative } from "@/lib/report-narrative";
 
 export const metadata = { title: "Reportes" };
 
@@ -39,6 +40,7 @@ export default async function ReportesPage() {
     return total;
   }, { impressions: 0, reach: 0, clicks: 0, spend: 0, paid: 0 });
   const withMetrics = jobs.filter((job) => job.spec?.metrics).length;
+  const narrative = buildReportNarrative({ jobs, orderCount: orders.length });
 
   return (
     <div className="min-h-screen">
@@ -63,6 +65,7 @@ export default async function ReportesPage() {
               <Metric label="Total pagado" value={money(metrics.paid)} note="Incluye los componentes del checkout" />
               <Metric label="Con métricas" value={`${withMetrics}/${jobs.length}`} note="Campañas sincronizadas" />
             </section>
+            <section className="mt-4 overflow-hidden rounded-panel border border-forest/20 bg-forest text-white shadow-panel"><div className="grid gap-5 p-6 lg:grid-cols-[auto_1fr]"><span className="grid size-14 place-items-center rounded-2xl bg-signal text-2xl text-[#0b2419]">✦</span><div><p className="text-xs font-black uppercase tracking-[.18em] text-signal">Lectura ejecutiva de Mavi</p><h2 className="mt-2 text-2xl font-black">{narrative.headline}</h2><p className="mt-2 text-sm leading-relaxed text-white/65">{narrative.summary}</p><ul className="mt-4 grid gap-2 text-xs sm:grid-cols-2">{narrative.actions.map((action) => <li key={action} className="rounded-xl bg-white/8 p-3"><span className="mr-2 text-signal">→</span>{action}</li>)}</ul></div></div><p className="border-t border-white/10 px-6 py-3 text-[10px] text-white/40">Narrativa determinística basada sólo en órdenes y métricas visibles. No atribuye causalidad ni inventa resultados.</p></section>
             {orders.length > 0 && <section className="reports-table-card"><div><h2>Órdenes de medios</h2><p>Trazabilidad comercial previa a la ejecución y a las métricas de entrega.</p></div><div className="reports-table-wrap"><table><thead><tr><th>Fecha</th><th>Plan</th><th>Estado</th><th>Presupuesto de medios</th></tr></thead><tbody>{orders.map((order) => <tr key={order.id}><td>{new Date(order.created_at).toLocaleDateString("es-EC")}</td><td>{order.summary?.plan_name ?? "Plan de medios"}</td><td><span>{orderStatus(order.status)}</span></td><td>{money(order.media_budget_usd)}</td></tr>)}</tbody></table></div><small>Una orden no genera métricas por sí sola. Los datos de entrega aparecen únicamente después de una ejecución conectada.</small></section>}
             <section className="reports-table-card">
               <div><h2>Campañas y órdenes</h2><p>Las cifras aparecen cuando la plataforma publicitaria entrega datos.</p></div>

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { MaviAvatar } from "@/components/Mavi";
 import { crearPauta } from "./actions";
 import { EcuadorTargetMap, type GeoTarget } from "./EcuadorTargetMap";
 import { computeCharge, money, SERVICE_FEE_LABEL, TAX_LABEL } from "@/lib/pricing";
 import { creativePreflight, type CreativePreflight } from "@/lib/creative-preflight";
+import { directCampaign } from "@/lib/campaign-director";
 
 type Bubble = { from: "mavi" | "user"; text: string };
 
@@ -57,6 +58,8 @@ export function PautarChat({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [trackingReady, setTrackingReady] = useState(false);
+  const director = useMemo(() => directCampaign({ platform: red, budgetUsd: monto, targetScope: geoTarget?.scope ?? null, radiusKm: geoTarget?.scope === "radius" ? geoTarget.radiusKm : null, objective: objetivo, trackingReady, creative: preflight }), [geoTarget, monto, objetivo, preflight, red, trackingReady]);
 
   function push(b: Bubble) {
     setChat((c) => [...c, b]);
@@ -218,6 +221,7 @@ export function PautarChat({
           <div>
             {preflight && <PreflightCard review={preflight} />}
             <EcuadorTargetMap value={geoTarget} onChange={setGeoTarget} />
+            <label className="mt-3 flex items-start gap-2 rounded-xl border border-border bg-fog p-3 text-xs text-muted"><input type="checkbox" checked={trackingReady} onChange={(event) => setTrackingReady(event.target.checked)} className="mt-0.5" /><span><strong className="block text-forest">Tracking y destino preparados</strong>Declaro que Pixel/CAPI, landing o evento están listos para revisión técnica.</span></label>
             <button
               type="button"
               onClick={confirmGeoTarget}
@@ -232,6 +236,7 @@ export function PautarChat({
         {step === "pago" && (
           <div className="rounded-xl border-2 border-signal/30 bg-signal/5 p-4">
             {preflight && <PreflightCard review={preflight} />}
+            <DirectorCard director={director} />
             <div className="flex items-center justify-between">
               <p className="text-xs font-black uppercase tracking-wide text-signal-dark">🔒 Pago seguro</p>
               <span className="text-lg" aria-hidden>💳</span>
@@ -318,4 +323,8 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
 
 function PreflightCard({ review }: { review: CreativePreflight }) {
   return <aside className="mb-4 rounded-xl border border-border bg-white p-3"><div className="flex items-center justify-between gap-2"><strong className="text-xs uppercase tracking-wide text-forest">Preflight creativo</strong><b className={review.status === "blocked" ? "text-[#a13b31]" : "text-signal-dark"}>{review.score}/100</b></div><ul className="mt-2 space-y-1 text-xs">{review.checks.map((check) => <li key={check.id} className={check.status === "fail" ? "text-[#a13b31]" : check.status === "warning" ? "text-amber-700" : "text-forest"}>{check.status === "pass" ? "✓" : check.status === "fail" ? "×" : "!"} <b>{check.label}:</b> {check.detail}</li>)}</ul><small className="mt-2 block text-muted">{review.disclaimer}</small></aside>;
+}
+
+function DirectorCard({ director }: { director: ReturnType<typeof directCampaign> }) {
+  return <aside className="mb-4 rounded-xl border border-forest/20 bg-forest p-4 text-white"><div className="flex items-center justify-between gap-3"><div><span className="text-[10px] font-black uppercase tracking-wide text-signal">Mavi Directora</span><strong className="mt-1 block">Control previo a caja</strong></div><b className="text-xl text-signal">{director.score}/100</b></div><ul className="mt-3 space-y-2">{director.findings.map((finding) => <li key={finding.label} className="flex gap-2 text-xs"><span className={finding.severity === "ready" ? "text-signal" : finding.severity === "blocker" ? "text-coral" : "text-amber"}>{finding.severity === "ready" ? "✓" : finding.severity === "blocker" ? "×" : "!"}</span><p><b>{finding.label}:</b> <span className="text-white/65">{finding.detail}</span></p></li>)}</ul></aside>;
 }

@@ -119,6 +119,7 @@ export function MaviFloatingAssistant() {
               <label>Enlace de la publicación<input type="url" value={postUrl} onChange={(event) => setPostUrl(event.target.value)} placeholder="https://instagram.com/reel/..." /></label>
               <label>Inversión para anuncios (USD)<input type="number" min="1" step="0.01" value={budget} onChange={(event) => setBudget(event.target.value)} placeholder="Ej. 500" /></label>
               <a href={campaignHref} className="btn btn-primary">Continuar con la pauta →</a>
+              <a href="/laboratorio" className="btn btn-secondary">Revisar creatividad primero</a>
               <small>El checkout calculará por separado inversión, 22% de impuestos/costos y 25% de asistencia.</small>
             </div>
           )}

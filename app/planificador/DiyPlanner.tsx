@@ -9,6 +9,7 @@ import { buildPlanningScenarios, mediaGroupLabel, type PlanningScenario } from "
 import { TV_RATE_CATALOGS } from "@/lib/tv-rate-catalog";
 import { BUSINESS_CATEGORY_OPTIONS, ECUADOR_PROVINCE_OPTIONS } from "@/lib/form-catalogs";
 import { guardarPlanManual, type ManualPlanDraft } from "./workspace-actions";
+import { CampaignTwin } from "./CampaignTwin";
 
 type TvPick = { id: string; channel: string; title: string; schedule: string; market: string; unitPrice: number | null; quantity: number };
 type RadioPick = { name: string; spotsPerDay: number; days: number };
@@ -172,6 +173,8 @@ export function DiyPlanner({
         <SectionTitle number="03" title="Escenarios de inversión" description="Tres distribuciones comparables. Los montos son presupuesto de trabajo, no promesas de resultados." />
         <div className="mt-5 grid gap-4 lg:grid-cols-3">{scenarios.map((item) => <button key={item.id} type="button" onClick={() => setScenarioId(item.id)} className={`rounded-card border p-5 text-left ${scenario?.id === item.id ? "border-signal bg-forest text-white shadow-panel" : "border-border bg-fog"}`}><div className="flex items-center justify-between gap-2"><strong>{item.label}</strong><span className="rounded-full bg-white/15 px-2 py-1 text-[10px] font-black uppercase">Confianza {item.confidence}</span></div><p className={`mt-2 text-xs ${scenario?.id === item.id ? "text-white/70" : "text-muted"}`}>{item.description}</p><dl className="mt-4 space-y-1 text-xs">{item.allocations.map((allocation) => <div key={allocation.kind} className="flex justify-between"><dt>{mediaGroupLabel(allocation.kind)}</dt><dd className="font-black">{percent(allocation.pct)} · {money(allocation.amountUsd)}</dd></div>)}</dl></button>)}</div>
       </section>
+
+      {scenario && <CampaignTwin scenario={scenario} budgetUsd={budget} geographies={geographies} digitalReady={digitalReady} onApplyBudget={setBudget} />}
 
       {selectedMedia.includes("television") && <TvConfigurator picks={tv} onChange={setTv} />}
       {selectedMedia.includes("radio") && <RadioConfigurator stations={radio} picks={radioPicks} onChange={setRadioPicks} />}

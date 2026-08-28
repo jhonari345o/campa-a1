@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
-import type { SavedMediaPlan, SavedPlanVersion } from "@/lib/media-workspace";
-import { comentarPlan } from "./workspace-actions";
+import type { PlanApproval, PlanComment, SavedMediaPlan, SavedPlanVersion } from "@/lib/media-workspace";
+import { comentarPlan, decidirPlan } from "./workspace-actions";
 
-export function PlanVersions({ plan, versions }: { plan: SavedMediaPlan | null; versions: SavedPlanVersion[] }) {
+export function PlanVersions({ plan, versions, comments, approvals }: { plan: SavedMediaPlan | null; versions: SavedPlanVersion[]; comments: PlanComment[]; approvals: PlanApproval[] }) {
   const [comment, setComment] = useState("");
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
+  const [decisionNote, setDecisionNote] = useState("");
   const comparison = useMemo(() => compareVersions(versions[0], versions[1]), [versions]);
 
   if (!plan) return <section className="rounded-panel border border-border bg-white p-8 shadow-panel"><h1 className="text-2xl font-black">Plan no encontrado</h1><p className="mt-2 text-sm text-muted">El plan no existe o no pertenece a tu cuenta.</p><Link href="/planificador?view=plans" className="btn btn-primary mt-5">Volver a mis planes</Link></section>;
@@ -35,6 +36,7 @@ export function PlanVersions({ plan, versions }: { plan: SavedMediaPlan | null; 
         <button type="button" disabled={pending || !comment.trim()} onClick={() => startTransition(async () => { const result = await comentarPlan(plan.id, comment); setMessage({ ok: result.ok, text: result.ok ? result.message : result.error }); if (result.ok) setComment(""); })} className="btn btn-primary mt-3 disabled:opacity-50">{pending ? "Guardando…" : "Registrar comentario"}</button>
         {message && <p className={`mt-3 text-sm font-bold ${message.ok ? "text-forest" : "text-[#a13b31]"}`}>{message.text}</p>}
       </section>
+      <section className="rounded-panel border border-border bg-white p-6 shadow-panel"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-wide text-signal-dark">Sala de aprobación</p><h2 className="mt-1 text-xl font-black">Una decisión, registrada contra una versión</h2><p className="mt-1 text-sm text-muted">Aprobar no compra medios ni activa gasto; habilita la coordinación comercial.</p></div><span className="rounded-full bg-fog px-3 py-1 text-xs font-black text-forest">Estado: {plan.status}</span></div><textarea value={decisionNote} onChange={(event) => setDecisionNote(event.target.value)} rows={3} maxLength={2000} className="mt-4 w-full rounded-xl border border-border bg-fog p-4 text-sm" placeholder="Condiciones de aprobación o cambios requeridos." /><div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={pending} onClick={() => startTransition(async () => { const result = await decidirPlan(plan.id, "approved", decisionNote); setMessage({ ok: result.ok, text: result.ok ? result.message : result.error }); if (result.ok) setDecisionNote(""); })} className="btn btn-primary disabled:opacity-50">Aprobar versión {plan.version}</button><button type="button" disabled={pending || !decisionNote.trim()} onClick={() => startTransition(async () => { const result = await decidirPlan(plan.id, "changes_requested", decisionNote); setMessage({ ok: result.ok, text: result.ok ? result.message : result.error }); if (result.ok) setDecisionNote(""); })} className="btn btn-secondary disabled:opacity-50">Solicitar cambios</button></div>{(approvals.length > 0 || comments.length > 0) && <ol className="mt-6 space-y-3 border-l-2 border-signal/30 pl-5">{[...approvals.map((item) => ({ id: item.id, date: item.createdAt, title: item.decision === "approved" ? `Versión ${item.planVersion} aprobada` : `Cambios solicitados a v${item.planVersion}`, body: item.note ?? "Sin nota adicional", tone: item.decision === "approved" ? "text-signal-dark" : "text-[#9a6a00]" })), ...comments.map((item) => ({ id: item.id, date: item.createdAt, title: "Comentario", body: item.body, tone: "text-forest" }))].sort((a, b) => b.date.localeCompare(a.date)).map((item) => <li key={item.id} className="relative rounded-xl border border-border bg-fog p-4 before:absolute before:-left-[27px] before:top-5 before:size-3 before:rounded-full before:bg-signal"><div className="flex flex-wrap justify-between gap-2"><strong className={`text-sm ${item.tone}`}>{item.title}</strong><time className="text-[10px] text-muted">{formatDate(item.date)}</time></div><p className="mt-1 text-xs text-muted">{item.body}</p></li>)}</ol>}</section>
     </div>
   );
 }

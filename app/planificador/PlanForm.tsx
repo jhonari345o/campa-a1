@@ -474,10 +474,10 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
       {result.campaigns.length > 0 && <div>
         <div className="flex items-center gap-2">
           <span aria-hidden className="text-xl">🦎</span>
-          <h3 className="text-lg font-black tracking-tight">Campañas actuales y calificadas por Mavi</h3>
+          <h3 className="text-lg font-black tracking-tight">Radar de oportunidades · campañas calificadas por Mavi</h3>
         </div>
         <p className="mt-1 text-sm text-muted">
-          Cada propuesta parte del rubro, la audiencia, el objetivo y el presupuesto; cuando existe una señal reciente pertinente, muestra su fuente. La aprobación y publicación siempre se confirman con una persona responsable.
+          El radar cruza rubro, audiencia, objetivo, presupuesto y señales recientes con fecha y fuente. Descarta tendencias sin afinidad antes de proponer una ejecución; la aprobación y publicación siempre se confirman con una persona responsable.
         </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {result.campaigns.map((c) => (
@@ -663,6 +663,7 @@ function CampaignCard({ c }: { c: Campaign }) {
       )}
 
       <div className="mt-auto flex flex-wrap gap-2 pt-4">
+        <a href="/laboratorio" className="btn btn-secondary text-xs">Probar creatividad</a>
         {pautarHref(c) && (
           <a href={pautarHref(c)!} className="btn btn-primary text-xs">
             Preparar solicitud →
