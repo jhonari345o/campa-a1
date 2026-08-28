@@ -10,6 +10,7 @@ import { createDlocalCheckout, getDlocalCredentials } from "@/lib/payments/dloca
 import { getMaxMetaBudgetUsd } from "@/lib/ads/config";
 import { isCommercialPaymentsEnabled } from "@/lib/commercial";
 import { canCompanyRole } from "@/lib/permissions";
+import { LEGAL_VERSIONS } from "@/lib/legal";
 
 export type PautaInput = {
   red: string; // instagram | facebook | tiktok
@@ -21,6 +22,7 @@ export type PautaInput = {
   targetScope: "radius" | "country";
   presupuesto: number;
   objetivo?: string;
+  commercialAcceptance: boolean;
 };
 
 export type PautaResult =
@@ -49,6 +51,9 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
   }
   if (!canCompanyRole(company.role, "campaign:create")) {
     return { ok: false, error: "Tu rol no permite crear una orden de pauta." };
+  }
+  if (input.commercialAcceptance !== true) {
+    return { ok: false, error: "Debes aceptar las condiciones de pago, devolución y contracargos." };
   }
 
   const presupuesto = Number(input.presupuesto);
@@ -112,6 +117,18 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
   }
 
   const supabase = await createClient();
+  const { data: legalAcceptance } = await supabase
+    .from("legal_acceptances")
+    .select("id")
+    .eq("user_id", profile.id)
+    .eq("terms_version", LEGAL_VERSIONS.terms)
+    .eq("privacy_version", LEGAL_VERSIONS.privacy)
+    .eq("treatment_version", LEGAL_VERSIONS.treatment)
+    .is("revoked_at", null)
+    .maybeSingle();
+  if (!legalAcceptance) {
+    return { ok: false, error: "Debes aceptar las versiones vigentes de términos y privacidad antes de pagar." };
+  }
   const { data, error } = await supabase
     .from("campaign_jobs")
     .insert({
@@ -147,6 +164,18 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
   if (error || !data) {
     return { ok: false, error: "No se pudo crear la orden de pauta." };
   }
+  await admin.from("audit_log").insert({
+    actor_id: profile.id,
+    action: "checkout.terms_accepted",
+    entity: "campaign_jobs",
+    entity_id: data.id,
+    metadata: {
+      payment_terms_version: LEGAL_VERSIONS.payments,
+      legal_acceptance_id: legalAcceptance.id,
+      total_usd: charge.total,
+      currency: "USD",
+    },
+  });
 
   const amounts = {
     baseCents: toCents(charge.base),
@@ -167,7 +196,7 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
       tax_cents: amounts.taxCents,
       fee_cents: amounts.feeCents,
       total_cents: amounts.baseCents + amounts.taxCents + amounts.feeCents,
-      metadata: { red, created_by: profile.id },
+      metadata: { red, created_by: profile.id, payment_terms_version: LEGAL_VERSIONS.payments, legal_acceptance_id: legalAcceptance.id },
     })
     .select("id")
     .single();

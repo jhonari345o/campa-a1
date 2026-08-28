@@ -7,6 +7,7 @@ import { EcuadorTargetMap, type GeoTarget } from "./EcuadorTargetMap";
 import { computeCharge, money, SERVICE_FEE_LABEL, TAX_LABEL } from "@/lib/pricing";
 import { creativePreflight, type CreativePreflight } from "@/lib/creative-preflight";
 import { directCampaign } from "@/lib/campaign-director";
+import { BILLING_EMAIL, LEGAL_VERSIONS } from "@/lib/legal";
 
 type Bubble = { from: "mavi" | "user"; text: string };
 
@@ -59,6 +60,7 @@ export function PautarChat({
   const [error, setError] = useState<string | null>(null);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [trackingReady, setTrackingReady] = useState(false);
+  const [paymentAccepted, setPaymentAccepted] = useState(false);
   const director = useMemo(() => directCampaign({ platform: red, budgetUsd: monto, targetScope: geoTarget?.scope ?? null, radiusKm: geoTarget?.scope === "radius" ? geoTarget.radiusKm : null, objective: objetivo, trackingReady, creative: preflight }), [geoTarget, monto, objetivo, preflight, red, trackingReady]);
 
   function push(b: Bubble) {
@@ -130,6 +132,10 @@ export function PautarChat({
       setError("Selecciona la geolocalizacion y el radio de la pauta.");
       return;
     }
+    if (!paymentAccepted) {
+      setError("Acepta el desglose y la política de facturación, devoluciones y contracargos antes de continuar.");
+      return;
+    }
     setSending(true);
     setError(null);
     const res = await crearPauta({
@@ -144,6 +150,7 @@ export function PautarChat({
       targetScope: geoTarget.scope,
       presupuesto: monto,
       objetivo: objetivo || undefined,
+      commercialAcceptance: true,
     });
     setSending(false);
     if (!res.ok) {
@@ -250,13 +257,18 @@ export function PautarChat({
               <Row label="Total a pagar" value={money(charge.total)} bold />
             </div>
 
+            <label className="mt-4 flex items-start gap-2 rounded-xl border border-border bg-white p-3 text-xs text-muted">
+              <input type="checkbox" checked={paymentAccepted} onChange={(event) => setPaymentAccepted(event.target.checked)} className="mt-0.5 accent-[#00a100]" />
+              <span><strong className="block text-forest">Acepto el desglose y las condiciones de pago</strong>Confirmo la inversión, los cargos mostrados y la <a href="/reembolsos" target="_blank" className="font-black text-forest underline">política de facturación, devoluciones y contracargos</a>. Versión {LEGAL_VERSIONS.payments}.</span>
+            </label>
+
             {!commercialPaymentsEnabled ? (
               <div className="mt-4 space-y-2">
                 <button type="button" disabled className="btn btn-secondary w-full cursor-not-allowed opacity-60">
                   Cobro bloqueado hasta aprobación comercial
                 </button>
                 <a
-                  href="mailto:hola@admavericks.one?subject=Revision%20de%20solicitud%20de%20pauta"
+                  href={`mailto:${BILLING_EMAIL}?subject=Revision%20de%20solicitud%20de%20pauta`}
                   className="btn btn-primary w-full"
                 >
                   Solicitar revisión humana →
@@ -272,7 +284,7 @@ export function PautarChat({
               >
                 <button
                   type="submit"
-                  disabled={sending}
+                  disabled={sending || !paymentAccepted}
                   className="btn btn-primary mt-1 w-full disabled:opacity-50"
                 >
                   {sending ? "Preparando dLocal Go..." : `Continuar a dLocal Go · ${money(charge.total)}`}

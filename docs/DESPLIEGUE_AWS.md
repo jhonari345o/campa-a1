@@ -85,7 +85,7 @@ Para un control mas fino (o correr detras de ALB + WAF propio):
 
 ## Checklist previo a abrir a clientes (regla de oro)
 - [ ] `schema.sql` y `seed.sql` ejecutados en Supabase.
-- [ ] Migraciones hasta `0011_ooh_geographic_inventory.sql` ejecutadas y políticas RLS verificadas.
+- [x] Migraciones hasta `0014_legal_acceptances.sql` ejecutadas y políticas RLS verificadas.
 - [ ] Primer platform admin creado y verificado.
 - [ ] Autorregistro desactivado en Supabase Auth; usuarios creados solo por administracion.
 - [ ] Variables de entorno cargadas en Amplify (o secrets en ECS).
@@ -99,6 +99,7 @@ Para un control mas fino (o correr detras de ALB + WAF propio):
       hasta que los controles P0/P1 tengan evidencia aprobada.
 - [ ] Pruebas de aislamiento entre dos empresas y roles ejecutadas.
 - [ ] Retencion, exportacion y borrado de datos aprobados por legal.
+- [x] Aceptación versionada de términos, privacidad, tratamiento y política de pagos registrada con auditoría; la aprobación jurídica final sigue siendo responsabilidad del negocio.
 - [ ] WAF activo.
 - [ ] Respaldos y point-in-time recovery confirmados.
 - [ ] Secret key rotada tras la configuracion inicial.

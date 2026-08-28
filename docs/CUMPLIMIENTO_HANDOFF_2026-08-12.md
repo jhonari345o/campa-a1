@@ -7,7 +7,7 @@ necesita configuracion, evidencia o desarrollo adicional.
 | --- | --- | --- |
 | Identidad visual, tono y Mavi como guia | Implementado | Paleta, Nunito Sans, componentes y textos; Mavi no sustituye aprobaciones. |
 | Alta cerrada de usuarios | Implementado | Autorregistro deshabilitado; consola local y administracion controlada. |
-| PostgreSQL, migraciones y RLS | Aplicado y verificado | Esquema y migraciones hasta `0007`; controles de catalogo y RLS verificados en Supabase el 2026-08-24. |
+| PostgreSQL, migraciones y RLS | Aplicado y verificado | Esquema y migraciones hasta `0014`; tabla de consentimiento y políticas RLS verificadas en Supabase el 2026-08-28. |
 | Datos crudos y licenciados restringidos | Aplicado y verificado | Una sesion simulada de miembro normal obtuvo cero filas crudas y solo sus empresas/campanas. |
 | Roles y separacion crear/aprobar | Parcial | Rol `approver` y permiso separado; falta un flujo completo de aprobacion/versiones. |
 | Auditoria inmutable | Parcial | Esquema append-only y contexto adicional; falta instrumentar todos los eventos y exportacion. |
@@ -23,7 +23,7 @@ necesita configuracion, evidencia o desarrollo adicional.
 | WAF, rate limiting y anti-bot | Pendiente externo | Configurar AWS WAF/Turnstile equivalente y guardar evidencia. |
 | Backups y restauracion | Pendiente externo | Confirmar retencion y ejecutar restauracion documentada. |
 | Observabilidad y alertas | Pendiente externo | Integrar errores/alertas sin PII, tokens ni datos licenciados. |
-| Retencion, exportacion, borrado y legal | Pendiente externo | Aprobar politicas, terminos, privacidad y DPA. |
+| Retencion, exportacion, borrado y legal | Implementado con aprobación externa pendiente | Consentimiento versionado, revocación, política de pagos y canal de derechos implementados; falta aprobación jurídica, automatización de plazos y DPA. |
 | Reservas, anti-duplicacion, ordenes y ledger | Pendiente de producto | No presentar como funcional hasta construir y probar concurrencia. |
 | Pentest | Pendiente externo | Obligatorio antes de cobros o gasto real. |
 

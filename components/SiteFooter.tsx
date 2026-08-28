@@ -30,6 +30,7 @@ export function SiteFooter() {
             <li><a href="/ingresar" className="hover:text-signal">Ingresar a mi cuenta</a></li>
             <li><a href="/privacidad" className="hover:text-signal">Privacidad</a></li>
             <li><a href="/terminos" className="hover:text-signal">Términos</a></li>
+            <li><a href="/reembolsos" className="hover:text-signal">Facturación y devoluciones</a></li>
             <li><a href="/eliminacion-datos" className="hover:text-signal">Eliminar mis datos</a></li>
           </ul>
         </div>

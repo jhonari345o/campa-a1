@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage, LegalSection } from "@/components/LegalPage";
+import { BILLING_EMAIL, LEGAL_VERSIONS } from "@/lib/legal";
 
 export const metadata: Metadata = { title: "Términos del servicio" };
 
@@ -18,6 +19,7 @@ export default function TermsPage() {
       </LegalSection>
       <LegalSection title="4. Pagos y terceros">
         <p>Cuando el cobro electrónico esté habilitado, el pago se realiza en la página segura del proveedor correspondiente. El desglose aplicable se presenta antes de confirmar. Los servicios de medios, mapas, redes sociales, inteligencia artificial y pagos también se rigen por las condiciones de sus respectivos proveedores.</p>
+        <p>Las solicitudes de facturación, devoluciones y contracargos se tramitan según la <a className="font-bold text-forest underline" href="/reembolsos">política de pagos</a> a través de <a className="font-bold text-forest underline" href={`mailto:${BILLING_EMAIL}`}>{BILLING_EMAIL}</a>.</p>
       </LegalSection>
       <LegalSection title="5. Uso permitido">
         <p>No puedes usar la plataforma para contenido ilícito, engañoso o que infrinja derechos; intentar vulnerar cuentas o controles; introducir software malicioso; recopilar datos sin autorización; ni activar publicidad contraria a las reglas del medio o la legislación aplicable.</p>
@@ -29,9 +31,9 @@ export default function TermsPage() {
         <p>Trabajamos para mantener un servicio seguro y disponible, pero pueden existir mantenimientos, fallos de terceros o cambios de inventario. Las estimaciones no garantizan resultados comerciales. La responsabilidad se determinará según el acuerdo aplicable y la legislación ecuatoriana.</p>
       </LegalSection>
       <LegalSection title="8. Suspensión, cambios y contacto">
-        <p>Podemos suspender accesos ante riesgo de seguridad, uso indebido o incumplimiento. Podemos actualizar estos términos y publicaremos la fecha vigente. Para consultas escribe a <a className="font-bold text-forest underline" href="mailto:hola@admavericks.one">hola@admavericks.one</a>.</p>
+        <p>Podemos suspender accesos ante riesgo de seguridad, uso indebido o incumplimiento. Podemos actualizar estos términos y solicitaremos una nueva aceptación cuando el cambio sea material. Para consultas escribe a <a className="font-bold text-forest underline" href={`mailto:${BILLING_EMAIL}`}>{BILLING_EMAIL}</a>.</p>
+        <p>Versión vigente: {LEGAL_VERSIONS.terms}.</p>
       </LegalSection>
     </LegalPage>
   );
 }
-

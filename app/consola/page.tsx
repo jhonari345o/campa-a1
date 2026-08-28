@@ -5,6 +5,10 @@ import { getSessionProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { CrearClienteForm } from "./CrearClienteForm";
 import { cerrarSesion } from "./actions";
+import { isDlocalConfigured } from "@/lib/payments/dlocal";
+import { isMetaConfigured } from "@/lib/ads/meta";
+import { isAiAssistantEnabled, isAiWebTrendsEnabled, isCommercialPaymentsEnabled, isMetaPausedDraftsEnabled, isMetaRealSpendEnabled } from "@/lib/commercial";
+import { BILLING_EMAIL } from "@/lib/legal";
 
 export const metadata = { title: "Consola de Alta" };
 
@@ -34,9 +38,26 @@ export default async function ConsolaPage() {
           <CrearClienteForm />
           <RecentClients companies={companies ?? []} />
         </div>
+        <IntegrationReadiness />
       </main>
     </div>
   );
+}
+
+function IntegrationReadiness() {
+  const checks = [
+    { label: "Mavi IA", ready: isAiAssistantEnabled() && Boolean(process.env.OPENROUTER_API_KEY || process.env.BEDROCK_MODEL_ID || process.env.DEEPSEEK_API_KEY), detail: isAiWebTrendsEnabled() ? "IA y señales web habilitadas" : "IA activa; tendencias web deshabilitadas" },
+    { label: "Mapas", ready: true, detail: process.env.NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY ? "OpenStreetMap + Google Maps configurado" : "OpenStreetMap activo; Google satélite/360 sin clave embebida" },
+    { label: "dLocal Go", ready: isDlocalConfigured(), detail: isDlocalConfigured() ? `${process.env.DLOCALGO_ENV === "live" ? "Producción" : "Sandbox"} configurado` : "Faltan API Key y Secret Key" },
+    { label: "Cobros reales", ready: isCommercialPaymentsEnabled(), detail: isCommercialPaymentsEnabled() ? "Interruptor activo" : "Interruptor bloqueado" },
+    { label: "Meta Marketing API", ready: isMetaConfigured(), detail: isMetaConfigured() ? "Credenciales base presentes" : "Faltan token, cuenta publicitaria o página" },
+    { label: "Borrador Meta en pausa", ready: isMetaPausedDraftsEnabled(), detail: isMetaPausedDraftsEnabled() ? "Prueba pausada habilitada" : "Bloqueado" },
+    { label: "Gasto real Meta", ready: isMetaRealSpendEnabled(), detail: isMetaRealSpendEnabled() ? "Gasto habilitado" : "Bloqueado hasta aprobación final" },
+  ];
+  return <section className="mt-8 rounded-panel border border-border bg-white p-7 shadow-panel">
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[.16em] text-signal-dark">Solo equipo</p><h2 className="mt-1 text-xl font-black">Preparación para producción</h2><p className="mt-1 text-sm text-muted">Este panel muestra presencia e interruptores; nunca expone secretos.</p></div><a className="btn btn-secondary" href={`mailto:${BILLING_EMAIL}?subject=Soporte%20de%20integraciones`}>Soporte e incidencias →</a></div>
+    <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{checks.map((check) => <article key={check.label} className="rounded-xl border border-border bg-fog p-4"><span className={`text-[10px] font-black uppercase ${check.ready ? "text-signal-dark" : "text-[#a13b31]"}`}>{check.ready ? "✓ Configurado" : "! Pendiente"}</span><strong className="mt-1 block text-sm text-forest">{check.label}</strong><p className="mt-1 text-xs text-muted">{check.detail}</p></article>)}</div>
+  </section>;
 }
 
 function ConsolaHeader({ name }: { name: string }) {

@@ -1,5 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { LEGAL_VERSIONS } from "@/lib/legal";
+
+const CONSENT_PROTECTED_ROUTES = [
+  "/panel", "/consola", "/mercado", "/planificador", "/asistente",
+  "/campanas", "/pautar", "/reportes", "/laboratorio",
+];
 
 /**
  * Refresca la sesion de Supabase en cada request y la propaga por cookies.
@@ -31,8 +37,32 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  // Refresca el token si hace falta.
-  await supabase.auth.getUser();
+  // Refresca el token si hace falta y exige la aceptación legal vigente antes
+  // de entrar al workspace. Si la migración todavía no existe, no bloqueamos
+  // el sitio durante el despliegue escalonado.
+  const { data: { user } } = await supabase.auth.getUser();
+  const pathname = request.nextUrl.pathname;
+  const needsConsent = CONSENT_PROTECTED_ROUTES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  if (user && needsConsent) {
+    const { data: acceptance, error } = await supabase
+      .from("legal_acceptances")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("terms_version", LEGAL_VERSIONS.terms)
+      .eq("privacy_version", LEGAL_VERSIONS.privacy)
+      .eq("treatment_version", LEGAL_VERSIONS.treatment)
+      .is("revoked_at", null)
+      .maybeSingle();
+    if (!error && !acceptance) {
+      const consentUrl = request.nextUrl.clone();
+      consentUrl.pathname = "/consentimiento";
+      consentUrl.search = "";
+      consentUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
+      const redirectResponse = NextResponse.redirect(consentUrl);
+      response.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie));
+      return redirectResponse;
+    }
+  }
 
   return response;
 }

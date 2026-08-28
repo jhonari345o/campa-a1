@@ -33,6 +33,7 @@ import { creativePreflight } from "../lib/creative-preflight";
 import { buildCampaignTwin } from "../lib/campaign-twin";
 import { directCampaign } from "../lib/campaign-director";
 import { reviewCreativeAsset } from "../lib/creative-lab";
+import { BILLING_EMAIL, LEGAL_VERSIONS } from "../lib/legal";
 import { buildReportNarrative } from "../lib/report-narrative";
 import {
   BUSINESS_CATEGORY_OPTIONS,
@@ -324,4 +325,21 @@ test("Laboratorio y el centro de procesos Mavi permanecen visibles en la navegac
   assert.match(assistant, /Crear plan guiado/);
   assert.match(assistant, /Revisar creatividad/);
   assert.match(assistant, /Preparar pauta/);
+});
+
+test("el consentimiento y checkout conservan versiones legales auditables", () => {
+  assert.match(LEGAL_VERSIONS.terms, /^\d{4}-\d{2}-\d{2}$/);
+  assert.match(LEGAL_VERSIONS.privacy, /^\d{4}-\d{2}-\d{2}$/);
+  assert.match(LEGAL_VERSIONS.treatment, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(BILLING_EMAIL, "direccion@adsmaverick.me");
+  const migration = readFileSync(resolve("supabase/migrations/0014_legal_acceptances.sql"), "utf8");
+  assert.match(migration, /benchmark_contribution boolean not null default false/);
+  assert.match(migration, /revoked_at timestamptz/);
+});
+
+test("las cabeceras permiten mapas y geolocalización propia sin abrir permisos generales", () => {
+  const config = readFileSync(resolve("next.config.mjs"), "utf8");
+  assert.match(config, /frame-src 'self' https:\/\/www\.openstreetmap\.org/);
+  assert.match(config, /geolocation=\(self\)/);
+  assert.match(config, /"\/laboratorio"/);
 });

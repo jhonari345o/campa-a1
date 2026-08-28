@@ -9,6 +9,7 @@ import {
   getOohLocationCatalog,
   getPlanCollaboration,
   getRadioCatalog,
+  getCatalogHealth,
 } from "@/lib/media-workspace";
 import type { CatalogSection } from "@/lib/media-catalog";
 import { DiyPlanner } from "./DiyPlanner";
@@ -42,7 +43,7 @@ export default async function PlanificadorPage({
 
   const catalogNeeded = view === "media" || view === "diy";
   const selectedPlanNeeded = (view === "planner" || view === "diy" || view === "versions") && Boolean(params.plan);
-  const [radio, influencers, plans, selectedPlan, versions, oohLocations, collaboration] = await Promise.all([
+  const [radio, influencers, plans, selectedPlan, versions, oohLocations, collaboration, catalogHealth] = await Promise.all([
     catalogNeeded ? getRadioCatalog() : Promise.resolve([]),
     catalogNeeded ? getInfluencerCatalog() : Promise.resolve([]),
     view === "plans" ? getMySavedPlans(profile.id) : Promise.resolve([]),
@@ -50,6 +51,7 @@ export default async function PlanificadorPage({
     view === "versions" && params.plan ? getMyPlanVersions(profile.id, params.plan) : Promise.resolve([]),
     view === "diy" ? getOohLocationCatalog() : Promise.resolve([]),
     view === "versions" && params.plan ? getPlanCollaboration(profile.id, params.plan) : Promise.resolve({ comments: [], approvals: [] }),
+    view === "media" ? getCatalogHealth() : Promise.resolve(null),
   ]);
 
   return (
@@ -68,7 +70,7 @@ export default async function PlanificadorPage({
       />
       <main id="workspace-content" className={`portal-page ${view === "media" ? "portal-page-wide" : "portal-page-planner"}`}>
         {view === "media" ? (
-          <MediaCatalog section={section} radio={radio} influencers={influencers} />
+          <MediaCatalog section={section} radio={radio} influencers={influencers} health={catalogHealth} />
         ) : view === "plans" ? (
           <SavedPlans plans={plans} />
         ) : view === "diy" ? (
