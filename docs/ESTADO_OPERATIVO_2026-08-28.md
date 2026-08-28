@@ -2,7 +2,9 @@
 
 **Fecha de corte:** 28 de agosto de 2026  
 **Aplicación AWS Amplify:** `campa-a1` (`djk125z43ran7`)  
-**Rama publicada:** `claude/adsmaiber-website-admin-9xc3cv`
+**Rama publicada:** `claude/adsmaiber-website-admin-9xc3cv`  
+**Despliegue verificado:** compilación e implementación correctas del commit
+`7735e9f` el 28 de agosto de 2026.
 
 ## Resumen ejecutivo
 
@@ -131,7 +133,7 @@ actuales. La herramienta:
 
 ## Resultado técnico verificado
 
-- 24 pruebas automatizadas aprobadas.
+- 25 pruebas automatizadas aprobadas.
 - comprobación de TypeScript aprobada;
 - compilación de producción aprobada;
 - RLS y consentimiento legal aplicados en Supabase;
