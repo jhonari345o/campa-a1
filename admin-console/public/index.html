@@ -28,7 +28,8 @@
     <aside class="sidebar">
       <div class="console-brand"><span>AD MAVERICKS</span><b>ADMIN</b></div>
       <nav>
-        <button class="active"><span class="nav-icon">U</span> Usuarios</button>
+        <button id="nav-users" class="active" type="button"><span class="nav-icon">U</span> Usuarios</button>
+        <button id="nav-integrations" type="button"><span class="nav-icon">C</span> Credenciales</button>
         <button disabled><span class="nav-icon">E</span> Empresas <small>Próximo</small></button>
         <button disabled><span class="nav-icon">A</span> Auditoría <small>Próximo</small></button>
       </nav>
@@ -37,13 +38,13 @@
       <button id="logout-button" class="logout-button">Cerrar consola</button>
     </aside>
 
-    <section class="content">
+    <div id="toast" class="toast hidden" role="status"></div>
+
+    <section id="users-view" class="content">
       <header class="topbar">
         <div><span class="eyebrow">Control de acceso</span><h1>Usuarios y permisos</h1><p>Altas controladas para el inicio de sesión de Ad Mavericks One.</p></div>
         <button id="refresh-button" class="button secondary small">Actualizar</button>
       </header>
-
-      <div id="toast" class="toast hidden" role="status"></div>
 
       <section class="stat-grid">
         <article><span>Usuarios visibles</span><strong id="stat-users">—</strong><small>Perfiles registrados</small></article>
@@ -101,6 +102,60 @@
           </div>
         </section>
       </div>
+    </section>
+
+    <section id="integrations-view" class="content hidden">
+      <header class="topbar">
+        <div><span class="eyebrow">Rotación segura</span><h1>Credenciales de producción</h1><p>Cambia la cuenta operativa sin revelar ni recuperar las claves actuales.</p></div>
+        <button id="refresh-credentials" class="button secondary small">Actualizar estado</button>
+      </header>
+
+      <section class="credential-hero">
+        <div><span class="local-chip"><i></i> SOLO ESTA COMPUTADORA</span><h2>Las claves van del navegador local a AWS.</h2><p>No se guardan en Supabase, no aparecen en el historial de la plataforma y esta consola nunca devuelve el valor actual.</p></div>
+        <dl><div><dt>Aplicación</dt><dd id="aws-app-name">—</dd></div><div><dt>Rama</dt><dd id="aws-branch-name">—</dd></div><div><dt>Región</dt><dd id="aws-region">—</dd></div></dl>
+      </section>
+
+      <div id="credentials-error" class="alert error hidden" role="alert"></div>
+      <section id="credential-status" class="credential-status-grid" aria-label="Estado de integraciones"></section>
+
+      <section class="credential-grid">
+        <form class="panel credential-form" data-credential-group="openrouter">
+          <header><span class="eyebrow">Mavi</span><h2>OpenRouter</h2><p>Usa una API Key normal de inferencia. Las Management Keys no sirven para conversar con modelos.</p></header>
+          <label>API Key nueva<input name="OPENROUTER_API_KEY" type="password" autocomplete="off" placeholder="sk-or-v1-…"></label>
+          <label>Modelo<select name="OPENROUTER_MODEL"><option value="openrouter/free">OpenRouter Free Router</option><option value="deepseek/deepseek-r1:free">DeepSeek R1 gratuito</option></select></label>
+          <button class="button primary full" type="submit">Validar, guardar y desplegar <span>→</span></button>
+        </form>
+
+        <form class="panel credential-form" data-credential-group="dlocal">
+          <header><span class="eyebrow">Cobros</span><h2>dLocal Go</h2><p>Producción necesita dos valores: API Key y Secret Key. Guardarlos no habilita cobros automáticamente.</p></header>
+          <label>API Key nueva<input name="DLOCALGO_API_KEY" type="password" autocomplete="off" placeholder="API Key de producción"></label>
+          <label>Secret Key nueva<input name="DLOCALGO_SECRET_KEY" type="password" autocomplete="off" placeholder="Secret Key de producción"></label>
+          <label>Ambiente<select name="DLOCALGO_ENV"><option value="live">Producción</option><option value="sandbox">Sandbox</option></select></label>
+          <button class="button primary full" type="submit">Guardar y desplegar <span>→</span></button>
+        </form>
+
+        <form class="panel credential-form" data-credential-group="meta">
+          <header><span class="eyebrow">Pauta</span><h2>Meta Ads</h2><p>La línea de crédito pertenece a la cuenta publicitaria elegida, no al token. Cambia los cuatro datos para migrar al cliente.</p></header>
+          <label>Token de sistema nuevo<input name="META_ACCESS_TOKEN" type="password" autocomplete="off" placeholder="Token de Marketing API"></label>
+          <label>Cuenta publicitaria<input name="META_AD_ACCOUNT_ID" inputmode="numeric" autocomplete="off" placeholder="act_1234567890"></label>
+          <label>Página de Facebook<input name="META_PAGE_ID" inputmode="numeric" autocomplete="off" placeholder="ID numérico"></label>
+          <label>Cuenta profesional de Instagram<input name="META_INSTAGRAM_USER_ID" inputmode="numeric" autocomplete="off" placeholder="ID numérico"></label>
+          <input name="META_GRAPH_API_VERSION" type="hidden" value="v25.0">
+          <button class="button primary full" type="submit">Validar, guardar y desplegar <span>→</span></button>
+        </form>
+
+        <form class="panel credential-form" data-credential-group="maps">
+          <header><span class="eyebrow">Ubicaciones</span><h2>Google Maps</h2><p>La clave debe restringirse por dominio y limitarse a Maps Embed API. OpenStreetMap seguirá disponible como respaldo.</p></header>
+          <label>API Key nueva<input name="NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY" type="password" autocomplete="off" placeholder="Clave restringida por dominio"></label>
+          <button class="button primary full" type="submit">Guardar y desplegar <span>→</span></button>
+        </form>
+      </section>
+
+      <section class="launch-guard panel">
+        <span class="eyebrow">Control financiero</span><h2>Guardar credenciales no inicia cobros ni gasto.</h2>
+        <p>Después del despliegue todavía se debe probar un pago sin cargo real, crear un borrador Meta en PAUSED y aprobar por separado los interruptores de producción.</p>
+        <div class="guard-pills"><span id="guard-payments">Cobros bloqueados</span><span id="guard-drafts">Borradores Meta bloqueados</span><span id="guard-spend">Gasto Meta bloqueado</span></div>
+      </section>
     </section>
   </div>
   <script src="/app.js" defer></script>

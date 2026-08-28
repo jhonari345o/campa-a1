@@ -16,6 +16,7 @@
     "sql:generate": "python scripts/generate_excel_sql.py"
   },
   "dependencies": {
+    "@aws-sdk/client-amplify": "^3.1113.0",
     "@aws-sdk/client-bedrock-runtime": "^3.716.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.4",

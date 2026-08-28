@@ -129,7 +129,11 @@ async function openaiChat(
     }),
     signal: AbortSignal.timeout(60_000),
   });
-  if (!res.ok) throw new Error(`El modelo respondio ${res.status}: ${await res.text()}`);
+  if (!res.ok) {
+    // El cuerpo del proveedor puede contener detalles de cuenta. Registramos
+    // únicamente el estado HTTP para diagnosticar sin filtrar credenciales.
+    throw new Error(`PROVIDER_HTTP_${res.status}`);
+  }
   const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   const reply = data.choices?.[0]?.message?.content;
   if (typeof reply !== "string") throw new Error("Respuesta inesperada del modelo.");

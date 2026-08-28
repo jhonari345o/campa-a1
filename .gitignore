@@ -27,6 +27,7 @@ yarn-error.log*
 .env.local
 .env.development.local
 .env.production.local
+/admin-console/.audit.log
 
 # supabase local
 /supabase/.branches

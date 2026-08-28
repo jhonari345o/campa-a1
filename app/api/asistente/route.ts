@@ -128,7 +128,15 @@ export async function POST(request: Request) {
         { status: 503, headers },
       );
     }
-    console.error(JSON.stringify({ event: "assistant.error", request_id: requestId, error: "provider_failure" }));
+    const providerStatus = err instanceof Error && /^PROVIDER_HTTP_\d{3}$/.test(err.message)
+      ? err.message.replace("PROVIDER_HTTP_", "")
+      : null;
+    console.error(JSON.stringify({
+      event: "assistant.error",
+      request_id: requestId,
+      error: "provider_failure",
+      provider_status: providerStatus,
+    }));
     return NextResponse.json(
       { error: "Mavi no pudo responder. Intenta de nuevo mas tarde.", requestId },
       { status: 500, headers },

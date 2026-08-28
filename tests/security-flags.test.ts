@@ -343,3 +343,17 @@ test("las cabeceras permiten mapas y geolocalización propia sin abrir permisos 
   assert.match(config, /geolocation=\(self\)/);
   assert.match(config, /"\/laboratorio"/);
 });
+
+test("la consola de credenciales es local, enmascara valores y conserva bloqueos financieros", () => {
+  const server = readFileSync(resolve("admin-console/server.mjs"), "utf8");
+  const page = readFileSync(resolve("admin-console/public/index.html"), "utf8");
+  assert.match(server, /server\.listen\(config\.port, "127\.0\.0\.1"/);
+  assert.match(server, /AMPLIFY_SAFE_VALUES/);
+  assert.match(server, /API Key de inferencia/);
+  assert.match(server, /StartJobCommand/);
+  assert.doesNotMatch(server, /COMMERCIAL_PAYMENTS_ENABLED:\s*"true"/);
+  assert.doesNotMatch(server, /META_REAL_SPEND_ENABLED:\s*"true"/);
+  assert.match(page, /data-credential-group="openrouter"/);
+  assert.match(page, /name="DLOCALGO_SECRET_KEY" type="password"/);
+  assert.match(page, /name="META_ACCESS_TOKEN" type="password"/);
+});

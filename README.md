@@ -15,7 +15,7 @@ De una demostracion a un producto real, seguro y multiempresa.
 | **Pauta externa** | lista para sandbox | URL del anuncio, mapa y radio, checkout dLocal Go, desglose 22% + 25% y entrega Meta con activación supervisada. |
 | **Base de datos (Supabase)** | SQL listo | Esquema multiempresa con RLS, datos operativos y archivo auditable de los Excel. |
 | **Consola web de clientes** | lista | Alta de empresas, codigos y cupos para el equipo Ad Mavericks. |
-| **Consola local de usuarios** | lista | Alta directa de usuarios; escucha solo en `127.0.0.1`. |
+| **Consola local privada** | lista | Alta de usuarios y rotación de credenciales de Amplify; escucha solo en `127.0.0.1`. |
 
 ## Stack
 
@@ -60,7 +60,8 @@ Detalle completo en [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md).
 ## Consola local de usuarios
 
 La consola local no forma parte de las rutas de Next.js y no se publica en
-AWS Amplify. Para usarla:
+AWS Amplify. Permite administrar usuarios y rotar OpenRouter, dLocal Go, Meta y
+Google Maps sin revelar los valores existentes. Para usarla:
 
 ```powershell
 Copy-Item admin-console/.env.example admin-console/.env.local

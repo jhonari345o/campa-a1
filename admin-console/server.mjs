@@ -1,4 +1,12 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import {
+  AmplifyClient,
+  GetAppCommand,
+  GetBranchCommand,
+  StartJobCommand,
+  UpdateAppCommand,
+  UpdateBranchCommand,
+} from "@aws-sdk/client-amplify";
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
@@ -11,6 +19,48 @@ const SESSION_COOKIE = "adm_console_session";
 const SESSION_TTL = 8 * 60 * 60 * 1000;
 const BODY_LIMIT = 64 * 1024;
 const ROLES = new Set(["admin", "planner", "analyst", "approver", "viewer"]);
+const AMPLIFY_SAFE_VALUES = new Set([
+  "AI_PROVIDER",
+  "OPENROUTER_MODEL",
+  "AI_ASSISTANT_ENABLED",
+  "AI_WEB_TRENDS_ENABLED",
+  "DLOCALGO_ENV",
+  "COMMERCIAL_PAYMENTS_ENABLED",
+  "META_GRAPH_API_VERSION",
+  "META_PAUSED_DRAFTS_ENABLED",
+  "META_REAL_SPEND_ENABLED",
+]);
+const CREDENTIAL_GROUPS = {
+  openrouter: {
+    label: "Mavi · OpenRouter",
+    keys: ["OPENROUTER_API_KEY", "OPENROUTER_MODEL"],
+    required: ["OPENROUTER_API_KEY", "OPENROUTER_MODEL"],
+    defaults: {
+      AI_PROVIDER: "openrouter",
+      AI_ASSISTANT_ENABLED: "true",
+      AI_WEB_TRENDS_ENABLED: "true",
+      OPENROUTER_MODEL: "openrouter/free",
+    },
+  },
+  dlocal: {
+    label: "Cobros · dLocal Go",
+    keys: ["DLOCALGO_API_KEY", "DLOCALGO_SECRET_KEY", "DLOCALGO_ENV"],
+    required: ["DLOCALGO_API_KEY", "DLOCALGO_SECRET_KEY", "DLOCALGO_ENV"],
+    defaults: { DLOCALGO_ENV: "live" },
+  },
+  meta: {
+    label: "Pauta · Meta Ads",
+    keys: ["META_ACCESS_TOKEN", "META_AD_ACCOUNT_ID", "META_PAGE_ID", "META_INSTAGRAM_USER_ID", "META_GRAPH_API_VERSION"],
+    required: ["META_ACCESS_TOKEN", "META_AD_ACCOUNT_ID", "META_PAGE_ID", "META_INSTAGRAM_USER_ID"],
+    defaults: { META_GRAPH_API_VERSION: "v25.0" },
+  },
+  maps: {
+    label: "Mapas · Google",
+    keys: ["NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY"],
+    required: ["NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY"],
+    defaults: {},
+  },
+};
 
 function loadEnvFile() {
   if (!fs.existsSync(envPath)) return;
@@ -35,6 +85,9 @@ const config = {
   serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
   adminPassword: process.env.LOCAL_ADMIN_PASSWORD,
   port: Number(process.env.LOCAL_ADMIN_PORT || 4177),
+  awsRegion: process.env.AWS_REGION || "us-east-1",
+  amplifyAppId: process.env.AMPLIFY_APP_ID || "djk125z43ran7",
+  amplifyBranchName: process.env.AMPLIFY_BRANCH_NAME || "claude/adsmaiber-website-admin-9xc3cv",
 };
 
 const missing = [
@@ -49,6 +102,13 @@ if (missing.length) {
 }
 
 const sessions = new Map();
+const amplify = new AmplifyClient({ region: config.awsRegion });
+
+function clientError(message, status = 400) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
 
 function secureHeaders(contentType) {
   return {
@@ -216,6 +276,161 @@ async function createUser(input) {
   return { id: authUser.id, email, fullName, role, companyId, isPlatformAdmin };
 }
 
+async function readAmplifyEnvironment() {
+  const [appResult, branchResult] = await Promise.all([
+    amplify.send(new GetAppCommand({ appId: config.amplifyAppId })),
+    amplify.send(new GetBranchCommand({ appId: config.amplifyAppId, branchName: config.amplifyBranchName })),
+  ]);
+  const appVariables = appResult.app?.environmentVariables || {};
+  const branchVariables = branchResult.branch?.environmentVariables || {};
+  return {
+    appVariables,
+    branchVariables,
+    effective: { ...appVariables, ...branchVariables },
+    appName: appResult.app?.name || config.amplifyAppId,
+    defaultDomain: appResult.app?.defaultDomain || null,
+  };
+}
+
+function credentialStatus(environment) {
+  const groups = Object.entries(CREDENTIAL_GROUPS).map(([id, group]) => ({
+    id,
+    label: group.label,
+    ready: group.required.every((key) => Boolean(environment.effective[key]?.trim())),
+    fields: group.keys.map((key) => ({
+      key,
+      present: Boolean(environment.effective[key]?.trim()),
+      source: Object.hasOwn(environment.branchVariables, key) ? "branch" : Object.hasOwn(environment.appVariables, key) ? "app" : null,
+      ...(AMPLIFY_SAFE_VALUES.has(key) ? { value: environment.effective[key] || "" } : {}),
+    })),
+  }));
+  return {
+    app: {
+      id: config.amplifyAppId,
+      name: environment.appName,
+      branch: config.amplifyBranchName,
+      region: config.awsRegion,
+      domain: environment.defaultDomain,
+    },
+    groups,
+    controls: {
+      commercialPayments: environment.effective.COMMERCIAL_PAYMENTS_ENABLED === "true",
+      metaDrafts: environment.effective.META_PAUSED_DRAFTS_ENABLED === "true",
+      metaSpend: environment.effective.META_REAL_SPEND_ENABLED === "true",
+    },
+  };
+}
+
+function normalizeCredentialUpdates(groupId, rawValues) {
+  const group = CREDENTIAL_GROUPS[groupId];
+  if (!group) throw clientError("Selecciona una integración válida.");
+  const values = rawValues && typeof rawValues === "object" ? rawValues : {};
+  const allowed = new Set(group.keys);
+  const updates = { ...group.defaults };
+  for (const [key, rawValue] of Object.entries(values)) {
+    if (!allowed.has(key)) throw clientError(`La variable ${key} no pertenece a esta integración.`);
+    const value = String(rawValue || "").trim();
+    if (!value) continue;
+    if (value.length > 4096 || /[\r\n\0]/.test(value)) throw clientError(`El valor de ${key} no es válido.`);
+    updates[key] = value;
+  }
+  if (groupId === "openrouter" && updates.OPENROUTER_API_KEY && !updates.OPENROUTER_API_KEY.startsWith("sk-or-v1-")) {
+    throw clientError("OpenRouter necesita una API Key de inferencia con formato sk-or-v1-. No uses una Management Key.");
+  }
+  if (groupId === "dlocal" && updates.DLOCALGO_ENV && !["sandbox", "live"].includes(updates.DLOCALGO_ENV)) {
+    throw clientError("El ambiente de dLocal Go debe ser sandbox o live.");
+  }
+  if (groupId === "meta") {
+    if (updates.META_AD_ACCOUNT_ID && !/^(?:act_)?\d+$/.test(updates.META_AD_ACCOUNT_ID)) {
+      throw clientError("META_AD_ACCOUNT_ID debe ser numérico y puede comenzar con act_.");
+    }
+    for (const key of ["META_PAGE_ID", "META_INSTAGRAM_USER_ID"]) {
+      if (updates[key] && !/^\d+$/.test(updates[key])) throw clientError(`${key} debe contener únicamente el identificador numérico de Meta.`);
+    }
+  }
+  return { group, updates };
+}
+
+async function validateProviderCredential(groupId, updates) {
+  if (groupId === "openrouter" && updates.OPENROUTER_API_KEY) {
+    const response = await fetch("https://openrouter.ai/api/v1/key", {
+      headers: { authorization: `Bearer ${updates.OPENROUTER_API_KEY}` },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) {
+      throw clientError("OpenRouter rechazó la clave. Crea una API Key normal, verifica el correo de la cuenta y no uses una Management Key.");
+    }
+    return "Clave de inferencia reconocida por OpenRouter.";
+  }
+  if (groupId === "meta" && updates.META_ACCESS_TOKEN) {
+    const version = updates.META_GRAPH_API_VERSION || "v25.0";
+    const response = await fetch(`https://graph.facebook.com/${version}/me?fields=id,name`, {
+      headers: { authorization: `Bearer ${updates.META_ACCESS_TOKEN}` },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) throw clientError("Meta rechazó el token. Verifica que sea un token de sistema vigente y con permisos de Marketing API.");
+    return "Token reconocido por Meta en una consulta de solo lectura.";
+  }
+  if (groupId === "dlocal") return "Las credenciales ingresadas se guardarán; la validación transaccional se realiza sin cobrar en el checklist de lanzamiento.";
+  return "Formato aceptado.";
+}
+
+async function updateAmplifyCredentials(input) {
+  const groupId = String(input.group || "");
+  const { group, updates } = normalizeCredentialUpdates(groupId, input.values);
+  const meaningfulKeys = Object.keys(updates).filter((key) => !Object.hasOwn(group.defaults, key) || String(input.values?.[key] || "").trim());
+  if (meaningfulKeys.length === 0) throw clientError("Escribe al menos una credencial nueva.");
+
+  const validation = await validateProviderCredential(groupId, updates);
+  const environment = await readAmplifyEnvironment();
+  const appVariables = { ...environment.appVariables };
+  const branchVariables = { ...environment.branchVariables };
+  let appChanged = false;
+  let branchChanged = false;
+
+  for (const [key, value] of Object.entries(updates)) {
+    if (Object.hasOwn(branchVariables, key)) {
+      branchVariables[key] = value;
+      branchChanged = true;
+    } else {
+      appVariables[key] = value;
+      appChanged = true;
+    }
+  }
+  if (appChanged) {
+    await amplify.send(new UpdateAppCommand({ appId: config.amplifyAppId, environmentVariables: appVariables }));
+  }
+  if (branchChanged) {
+    await amplify.send(new UpdateBranchCommand({
+      appId: config.amplifyAppId,
+      branchName: config.amplifyBranchName,
+      environmentVariables: branchVariables,
+    }));
+  }
+
+  let deployment = null;
+  if (input.redeploy === true) {
+    const job = await amplify.send(new StartJobCommand({
+      appId: config.amplifyAppId,
+      branchName: config.amplifyBranchName,
+      jobType: "RELEASE",
+      jobReason: `Rotación local de ${group.label}`,
+    }));
+    deployment = { jobId: job.jobSummary?.jobId || null, status: job.jobSummary?.status || "PENDING" };
+  }
+
+  fs.appendFileSync(path.join(currentDir, ".audit.log"), `${JSON.stringify({
+    at: new Date().toISOString(),
+    action: "credentials.update",
+    group: groupId,
+    keys: Object.keys(updates),
+    appId: config.amplifyAppId,
+    branch: config.amplifyBranchName,
+    redeploy: input.redeploy === true,
+  })}\n`, { encoding: "utf8", mode: 0o600 });
+  return { ok: true, validation, deployment, changed: Object.keys(updates) };
+}
+
 function serveStatic(requestPath, response) {
   const files = {
     "/": ["index.html", "text/html; charset=utf-8"],
@@ -265,6 +480,14 @@ const server = http.createServer(async (request, response) => {
     if (url.pathname === "/api/users" && request.method === "POST") {
       if (!requireSession(request, response, true)) return;
       return sendJson(response, 201, { user: await createUser(await readJson(request)) });
+    }
+    if (url.pathname === "/api/credentials" && request.method === "GET") {
+      if (!requireSession(request, response)) return;
+      return sendJson(response, 200, credentialStatus(await readAmplifyEnvironment()));
+    }
+    if (url.pathname === "/api/credentials" && request.method === "POST") {
+      if (!requireSession(request, response, true)) return;
+      return sendJson(response, 200, await updateAmplifyCredentials(await readJson(request)));
     }
     return sendJson(response, 404, { error: "Ruta no encontrada." });
   } catch (error) {
