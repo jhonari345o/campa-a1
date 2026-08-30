@@ -32,7 +32,8 @@ y entrega HTTPS, dominio y CDN. Alternativa por contenedor (ECS/Fargate) al fina
 | `AI_WEB_TRENDS_ENABLED` | `true` solo si Mavi puede consultar fuentes publicas recientes |
 | `AI_PROVIDER` | `openrouter`, `bedrock`, `deepseek` o `compatible` |
 | `OPENROUTER_API_KEY` | clave API de inferencia; no usar una Management Key |
-| `OPENROUTER_MODEL` | router/modelo aprobado, por ejemplo `openrouter/free` |
+| `OPENROUTER_MODEL` | modelo principal aprobado, por ejemplo `google/gemma-4-26b-a4b-it:free` |
+| `OPENROUTER_FALLBACK_MODELS` | respaldos separados por coma; para cero costo: `minimax/minimax-m3:free,openrouter/free` |
 | `AGENT_AUTOMATION_ENABLED` | `false` hasta aprobar el worker automatizado |
 | `DLOCALGO_ENV` | `sandbox` hasta aprobar la prueba; luego `live` |
 | `DLOCALGO_API_KEY` | API Key de dLocal Go (solo servidor) |

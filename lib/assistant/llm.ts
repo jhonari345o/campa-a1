@@ -15,9 +15,15 @@ export async function chatCompletion(
   opts?: { maxTokens?: number; temperature?: number },
 ): Promise<string> {
   const preferred = process.env.AI_PROVIDER?.trim().toLowerCase();
+  const openRouterFallbacks = (process.env.OPENROUTER_FALLBACK_MODELS
+    || "minimax/minimax-m3:free,openrouter/free")
+    .split(",")
+    .map((model) => model.trim())
+    .filter(Boolean);
   const openRouter = () => openaiChat(messages, opts, {
     baseUrl: "https://openrouter.ai/api/v1",
     model: process.env.OPENROUTER_MODEL || "openrouter/free",
+    fallbackModels: openRouterFallbacks,
     apiKey: process.env.OPENROUTER_API_KEY,
     headers: {
       "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://one.ad-mavericks.com",
@@ -111,8 +117,16 @@ async function bedrockChat(messages: LlmMessage[], opts?: { maxTokens?: number; 
 async function openaiChat(
   messages: LlmMessage[],
   opts: { maxTokens?: number; temperature?: number } | undefined,
-  provider: { baseUrl: string; model: string; apiKey?: string; headers?: Record<string, string> },
+  provider: {
+    baseUrl: string;
+    model: string;
+    fallbackModels?: string[];
+    apiKey?: string;
+    headers?: Record<string, string>;
+  },
 ) {
+  const fallbackModels = (provider.fallbackModels ?? [])
+    .filter((model) => model !== provider.model);
   const res = await fetch(`${provider.baseUrl.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
     headers: {
@@ -122,6 +136,7 @@ async function openaiChat(
     },
     body: JSON.stringify({
       model: provider.model,
+      ...(fallbackModels.length ? { models: [provider.model, ...fallbackModels] } : {}),
       messages,
       max_tokens: opts?.maxTokens ?? 1024,
       temperature: opts?.temperature ?? 0.4,
