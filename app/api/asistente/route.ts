@@ -133,7 +133,9 @@ export async function POST(request: Request) {
       ...history.map((m) => ({ role: m.role, content: m.content }) as LlmMessage),
     ];
 
-    const reply = await chatCompletion(messages, { maxTokens: 768 });
+    // 512 tokens permiten una respuesta accionable y mantienen incluso los
+    // modelos gratuitos mas lentos dentro de la ventana de Amplify.
+    const reply = await chatCompletion(messages, { maxTokens: 512 });
     console.info(JSON.stringify({
       event: "assistant.success",
       request_id: requestId,

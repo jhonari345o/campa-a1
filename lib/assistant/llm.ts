@@ -16,13 +16,13 @@ export async function chatCompletion(
 ): Promise<string> {
   const preferred = process.env.AI_PROVIDER?.trim().toLowerCase();
   const openRouterFallbacks = (process.env.OPENROUTER_FALLBACK_MODELS
-    || "minimax/minimax-m3:free,openrouter/free")
+    || "google/gemma-4-26b-a4b-it:free,openrouter/free")
     .split(",")
     .map((model) => model.trim())
     .filter(Boolean);
   const openRouter = () => openaiChat(messages, opts, {
     baseUrl: "https://openrouter.ai/api/v1",
-    model: process.env.OPENROUTER_MODEL || "openrouter/free",
+    model: process.env.OPENROUTER_MODEL || "minimax/minimax-m3:free",
     fallbackModels: openRouterFallbacks,
     apiKey: process.env.OPENROUTER_API_KEY,
     headers: {
