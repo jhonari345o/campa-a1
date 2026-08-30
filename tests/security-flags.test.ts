@@ -34,6 +34,7 @@ import { buildCampaignTwin } from "../lib/campaign-twin";
 import { directCampaign } from "../lib/campaign-director";
 import { reviewCreativeAsset } from "../lib/creative-lab";
 import { BILLING_EMAIL, LEGAL_VERSIONS } from "../lib/legal";
+import { parseMp4Metadata } from "../lib/local-media";
 import { buildReportNarrative } from "../lib/report-narrative";
 import {
   BUSINESS_CATEGORY_OPTIONS,
@@ -241,7 +242,32 @@ test("el laboratorio bloquea derechos sin confirmar y evalúa formato vertical",
   assert.match(lab, /localAnalysisConsent/);
   assert.match(lab, /URL\.createObjectURL\(file\)/);
   assert.match(lab, /El archivo original no se enviará ni se almacenará/);
+  assert.match(lab, /parseMp4Metadata/);
 });
+
+test("el analizador local obtiene metadatos MP4 aunque el navegador no decodifique el codec", () => {
+  const mvhd = Buffer.alloc(100);
+  mvhd.writeUInt32BE(1000, 12);
+  mvhd.writeUInt32BE(15000, 16);
+  const tkhd = Buffer.alloc(84);
+  tkhd.writeUInt32BE(1080 * 65_536, 76);
+  tkhd.writeUInt32BE(1920 * 65_536, 80);
+  const hdlr = Buffer.alloc(12);
+  hdlr.write("vide", 8, "ascii");
+  const moov = mp4Box("moov", Buffer.concat([
+    mp4Box("mvhd", mvhd),
+    mp4Box("trak", Buffer.concat([mp4Box("tkhd", tkhd), mp4Box("mdia", mp4Box("hdlr", hdlr))])),
+  ]));
+  const buffer = moov.buffer.slice(moov.byteOffset, moov.byteOffset + moov.byteLength) as ArrayBuffer;
+  assert.deepEqual(parseMp4Metadata(buffer), { width: 1080, height: 1920, durationSeconds: 15 });
+});
+
+function mp4Box(type: string, payload: Buffer): Buffer {
+  const header = Buffer.alloc(8);
+  header.writeUInt32BE(payload.length + 8, 0);
+  header.write(type, 4, "ascii");
+  return Buffer.concat([header, payload]);
+}
 
 test("el reporte narrado usa únicamente métricas observadas", () => {
   const narrative = buildReportNarrative({ orderCount: 1, jobs: [{ platform: "meta", status: "publicada", spec: { presupuesto_usd: 500, metrics: { impresiones: 10_000, clics: 250, gasto_usd: 300 } } }, { platform: "google", status: "publicada", spec: { presupuesto_usd: 400, metrics: { impresiones: 8_000, clics: 80, gasto_usd: 200 } } }] });
