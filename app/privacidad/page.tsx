@@ -17,6 +17,7 @@ export default function PrivacyPage() {
           <li>Datos de cuenta y empresa: nombre, correo, organización, rol y estado de acceso.</li>
           <li>Datos de planificación: brief, presupuesto, medios seleccionados, ubicación o radio geográfico, URL de piezas y preferencias de campaña.</li>
           <li>Datos operativos: solicitudes, aprobaciones, campañas, métricas, incidencias y comunicaciones de soporte.</li>
+          <li>Metadatos técnicos derivados de piezas seleccionadas en el Laboratorio creativo: tipo de archivo, tamaño, resolución, proporción y duración. El archivo original se analiza localmente y no se incorpora a una base de datos de Ad Mavericks.</li>
           <li>Datos técnicos esenciales para seguridad: fecha de acceso, sesión, dispositivo, registros de error y señales contra abuso.</li>
           <li>Datos de pago limitados al identificador, monto, moneda y estado comunicados por el proveedor. Ad Mavericks One no recibe ni almacena números completos de tarjeta.</li>
         </ul>
@@ -24,6 +25,9 @@ export default function PrivacyPage() {
       <LegalSection title="3. Para qué usamos la información">
         <p>Usamos los datos para autenticar usuarios autorizados, prestar y mejorar el servicio, preparar planes y cotizaciones, procesar solicitudes aprobadas, medir campañas, atender soporte, prevenir fraude y cumplir obligaciones contractuales o legales.</p>
         <p>Cuando Mavi consulta fuentes públicas de Internet, enviamos únicamente el contexto necesario para responder; no se deben introducir secretos, credenciales ni datos sensibles en el chat.</p>
+        <h3 className="font-black text-forest">Laboratorio creativo y análisis local</h3>
+        <p>Para usar el Laboratorio creativo debes autorizar que tu navegador lea localmente el archivo seleccionado y obtenga únicamente los metadatos necesarios para revisar formato, tamaño, resolución, proporción y duración. La aplicación crea una referencia temporal en la memoria del navegador para mostrar la vista previa; no carga el archivo original en AWS, Supabase, OpenRouter ni Mavi.</p>
+        <p>El análisis local termina al reemplazar el archivo, revocar la autorización, cerrar la vista o finalizar la sesión del navegador. Si solicitas una adaptación a Mavi, pediremos una autorización separada y solo enviaremos el diagnóstico técnico derivado, el CTA y el copy que hayas escrito; la imagen o el video no se envían al proveedor de IA.</p>
       </LegalSection>
       <LegalSection title="4. Proveedores y transferencias">
         <p>Podemos encargar tratamientos necesarios a proveedores de infraestructura, base de datos, inteligencia artificial, medición, pago y medios, entre ellos AWS, Supabase, Meta y dLocal Go, según las funciones activadas. Cada proveedor trata la información bajo sus propias condiciones y controles. No vendemos datos personales.</p>
@@ -31,6 +35,7 @@ export default function PrivacyPage() {
       </LegalSection>
       <LegalSection title="5. Cookies, conservación y seguridad">
         <p>La plataforma utiliza cookies o almacenamiento estrictamente necesario para inicio de sesión, seguridad y preferencias. No activa publicidad comportamental de terceros por defecto.</p>
+        <p>Los archivos examinados en el Laboratorio creativo no se guardan en nuestros servidores. La referencia local de vista previa es temporal y se libera cuando dejas de utilizarla.</p>
         <p>Conservamos la información mientras la cuenta o relación comercial esté activa y después solo por el período necesario para seguridad, auditoría y obligaciones legales. Aplicamos control de acceso por empresa, roles, cifrado en tránsito y registros de auditoría; ningún sistema elimina por completo el riesgo.</p>
         <p>Como referencia operativa, los borradores y datos de planificación se revisan para eliminación o anonimización después de 24 meses de terminada la relación, y los registros ordinarios de seguridad después de 12 meses. Los comprobantes, conciliaciones, campañas, reclamaciones e incidentes pueden conservarse durante el plazo legal o de defensa aplicable.</p>
       </LegalSection>

@@ -1,7 +1,7 @@
 export const LEGAL_VERSIONS = {
   terms: "2026-08-28",
-  privacy: "2026-08-28",
-  treatment: "2026-08-28",
+  privacy: "2026-08-30",
+  treatment: "2026-08-30",
   payments: "2026-08-28",
 } as const;
 
@@ -11,6 +11,7 @@ export const BILLING_EMAIL = "direccion@adsmaverick.me";
 export const REQUIRED_PROCESSING_PURPOSES = [
   "Autenticar la cuenta y administrar los accesos de la empresa.",
   "Preparar, guardar, revisar y ejecutar planes, órdenes y campañas solicitadas.",
+  "Analizar localmente en el navegador archivos creativos seleccionados para obtener formato, tamaño, resolución y duración, sin subir el archivo a Ad Mavericks ni al proveedor de IA.",
   "Procesar pagos mediante proveedores externos y mantener evidencia contable y antifraude.",
   "Usar proveedores de infraestructura, IA, medición, pagos y medios, incluso cuando exista una transferencia internacional necesaria.",
   "Conservar registros durante la relación y por los plazos legales, contractuales, de seguridad o defensa de reclamaciones aplicables.",

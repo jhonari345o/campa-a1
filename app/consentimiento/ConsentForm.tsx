@@ -14,7 +14,7 @@ export function ConsentForm({ nextPath }: { nextPath: string }) {
     </label>
     <label className="flex items-start gap-3 rounded-xl border border-border bg-white p-4 text-sm text-forest">
       <input type="checkbox" name="processing" value="accepted" required className="mt-1 accent-[#00a100]" />
-      <span><strong className="block">Autorizo el tratamiento necesario para prestar el servicio</strong>Incluye cuenta, planificación, campañas, pagos, seguridad, proveedores y conservación conforme a las finalidades informadas.</span>
+      <span><strong className="block">Autorizo el tratamiento necesario para prestar el servicio</strong>Incluye cuenta, planificación, análisis local de archivos creativos, campañas, pagos, seguridad, proveedores y conservación conforme a las finalidades informadas.</span>
     </label>
     <details className="rounded-xl border border-border bg-fog p-4 text-xs text-muted">
       <summary className="cursor-pointer font-black text-forest">Ver finalidades y conservación</summary>

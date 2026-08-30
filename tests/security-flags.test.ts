@@ -237,6 +237,10 @@ test("el laboratorio bloquea derechos sin confirmar y evalúa formato vertical",
   const review = reviewCreativeAsset({ placement: "meta_reels", mimeType: "video/mp4", sizeBytes: 4_000_000, width: 1080, height: 1920, durationSeconds: 22, hasRights: false, hasSound: true, hasCaptions: true, cta: "Comprar" });
   assert.equal(review.status, "blocked");
   assert.ok(review.checks.some((item) => item.label === "Formato vertical" && item.status === "pass"));
+  const lab = readFileSync(resolve("app/laboratorio/CreativeLab.tsx"), "utf8");
+  assert.match(lab, /localAnalysisConsent/);
+  assert.match(lab, /URL\.createObjectURL\(file\)/);
+  assert.match(lab, /El archivo original no se enviará ni se almacenará/);
 });
 
 test("el reporte narrado usa únicamente métricas observadas", () => {
@@ -342,6 +346,11 @@ test("el consentimiento y checkout conservan versiones legales auditables", () =
   assert.match(LEGAL_VERSIONS.privacy, /^\d{4}-\d{2}-\d{2}$/);
   assert.match(LEGAL_VERSIONS.treatment, /^\d{4}-\d{2}-\d{2}$/);
   assert.equal(BILLING_EMAIL, "direccion@adsmaverick.me");
+  assert.equal(LEGAL_VERSIONS.privacy, "2026-08-30");
+  assert.equal(LEGAL_VERSIONS.treatment, "2026-08-30");
+  const privacy = readFileSync(resolve("app/privacidad/page.tsx"), "utf8");
+  assert.match(privacy, /Laboratorio creativo y análisis local/);
+  assert.match(privacy, /no carga el archivo original en AWS, Supabase, OpenRouter ni Mavi/);
   const migration = readFileSync(resolve("supabase/migrations/0014_legal_acceptances.sql"), "utf8");
   assert.match(migration, /benchmark_contribution boolean not null default false/);
   assert.match(migration, /revoked_at timestamptz/);
