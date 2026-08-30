@@ -68,8 +68,20 @@ export function MaviFloatingAssistant() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: next, consent: true }),
       });
-      const data = await response.json() as { reply?: string; error?: string; sources?: Source[]; action?: AssistantAction | null };
-      if (!response.ok) setError(data.error ?? "Mavi no pudo responder.");
+      const raw = await response.text();
+      let data: { reply?: string; error?: string; sources?: Source[]; action?: AssistantAction | null } = {};
+      try {
+        data = raw ? JSON.parse(raw) as typeof data : {};
+      } catch {
+        // Amplify puede devolver una pagina HTML cuando su funcion vence. No
+        // intentamos mostrarla ni la confundimos con un fallo de red.
+      }
+      if (!response.ok) {
+        const gatewayMessage = response.status === 502 || response.status === 504
+          ? "Mavi tardo demasiado en responder. Intenta nuevamente."
+          : `Mavi no pudo responder (codigo ${response.status}).`;
+        setError(data.error ?? gatewayMessage);
+      }
       else {
         setMessages((current) => [...current, { role: "assistant", content: data.reply ?? "No pude preparar la respuesta.", sources: data.sources ?? [] }]);
         if (data.action?.kind === "prepare_campaign") {

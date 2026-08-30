@@ -319,12 +319,20 @@ test("el análisis conserva KPI por medio y separa Idea WOW del presupuesto", as
 test("Laboratorio y el centro de procesos Mavi permanecen visibles en la navegación", () => {
   const header = readFileSync(resolve("components/AppHeader.tsx"), "utf8");
   const assistant = readFileSync(resolve("components/MaviFloatingAssistant.tsx"), "utf8");
+  const route = readFileSync(resolve("app/api/asistente/route.ts"), "utf8");
+  const llm = readFileSync(resolve("lib/assistant/llm.ts"), "utf8");
   assert.match(header, /label: "Laboratorio creativo"/);
   assert.match(header, /label: "Centro Mavi"/);
   assert.match(assistant, /Todos tus procesos aquí/);
   assert.match(assistant, /Crear plan guiado/);
   assert.match(assistant, /Revisar creatividad/);
   assert.match(assistant, /Preparar pauta/);
+  assert.match(assistant, /response\.text\(\)/);
+  assert.match(route, /Promise\.all/);
+  assert.match(route, /CONTEXT_TIMEOUT_MS = 5_000/);
+  assert.match(route, /TRENDS_TIMEOUT_MS = 6_000/);
+  assert.match(llm, /LLM_REQUEST_TIMEOUT_MS/);
+  assert.match(llm, /PROVIDER_TIMEOUT/);
 });
 
 test("el consentimiento y checkout conservan versiones legales auditables", () => {

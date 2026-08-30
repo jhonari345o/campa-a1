@@ -127,23 +127,35 @@ async function openaiChat(
 ) {
   const fallbackModels = (provider.fallbackModels ?? [])
     .filter((model) => model !== provider.model);
-  const res = await fetch(`${provider.baseUrl.replace(/\/$/, "")}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(provider.apiKey ? { Authorization: `Bearer ${provider.apiKey}` } : {}),
-      ...provider.headers,
-    },
-    body: JSON.stringify({
-      model: provider.model,
-      ...(fallbackModels.length ? { models: [provider.model, ...fallbackModels] } : {}),
-      messages,
-      max_tokens: opts?.maxTokens ?? 1024,
-      temperature: opts?.temperature ?? 0.4,
-      stream: false,
-    }),
-    signal: AbortSignal.timeout(60_000),
-  });
+  const configuredTimeout = Number(process.env.LLM_REQUEST_TIMEOUT_MS ?? "17000");
+  const requestTimeoutMs = Number.isFinite(configuredTimeout)
+    ? Math.min(22_000, Math.max(5_000, configuredTimeout))
+    : 17_000;
+  let res: Response;
+  try {
+    res = await fetch(`${provider.baseUrl.replace(/\/$/, "")}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(provider.apiKey ? { Authorization: `Bearer ${provider.apiKey}` } : {}),
+        ...provider.headers,
+      },
+      body: JSON.stringify({
+        model: provider.model,
+        ...(fallbackModels.length ? { models: [provider.model, ...fallbackModels] } : {}),
+        messages,
+        max_tokens: opts?.maxTokens ?? 1024,
+        temperature: opts?.temperature ?? 0.4,
+        stream: false,
+      }),
+      signal: AbortSignal.timeout(requestTimeoutMs),
+    });
+  } catch (error) {
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+      throw new Error("PROVIDER_TIMEOUT");
+    }
+    throw error;
+  }
   if (!res.ok) {
     // El cuerpo del proveedor puede contener detalles de cuenta. Registramos
     // únicamente el estado HTTP para diagnosticar sin filtrar credenciales.

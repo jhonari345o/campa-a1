@@ -8,6 +8,9 @@ import { detectAssistantAction } from "@/lib/assistant/actions";
 
 export const runtime = "nodejs";
 
+const CONTEXT_TIMEOUT_MS = 5_000;
+const TRENDS_TIMEOUT_MS = 6_000;
+
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
 const SYSTEM = `Eres Mavi, la iguana guayaca de Ad Mavericks One, una central de medios de Ecuador.
@@ -101,12 +104,26 @@ export async function POST(request: Request) {
 
   // 3. Contexto de datos + llamada al modelo propio.
   try {
+    const startedAt = Date.now();
     const lastUserMessage = history[history.length - 1].content;
     const action = detectAssistantAction(lastUserMessage);
-    const context = await buildMarketContext(lastUserMessage);
-    const live = isAiWebTrendsEnabled() && shouldUseLiveTrends(lastUserMessage)
-      ? await buildLiveTrendContext(lastUserMessage)
-      : { context: "", sources: [] };
+    // El contexto interno y las fuentes actuales son independientes. Se
+    // resuelven en paralelo y con un limite propio para no consumir los 28 s
+    // que Amplify permite a la funcion antes de llamar al modelo.
+    const [context, live] = await Promise.all([
+      resolveWithin(
+        buildMarketContext(lastUserMessage),
+        CONTEXT_TIMEOUT_MS,
+        "La base interna no estuvo disponible dentro del tiempo de esta consulta.",
+      ),
+      isAiWebTrendsEnabled() && shouldUseLiveTrends(lastUserMessage)
+        ? resolveWithin(
+            buildLiveTrendContext(lastUserMessage),
+            TRENDS_TIMEOUT_MS,
+            { context: "No fue posible obtener fuentes actuales dentro del tiempo de esta consulta.", sources: [] },
+          )
+        : Promise.resolve({ context: "", sources: [] }),
+    ]);
     const today = new Intl.DateTimeFormat("es-EC", {
       dateStyle: "full",
       timeZone: "America/Guayaquil",
@@ -116,7 +133,14 @@ export async function POST(request: Request) {
       ...history.map((m) => ({ role: m.role, content: m.content }) as LlmMessage),
     ];
 
-    const reply = await chatCompletion(messages, { maxTokens: 1024 });
+    const reply = await chatCompletion(messages, { maxTokens: 768 });
+    console.info(JSON.stringify({
+      event: "assistant.success",
+      request_id: requestId,
+      duration_ms: Date.now() - startedAt,
+      live_sources: live.sources.length,
+      action: action?.kind ?? null,
+    }));
     return NextResponse.json(
       { reply: reply || "No pude generar una respuesta. Intenta de nuevo.", sources: live.sources, action },
       { headers },
@@ -131,6 +155,7 @@ export async function POST(request: Request) {
     const providerStatus = err instanceof Error && /^PROVIDER_HTTP_\d{3}$/.test(err.message)
       ? err.message.replace("PROVIDER_HTTP_", "")
       : null;
+    const providerTimedOut = err instanceof Error && err.message === "PROVIDER_TIMEOUT";
     console.error(JSON.stringify({
       event: "assistant.error",
       request_id: requestId,
@@ -138,10 +163,43 @@ export async function POST(request: Request) {
       provider_status: providerStatus,
     }));
     return NextResponse.json(
-      { error: "Mavi no pudo responder. Intenta de nuevo mas tarde.", requestId },
-      { status: 500, headers },
+      {
+        error: providerTimedOut
+          ? "Mavi tardo demasiado en responder. Intenta nuevamente."
+          : providerStatus === "429"
+            ? "El proveedor gratuito esta ocupado. Intenta nuevamente en unos minutos."
+            : "Mavi no pudo responder. Intenta de nuevo mas tarde.",
+        requestId,
+      },
+      { status: providerTimedOut ? 504 : providerStatus === "429" ? 503 : 500, headers },
     );
   }
+}
+
+function resolveWithin<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      resolve(fallback);
+    }, timeoutMs);
+
+    promise.then(
+      (value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(fallback);
+      },
+    );
+  });
 }
 
 function isAllowedOrigin(origin: string, requestUrl: string): boolean {
