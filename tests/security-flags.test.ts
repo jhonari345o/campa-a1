@@ -396,9 +396,15 @@ test("la consola de credenciales es local, enmascara valores y conserva bloqueos
   assert.match(server, /AMPLIFY_SAFE_VALUES/);
   assert.match(server, /API Key de inferencia/);
   assert.match(server, /StartJobCommand/);
+  assert.match(server, /\/api\/meta\/discover/);
+  assert.match(server, /funding_source_details/);
+  assert.match(server, /META_CREDIT_LINE_CONFIRMED_AT/);
   assert.doesNotMatch(server, /COMMERCIAL_PAYMENTS_ENABLED:\s*"true"/);
   assert.doesNotMatch(server, /META_REAL_SPEND_ENABLED:\s*"true"/);
   assert.match(page, /data-credential-group="openrouter"/);
   assert.match(page, /name="DLOCALGO_SECRET_KEY" type="password"/);
   assert.match(page, /name="META_ACCESS_TOKEN" type="password"/);
+  assert.match(page, /Meta Ads y línea de crédito/);
+  assert.match(page, /name="META_CREDIT_LINE_CONFIRMED"/);
+  assert.match(page, /Descubrir mis cuentas y páginas/);
 });

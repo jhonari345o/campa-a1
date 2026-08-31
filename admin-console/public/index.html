@@ -134,14 +134,57 @@
           <button class="button primary full" type="submit">Guardar y desplegar <span>→</span></button>
         </form>
 
-        <form class="panel credential-form" data-credential-group="meta">
-          <header><span class="eyebrow">Pauta</span><h2>Meta Ads</h2><p>La línea de crédito pertenece a la cuenta publicitaria elegida, no al token. Cambia los cuatro datos para migrar al cliente.</p></header>
-          <label>Token de sistema nuevo<input name="META_ACCESS_TOKEN" type="password" autocomplete="off" placeholder="Token de Marketing API"></label>
-          <label>Cuenta publicitaria<input name="META_AD_ACCOUNT_ID" inputmode="numeric" autocomplete="off" placeholder="act_1234567890"></label>
-          <label>Página de Facebook<input name="META_PAGE_ID" inputmode="numeric" autocomplete="off" placeholder="ID numérico"></label>
-          <label>Cuenta profesional de Instagram<input name="META_INSTAGRAM_USER_ID" inputmode="numeric" autocomplete="off" placeholder="ID numérico"></label>
-          <input name="META_GRAPH_API_VERSION" type="hidden" value="v25.0">
-          <button class="button primary full" type="submit">Validar, guardar y desplegar <span>→</span></button>
+        <form class="panel credential-form meta-connect-form" data-credential-group="meta">
+          <header><span class="eyebrow">Pauta · conexión guiada</span><h2>Meta Ads y línea de crédito</h2><p>Conecta el token, descubre los activos autorizados y elige la cuenta publicitaria que ya contiene la facturación o línea de crédito correcta.</p></header>
+
+          <ol class="meta-steps" aria-label="Pasos para conectar Meta">
+            <li class="is-active"><b>1</b><span>Autorizar</span></li>
+            <li><b>2</b><span>Elegir activos</span></li>
+            <li><b>3</b><span>Confirmar crédito</span></li>
+            <li><b>4</b><span>Desplegar</span></li>
+          </ol>
+
+          <div class="meta-explainer">
+            <strong>La línea de crédito no se transfiere por API.</strong>
+            <p>Meta factura a la cuenta publicitaria seleccionada. Primero configura su método de pago o línea de crédito en Business Manager y luego selecciónala aquí.</p>
+            <a href="https://business.facebook.com/settings/ad-accounts" target="_blank" rel="noreferrer">Abrir cuentas publicitarias en Meta ↗</a>
+          </div>
+
+          <label>Token de sistema o larga duración
+            <input id="meta-access-token" name="META_ACCESS_TOKEN" type="password" autocomplete="off" placeholder="Token con permisos de Marketing API" required>
+          </label>
+          <input id="meta-api-version" name="META_GRAPH_API_VERSION" type="hidden" value="v25.0">
+          <button id="meta-discover-button" class="button secondary full meta-discover" type="button">Descubrir mis cuentas y páginas <span>⌕</span></button>
+
+          <div id="meta-discovery" class="meta-discovery hidden" aria-live="polite">
+            <div class="meta-discovery-head"><div><span class="eyebrow">Activos encontrados</span><strong id="meta-actor-name">Cuenta Meta</strong></div><span id="meta-permission-summary" class="credential-badge missing">Sin validar</span></div>
+            <div id="meta-permissions" class="meta-permissions"></div>
+            <div id="meta-discovery-error" class="alert error hidden" role="alert"></div>
+          </div>
+
+          <label>Cuenta publicitaria que recibirá el gasto
+            <input id="meta-ad-account" name="META_AD_ACCOUNT_ID" type="text" inputmode="numeric" autocomplete="off" list="meta-ad-accounts" placeholder="Selecciona o escribe act_1234567890" required>
+            <datalist id="meta-ad-accounts"></datalist>
+          </label>
+          <div id="meta-account-cards" class="meta-asset-cards"></div>
+
+          <label>Página de Facebook
+            <input id="meta-page-id" name="META_PAGE_ID" type="text" inputmode="numeric" autocomplete="off" list="meta-pages" placeholder="Selecciona o escribe el ID" required>
+            <datalist id="meta-pages"></datalist>
+          </label>
+          <div id="meta-page-cards" class="meta-asset-cards"></div>
+
+          <label>Cuenta profesional de Instagram
+            <input id="meta-instagram-id" name="META_INSTAGRAM_USER_ID" type="text" inputmode="numeric" autocomplete="off" placeholder="Se completa desde la página elegida" required>
+          </label>
+
+          <label class="check-row meta-credit-confirmation" for="meta-credit-confirmed">
+            <input id="meta-credit-confirmed" name="META_CREDIT_LINE_CONFIRMED" type="checkbox" value="true" required>
+            <span><strong>Confirmé la facturación de esta cuenta</strong><small>Revisé en Meta que la cuenta publicitaria elegida utiliza la línea de crédito o método de pago de la empresa correcta.</small></span>
+          </label>
+
+          <div class="meta-safety-note"><i></i><p>La validación es de solo lectura. Guardar la conexión no activa campañas, no mueve la línea de crédito y no habilita gasto real.</p></div>
+          <button class="button primary full" type="submit">Validar activos, guardar y desplegar <span>→</span></button>
         </form>
 
         <form class="panel credential-form" data-credential-group="maps">

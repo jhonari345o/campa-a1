@@ -1,4 +1,4 @@
-const state = { csrf: "", companies: [], users: [], filter: "", credentials: null, activeView: "users" };
+const state = { csrf: "", companies: [], users: [], filter: "", credentials: null, metaAssets: null, activeView: "users" };
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -140,6 +140,110 @@ function renderCredentialStatus() {
   setGuard("#guard-spend", payload.controls?.metaSpend, "Gasto Meta");
 }
 
+function metaPermissionLabel(permission) {
+  return ({
+    ads_management: "Administrar anuncios",
+    ads_read: "Leer anuncios",
+    business_management: "Business Manager",
+    pages_read_engagement: "Leer página",
+    pages_show_list: "Listar páginas",
+  })[permission] || permission;
+}
+
+function renderMetaAssets(payload) {
+  state.metaAssets = payload;
+  $("#meta-discovery").classList.remove("hidden");
+  $("#meta-actor-name").textContent = payload.actor?.name || "Cuenta Meta autorizada";
+  const granted = (payload.permissions || []).filter((item) => item.granted).length;
+  const total = (payload.permissions || []).length;
+  const permissionSummary = $("#meta-permission-summary");
+  permissionSummary.textContent = `${granted}/${total} permisos`;
+  permissionSummary.className = `credential-badge ${granted === total ? "ready" : "missing"}`;
+
+  const permissionContainer = $("#meta-permissions");
+  permissionContainer.replaceChildren();
+  for (const item of payload.permissions || []) {
+    const chip = document.createElement("span");
+    chip.className = item.granted ? "is-ready" : "is-missing";
+    chip.textContent = `${item.granted ? "✓" : "!"} ${metaPermissionLabel(item.permission)}`;
+    permissionContainer.append(chip);
+  }
+
+  const accountList = $("#meta-ad-accounts");
+  const accountCards = $("#meta-account-cards");
+  accountList.replaceChildren();
+  accountCards.replaceChildren();
+  for (const account of payload.adAccounts || []) {
+    const option = document.createElement("option");
+    option.value = account.id;
+    option.label = `${account.name}${account.businessName ? ` · ${account.businessName}` : ""}`;
+    accountList.append(option);
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "meta-asset-card";
+    button.dataset.metaAccountId = account.id;
+    const heading = document.createElement("strong");
+    heading.textContent = account.name;
+    const details = document.createElement("small");
+    details.textContent = `${account.id} · ${account.currency || "moneda pendiente"}${account.businessName ? ` · ${account.businessName}` : ""}`;
+    const status = document.createElement("span");
+    status.className = account.active ? "ready" : "blocked";
+    status.textContent = account.active ? (account.fundingDetected ? "Activa · facturación detectada" : "Activa · confirmar facturación") : `No activa · estado ${account.statusCode}`;
+    button.append(heading, details, status);
+    button.addEventListener("click", () => selectMetaAccount(account.id));
+    accountCards.append(button);
+  }
+
+  const pageList = $("#meta-pages");
+  const pageCards = $("#meta-page-cards");
+  pageList.replaceChildren();
+  pageCards.replaceChildren();
+  for (const page of payload.pages || []) {
+    const option = document.createElement("option");
+    option.value = page.id;
+    option.label = `${page.name}${page.instagram?.username ? ` · @${page.instagram.username}` : ""}`;
+    pageList.append(option);
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "meta-asset-card";
+    button.dataset.metaPageId = page.id;
+    const heading = document.createElement("strong");
+    heading.textContent = page.name;
+    const details = document.createElement("small");
+    details.textContent = page.instagram?.username ? `Instagram @${page.instagram.username}` : "Sin Instagram profesional vinculado";
+    const status = document.createElement("span");
+    status.className = page.instagram ? "ready" : "blocked";
+    status.textContent = page.instagram ? "Facebook + Instagram" : "Solo Facebook";
+    button.append(heading, details, status);
+    button.addEventListener("click", () => selectMetaPage(page.id));
+    pageCards.append(button);
+  }
+
+  if (!(payload.adAccounts || []).length) showError("#meta-discovery-error", "Meta no devolvió cuentas publicitarias asignadas a este token. Asígnalas al usuario de sistema en Business Manager o escribe el ID manualmente.");
+  else if (!(payload.pages || []).length) showError("#meta-discovery-error", "Meta no devolvió páginas asignadas. Puedes escribir los IDs manualmente después de asignar los activos al token.");
+  else showError("#meta-discovery-error", "");
+
+  const firstActive = (payload.adAccounts || []).find((account) => account.active);
+  if (firstActive) selectMetaAccount(firstActive.id);
+  const firstLinkedPage = (payload.pages || []).find((page) => page.instagram);
+  if (firstLinkedPage) selectMetaPage(firstLinkedPage.id);
+}
+
+function selectMetaAccount(accountId) {
+  $("#meta-ad-account").value = accountId;
+  $("#meta-credit-confirmed").checked = false;
+  for (const card of document.querySelectorAll("[data-meta-account-id]")) card.classList.toggle("is-selected", card.dataset.metaAccountId === accountId);
+}
+
+function selectMetaPage(pageId) {
+  $("#meta-page-id").value = pageId;
+  const page = state.metaAssets?.pages?.find((item) => item.id === pageId);
+  $("#meta-instagram-id").value = page?.instagram?.id || "";
+  for (const card of document.querySelectorAll("[data-meta-page-id]")) card.classList.toggle("is-selected", card.dataset.metaPageId === pageId);
+}
+
 function setGuard(selector, enabled, label) {
   const element = $(selector);
   element.textContent = `${label} ${enabled ? "habilitados" : "bloqueados"}`;
@@ -218,6 +322,31 @@ $("#refresh-credentials").addEventListener("click", async () => {
   await loadCredentials();
   if (state.credentials) showToast("Estado de integraciones actualizado.");
 });
+$("#meta-discover-button").addEventListener("click", async () => {
+  showError("#credentials-error", "");
+  showError("#meta-discovery-error", "");
+  const button = $("#meta-discover-button");
+  const token = $("#meta-access-token").value.trim();
+  if (!token) return showError("#credentials-error", "Pega primero el token de sistema o de larga duración de Meta.");
+  const original = button.innerHTML;
+  button.disabled = true;
+  button.textContent = "Consultando Meta de forma segura…";
+  try {
+    const payload = await api("/api/meta/discover", {
+      method: "POST",
+      body: JSON.stringify({ accessToken: token, apiVersion: $("#meta-api-version").value }),
+    });
+    renderMetaAssets(payload);
+    showToast(`Meta respondió: ${payload.adAccounts.length} cuenta(s) y ${payload.pages.length} página(s) disponibles.`);
+  } catch (error) {
+    showError("#credentials-error", error.message);
+  } finally {
+    button.disabled = false;
+    button.innerHTML = original;
+  }
+});
+$("#meta-ad-account").addEventListener("input", (event) => selectMetaAccount(event.target.value));
+$("#meta-page-id").addEventListener("input", (event) => selectMetaPage(event.target.value));
 for (const form of document.querySelectorAll("[data-credential-group]")) {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -227,12 +356,22 @@ for (const form of document.querySelectorAll("[data-credential-group]")) {
     button.disabled = true;
     button.textContent = "Validando y desplegando…";
     try {
+      if (form.dataset.credentialGroup === "meta" && !$("#meta-credit-confirmed").checked) {
+        throw new Error("Confirma que la cuenta publicitaria seleccionada utiliza la línea de crédito o método de pago correcto.");
+      }
       const values = Object.fromEntries(Array.from(new FormData(form).entries()).filter(([, value]) => String(value).trim()));
       const result = await api("/api/credentials", {
         method: "POST",
         body: JSON.stringify({ group: form.dataset.credentialGroup, values, redeploy: true }),
       });
       for (const input of form.querySelectorAll('input[type="password"],input:not([type])')) input.value = "";
+      if (form.dataset.credentialGroup === "meta") {
+        $("#meta-credit-confirmed").checked = false;
+        state.metaAssets = null;
+        $("#meta-discovery").classList.add("hidden");
+        $("#meta-account-cards").replaceChildren();
+        $("#meta-page-cards").replaceChildren();
+      }
       showToast(`${result.validation} Despliegue ${result.deployment?.jobId ? `#${result.deployment.jobId}` : "iniciado"}.`);
       await loadCredentials();
     } catch (error) {

@@ -27,6 +27,8 @@ const AMPLIFY_SAFE_VALUES = new Set([
   "DLOCALGO_ENV",
   "COMMERCIAL_PAYMENTS_ENABLED",
   "META_GRAPH_API_VERSION",
+  "META_CREDIT_LINE_CONFIRMED",
+  "META_CREDIT_LINE_CONFIRMED_AT",
   "META_PAUSED_DRAFTS_ENABLED",
   "META_REAL_SPEND_ENABLED",
 ]);
@@ -50,8 +52,16 @@ const CREDENTIAL_GROUPS = {
   },
   meta: {
     label: "Pauta · Meta Ads",
-    keys: ["META_ACCESS_TOKEN", "META_AD_ACCOUNT_ID", "META_PAGE_ID", "META_INSTAGRAM_USER_ID", "META_GRAPH_API_VERSION"],
-    required: ["META_ACCESS_TOKEN", "META_AD_ACCOUNT_ID", "META_PAGE_ID", "META_INSTAGRAM_USER_ID"],
+    keys: [
+      "META_ACCESS_TOKEN",
+      "META_AD_ACCOUNT_ID",
+      "META_PAGE_ID",
+      "META_INSTAGRAM_USER_ID",
+      "META_GRAPH_API_VERSION",
+      "META_CREDIT_LINE_CONFIRMED",
+      "META_CREDIT_LINE_CONFIRMED_AT",
+    ],
+    required: ["META_ACCESS_TOKEN", "META_AD_ACCOUNT_ID", "META_PAGE_ID", "META_INSTAGRAM_USER_ID", "META_CREDIT_LINE_CONFIRMED"],
     defaults: { META_GRAPH_API_VERSION: "v25.0" },
   },
   maps: {
@@ -347,8 +357,136 @@ function normalizeCredentialUpdates(groupId, rawValues) {
     for (const key of ["META_PAGE_ID", "META_INSTAGRAM_USER_ID"]) {
       if (updates[key] && !/^\d+$/.test(updates[key])) throw clientError(`${key} debe contener únicamente el identificador numérico de Meta.`);
     }
+    if (updates.META_CREDIT_LINE_CONFIRMED && updates.META_CREDIT_LINE_CONFIRMED !== "true") {
+      throw clientError("Confirma que la cuenta publicitaria seleccionada contiene la línea de crédito o método de pago correcto.");
+    }
+    if (updates.META_CREDIT_LINE_CONFIRMED === "true") {
+      updates.META_CREDIT_LINE_CONFIRMED_AT = new Date().toISOString();
+    }
   }
   return { group, updates };
+}
+
+const REQUIRED_META_PERMISSIONS = [
+  "ads_management",
+  "ads_read",
+  "business_management",
+  "pages_read_engagement",
+  "pages_show_list",
+];
+
+function normalizeMetaToken(value) {
+  const token = String(value || "").trim();
+  if (!token || token.length > 4096 || /[\r\n\0]/.test(token)) {
+    throw clientError("Pega un token de sistema o token de larga duración válido de Meta.");
+  }
+  return token;
+}
+
+function normalizeMetaVersion(value) {
+  const version = String(value || "v25.0").trim();
+  if (!/^v\d{1,2}\.\d$/.test(version)) throw clientError("La versión de Graph API no es válida.");
+  return version;
+}
+
+async function metaGraphGet(version, token, pathName, params = {}) {
+  const path = String(pathName || "").replace(/^\/+/, "");
+  const url = new URL(`https://graph.facebook.com/${version}/${path}`);
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, String(value));
+  const response = await fetch(url, {
+    headers: { authorization: `Bearer ${token}` },
+    cache: "no-store",
+    signal: AbortSignal.timeout(20_000),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result?.error) {
+    const providerCode = [result?.error?.code, result?.error?.error_subcode].filter(Boolean).join("/");
+    throw clientError(`Meta rechazó la consulta${providerCode ? ` (${providerCode})` : ""}. Revisa vigencia, permisos y activos asignados.`);
+  }
+  return result;
+}
+
+async function discoverMetaAssets(input) {
+  const token = normalizeMetaToken(input?.accessToken);
+  const version = normalizeMetaVersion(input?.apiVersion);
+  const [actor, permissionsResult, adAccountsResult, pagesResult] = await Promise.all([
+    metaGraphGet(version, token, "me", { fields: "id,name" }),
+    metaGraphGet(version, token, "me/permissions", { fields: "permission,status", limit: "200" }),
+    metaGraphGet(version, token, "me/adaccounts", {
+      fields: "id,name,account_status,currency,business{id,name},funding_source_details",
+      limit: "100",
+    }).catch(() => metaGraphGet(version, token, "me/adaccounts", {
+      fields: "id,name,account_status,currency,business{id,name}",
+      limit: "100",
+    })),
+    metaGraphGet(version, token, "me/accounts", {
+      fields: "id,name,instagram_business_account{id,username}",
+      limit: "100",
+    }),
+  ]);
+
+  const granted = new Set((permissionsResult.data || [])
+    .filter((item) => item.status === "granted")
+    .map((item) => item.permission));
+  const permissions = REQUIRED_META_PERMISSIONS.map((permission) => ({
+    permission,
+    granted: granted.has(permission),
+  }));
+  const adAccounts = (adAccountsResult.data || []).map((account) => ({
+    id: String(account.id || ""),
+    name: String(account.name || "Cuenta publicitaria"),
+    currency: String(account.currency || ""),
+    active: Number(account.account_status) === 1,
+    statusCode: Number(account.account_status || 0),
+    businessName: String(account.business?.name || ""),
+    fundingDetected: Boolean(account.funding_source_details && Object.keys(account.funding_source_details).length),
+  })).filter((account) => /^act_\d+$/.test(account.id));
+  const pages = (pagesResult.data || []).map((page) => ({
+    id: String(page.id || ""),
+    name: String(page.name || "Página de Facebook"),
+    instagram: page.instagram_business_account?.id
+      ? { id: String(page.instagram_business_account.id), username: String(page.instagram_business_account.username || "") }
+      : null,
+  })).filter((page) => /^\d+$/.test(page.id));
+
+  return {
+    actor: { id: String(actor.id || ""), name: String(actor.name || "Cuenta Meta") },
+    apiVersion: version,
+    permissions,
+    adAccounts,
+    pages,
+    notice: "La API permite seleccionar la cuenta publicitaria. La línea de crédito y el método de pago se administran y confirman dentro de Meta Business Manager.",
+  };
+}
+
+async function validateSelectedMetaAssets(updates) {
+  const required = ["META_ACCESS_TOKEN", "META_AD_ACCOUNT_ID", "META_PAGE_ID", "META_INSTAGRAM_USER_ID", "META_CREDIT_LINE_CONFIRMED"];
+  const missing = required.filter((key) => !String(updates[key] || "").trim());
+  if (missing.length) throw clientError("Completa token, cuenta publicitaria, página, Instagram y confirmación de línea de crédito.");
+  const token = normalizeMetaToken(updates.META_ACCESS_TOKEN);
+  const version = normalizeMetaVersion(updates.META_GRAPH_API_VERSION);
+  const accountId = `act_${String(updates.META_AD_ACCOUNT_ID).replace(/^act_/, "")}`;
+  const [account, page, instagram, permissionsResult] = await Promise.all([
+    metaGraphGet(version, token, accountId, { fields: "id,name,account_status,currency,business{id,name}" }),
+    metaGraphGet(version, token, updates.META_PAGE_ID, { fields: "id,name,instagram_business_account{id,username}" }),
+    metaGraphGet(version, token, updates.META_INSTAGRAM_USER_ID, { fields: "id,username" }),
+    metaGraphGet(version, token, "me/permissions", { fields: "permission,status", limit: "200" }),
+  ]);
+  if (Number(account.account_status) !== 1) {
+    throw clientError(`La cuenta publicitaria ${account.name || accountId} no está activa en Meta.`);
+  }
+  const linkedInstagramId = String(page.instagram_business_account?.id || "");
+  if (linkedInstagramId && linkedInstagramId !== String(instagram.id)) {
+    throw clientError("La cuenta de Instagram elegida no coincide con la cuenta profesional vinculada a la página.");
+  }
+  const granted = new Set((permissionsResult.data || [])
+    .filter((item) => item.status === "granted")
+    .map((item) => item.permission));
+  const missingPermissions = [...REQUIRED_META_PERMISSIONS, "instagram_basic"].filter((permission) => !granted.has(permission));
+  if (missingPermissions.length) {
+    throw clientError(`Meta responde, pero faltan permisos: ${missingPermissions.join(", ")}.`);
+  }
+  return `Conexión validada: ${account.name || accountId} (${account.currency || "moneda por confirmar"}), página ${page.name || page.id} e Instagram @${instagram.username || instagram.id}.`;
 }
 
 async function validateProviderCredential(groupId, updates) {
@@ -362,15 +500,7 @@ async function validateProviderCredential(groupId, updates) {
     }
     return "Clave de inferencia reconocida por OpenRouter.";
   }
-  if (groupId === "meta" && updates.META_ACCESS_TOKEN) {
-    const version = updates.META_GRAPH_API_VERSION || "v25.0";
-    const response = await fetch(`https://graph.facebook.com/${version}/me?fields=id,name`, {
-      headers: { authorization: `Bearer ${updates.META_ACCESS_TOKEN}` },
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (!response.ok) throw clientError("Meta rechazó el token. Verifica que sea un token de sistema vigente y con permisos de Marketing API.");
-    return "Token reconocido por Meta en una consulta de solo lectura.";
-  }
+  if (groupId === "meta") return validateSelectedMetaAssets(updates);
   if (groupId === "dlocal") return "Las credenciales ingresadas se guardarán; la validación transaccional se realiza sin cobrar en el checklist de lanzamiento.";
   return "Formato aceptado.";
 }
@@ -488,6 +618,10 @@ const server = http.createServer(async (request, response) => {
     if (url.pathname === "/api/credentials" && request.method === "POST") {
       if (!requireSession(request, response, true)) return;
       return sendJson(response, 200, await updateAmplifyCredentials(await readJson(request)));
+    }
+    if (url.pathname === "/api/meta/discover" && request.method === "POST") {
+      if (!requireSession(request, response, true)) return;
+      return sendJson(response, 200, await discoverMetaAssets(await readJson(request)));
     }
     return sendJson(response, 404, { error: "Ruta no encontrada." });
   } catch (error) {

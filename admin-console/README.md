@@ -48,6 +48,21 @@ Maps. Nunca muestra el valor existente: solo indica si está configurado. Cada
 cambio conserva las demás variables de Amplify, registra localmente qué nombres
 se cambiaron (sin valores) y lanza un despliegue de la rama de producción.
 
+### Asistente de conexión Meta
+
+El bloque **Meta Ads y línea de crédito** trabaja en cuatro pasos:
+
+1. recibe temporalmente un token de sistema o de larga duración;
+2. consulta Meta en modo de solo lectura para descubrir cuentas publicitarias,
+   páginas, Instagram profesional y permisos concedidos;
+3. permite seleccionar los activos y exige confirmar que la cuenta publicitaria
+   tiene la línea de crédito o método de pago de la empresa correcta;
+4. vuelve a validar los activos, guarda las variables en Amplify y despliega.
+
+La línea de crédito no se mueve ni se crea mediante la API. Meta factura a la
+cuenta publicitaria seleccionada según la configuración de Business Manager. El
+asistente no devuelve el token, datos de facturación ni secretos existentes.
+
 Guardar una credencial no habilita `COMMERCIAL_PAYMENTS_ENABLED`,
 `META_PAUSED_DRAFTS_ENABLED` ni `META_REAL_SPEND_ENABLED`. Esos interruptores se
 mantienen separados para impedir cobros o gasto accidental.
