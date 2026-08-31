@@ -1,4 +1,4 @@
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import {
   AmplifyClient,
   GetAppCommand,
@@ -154,10 +154,15 @@ function getSession(request) {
   return { token, ...session };
 }
 
-function hashesMatch(left, right) {
-  const leftHash = createHash("sha256").update(String(left)).digest();
-  const rightHash = createHash("sha256").update(String(right)).digest();
-  return timingSafeEqual(leftHash, rightHash);
+function secretsMatch(left, right) {
+  const leftBytes = Buffer.from(String(left), "utf8");
+  const rightBytes = Buffer.from(String(right), "utf8");
+  const paddedLength = Math.max(leftBytes.length, rightBytes.length, 1);
+  const leftPadded = Buffer.alloc(paddedLength);
+  const rightPadded = Buffer.alloc(paddedLength);
+  leftBytes.copy(leftPadded);
+  rightBytes.copy(rightPadded);
+  return timingSafeEqual(leftPadded, rightPadded) && leftBytes.length === rightBytes.length;
 }
 
 async function readJson(request) {
@@ -587,7 +592,7 @@ const server = http.createServer(async (request, response) => {
     }
     if (url.pathname === "/api/session" && request.method === "POST") {
       const input = await readJson(request);
-      if (!hashesMatch(input.password || "", config.adminPassword)) return sendJson(response, 401, { error: "Frase de acceso incorrecta." });
+      if (!secretsMatch(input.password || "", config.adminPassword)) return sendJson(response, 401, { error: "Frase de acceso incorrecta." });
       const token = randomBytes(32).toString("base64url");
       const csrf = randomBytes(24).toString("base64url");
       sessions.set(token, { csrf, expiresAt: Date.now() + SESSION_TTL });
