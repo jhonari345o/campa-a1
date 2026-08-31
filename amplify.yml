@@ -1,0 +1,24 @@
+# AWS Amplify Hosting — build spec para Next.js 15 (SSR).
+# Conectar el repo en la consola de Amplify y definir las variables de entorno
+# (ver docs/DESPLIEGUE_AWS.md). Amplify detecta Next.js y sirve SSR + middleware.
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        # Next.js carga estas variables en el runtime SSR. No usar next.config
+        # `env` para secretos: esa opcion los incorpora al bundle JavaScript.
+        - rm -f .env.production
+        - env | grep -E '^(NEXT_PUBLIC_|SUPABASE_SERVICE_ROLE_KEY|LLM_BASE_URL|LLM_MODEL|LLM_API_KEY|AI_PROVIDER|OPENROUTER_API_KEY|OPENROUTER_MODEL|DEEPSEEK_API_KEY|DEEPSEEK_MODEL|BEDROCK_REGION|BEDROCK_MODEL_ID|AI_ASSISTANT_ENABLED|AI_WEB_TRENDS_ENABLED|COMMERCIAL_PAYMENTS_ENABLED|AGENT_WORKER_TOKEN|AGENT_TRIGGER_URL|AGENT_AUTOMATION_ENABLED|DLOCALGO_|META_|GOOGLE_ADS_)=' >> .env.production
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - "**/*"
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*

@@ -1,0 +1,342 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { MaviAvatar } from "@/components/Mavi";
+import { crearPauta } from "./actions";
+import { EcuadorTargetMap, type GeoTarget } from "./EcuadorTargetMap";
+import { computeCharge, money, SERVICE_FEE_LABEL, TAX_LABEL } from "@/lib/pricing";
+import { creativePreflight, type CreativePreflight } from "@/lib/creative-preflight";
+import { directCampaign } from "@/lib/campaign-director";
+import { BILLING_EMAIL, LEGAL_VERSIONS } from "@/lib/legal";
+
+type Bubble = { from: "mavi" | "user"; text: string };
+
+const REDES = [
+  { id: "instagram", label: "Instagram", emoji: "📸", enabled: true },
+  { id: "facebook", label: "Facebook", emoji: "👍", enabled: true },
+  { id: "tiktok", label: "TikTok · proximamente", emoji: "🎵", enabled: false },
+];
+
+type Step = "red" | "link" | "geo" | "monto" | "pago";
+
+export function PautarChat({
+  initialRed,
+  initialMonto,
+  initialObjetivo,
+  initialPostUrl,
+  commercialPaymentsEnabled = false,
+}: {
+  initialRed?: string;
+  initialMonto?: number;
+  initialObjetivo?: string;
+  initialPostUrl?: string;
+  commercialPaymentsEnabled?: boolean;
+} = {}) {
+  const prefilled = Boolean(initialRed);
+  const hasPost = Boolean(initialRed && initialPostUrl);
+  const [chat, setChat] = useState<Bubble[]>(
+    prefilled
+      ? [
+          {
+            from: "mavi",
+            text: hasPost
+              ? `¡Recibí la pauta para ${redLabel(initialRed!)}! 🦎 Ahora selecciona la ubicación y el radio de cobertura.`
+              : `¡Te prepare esta campana! 🦎 ${redLabel(initialRed!)}${initialMonto ? ` · ${money(initialMonto)}` : ""}${
+              initialObjetivo ? ` · ${initialObjetivo}` : ""
+            }. Solo pega el link de la publicacion que quieres pautar 👇`,
+          },
+        ]
+      : [{ from: "mavi", text: "¡Listo para pautar! 🦎 Vamos paso a paso. Primero: ¿en que plataforma quieres pautar?" }],
+  );
+  const [step, setStep] = useState<Step>(hasPost ? "geo" : prefilled ? "link" : "red");
+  const [red, setRed] = useState(initialRed ?? "");
+  const [postUrl, setPostUrl] = useState(initialPostUrl ?? "");
+  const [preflight, setPreflight] = useState<CreativePreflight | null>(() => initialPostUrl && initialRed ? creativePreflight({ postUrl: initialPostUrl, platform: initialRed }) : null);
+  const [geoTarget, setGeoTarget] = useState<GeoTarget | null>(null);
+  const [monto, setMonto] = useState(initialMonto ?? 0);
+  const [objetivo] = useState(initialObjetivo ?? "");
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [trackingReady, setTrackingReady] = useState(false);
+  const [paymentAccepted, setPaymentAccepted] = useState(false);
+  const director = useMemo(() => directCampaign({ platform: red, budgetUsd: monto, targetScope: geoTarget?.scope ?? null, radiusKm: geoTarget?.scope === "radius" ? geoTarget.radiusKm : null, objective: objetivo, trackingReady, creative: preflight }), [geoTarget, monto, objetivo, preflight, red, trackingReady]);
+
+  function push(b: Bubble) {
+    setChat((c) => [...c, b]);
+  }
+
+  function pickRed(r: { id: string; label: string; enabled: boolean }) {
+    if (!r.enabled) return;
+    setRed(r.id);
+    push({ from: "user", text: r.label });
+    push({ from: "mavi", text: "Perfecto. Pega el link de la publicacion (video o foto) que quieres pautar 👇" });
+    setStep("link");
+  }
+
+  function confirmGeoTarget() {
+    if (!geoTarget) return;
+    push({ from: "user", text: geoTarget.scope === "country" ? "Todo Ecuador" : `${geoTarget.label} · radio ${geoTarget.radiusKm} km` });
+    if (monto > 0) {
+      // Presupuesto ya venia de la campana: pasamos directo al pago.
+      const ch = computeCharge(monto);
+      push({
+        from: "mavi",
+        text: `¡Buenisimo! Para pautar ${money(monto)} pasas por caja: se suman los costos de servicio y gestion. Total a pagar: ${money(ch.total)}.`,
+      });
+      setStep("pago");
+    } else {
+      push({ from: "mavi", text: "¡Buenisimo! ¿Cuanto quieres pautar? Escribe el monto en dolares (ej. 200)." });
+      setStep("monto");
+    }
+  }
+
+  function submitText() {
+    const value = text.trim();
+    if (!value) return;
+    push({ from: "user", text: value });
+    setText("");
+
+    if (step === "link") {
+      const review = creativePreflight({ postUrl: value, platform: red, objective: objetivo });
+      setPreflight(review);
+      if (review.status === "blocked") {
+        push({ from: "mavi", text: review.checks.find((check) => check.status === "fail")?.detail ?? "El enlace no pasó la revisión preliminar." });
+        return;
+      }
+      setPostUrl(value);
+      push({
+        from: "mavi",
+        text: "¡Anotado! Busca una ciudad, usa tu ubicación o selecciona Todo Ecuador. Después ajusta el radio donde quieres mostrar el anuncio.",
+      });
+      setStep("geo");
+    } else if (step === "monto") {
+      const n = Number(value.replace(/[^0-9.]/g, ""));
+      if (!Number.isFinite(n) || n <= 0) {
+        push({ from: "mavi", text: "Necesito un monto en dolares, solo el numero (ej. 200)." });
+        return;
+      }
+      setMonto(n);
+      const ch = computeCharge(n);
+      push({
+        from: "mavi",
+        text: `Perfecto. Para pautar ${money(n)} pasas por caja: se suman los costos de servicio y gestion. Total a pagar: ${money(ch.total)}.`,
+      });
+      setStep("pago");
+    }
+  }
+
+  async function pagar() {
+    if (!geoTarget) {
+      setError("Selecciona la geolocalizacion y el radio de la pauta.");
+      return;
+    }
+    if (!paymentAccepted) {
+      setError("Acepta el desglose y la política de facturación, devoluciones y contracargos antes de continuar.");
+      return;
+    }
+    setSending(true);
+    setError(null);
+    const res = await crearPauta({
+      red,
+      postUrl,
+      geo: geoTarget.scope === "country"
+        ? "Todo Ecuador"
+        : `${geoTarget.label} · ${geoTarget.latitude.toFixed(6)}, ${geoTarget.longitude.toFixed(6)} · ${geoTarget.radiusKm} km`,
+      latitude: geoTarget.latitude,
+      longitude: geoTarget.longitude,
+      radiusKm: geoTarget.radiusKm,
+      targetScope: geoTarget.scope,
+      presupuesto: monto,
+      objetivo: objetivo || undefined,
+      commercialAcceptance: true,
+    });
+    setSending(false);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    setCheckoutUrl(res.checkoutUrl);
+    push({
+      from: "mavi",
+      text: "dLocal Go preparó el checkout seguro. Continúa allí para elegir el medio de pago disponible.",
+    });
+  }
+
+  const charge = computeCharge(monto);
+
+  return (
+    <div className="rounded-panel border border-border bg-white shadow-panel">
+      {/* Transcript */}
+      <div className="max-h-[380px] space-y-3 overflow-y-auto p-5">
+        {chat.map((b, i) => (
+          <div key={i} className={b.from === "user" ? "flex justify-end" : "flex items-start gap-2"}>
+            {b.from === "mavi" && <MaviAvatar size={30} className="mt-0.5 shrink-0" />}
+            <p
+              className={
+                b.from === "user"
+                  ? "max-w-[80%] rounded-2xl rounded-br-sm bg-forest px-4 py-2 text-sm text-white"
+                  : "max-w-[80%] rounded-2xl rounded-bl-sm bg-fog px-4 py-2 text-sm text-forest"
+              }
+            >
+              {b.text}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Zona de entrada segun el paso */}
+      <div className="border-t border-border p-4">
+        {step === "red" && (
+          <div className="flex flex-wrap gap-2">
+            {REDES.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => pickRed(r)}
+                disabled={!r.enabled}
+                className="btn btn-secondary disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {r.emoji} {r.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {(step === "link" || step === "monto") && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              submitText();
+            }}
+            className="flex gap-2"
+          >
+            <input
+              autoFocus
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              inputMode={step === "monto" ? "decimal" : "text"}
+              placeholder={step === "link" ? "https://instagram.com/p/..." : "200"}
+              className="flex-1 rounded-xl border border-border bg-white px-4 py-2.5 text-forest outline-none focus:border-signal"
+            />
+            <button type="submit" className="btn btn-primary">Enviar</button>
+          </form>
+        )}
+
+        {step === "geo" && (
+          <div>
+            {preflight && <PreflightCard review={preflight} />}
+            <EcuadorTargetMap value={geoTarget} onChange={setGeoTarget} />
+            <label className="mt-3 flex items-start gap-2 rounded-xl border border-border bg-fog p-3 text-xs text-muted"><input type="checkbox" checked={trackingReady} onChange={(event) => setTrackingReady(event.target.checked)} className="mt-0.5" /><span><strong className="block text-forest">Tracking y destino preparados</strong>Declaro que Pixel/CAPI, landing o evento están listos para revisión técnica.</span></label>
+            <button
+              type="button"
+              onClick={confirmGeoTarget}
+              disabled={!geoTarget}
+              className="btn btn-primary mt-3 disabled:opacity-50"
+            >
+              Continuar →
+            </button>
+          </div>
+        )}
+
+        {step === "pago" && (
+          <div className="rounded-xl border-2 border-signal/30 bg-signal/5 p-4">
+            {preflight && <PreflightCard review={preflight} />}
+            <DirectorCard director={director} />
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-black uppercase tracking-wide text-signal-dark">🔒 Pago seguro</p>
+              <span className="text-lg" aria-hidden>💳</span>
+            </div>
+
+            <div className="mt-3 space-y-1.5 text-sm">
+              <Row label={`Inversion en anuncios (${red || "red"})`} value={money(charge.base)} />
+              <Row label={TAX_LABEL} value={money(charge.tax)} />
+              <Row label={SERVICE_FEE_LABEL} value={money(charge.fee)} />
+              <div className="my-2 border-t border-border" />
+              <Row label="Total a pagar" value={money(charge.total)} bold />
+            </div>
+
+            <label className="mt-4 flex items-start gap-2 rounded-xl border border-border bg-white p-3 text-xs text-muted">
+              <input type="checkbox" checked={paymentAccepted} onChange={(event) => setPaymentAccepted(event.target.checked)} className="mt-0.5 accent-[#00a100]" />
+              <span><strong className="block text-forest">Acepto el desglose y las condiciones de pago</strong>Confirmo la inversión, los cargos mostrados y la <a href="/reembolsos" target="_blank" className="font-black text-forest underline">política de facturación, devoluciones y contracargos</a>. Versión {LEGAL_VERSIONS.payments}.</span>
+            </label>
+
+            {!commercialPaymentsEnabled ? (
+              <div className="mt-4 space-y-2">
+                <button type="button" disabled className="btn btn-secondary w-full cursor-not-allowed opacity-60">
+                  Cobro bloqueado hasta aprobación comercial
+                </button>
+                <a
+                  href={`mailto:${BILLING_EMAIL}?subject=Revision%20de%20solicitud%20de%20pauta`}
+                  className="btn btn-primary w-full"
+                >
+                  Solicitar revisión humana →
+                </a>
+              </div>
+            ) : !checkoutUrl ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  pagar();
+                }}
+                className="mt-4"
+              >
+                <button
+                  type="submit"
+                  disabled={sending || !paymentAccepted}
+                  className="btn btn-primary mt-1 w-full disabled:opacity-50"
+                >
+                  {sending ? "Preparando dLocal Go..." : `Continuar a dLocal Go · ${money(charge.total)}`}
+                </button>
+              </form>
+            ) : (
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => window.location.assign(checkoutUrl)}
+                  className="btn btn-primary w-full"
+                >
+                  Abrir checkout seguro de dLocal Go
+                </button>
+              </div>
+            )}
+
+            <p className="mt-2 text-center text-[11px] text-muted">
+              {commercialPaymentsEnabled
+                ? "🔒 dLocal Go procesa el pago en su página segura. Ad Mavericks no recibe los datos de la tarjeta."
+                : "No se solicitan ni almacenan datos de tarjeta durante el modo controlado."}
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <p className="mt-3 rounded-xl border border-coral/40 bg-coral/10 px-4 py-2 text-sm font-bold text-[#a13b31]">
+            {error}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function redLabel(id: string) {
+  return REDES.find((r) => r.id === id)?.label ?? id;
+}
+
+function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className={bold ? "font-black text-forest" : "text-muted"}>{label}</span>
+      <span className={bold ? "text-lg font-black text-forest" : "font-bold text-forest"}>{value}</span>
+    </div>
+  );
+}
+
+function PreflightCard({ review }: { review: CreativePreflight }) {
+  return <aside className="mb-4 rounded-xl border border-border bg-white p-3"><div className="flex items-center justify-between gap-2"><strong className="text-xs uppercase tracking-wide text-forest">Preflight creativo</strong><b className={review.status === "blocked" ? "text-[#a13b31]" : "text-signal-dark"}>{review.score}/100</b></div><ul className="mt-2 space-y-1 text-xs">{review.checks.map((check) => <li key={check.id} className={check.status === "fail" ? "text-[#a13b31]" : check.status === "warning" ? "text-amber-700" : "text-forest"}>{check.status === "pass" ? "✓" : check.status === "fail" ? "×" : "!"} <b>{check.label}:</b> {check.detail}</li>)}</ul><small className="mt-2 block text-muted">{review.disclaimer}</small></aside>;
+}
+
+function DirectorCard({ director }: { director: ReturnType<typeof directCampaign> }) {
+  return <aside className="mb-4 rounded-xl border border-forest/20 bg-forest p-4 text-white"><div className="flex items-center justify-between gap-3"><div><span className="text-[10px] font-black uppercase tracking-wide text-signal">Mavi Directora</span><strong className="mt-1 block">Control previo a caja</strong></div><b className="text-xl text-signal">{director.score}/100</b></div><ul className="mt-3 space-y-2">{director.findings.map((finding) => <li key={finding.label} className="flex gap-2 text-xs"><span className={finding.severity === "ready" ? "text-signal" : finding.severity === "blocker" ? "text-coral" : "text-amber"}>{finding.severity === "ready" ? "✓" : finding.severity === "blocker" ? "×" : "!"}</span><p><b>{finding.label}:</b> <span className="text-white/65">{finding.detail}</span></p></li>)}</ul></aside>;
+}

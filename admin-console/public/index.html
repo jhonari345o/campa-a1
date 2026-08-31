@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Consola local · Ad Mavericks One</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main id="login-view" class="login-screen">
+    <div class="console-brand"><span>AD MAVERICKS</span><b>ONE</b></div>
+    <section class="login-card">
+      <div class="local-chip"><i></i> SOLO ESTA COMPUTADORA</div>
+      <h1>Consola de usuarios.</h1>
+      <p>Esta herramienta escucha únicamente en <code>127.0.0.1</code>. La clave de servicio nunca llega al navegador.</p>
+      <form id="login-form">
+        <label for="admin-password">Frase de acceso local</label>
+        <input id="admin-password" type="password" autocomplete="current-password" placeholder="Tu frase de administración" required>
+        <div id="login-error" class="alert error hidden" role="alert"></div>
+        <button class="button primary" type="submit">Abrir consola <span>→</span></button>
+      </form>
+    </section>
+    <footer>AD MAVERICKS · Administración interna · No exponer en Internet</footer>
+  </main>
+
+  <div id="app-view" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="console-brand"><span>AD MAVERICKS</span><b>ADMIN</b></div>
+      <nav>
+        <button id="nav-users" class="active" type="button"><span class="nav-icon">U</span> Usuarios</button>
+        <button id="nav-integrations" type="button"><span class="nav-icon">C</span> Credenciales</button>
+        <button disabled><span class="nav-icon">E</span> Empresas <small>Próximo</small></button>
+        <button disabled><span class="nav-icon">A</span> Auditoría <small>Próximo</small></button>
+      </nav>
+      <div class="sidebar-spacer"></div>
+      <div class="security-note"><i></i><div><strong>Conexión local</strong><span>Clave de servicio protegida</span></div></div>
+      <button id="logout-button" class="logout-button">Cerrar consola</button>
+    </aside>
+
+    <div id="toast" class="toast hidden" role="status"></div>
+
+    <section id="users-view" class="content">
+      <header class="topbar">
+        <div><span class="eyebrow">Control de acceso</span><h1>Usuarios y permisos</h1><p>Altas controladas para el inicio de sesión de Ad Mavericks One.</p></div>
+        <button id="refresh-button" class="button secondary small">Actualizar</button>
+      </header>
+
+      <section class="stat-grid">
+        <article><span>Usuarios visibles</span><strong id="stat-users">—</strong><small>Perfiles registrados</small></article>
+        <article><span>Activos</span><strong id="stat-active">—</strong><small>Con acceso habilitado</small></article>
+        <article><span>Empresas</span><strong id="stat-companies">—</strong><small>Disponibles para asignar</small></article>
+      </section>
+
+      <div class="main-grid">
+        <section class="panel form-panel">
+          <header><span class="eyebrow">Alta manual</span><h2>Agregar un usuario</h2><p>El correo quedará confirmado y podrá ingresar inmediatamente con la contraseña temporal.</p></header>
+          <form id="user-form">
+            <label for="full-name">Nombre completo</label>
+            <input id="full-name" name="fullName" placeholder="Nombre y apellido" required minlength="2" maxlength="120">
+
+            <label for="email">Correo de acceso</label>
+            <input id="email" name="email" type="email" autocomplete="off" placeholder="nombre@empresa.com" required>
+
+            <label for="company">Empresa</label>
+            <select id="company" name="companyId" required></select>
+
+            <label for="role">Rol inicial</label>
+            <select id="role" name="role" required>
+              <option value="viewer">Solo lectura</option>
+              <option value="planner" selected>Planificador</option>
+              <option value="analyst">Analista</option>
+              <option value="approver">Aprobador</option>
+              <option value="admin">Administrador de empresa</option>
+            </select>
+
+            <label class="check-row" for="platform-admin">
+              <input id="platform-admin" name="isPlatformAdmin" type="checkbox">
+              <span><strong>Staff de Ad Mavericks</strong><small>Habilita acceso administrativo a toda la plataforma.</small></span>
+            </label>
+
+            <label for="password">Contraseña temporal</label>
+            <div class="password-row">
+              <input id="password" name="password" type="text" autocomplete="off" placeholder="Mínimo 12 caracteres" required minlength="12">
+              <button id="generate-password" type="button" class="generate-button">Generar</button>
+            </div>
+            <small class="field-note">Compártela por un canal seguro. La consola no la guarda ni la vuelve a mostrar.</small>
+
+            <div id="form-error" class="alert error hidden" role="alert"></div>
+            <button id="create-user-button" class="button primary full" type="submit" disabled>Crear usuario <span>→</span></button>
+          </form>
+        </section>
+
+        <section class="panel users-panel">
+          <header class="users-header"><div><span class="eyebrow">Directorio</span><h2>Usuarios registrados</h2></div><label class="search"><span>⌕</span><input id="user-search" placeholder="Buscar por nombre o correo"></label></header>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Usuario</th><th>Empresa</th><th>Rol</th><th>Estado</th></tr></thead>
+              <tbody id="users-body"></tbody>
+            </table>
+            <div id="empty-users" class="empty hidden">No hay usuarios que coincidan con la búsqueda.</div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section id="integrations-view" class="content hidden">
+      <header class="topbar">
+        <div><span class="eyebrow">Rotación segura</span><h1>Credenciales de producción</h1><p>Cambia la cuenta operativa sin revelar ni recuperar las claves actuales.</p></div>
+        <button id="refresh-credentials" class="button secondary small">Actualizar estado</button>
+      </header>
+
+      <section class="credential-hero">
+        <div><span class="local-chip"><i></i> SOLO ESTA COMPUTADORA</span><h2>Las claves van del navegador local a AWS.</h2><p>No se guardan en Supabase, no aparecen en el historial de la plataforma y esta consola nunca devuelve el valor actual.</p></div>
+        <dl><div><dt>Aplicación</dt><dd id="aws-app-name">—</dd></div><div><dt>Rama</dt><dd id="aws-branch-name">—</dd></div><div><dt>Región</dt><dd id="aws-region">—</dd></div></dl>
+      </section>
+
+      <div id="credentials-error" class="alert error hidden" role="alert"></div>
+      <section id="credential-status" class="credential-status-grid" aria-label="Estado de integraciones"></section>
+
+      <section class="credential-grid">
+        <form class="panel credential-form" data-credential-group="openrouter">
+          <header><span class="eyebrow">Mavi</span><h2>OpenRouter</h2><p>Usa una API Key normal de inferencia. Las Management Keys no sirven para conversar con modelos.</p></header>
+          <label>API Key nueva<input name="OPENROUTER_API_KEY" type="password" autocomplete="off" placeholder="sk-or-v1-…"></label>
+          <label>Modelo<select name="OPENROUTER_MODEL"><option value="openrouter/free">OpenRouter Free Router</option><option value="deepseek/deepseek-r1:free">DeepSeek R1 gratuito</option></select></label>
+          <button class="button primary full" type="submit">Validar, guardar y desplegar <span>→</span></button>
+        </form>
+
+        <form class="panel credential-form" data-credential-group="dlocal">
+          <header><span class="eyebrow">Cobros</span><h2>dLocal Go</h2><p>Producción necesita dos valores: API Key y Secret Key. Guardarlos no habilita cobros automáticamente.</p></header>
+          <label>API Key nueva<input name="DLOCALGO_API_KEY" type="password" autocomplete="off" placeholder="API Key de producción"></label>
+          <label>Secret Key nueva<input name="DLOCALGO_SECRET_KEY" type="password" autocomplete="off" placeholder="Secret Key de producción"></label>
+          <label>Ambiente<select name="DLOCALGO_ENV"><option value="live">Producción</option><option value="sandbox">Sandbox</option></select></label>
+          <button class="button primary full" type="submit">Guardar y desplegar <span>→</span></button>
+        </form>
+
+        <form class="panel credential-form meta-connect-form" data-credential-group="meta">
+          <header><span class="eyebrow">Pauta · conexión guiada</span><h2>Meta Ads y línea de crédito</h2><p>Conecta el token, descubre los activos autorizados y elige la cuenta publicitaria que ya contiene la facturación o línea de crédito correcta.</p></header>
+
+          <ol class="meta-steps" aria-label="Pasos para conectar Meta">
+            <li class="is-active"><b>1</b><span>Autorizar</span></li>
+            <li><b>2</b><span>Elegir activos</span></li>
+            <li><b>3</b><span>Confirmar crédito</span></li>
+            <li><b>4</b><span>Desplegar</span></li>
+          </ol>
+
+          <div class="meta-explainer">
+            <strong>La línea de crédito no se transfiere por API.</strong>
+            <p>Meta factura a la cuenta publicitaria seleccionada. Primero configura su método de pago o línea de crédito en Business Manager y luego selecciónala aquí.</p>
+            <a href="https://business.facebook.com/settings/ad-accounts" target="_blank" rel="noreferrer">Abrir cuentas publicitarias en Meta ↗</a>
+          </div>
+
+          <label>Token de sistema o larga duración
+            <input id="meta-access-token" name="META_ACCESS_TOKEN" type="password" autocomplete="off" placeholder="Token con permisos de Marketing API" required>
+          </label>
+          <input id="meta-api-version" name="META_GRAPH_API_VERSION" type="hidden" value="v25.0">
+          <button id="meta-discover-button" class="button secondary full meta-discover" type="button">Descubrir mis cuentas y páginas <span>⌕</span></button>
+
+          <div id="meta-discovery" class="meta-discovery hidden" aria-live="polite">
+            <div class="meta-discovery-head"><div><span class="eyebrow">Activos encontrados</span><strong id="meta-actor-name">Cuenta Meta</strong></div><span id="meta-permission-summary" class="credential-badge missing">Sin validar</span></div>
+            <div id="meta-permissions" class="meta-permissions"></div>
+            <div id="meta-discovery-error" class="alert error hidden" role="alert"></div>
+          </div>
+
+          <label>Cuenta publicitaria que recibirá el gasto
+            <input id="meta-ad-account" name="META_AD_ACCOUNT_ID" type="text" inputmode="numeric" autocomplete="off" list="meta-ad-accounts" placeholder="Selecciona o escribe act_1234567890" required>
+            <datalist id="meta-ad-accounts"></datalist>
+          </label>
+          <div id="meta-account-cards" class="meta-asset-cards"></div>
+
+          <label>Página de Facebook
+            <input id="meta-page-id" name="META_PAGE_ID" type="text" inputmode="numeric" autocomplete="off" list="meta-pages" placeholder="Selecciona o escribe el ID" required>
+            <datalist id="meta-pages"></datalist>
+          </label>
+          <div id="meta-page-cards" class="meta-asset-cards"></div>
+
+          <label>Cuenta profesional de Instagram
+            <input id="meta-instagram-id" name="META_INSTAGRAM_USER_ID" type="text" inputmode="numeric" autocomplete="off" placeholder="Se completa desde la página elegida" required>
+          </label>
+
+          <label class="check-row meta-credit-confirmation" for="meta-credit-confirmed">
+            <input id="meta-credit-confirmed" name="META_CREDIT_LINE_CONFIRMED" type="checkbox" value="true" required>
+            <span><strong>Confirmé la facturación de esta cuenta</strong><small>Revisé en Meta que la cuenta publicitaria elegida utiliza la línea de crédito o método de pago de la empresa correcta.</small></span>
+          </label>
+
+          <div class="meta-safety-note"><i></i><p>La validación es de solo lectura. Guardar la conexión no activa campañas, no mueve la línea de crédito y no habilita gasto real.</p></div>
+          <button class="button primary full" type="submit">Validar activos, guardar y desplegar <span>→</span></button>
+        </form>
+
+        <form class="panel credential-form" data-credential-group="maps">
+          <header><span class="eyebrow">Ubicaciones</span><h2>Google Maps</h2><p>La clave debe restringirse por dominio y limitarse a Maps Embed API. OpenStreetMap seguirá disponible como respaldo.</p></header>
+          <label>API Key nueva<input name="NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY" type="password" autocomplete="off" placeholder="Clave restringida por dominio"></label>
+          <button class="button primary full" type="submit">Guardar y desplegar <span>→</span></button>
+        </form>
+      </section>
+
+      <section class="launch-guard panel">
+        <span class="eyebrow">Control financiero</span><h2>Guardar credenciales no inicia cobros ni gasto.</h2>
+        <p>Después del despliegue todavía se debe probar un pago sin cargo real, crear un borrador Meta en PAUSED y aprobar por separado los interruptores de producción.</p>
+        <div class="guard-pills"><span id="guard-payments">Cobros bloqueados</span><span id="guard-drafts">Borradores Meta bloqueados</span><span id="guard-spend">Gasto Meta bloqueado</span></div>
+      </section>
+    </section>
+  </div>
+  <script src="/app.js" defer></script>
+</body>
+</html>
