@@ -407,4 +407,29 @@ test("la consola de credenciales es local, enmascara valores y conserva bloqueos
   assert.match(page, /Meta Ads y línea de crédito/);
   assert.match(page, /name="META_CREDIT_LINE_CONFIRMED"/);
   assert.match(page, /Descubrir mis cuentas y páginas/);
+  assert.match(page, /data-credential-group="pagoplux"/);
+  assert.match(page, /name="PAGOPLUX_WEBHOOK_SECRET" type="password"/);
+});
+
+test("PagoPlux concilia por webhook sin confiar en la tarjeta ni en el navegador", () => {
+  const paybox = readFileSync(resolve("components/PagoPluxButton.tsx"), "utf8");
+  const webhook = readFileSync(resolve("app/api/payments/pagoplux/webhook/route.ts"), "utf8");
+  const settlement = readFileSync(resolve("lib/payments/pagoplux-settlement.ts"), "utf8");
+  const migration = readFileSync(resolve("supabase/migrations/0016_pagoplux_checkout.sql"), "utf8");
+  assert.match(paybox, /PayboxRemail/);
+  assert.match(paybox, /PAGOPLUX\/authorize/i);
+  assert.doesNotMatch(webhook, /cardInfo|cardIssuer|cardType|token/);
+  assert.match(webhook, /timingSafeEqual/);
+  assert.match(settlement, /amountMatches/);
+  assert.match(settlement, /"PAGADO"/);
+  assert.match(migration, /'pagoplux', 'dlocal', 'payphone'/);
+});
+
+test("post-buy conserva evidencia nula y estado amarillo pendiente", () => {
+  const dashboard = readFileSync(resolve("components/PostbuyDashboard.tsx"), "utf8");
+  const seed = readFileSync(resolve("supabase/imports/warner_2026/01_seed_warner_2026.sql"), "utf8");
+  assert.match(dashboard, /bg-yellow-300/);
+  assert.match(dashboard, /Evidencia Pendiente/);
+  assert.match(seed, /'pending'/);
+  assert.match(seed, /null/);
 });

@@ -197,7 +197,7 @@ async function loadPaidJob(admin: ReturnType<typeof createAdminClient>, jobId: s
       .single(),
   ]);
   if (!job || job.platform !== "meta") throw new Error("La orden de Meta no existe.");
-  if (!payment || payment.status !== "paid") throw new Error("dLocal Go aún no ha confirmado este pago.");
+  if (!payment || payment.status !== "paid") throw new Error("El procesador de pagos aún no ha confirmado esta orden.");
   return { job, payment };
 }
 

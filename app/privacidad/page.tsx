@@ -30,7 +30,7 @@ export default function PrivacyPage() {
         <p>El análisis local termina al reemplazar el archivo, revocar la autorización, cerrar la vista o finalizar la sesión del navegador. Si solicitas una adaptación a Mavi, pediremos una autorización separada y solo enviaremos el diagnóstico técnico derivado, el CTA y el copy que hayas escrito; la imagen o el video no se envían al proveedor de IA.</p>
       </LegalSection>
       <LegalSection title="4. Proveedores y transferencias">
-        <p>Podemos encargar tratamientos necesarios a proveedores de infraestructura, base de datos, inteligencia artificial, medición, pago y medios, entre ellos AWS, Supabase, Meta y dLocal Go, según las funciones activadas. Cada proveedor trata la información bajo sus propias condiciones y controles. No vendemos datos personales.</p>
+        <p>Podemos encargar tratamientos necesarios a proveedores de infraestructura, base de datos, inteligencia artificial, medición, pago y medios, entre ellos AWS, Supabase, Meta y PagoPlux —y dLocal Go únicamente como compatibilidad—, según las funciones activadas. Cada proveedor trata la información bajo sus propias condiciones y controles. No vendemos datos personales.</p>
         <p>Algunos proveedores pueden procesar datos fuera de Ecuador. Aplicamos medidas contractuales y técnicas razonables para protegerlos conforme a la normativa aplicable.</p>
       </LegalSection>
       <LegalSection title="5. Cookies, conservación y seguridad">

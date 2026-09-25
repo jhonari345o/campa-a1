@@ -25,6 +25,10 @@ const AMPLIFY_SAFE_VALUES = new Set([
   "AI_ASSISTANT_ENABLED",
   "AI_WEB_TRENDS_ENABLED",
   "DLOCALGO_ENV",
+  "PAYMENT_PROVIDER",
+  "NEXT_PUBLIC_PAGOPLUX_MERCHANT_EMAIL",
+  "NEXT_PUBLIC_PAGOPLUX_MERCHANT_NAME",
+  "NEXT_PUBLIC_PAGOPLUX_ENV",
   "COMMERCIAL_PAYMENTS_ENABLED",
   "META_GRAPH_API_VERSION",
   "META_CREDIT_LINE_CONFIRMED",
@@ -49,6 +53,28 @@ const CREDENTIAL_GROUPS = {
     keys: ["DLOCALGO_API_KEY", "DLOCALGO_SECRET_KEY", "DLOCALGO_ENV"],
     required: ["DLOCALGO_API_KEY", "DLOCALGO_SECRET_KEY", "DLOCALGO_ENV"],
     defaults: { DLOCALGO_ENV: "live" },
+  },
+  pagoplux: {
+    label: "Cobros · PagoPlux",
+    keys: [
+      "NEXT_PUBLIC_PAGOPLUX_MERCHANT_EMAIL",
+      "NEXT_PUBLIC_PAGOPLUX_MERCHANT_NAME",
+      "NEXT_PUBLIC_PAGOPLUX_ENV",
+      "PAGOPLUX_WEBHOOK_CLIENT_ID",
+      "PAGOPLUX_WEBHOOK_SECRET",
+    ],
+    required: [
+      "NEXT_PUBLIC_PAGOPLUX_MERCHANT_EMAIL",
+      "NEXT_PUBLIC_PAGOPLUX_MERCHANT_NAME",
+      "NEXT_PUBLIC_PAGOPLUX_ENV",
+      "PAGOPLUX_WEBHOOK_CLIENT_ID",
+      "PAGOPLUX_WEBHOOK_SECRET",
+    ],
+    defaults: {
+      PAYMENT_PROVIDER: "pagoplux",
+      NEXT_PUBLIC_PAGOPLUX_ENV: "live",
+      NEXT_PUBLIC_PAGOPLUX_MERCHANT_NAME: "INSIDEPAY",
+    },
   },
   meta: {
     label: "Pauta · Meta Ads",
@@ -355,6 +381,17 @@ function normalizeCredentialUpdates(groupId, rawValues) {
   if (groupId === "dlocal" && updates.DLOCALGO_ENV && !["sandbox", "live"].includes(updates.DLOCALGO_ENV)) {
     throw clientError("El ambiente de dLocal Go debe ser sandbox o live.");
   }
+  if (groupId === "pagoplux") {
+    if (updates.NEXT_PUBLIC_PAGOPLUX_ENV && !["sandbox", "live"].includes(updates.NEXT_PUBLIC_PAGOPLUX_ENV)) {
+      throw clientError("El ambiente de PagoPlux debe ser sandbox o live.");
+    }
+    if (updates.NEXT_PUBLIC_PAGOPLUX_MERCHANT_EMAIL && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(updates.NEXT_PUBLIC_PAGOPLUX_MERCHANT_EMAIL)) {
+      throw clientError("El correo del establecimiento PagoPlux no es válido.");
+    }
+    if (updates.PAGOPLUX_WEBHOOK_CLIENT_ID && !/^[A-Za-z0-9_-]{8,128}$/.test(updates.PAGOPLUX_WEBHOOK_CLIENT_ID)) {
+      throw clientError("El Client ID de PagoPlux no tiene un formato válido.");
+    }
+  }
   if (groupId === "meta") {
     if (updates.META_AD_ACCOUNT_ID && !/^(?:act_)?\d+$/.test(updates.META_AD_ACCOUNT_ID)) {
       throw clientError("META_AD_ACCOUNT_ID debe ser numérico y puede comenzar con act_.");
@@ -506,7 +543,8 @@ async function validateProviderCredential(groupId, updates) {
     return "Clave de inferencia reconocida por OpenRouter.";
   }
   if (groupId === "meta") return validateSelectedMetaAssets(updates);
-  if (groupId === "dlocal") return "Las credenciales ingresadas se guardarán; la validación transaccional se realiza sin cobrar en el checklist de lanzamiento.";
+  if (groupId === "pagoplux") return "Configuración PagoPlux aceptada. El webhook y un pago controlado deben verificarse antes de habilitar cobros.";
+  if (groupId === "dlocal") return "Las credenciales ingresadas se guardarán como compatibilidad; no será el procesador principal mientras PAYMENT_PROVIDER sea pagoplux.";
   return "Formato aceptado.";
 }
 

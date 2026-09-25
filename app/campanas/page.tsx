@@ -352,7 +352,7 @@ function orderStatus(status: string) { return ({ pending_review: "En revisión",
 function moneyUsd(value: number) { return new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(Number(value) || 0); }
 
 function paymentProviderLabel(provider: string): string {
-  return provider === "dlocal" ? "dLocal Go" : provider === "payphone" ? "PayPhone (histórico)" : provider;
+  return provider === "pagoplux" ? "PagoPlux" : provider === "dlocal" ? "dLocal Go (alterno)" : provider === "payphone" ? "PayPhone (histórico)" : provider;
 }
 
 function MetricsPanel({

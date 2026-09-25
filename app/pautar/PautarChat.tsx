@@ -8,6 +8,8 @@ import { computeCharge, money, SERVICE_FEE_LABEL, TAX_LABEL } from "@/lib/pricin
 import { creativePreflight, type CreativePreflight } from "@/lib/creative-preflight";
 import { directCampaign } from "@/lib/campaign-director";
 import { BILLING_EMAIL, LEGAL_VERSIONS } from "@/lib/legal";
+import { PagoPluxButton } from "@/components/PagoPluxButton";
+import type { PagoPluxPaybox } from "@/lib/payments/pagoplux";
 
 type Bubble = { from: "mavi" | "user"; text: string };
 
@@ -25,12 +27,18 @@ export function PautarChat({
   initialObjetivo,
   initialPostUrl,
   commercialPaymentsEnabled = false,
+  paymentProvider = "pagoplux",
+  payerName = "",
+  payerEmail = "",
 }: {
   initialRed?: string;
   initialMonto?: number;
   initialObjetivo?: string;
   initialPostUrl?: string;
   commercialPaymentsEnabled?: boolean;
+  paymentProvider?: "pagoplux" | "dlocal";
+  payerName?: string;
+  payerEmail?: string;
 } = {}) {
   const prefilled = Boolean(initialRed);
   const hasPost = Boolean(initialRed && initialPostUrl);
@@ -59,6 +67,8 @@ export function PautarChat({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [paybox, setPaybox] = useState<PagoPluxPaybox | null>(null);
+  const [payer, setPayer] = useState({ name: payerName, email: payerEmail, identification: "", phone: "", address: "" });
   const [trackingReady, setTrackingReady] = useState(false);
   const [paymentAccepted, setPaymentAccepted] = useState(false);
   const director = useMemo(() => directCampaign({ platform: red, budgetUsd: monto, targetScope: geoTarget?.scope ?? null, radiusKm: geoTarget?.scope === "radius" ? geoTarget.radiusKm : null, objective: objetivo, trackingReady, creative: preflight }), [geoTarget, monto, objetivo, preflight, red, trackingReady]);
@@ -151,17 +161,20 @@ export function PautarChat({
       presupuesto: monto,
       objetivo: objetivo || undefined,
       commercialAcceptance: true,
+      payer: paymentProvider === "pagoplux" ? payer : undefined,
     });
     setSending(false);
     if (!res.ok) {
       setError(res.error);
       return;
     }
-    setCheckoutUrl(res.checkoutUrl);
-    push({
-      from: "mavi",
-      text: "dLocal Go preparó el checkout seguro. Continúa allí para elegir el medio de pago disponible.",
-    });
+    if (res.provider === "pagoplux") {
+      setPaybox(res.paybox);
+      push({ from: "mavi", text: "PagoPlux preparó el botón seguro. La pauta se habilitará únicamente después del webhook autenticado." });
+    } else {
+      setCheckoutUrl(res.checkoutUrl);
+      push({ from: "mavi", text: "dLocal Go preparó el checkout seguro. Continúa allí para elegir el medio de pago disponible." });
+    }
   }
 
   const charge = computeCharge(monto);
@@ -262,6 +275,17 @@ export function PautarChat({
               <span><strong className="block text-forest">Acepto el desglose y las condiciones de pago</strong>Confirmo la inversión, los cargos mostrados y la <a href="/reembolsos" target="_blank" className="font-black text-forest underline">política de facturación, devoluciones y contracargos</a>. Versión {LEGAL_VERSIONS.payments}.</span>
             </label>
 
+            {paymentProvider === "pagoplux" && !paybox && commercialPaymentsEnabled && (
+              <div className="mt-4 grid gap-3 rounded-xl border border-border bg-white p-4 sm:grid-cols-2">
+                <label className="text-xs font-bold text-forest">Nombre del titular<input value={payer.name} onChange={(event) => setPayer((current) => ({ ...current, name: event.target.value }))} autoComplete="name" className="mt-1 w-full rounded-lg border border-border px-3 py-2 font-normal" /></label>
+                <label className="text-xs font-bold text-forest">Correo<input value={payer.email} onChange={(event) => setPayer((current) => ({ ...current, email: event.target.value }))} type="email" autoComplete="email" className="mt-1 w-full rounded-lg border border-border px-3 py-2 font-normal" /></label>
+                <label className="text-xs font-bold text-forest">Cédula o identificación<input value={payer.identification} onChange={(event) => setPayer((current) => ({ ...current, identification: event.target.value }))} autoComplete="off" className="mt-1 w-full rounded-lg border border-border px-3 py-2 font-normal" /></label>
+                <label className="text-xs font-bold text-forest">Teléfono<input value={payer.phone} onChange={(event) => setPayer((current) => ({ ...current, phone: event.target.value }))} type="tel" autoComplete="tel" className="mt-1 w-full rounded-lg border border-border px-3 py-2 font-normal" /></label>
+                <label className="text-xs font-bold text-forest sm:col-span-2">Dirección del titular<input value={payer.address} onChange={(event) => setPayer((current) => ({ ...current, address: event.target.value }))} autoComplete="street-address" className="mt-1 w-full rounded-lg border border-border px-3 py-2 font-normal" /></label>
+                <p className="text-[10px] leading-relaxed text-muted sm:col-span-2">Estos datos se entregan a PagoPlux al abrir su Paybox. Ad Mavericks no recibe ni almacena el número de tarjeta.</p>
+              </div>
+            )}
+
             {!commercialPaymentsEnabled ? (
               <div className="mt-4 space-y-2">
                 <button type="button" disabled className="btn btn-secondary w-full cursor-not-allowed opacity-60">
@@ -274,6 +298,8 @@ export function PautarChat({
                   Solicitar revisión humana →
                 </a>
               </div>
+            ) : paybox ? (
+              <div className="mt-4"><PagoPluxButton config={paybox} /></div>
             ) : !checkoutUrl ? (
               <form
                 onSubmit={(e) => {
@@ -287,7 +313,7 @@ export function PautarChat({
                   disabled={sending || !paymentAccepted}
                   className="btn btn-primary mt-1 w-full disabled:opacity-50"
                 >
-                  {sending ? "Preparando dLocal Go..." : `Continuar a dLocal Go · ${money(charge.total)}`}
+                  {sending ? `Preparando ${paymentProvider === "pagoplux" ? "PagoPlux" : "dLocal Go"}...` : `Continuar a ${paymentProvider === "pagoplux" ? "PagoPlux" : "dLocal Go"} · ${money(charge.total)}`}
                 </button>
               </form>
             ) : (
@@ -304,7 +330,7 @@ export function PautarChat({
 
             <p className="mt-2 text-center text-[11px] text-muted">
               {commercialPaymentsEnabled
-                ? "🔒 dLocal Go procesa el pago en su página segura. Ad Mavericks no recibe los datos de la tarjeta."
+                ? `🔒 ${paymentProvider === "pagoplux" ? "PagoPlux" : "dLocal Go"} procesa el pago en su entorno seguro. Ad Mavericks no recibe los datos de la tarjeta.`
                 : "No se solicitan ni almacenan datos de tarjeta durante el modo controlado."}
             </p>
           </div>

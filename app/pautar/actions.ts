@@ -7,6 +7,7 @@ import { getMyCompanies } from "@/lib/company";
 import { computeCharge } from "@/lib/pricing";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createDlocalCheckout, getDlocalCredentials } from "@/lib/payments/dlocal";
+import { getPagoPluxPublicConfig, getPaymentProvider, type PagoPluxPaybox } from "@/lib/payments/pagoplux";
 import { getMaxMetaBudgetUsd } from "@/lib/ads/config";
 import { isCommercialPaymentsEnabled } from "@/lib/commercial";
 import { canCompanyRole } from "@/lib/permissions";
@@ -23,15 +24,23 @@ export type PautaInput = {
   presupuesto: number;
   objetivo?: string;
   commercialAcceptance: boolean;
+  payer?: {
+    name: string;
+    email: string;
+    identification: string;
+    phone: string;
+    address: string;
+  };
 };
 
 export type PautaResult =
-  | { ok: true; id: string; checkoutUrl: string }
+  | { ok: true; id: string; provider: "dlocal"; checkoutUrl: string }
+  | { ok: true; id: string; provider: "pagoplux"; paybox: PagoPluxPaybox }
   | { ok: false; error: string };
 
 /**
- * Crea una orden y prepara el Checkout estándar alojado de dLocal Go. La orden
- * queda fuera de la cola de publicación hasta conciliarla con la API oficial.
+ * Crea una orden y prepara el proveedor configurado. La orden queda fuera de
+ * la cola de publicación hasta conciliarla con un webhook autenticado.
  */
 export async function crearPauta(input: PautaInput): Promise<PautaResult> {
   const profile = await getSessionProfile();
@@ -99,14 +108,19 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
   }
 
   const charge = computeCharge(presupuesto);
-  const siteUrl = getSiteUrl();
-  if (!siteUrl) {
-    return { ok: false, error: "Falta configurar NEXT_PUBLIC_SITE_URL para regresar desde dLocal Go." };
-  }
-  try {
-    getDlocalCredentials();
-  } catch {
-    return { ok: false, error: "dLocal Go aún no está configurado en el servidor." };
+  const paymentProvider = getPaymentProvider();
+  let pagoPluxConfig: ReturnType<typeof getPagoPluxPublicConfig> | null = null;
+  let siteUrl: string | null = null;
+  if (paymentProvider === "pagoplux") {
+    const payerError = validatePagoPluxPayer(input.payer);
+    if (payerError) return { ok: false, error: payerError };
+    try { pagoPluxConfig = getPagoPluxPublicConfig(); }
+    catch { return { ok: false, error: "PagoPlux aún no está configurado en el servidor." }; }
+  } else {
+    siteUrl = getSiteUrl();
+    if (!siteUrl) return { ok: false, error: "Falta configurar NEXT_PUBLIC_SITE_URL para regresar desde dLocal Go." };
+    try { getDlocalCredentials(); }
+    catch { return { ok: false, error: "dLocal Go aún no está configurado en el servidor." }; }
   }
 
   let admin: ReturnType<typeof createAdminClient>;
@@ -154,7 +168,7 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
         comision_pct: charge.feePct,
         comision_usd: charge.fee,
         total_a_pagar_usd: charge.total,
-        pago: "dlocal_pendiente",
+        pago: `${paymentProvider}_pendiente`,
         objetivo: input.objetivo?.trim() || "Promocionar publicacion",
       },
     })
@@ -188,7 +202,7 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
     .insert({
       job_id: data.id,
       company_id: company.id,
-      provider: "dlocal",
+      provider: paymentProvider,
       client_transaction_id: clientTransactionId,
       status: "payment_preparing",
       currency: "usd",
@@ -207,6 +221,43 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
       .update({ status: "error", log: "No se pudo inicializar el registro seguro del pago." })
       .eq("id", data.id);
     return { ok: false, error: "No se pudo inicializar el pago. Intenta nuevamente." };
+  }
+
+  if (paymentProvider === "pagoplux" && pagoPluxConfig && input.payer) {
+    const { error: payboxError } = await admin.from("campaign_payments").update({
+      status: "payment_open",
+      metadata: {
+        red,
+        created_by: profile.id,
+        pagoplux_environment: pagoPluxConfig.environment,
+        payment_terms_version: LEGAL_VERSIONS.payments,
+        legal_acceptance_id: legalAcceptance.id,
+      },
+    }).eq("id", payment.id);
+    if (payboxError) return { ok: false, error: "No se pudo preparar el botón PagoPlux." };
+    revalidatePath("/campanas");
+    return {
+      ok: true,
+      id: data.id,
+      provider: "pagoplux",
+      paybox: {
+        paymentId: payment.id,
+        jobId: data.id,
+        merchantEmail: pagoPluxConfig.merchantEmail,
+        merchantName: pagoPluxConfig.merchantName,
+        payerEmail: input.payer.email.trim(),
+        payerName: input.payer.name.trim(),
+        payerIdentification: input.payer.identification.trim(),
+        payerPhone: input.payer.phone.trim(),
+        payerAddress: input.payer.address.trim(),
+        // El procesador cobra el total. El desglose comercial permanece en campaign_payments.
+        base0: charge.total.toFixed(2),
+        base12: "0.00",
+        description: `Pauta ${red} · Ad Mavericks ${data.id.slice(0, 8)}`,
+        environment: pagoPluxConfig.environment,
+        scriptUrl: pagoPluxConfig.scriptUrl,
+      },
+    };
   }
 
   try {
@@ -242,6 +293,7 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
     return {
       ok: true,
       id: data.id,
+      provider: "dlocal",
       checkoutUrl: checkout.redirect_url!,
     };
   } catch (checkoutError) {
@@ -290,4 +342,14 @@ function isAllowedMetaPostUrl(raw: string, red: string): boolean {
   } catch {
     return false;
   }
+}
+
+function validatePagoPluxPayer(payer: PautaInput["payer"]): string | null {
+  if (!payer) return "Completa los datos del titular para abrir PagoPlux.";
+  if (payer.name.trim().length < 3 || payer.name.trim().length > 120) return "Revisa el nombre del titular.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payer.email.trim()) || payer.email.length > 254) return "Revisa el correo del titular.";
+  if (!/^[0-9A-Za-z-]{5,20}$/.test(payer.identification.trim())) return "Revisa la identificación del titular.";
+  if (!/^\+?[0-9]{7,16}$/.test(payer.phone.replace(/[\s()-]/g, ""))) return "Revisa el teléfono del titular.";
+  if (payer.address.trim().length < 5 || payer.address.trim().length > 240) return "Revisa la dirección del titular.";
+  return null;
 }

@@ -126,8 +126,19 @@
           <button class="button primary full" type="submit">Validar, guardar y desplegar <span>→</span></button>
         </form>
 
+        <form class="panel credential-form" data-credential-group="pagoplux">
+          <header><span class="eyebrow">Cobros principales</span><h2>PagoPlux · INSIDEPAY</h2><p>Conecta el Paybox oficial y su webhook. El botón no almacena tarjetas y la campaña no se habilita solo con la respuesta del navegador.</p></header>
+          <label>Correo del establecimiento<input name="NEXT_PUBLIC_PAGOPLUX_MERCHANT_EMAIL" type="email" autocomplete="off" placeholder="Correo registrado en PagoPlux" required></label>
+          <label>Nombre del establecimiento<input name="NEXT_PUBLIC_PAGOPLUX_MERCHANT_NAME" type="text" value="INSIDEPAY" autocomplete="organization" required></label>
+          <label>Ambiente<select name="NEXT_PUBLIC_PAGOPLUX_ENV"><option value="live">Producción</option><option value="sandbox">Sandbox</option></select></label>
+          <label>Webhook Client ID<input name="PAGOPLUX_WEBHOOK_CLIENT_ID" type="password" autocomplete="off" placeholder="Client ID existente" required></label>
+          <label>Webhook Secret<input name="PAGOPLUX_WEBHOOK_SECRET" type="password" autocomplete="off" placeholder="Clave secreta existente" required></label>
+          <div class="meta-safety-note"><i></i><p>La consola guarda los secretos únicamente como variables cifradas del entorno de AWS. Nunca los devuelve ni los muestra después.</p></div>
+          <button class="button primary full" type="submit">Guardar PagoPlux y desplegar <span>→</span></button>
+        </form>
+
         <form class="panel credential-form" data-credential-group="dlocal">
-          <header><span class="eyebrow">Cobros</span><h2>dLocal Go</h2><p>Producción necesita dos valores: API Key y Secret Key. Guardarlos no habilita cobros automáticamente.</p></header>
+          <header><span class="eyebrow">Compatibilidad</span><h2>dLocal Go</h2><p>Se conserva solo como proveedor alterno. PagoPlux es el procesador principal.</p></header>
           <label>API Key nueva<input name="DLOCALGO_API_KEY" type="password" autocomplete="off" placeholder="API Key de producción"></label>
           <label>Secret Key nueva<input name="DLOCALGO_SECRET_KEY" type="password" autocomplete="off" placeholder="Secret Key de producción"></label>
           <label>Ambiente<select name="DLOCALGO_ENV"><option value="live">Producción</option><option value="sandbox">Sandbox</option></select></label>

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CrearClienteForm } from "./CrearClienteForm";
 import { cerrarSesion } from "./actions";
 import { isDlocalConfigured } from "@/lib/payments/dlocal";
+import { getPaymentProvider, isPagoPluxConfigured } from "@/lib/payments/pagoplux";
 import { isMetaConfigured } from "@/lib/ads/meta";
 import { isAiAssistantEnabled, isAiWebTrendsEnabled, isCommercialPaymentsEnabled, isMetaPausedDraftsEnabled, isMetaRealSpendEnabled } from "@/lib/commercial";
 import { BILLING_EMAIL } from "@/lib/legal";
@@ -39,11 +40,25 @@ export default async function ConsolaPage() {
           <RecentClients companies={companies ?? []} />
         </div>
         <MetaConnectionCenter />
+        <PagoPluxConnectionCenter />
         <IntegrationReadiness />
         <LaunchChecklist />
       </main>
     </div>
   );
+}
+
+function PagoPluxConnectionCenter() {
+  const configured = isPagoPluxConfigured();
+  const live = process.env.NEXT_PUBLIC_PAGOPLUX_ENV === "live";
+  return <section className="mt-8 rounded-panel border border-forest/20 bg-white p-7 shadow-panel">
+    <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+      <div><p className="text-xs font-black uppercase tracking-[.16em] text-signal-dark">Cobros centralizados</p><h2 className="mt-1 text-xl font-black">PagoPlux · botón oficial</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">El Paybox recibe los datos del titular y la tarjeta directamente. La plataforma solo habilita la orden cuando el webhook autenticado confirma identificador, estado y monto.</p></div>
+      <div className="grid min-w-[260px] gap-2"><MetaStatus label="Conexión" ready={configured} value={configured ? "Comercio y webhook presentes" : "Faltan credenciales o webhook"} /><MetaStatus label="Ambiente" ready={configured && live} value={live ? "Producción" : "Sandbox"} /></div>
+    </div>
+    <div className="mt-5 flex flex-wrap gap-3"><a href="http://127.0.0.1:4177" target="_blank" rel="noreferrer" className="btn btn-primary">Configurar desde esta computadora →</a><a href="https://dashboard.pagoplux.com/principal/developers/hooks" target="_blank" rel="noreferrer" className="btn btn-secondary">Revisar webhook en PagoPlux ↗</a></div>
+    <p className="mt-4 rounded-xl bg-amber/10 px-4 py-3 text-xs font-bold text-forest">Configurar credenciales no activa cobros. El interruptor comercial permanece separado y bloqueado hasta la prueba final.</p>
+  </section>;
 }
 
 function MetaConnectionCenter() {
@@ -91,16 +106,18 @@ function MetaStatus({ label, ready, value }: { label: string; ready: boolean; va
 }
 
 function LaunchChecklist() {
+  const paymentProvider = getPaymentProvider();
+  const paymentReady = paymentProvider === "pagoplux" ? isPagoPluxConfigured() && process.env.NEXT_PUBLIC_PAGOPLUX_ENV === "live" : isDlocalConfigured() && process.env.DLOCALGO_ENV === "live";
   const items = [
     { priority: "P0", label: "Conexión Meta validada", ready: isMetaConfigured(), detail: "Token, cuenta publicitaria, página e Instagram." },
     { priority: "P0", label: "Línea de crédito confirmada", ready: process.env.META_CREDIT_LINE_CONFIRMED === "true", detail: "La cuenta elegida factura a la empresa correcta." },
     { priority: "P0", label: "Borrador Meta en PAUSED", ready: isMetaPausedDraftsEnabled(), detail: "Prueba sin gasto antes de activar campañas." },
-    { priority: "P0", label: "dLocal Go productivo", ready: isDlocalConfigured() && process.env.DLOCALGO_ENV === "live", detail: "Credenciales live, webhook y conciliación controlada." },
+    { priority: "P0", label: `${paymentProvider === "pagoplux" ? "PagoPlux" : "dLocal Go"} productivo`, ready: paymentReady, detail: "Credenciales live, webhook y conciliación controlada." },
     { priority: "P0", label: "Cobro real autorizado", ready: isCommercialPaymentsEnabled(), detail: "Activar solo después de la prueba financiera." },
     { priority: "P0", label: "Gasto real Meta autorizado", ready: isMetaRealSpendEnabled(), detail: "Doble aprobación y tope inicial de inversión." },
     { priority: "P0", label: "Seguridad y recuperación", ready: false, detail: "Adjuntar evidencia de WAF, MFA, staging, restauración y pentest." },
     { priority: "P1", label: "Consola de coordinación", ready: false, detail: "Asignación, SLA, cotización, proveedor, adjuntos y cambio de estado." },
-    { priority: "P1", label: "Ledger y facturación", ready: false, detail: "Conciliar dLocal, reserva de medios, factura Meta, comisión y procesador." },
+    { priority: "P1", label: "Ledger y facturación", ready: false, detail: "Conciliar procesador, reserva de medios, factura Meta, comisión y liquidación." },
     { priority: "P1", label: "Catálogo e inventario vigentes", ready: false, detail: "Disponibilidad, reserva anti-duplicidad, fecha y responsable del dato." },
     { priority: "P1", label: "Aprobación legal y contable", ready: false, detail: "Tratamiento del 22%, DPA, devoluciones y contracargos." },
   ];
@@ -118,10 +135,12 @@ function maskMetaId(value?: string) {
 }
 
 function IntegrationReadiness() {
+  const paymentProvider = getPaymentProvider();
+  const paymentReady = paymentProvider === "pagoplux" ? isPagoPluxConfigured() : isDlocalConfigured();
   const checks = [
     { label: "Mavi IA", ready: isAiAssistantEnabled() && Boolean(process.env.OPENROUTER_API_KEY || process.env.BEDROCK_MODEL_ID || process.env.DEEPSEEK_API_KEY), detail: isAiWebTrendsEnabled() ? "IA y señales web habilitadas" : "IA activa; tendencias web deshabilitadas" },
     { label: "Mapas", ready: true, detail: process.env.NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY ? "OpenStreetMap + Google Maps configurado" : "OpenStreetMap activo; Google satélite/360 sin clave embebida" },
-    { label: "dLocal Go", ready: isDlocalConfigured(), detail: isDlocalConfigured() ? `${process.env.DLOCALGO_ENV === "live" ? "Producción" : "Sandbox"} configurado` : "Faltan API Key y Secret Key" },
+    { label: paymentProvider === "pagoplux" ? "PagoPlux" : "dLocal Go", ready: paymentReady, detail: paymentReady ? `${paymentProvider === "pagoplux" ? (process.env.NEXT_PUBLIC_PAGOPLUX_ENV === "live" ? "Producción" : "Sandbox") : (process.env.DLOCALGO_ENV === "live" ? "Producción" : "Sandbox")} configurado` : "Faltan credenciales y conciliación" },
     { label: "Cobros reales", ready: isCommercialPaymentsEnabled(), detail: isCommercialPaymentsEnabled() ? "Interruptor activo" : "Interruptor bloqueado" },
     { label: "Meta Marketing API", ready: isMetaConfigured(), detail: isMetaConfigured() ? "Credenciales base presentes" : "Faltan token, cuenta publicitaria o página" },
     { label: "Facturación Meta", ready: process.env.META_CREDIT_LINE_CONFIRMED === "true", detail: process.env.META_CREDIT_LINE_CONFIRMED === "true" ? "Cuenta publicitaria y línea de crédito confirmadas" : "Falta confirmar la facturación de la cuenta elegida" },
