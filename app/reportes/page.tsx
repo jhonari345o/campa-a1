@@ -3,6 +3,8 @@ import { AppHeader } from "@/components/AppHeader";
 import { getSessionProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { buildReportNarrative } from "@/lib/report-narrative";
+import { PostbuyDashboard } from "@/components/PostbuyDashboard";
+import { WARNER_POSTBUY_CAMPAIGNS, type WarnerPostbuyCampaign } from "@/lib/warner-postbuy-data";
 
 export const metadata = { title: "Reportes" };
 
@@ -41,12 +43,16 @@ export default async function ReportesPage() {
   }, { impressions: 0, reach: 0, clicks: 0, spend: 0, paid: 0 });
   const withMetrics = jobs.filter((job) => job.spec?.metrics).length;
   const narrative = buildReportNarrative({ jobs, orderCount: orders.length });
+  const postbuyCampaigns: readonly WarnerPostbuyCampaign[] = profile.is_platform_admin
+    ? WARNER_POSTBUY_CAMPAIGNS
+    : [];
+  const hasReports = jobs.length > 0 || orders.length > 0 || postbuyCampaigns.length > 0;
 
   return (
     <div className="min-h-screen">
       <AppHeader name={profile.full_name ?? profile.email ?? "Ad Mavericks"} isAdmin={profile.is_platform_admin} active="reportes" />
       <main id="workspace-content" className="portal-page portal-page-planner">
-        {jobs.length === 0 && orders.length === 0 ? (
+        {!hasReports ? (
           <section className="reports-locked">
             <span>05</span>
             <p>Reportes</p>
@@ -56,7 +62,8 @@ export default async function ReportesPage() {
           </section>
         ) : (
           <>
-            <header className="reports-heading"><div><p>Inteligencia de campaña</p><h1>Reportes</h1><span>Lectura consolidada de campañas y órdenes visibles para tu cuenta.</span></div><b>{jobs.length} campaña{jobs.length === 1 ? "" : "s"} · {orders.length} orden{orders.length === 1 ? "" : "es"}</b></header>
+            <header className="reports-heading"><div><p>Inteligencia de campaña</p><h1>Reportes</h1><span>Lectura consolidada de campañas, órdenes, evidencias y post-buys visibles para tu cuenta.</span></div><b>{jobs.length + postbuyCampaigns.length} campaña{jobs.length + postbuyCampaigns.length === 1 ? "" : "s"} · {orders.length} orden{orders.length === 1 ? "" : "es"}</b></header>
+            {postbuyCampaigns.length > 0 && <PostbuyDashboard campaigns={postbuyCampaigns} />}
             <section className="reports-summary">
               <Metric label="Impresiones" value={integer(metrics.impressions)} note="Suma reportada por plataforma" />
               <Metric label="Alcance" value={integer(metrics.reach)} note="No deduplicado entre campañas" />

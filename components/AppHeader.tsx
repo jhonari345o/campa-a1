@@ -77,7 +77,7 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
               );
             })}
             <Link href="/campanas" onClick={close} className={`portal-nav-item ${active === "campanas" ? "is-active" : ""}`}><span>06</span><strong>Órdenes</strong></Link>
-            <ReportNavigationItem active={active === "reportes"} onClick={close} />
+            <ReportNavigationItem active={active === "reportes"} isAdmin={isAdmin} onClick={close} />
           </nav>
 
           <nav className="portal-catalog-nav" aria-label="Catálogo general de medios">
@@ -136,14 +136,15 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
   );
 }
 
-function ReportNavigationItem({ active, onClick }: { active: boolean; onClick: () => void }) {
-  const [enabled, setEnabled] = useState(false);
+function ReportNavigationItem({ active, isAdmin, onClick }: { active: boolean; isAdmin: boolean; onClick: () => void }) {
+  const [enabled, setEnabled] = useState(isAdmin);
   useEffect(() => {
+    if (isAdmin) return;
     fetch("/api/account/campaign-status", { headers: { Accept: "application/json" } })
       .then((response) => response.ok ? response.json() : null)
       .then((data) => setEnabled(Boolean(data?.hasCampaigns)))
       .catch(() => setEnabled(false));
-  }, []);
+  }, [isAdmin]);
   return enabled
     ? <Link href="/reportes" onClick={onClick} className={`portal-nav-item ${active ? "is-active" : ""}`}><span>07</span><strong>Reportes</strong></Link>
     : <span className="portal-nav-item is-disabled"><span>07</span><strong>Reportes</strong><em>Tras tu primera campaña</em></span>;
