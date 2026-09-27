@@ -13,6 +13,11 @@ const nunito = Nunito_Sans({
 });
 
 export const metadata: Metadata = {
+  icons: {
+    icon: "/brand/ad-mavericks-mark.png",
+    shortcut: "/brand/ad-mavericks-mark.png",
+    apple: "/brand/ad-mavericks-mark.png",
+  },
   title: {
     default: "Ad Mavericks One — Tu central de medios del nuevo siglo",
     template: "%s · Ad Mavericks One",

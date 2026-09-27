@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { clsx } from "@/lib/clsx";
 
 type WordmarkProps = {
@@ -8,22 +9,27 @@ type WordmarkProps = {
 };
 
 /**
- * Logotipo textual de Ad Mavericks.
- * "Ad Mavericks" es la marca madre; "One" identifica la plataforma unificada.
+ * Logotipo oficial de Ad Mavericks extraido del manual de marca.
+ * "One" identifica la plataforma unificada sin alterar la marca madre.
  */
 export function Wordmark({ one = false, className, invert = false }: WordmarkProps) {
   return (
     <span
       aria-label={one ? "Ad Mavericks One" : "Ad Mavericks"}
       className={clsx(
-        "inline-flex items-center gap-2.5 whitespace-nowrap font-black tracking-[0.055em]",
-        invert ? "text-white" : "text-forest",
+        "inline-flex items-center gap-2.5 whitespace-nowrap",
         className,
       )}
     >
-      AD MAVERICKS
+      <Image
+        src={invert ? "/brand/ad-mavericks-logo-light.png" : "/brand/ad-mavericks-logo.png"}
+        width={1675}
+        height={679}
+        alt=""
+        className="h-[2.45em] w-auto max-w-none object-contain"
+      />
       {one && (
-        <span className="rounded-[11px] bg-signal px-2.5 py-1 text-[0.55em] tracking-[0.08em] text-[#07140e]">
+        <span className="rounded-[11px] bg-signal px-2.5 py-1 text-[0.55em] font-black tracking-[0.08em] text-[#07140e]">
           ONE
         </span>
       )}
