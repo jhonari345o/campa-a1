@@ -1,12 +1,11 @@
 /**
  * Planes de suscripcion de Ad Mavericks One.
- * Fuente unica: se usa en la landing (precios) y en la Consola (alta de cliente).
- * Precios mensuales en USD. Editar aqui para cambiarlos en todo el sitio.
+ * Fuente unica: se usa en la landing y en la Consola (alta de cliente).
+ * La cotizacion es personalizada; no se publican precios fijos.
  */
 export type Plan = {
   id: "basico" | "premium" | "super" | "diamante";
   name: string;
-  price: number; // USD / mes
   tagline: string;
   seats: number; // usuarios incluidos
   features: string[];
@@ -17,7 +16,6 @@ export const PLANS: Plan[] = [
   {
     id: "basico",
     name: "Basico",
-    price: 149,
     tagline: "Para empezar a pautar con criterio.",
     seats: 3,
     features: [
@@ -31,7 +29,6 @@ export const PLANS: Plan[] = [
   {
     id: "premium",
     name: "Premium",
-    price: 349,
     tagline: "El favorito de las marcas que crecen.",
     seats: 8,
     destacado: true,
@@ -46,7 +43,6 @@ export const PLANS: Plan[] = [
   {
     id: "super",
     name: "Super Premium",
-    price: 699,
     tagline: "Operacion de medios completa.",
     seats: 20,
     features: [
@@ -60,7 +56,6 @@ export const PLANS: Plan[] = [
   {
     id: "diamante",
     name: "Diamante",
-    price: 1499,
     tagline: "Maximo nivel, hecho a tu medida.",
     seats: 100,
     features: [
@@ -76,6 +71,3 @@ export const PLANS: Plan[] = [
 export function getPlan(id: string): Plan | undefined {
   return PLANS.find((p) => p.id === id);
 }
-
-export const planMoney = (n: number) =>
-  new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);

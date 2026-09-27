@@ -1,4 +1,4 @@
-import { PLANS, planMoney } from "@/lib/plans";
+import { PLANS } from "@/lib/plans";
 
 export function PlanesPricing() {
   return (
@@ -19,10 +19,6 @@ export function PlanesPricing() {
             )}
             <h3 className="text-lg font-black tracking-tight text-forest">{p.name}</h3>
             <p className="mt-1 text-xs text-muted">{p.tagline}</p>
-            <p className="mt-4">
-              <span className="text-3xl font-black text-forest">{planMoney(p.price)}</span>
-              <span className="text-sm text-muted"> /mes</span>
-            </p>
             <ul className="mt-4 flex-1 space-y-2 text-sm">
               {p.features.map((f) => (
                 <li key={f} className="flex gap-2 text-forest">
@@ -31,18 +27,17 @@ export function PlanesPricing() {
               ))}
             </ul>
             <a
-              href={`mailto:hola@admavericks.one?subject=${encodeURIComponent(`Solicitud de plan ${p.name}`)}`}
+              href={`mailto:hola@admavericks.one?subject=${encodeURIComponent(`Cotizacion de acceso ${p.name}`)}`}
               className={"mt-6 " + (p.destacado ? "btn btn-primary" : "btn btn-secondary")}
             >
-              Solicitar evaluacion →
+              Cotizar con acceso →
             </a>
           </article>
         ))}
       </div>
       <p className="mx-auto mt-6 max-w-2xl text-center text-xs text-muted">
-        Valores referenciales en USD. El acceso se habilita por invitacion despues de validar alcance,
-        contrato y responsables. La inversion publicitaria, las reservas y la facturacion se confirman
-        por separado; esta pagina no recoge datos de tarjeta.
+        Cada propuesta se cotiza de forma personalizada segun alcance, usuarios, medios y nivel de
+        acompanamiento. El acceso se habilita por invitacion despues de validar contrato y responsables.
       </p>
     </>
   );

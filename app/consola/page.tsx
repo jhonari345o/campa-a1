@@ -4,6 +4,7 @@ import { Wordmark } from "@/components/Wordmark";
 import { getSessionProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { CrearClienteForm } from "./CrearClienteForm";
+import { CrearAdministradorForm } from "./CrearAdministradorForm";
 import { cerrarSesion } from "./actions";
 import { isDlocalConfigured } from "@/lib/payments/dlocal";
 import { getPaymentProvider, isPagoPluxConfigured } from "@/lib/payments/pagoplux";
@@ -25,11 +26,19 @@ export default async function ConsolaPage() {
   if (!profile.is_platform_admin) return <AccessDenied />;
 
   const supabase = await createClient();
-  const { data: companies } = await supabase
-    .from("companies")
-    .select("id, name, status, seats, created_at")
-    .order("created_at", { ascending: false })
-    .limit(20);
+  const [{ data: companies }, { data: administrators }] = await Promise.all([
+    supabase
+      .from("companies")
+      .select("id, name, status, seats, created_at")
+      .order("created_at", { ascending: false })
+      .limit(20),
+    supabase
+      .from("profiles")
+      .select("id, full_name, email, created_at")
+      .eq("is_platform_admin", true)
+      .order("created_at", { ascending: false })
+      .limit(20),
+  ]);
 
   return (
     <div className="min-h-screen">
@@ -38,6 +47,10 @@ export default async function ConsolaPage() {
         <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr]">
           <CrearClienteForm />
           <RecentClients companies={companies ?? []} />
+        </div>
+        <div className="mt-8 grid gap-8 lg:grid-cols-[1.15fr_1fr]">
+          <CrearAdministradorForm />
+          <AdministrativeAccess administrators={administrators ?? []} />
         </div>
         <MetaConnectionCenter />
         <PagoPluxConnectionCenter />
@@ -195,12 +208,43 @@ function RecentClients({ companies }: { companies: Company[] }) {
                   <span className="font-black text-forest">{c.name}</span>
                   <span className="text-xs font-black uppercase text-signal-dark">{c.status}</span>
                 </div>
-                <p className="mt-1 text-xs text-muted">{c.seats} usuarios · altas desde consola local</p>
+                <p className="mt-1 text-xs text-muted">{c.seats} usuarios · altas desde consola administrativa</p>
               </li>
             );
           })}
         </ul>
       )}
+    </section>
+  );
+}
+
+type Administrator = { id: string; full_name: string | null; email: string | null; created_at: string };
+function AdministrativeAccess({ administrators }: { administrators: Administrator[] }) {
+  return (
+    <section className="rounded-panel border border-border bg-white p-8 shadow-panel">
+      <h2 className="text-xl font-black tracking-tight">Equipo administrativo</h2>
+      <p className="mt-1 text-sm text-muted">Estas cuentas pueden operar toda la plataforma y alimentar la base.</p>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+        <Link href="/mercado/cargar" className="rounded-xl border border-signal/30 bg-signal/5 p-4 text-sm font-black text-forest">
+          Cargar anunciantes, medios y métricas →
+        </Link>
+        <Link href="/campanas" className="rounded-xl border border-border bg-fog p-4 text-sm font-black text-forest">
+          Operar órdenes y campañas →
+        </Link>
+        <Link href="/reportes" className="rounded-xl border border-border bg-fog p-4 text-sm font-black text-forest">
+          Revisar reportes y post-buys →
+        </Link>
+      </div>
+      <h3 className="mt-6 text-xs font-black uppercase tracking-wide text-muted">Administradores activos</h3>
+      <ul className="mt-3 divide-y divide-border rounded-xl border border-border">
+        {administrators.map((administrator) => (
+          <li key={administrator.id} className="px-4 py-3">
+            <strong className="block text-sm text-forest">{administrator.full_name || "Administrador"}</strong>
+            <span className="block text-xs text-muted">{administrator.email || "Correo no registrado"}</span>
+          </li>
+        ))}
+        {administrators.length === 0 && <li className="px-4 py-5 text-center text-xs text-muted">No hay administradores para mostrar.</li>}
+      </ul>
     </section>
   );
 }

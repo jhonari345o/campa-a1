@@ -411,6 +411,28 @@ test("la consola de credenciales es local, enmascara valores y conserva bloqueos
   assert.match(page, /name="PAGOPLUX_WEBHOOK_SECRET" type="password"/);
 });
 
+test("la oferta publica cotiza acceso sin publicar precios fijos", () => {
+  const pricing = readFileSync(resolve("components/PlanesPricing.tsx"), "utf8");
+  const plans = readFileSync(resolve("lib/plans.ts"), "utf8");
+  const header = readFileSync(resolve("components/SiteHeader.tsx"), "utf8");
+  assert.match(pricing, /Cotizar con acceso/);
+  assert.match(pricing, /cotiza de forma personalizada/);
+  assert.doesNotMatch(pricing, /planMoney|\/mes/);
+  assert.doesNotMatch(plans, /price:\s*\d+/);
+  assert.match(header, /label: "Soluciones"/);
+});
+
+test("un administrador existente puede crear otro administrador con auditoria", () => {
+  const actions = readFileSync(resolve("app/consola/actions.ts"), "utf8");
+  const form = readFileSync(resolve("app/consola/CrearAdministradorForm.tsx"), "utf8");
+  assert.match(actions, /actor\.is_platform_admin/);
+  assert.match(actions, /admin\.auth\.admin\.createUser/);
+  assert.match(actions, /is_platform_admin:\s*true/);
+  assert.match(actions, /platform_admin\.created/);
+  assert.match(form, /acceso administrativo total/);
+  assert.match(form, /confirm_admin/);
+});
+
 test("PagoPlux concilia por webhook sin confiar en la tarjeta ni en el navegador", () => {
   const paybox = readFileSync(resolve("components/PagoPluxButton.tsx"), "utf8");
   const webhook = readFileSync(resolve("app/api/payments/pagoplux/webhook/route.ts"), "utf8");

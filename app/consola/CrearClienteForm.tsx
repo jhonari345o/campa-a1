@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { useState } from "react";
 import { crearCliente, type CrearClienteResult } from "./actions";
-import { PLANS, planMoney } from "@/lib/plans";
+import { PLANS } from "@/lib/plans";
 
 export function CrearClienteForm() {
   const [state, formAction, pending] = useActionState<CrearClienteResult | null, FormData>(
@@ -18,7 +18,7 @@ export function CrearClienteForm() {
       <h2 className="text-xl font-black tracking-tight">Dar de alta un cliente</h2>
       <p className="mt-1 text-sm text-muted">
         Escribe el nombre del cliente y unos pocos datos. El sistema crea la
-        empresa; los usuarios se agregan despues desde la consola local.
+        empresa; los administradores y usuarios se agregan desde esta consola.
       </p>
 
       <form action={formAction} className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -58,7 +58,7 @@ export function CrearClienteForm() {
           >
             {PLANS.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name} — {planMoney(p.price)}/mes · {p.seats} usuarios
+                {p.name} · {p.seats} usuarios
               </option>
             ))}
           </select>
@@ -96,8 +96,8 @@ function CompanyResult({ companyName, planName }: { companyName: string; planNam
         {planName ? ` (plan ${planName})` : ""} creado correctamente.
       </p>
       <p className="mt-3 text-xs text-muted">
-        Abre la consola local de Ad Mavericks para crear y vincular sus usuarios
-        en Supabase. No existe activacion publica por codigo.
+        Usa el panel de administradores para crear los accesos autorizados en
+        Supabase. No existe autorregistro publico.
       </p>
     </div>
   );
