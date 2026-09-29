@@ -452,6 +452,12 @@ test("post-buy conserva evidencia nula y estado amarillo pendiente", () => {
   const seed = readFileSync(resolve("supabase/imports/warner_2026/01_seed_warner_2026.sql"), "utf8");
   assert.match(dashboard, /bg-yellow-300/);
   assert.match(dashboard, /Evidencia Pendiente/);
+  assert.match(dashboard, /Warner Bros\. Discovery Ecuador/);
+  assert.match(dashboard, /Léttera dirige la operación de medios para Warner/);
+  assert.match(dashboard, /Plataforma de Léttera/);
+  assert.match(dashboard, /role="tab"/);
+  assert.match(dashboard, /selectedPlacementId/);
+  assert.equal(existsSync(resolve("public/partners/lettera/lettera-logo.png")), true);
   assert.match(seed, /'pending'/);
   assert.match(seed, /null/);
 });
