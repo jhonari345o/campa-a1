@@ -457,7 +457,24 @@ test("post-buy conserva evidencia nula y estado amarillo pendiente", () => {
   assert.match(dashboard, /Plataforma de Léttera/);
   assert.match(dashboard, /role="tab"/);
   assert.match(dashboard, /selectedPlacementId/);
+  assert.match(dashboard, /Selecciona una agencia/);
+  assert.match(dashboard, /Selecciona un estudio/);
+  assert.match(dashboard, /Catálogo de películas/);
+  assert.match(dashboard, /WarnerReportCharts/);
   assert.equal(existsSync(resolve("public/partners/lettera/lettera-logo.png")), true);
+  for (const poster of ["wuthering-heights", "the-bride", "they-will-kill-you", "la-momia", "mortal-kombat-2", "supergirl", "oak-street"]) {
+    assert.equal(existsSync(resolve("public/postbuy/warner/posters", `${poster}.jpg`)), true, `Falta el arte oficial de ${poster}`);
+  }
   assert.match(seed, /'pending'/);
   assert.match(seed, /null/);
+});
+
+test("reportes presenta valores económicos como inversión", () => {
+  const page = readFileSync(resolve("app/reportes/page.tsx"), "utf8");
+  const narrative = readFileSync(resolve("lib/report-narrative.ts"), "utf8");
+  assert.match(page, /Inversión planificada/);
+  assert.match(page, /Inversión ejecutada/);
+  assert.doesNotMatch(page, />Presupuesto</);
+  assert.doesNotMatch(page, />Gasto</);
+  assert.match(narrative, /inversión ejecutada supera la inversión planificada/);
 });
