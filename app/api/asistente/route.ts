@@ -1,0 +1,217 @@
+import { NextResponse } from "next/server";
+import { getSessionProfile } from "@/lib/auth";
+import { buildMarketContext } from "@/lib/assistant/context";
+import { chatCompletion, type LlmMessage } from "@/lib/assistant/llm";
+import { buildLiveTrendContext, shouldUseLiveTrends } from "@/lib/assistant/trends";
+import { isAiAssistantEnabled, isAiWebTrendsEnabled } from "@/lib/commercial";
+import { detectAssistantAction } from "@/lib/assistant/actions";
+
+export const runtime = "nodejs";
+
+const CONTEXT_TIMEOUT_MS = 5_000;
+const TRENDS_TIMEOUT_MS = 6_000;
+
+type ChatMessage = { role: "user" | "assistant"; content: string };
+
+const SYSTEM = `Eres Mavi, la iguana guayaca de Ad Mavericks One, una central de medios de Ecuador.
+Eres una guia de medios y creativa. Ayudas a los clientes a PREPARAR su plan de medios:
+les indicas que canales evaluar y por que, y GENERAS borradores y guiones (video, redes,
+television, radio, WhatsApp).
+
+Tus fuentes son el CONTEXTO interno que se te entrega (inversion del mercado, giros de negocio,
+canales y plantillas de campana) y, cuando aparezca la sección FUENTES ACTUALES DE INTERNET,
+las fuentes enlazadas y fechadas de esa sección.
+
+Que haces:
+- Partes del plan/presupuesto del cliente. Si no lo tienes, preguntale su giro, presupuesto y
+  objetivo antes de recomendar.
+- Recomiendas canales y como invertir usando los CANALES y GIROS del contexto, y la referencia
+  de inversion del mercado.
+- Cuando te lo pidan (o cuando ayude), generas propuestas concretas: ideas de campana y GUIONES
+  listos (usa las PLANTILLAS de campana como estructura) para video/reels, redes, TV y radio.
+
+Reglas:
+- Respondes preguntas sobre publicidad, medios, el planificador, catalogos, presupuestos,
+  campanas, ordenes, reportes y el uso de Ad Mavericks One. Si preguntan algo ajeno a ese
+  universo, reencauza con amabilidad.
+- Cuando el contexto contenga productos, programas, emisoras, proveedores, ubicaciones o
+  tarifas concretas, baja la recomendacion a ese nivel y cita la validacion pendiente.
+- Datos honestos: si algo no esta en el contexto, dilo; no inventes cifras ni prometas
+  resultados garantizados.
+- Trata la BASE INTERNA DE REFERENCIA como historica o de corte declarado. Nunca la describas
+  como actual si su periodo no coincide con la fecha de hoy. Para actualidad manda la seccion
+  FUENTES ACTUALES DE INTERNET; si no aparece, di que no consultaste Internet en esa respuesta.
+- Cuando uses tendencias actuales, separa el hecho publicado de tu inferencia publicitaria,
+  menciona la fecha de consulta y explica por que la señal es o no pertinente para el negocio.
+- No repitas una respuesta estándar: adapta la recomendación al giro, objetivo, audiencia,
+  geografía, presupuesto y momento de la conversación. Explica el porqué de cada canal.
+- Nunca afirmas que compraste, reservaste, publicaste o activaste pauta. Toda recomendacion,
+  presupuesto y borrador requiere revision y aprobacion humana.
+- No conviertes ranking de radio, OTS, circulacion, seguidores o impresiones en alcance
+  comparable. Si no hay metodologia homologada, indicas "pendiente de homologacion".
+- Tono: valiente, preciso, optimista y cercano. Espanol de Ecuador. Respuestas accionables:
+  que hacer, por que y el siguiente paso. Guiones en formato claro y listos para usar.`;
+
+export async function POST(request: Request) {
+  const requestId = request.headers.get("x-request-id")?.slice(0, 100) || crypto.randomUUID();
+  const headers = { "x-request-id": requestId, "cache-control": "no-store" };
+
+  if (!isAiAssistantEnabled()) {
+    return NextResponse.json(
+      { error: "Mavi permanece deshabilitada hasta validar el tratamiento de datos con el proveedor de IA." },
+      { status: 503, headers },
+    );
+  }
+  if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
+    return NextResponse.json({ error: "Tipo de contenido no admitido." }, { status: 415, headers });
+  }
+  const contentLength = Number(request.headers.get("content-length") ?? "0");
+  if (Number.isFinite(contentLength) && contentLength > 32_768) {
+    return NextResponse.json({ error: "La consulta es demasiado grande." }, { status: 413, headers });
+  }
+  const origin = request.headers.get("origin");
+  if (!origin || !isAllowedOrigin(origin, request.url)) {
+    return NextResponse.json({ error: "Origen no permitido." }, { status: 403, headers });
+  }
+
+  // 1. Solo usuarios autenticados.
+  const profile = await getSessionProfile();
+  if (!profile) {
+    return NextResponse.json({ error: "Debes iniciar sesion." }, { status: 401, headers });
+  }
+
+  // 2. Validar el historial.
+  let body: { messages?: ChatMessage[]; consent?: boolean };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Cuerpo invalido." }, { status: 400, headers });
+  }
+  if (body.consent !== true) {
+    return NextResponse.json({ error: "Falta confirmar el tratamiento de la consulta." }, { status: 403, headers });
+  }
+  const history = (body.messages ?? [])
+    .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+    .map((m) => ({ ...m, content: m.content.trim().slice(0, 4000) }))
+    .slice(-12);
+  const totalChars = history.reduce((sum, message) => sum + message.content.length, 0);
+  if (totalChars > 16_000) {
+    return NextResponse.json({ error: "La conversacion es demasiado larga. Inicia una consulta nueva." }, { status: 413, headers });
+  }
+  if (history.length === 0 || history[history.length - 1].role !== "user") {
+    return NextResponse.json({ error: "Falta el mensaje del usuario." }, { status: 400, headers });
+  }
+
+  // 3. Contexto de datos + llamada al modelo propio.
+  try {
+    const startedAt = Date.now();
+    const lastUserMessage = history[history.length - 1].content;
+    const action = detectAssistantAction(lastUserMessage);
+    // El contexto interno y las fuentes actuales son independientes. Se
+    // resuelven en paralelo y con un limite propio para no consumir los 28 s
+    // que Amplify permite a la funcion antes de llamar al modelo.
+    const [context, live] = await Promise.all([
+      resolveWithin(
+        buildMarketContext(lastUserMessage),
+        CONTEXT_TIMEOUT_MS,
+        "La base interna no estuvo disponible dentro del tiempo de esta consulta.",
+      ),
+      isAiWebTrendsEnabled() && shouldUseLiveTrends(lastUserMessage)
+        ? resolveWithin(
+            buildLiveTrendContext(lastUserMessage),
+            TRENDS_TIMEOUT_MS,
+            { context: "No fue posible obtener fuentes actuales dentro del tiempo de esta consulta.", sources: [] },
+          )
+        : Promise.resolve({ context: "", sources: [] }),
+    ]);
+    const today = new Intl.DateTimeFormat("es-EC", {
+      dateStyle: "full",
+      timeZone: "America/Guayaquil",
+    }).format(new Date());
+    const messages: LlmMessage[] = [
+      { role: "system", content: `${SYSTEM}\n\nFECHA ACTUAL EN ECUADOR: ${today}. No uses la fecha de entrenamiento del modelo como actualidad.\n\n${context}${live.context ? `\n\n${live.context}` : ""}` },
+      ...history.map((m) => ({ role: m.role, content: m.content }) as LlmMessage),
+    ];
+
+    // 512 tokens permiten una respuesta accionable y mantienen incluso los
+    // modelos gratuitos mas lentos dentro de la ventana de Amplify.
+    const reply = await chatCompletion(messages, { maxTokens: 512 });
+    console.info(JSON.stringify({
+      event: "assistant.success",
+      request_id: requestId,
+      duration_ms: Date.now() - startedAt,
+      live_sources: live.sources.length,
+      action: action?.kind ?? null,
+    }));
+    return NextResponse.json(
+      { reply: reply || "No pude generar una respuesta. Intenta de nuevo.", sources: live.sources, action },
+      { headers },
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message === "MODELO_NO_CONFIGURADO") {
+      return NextResponse.json(
+        { error: "El asistente aun no tiene un proveedor aprobado y configurado." },
+        { status: 503, headers },
+      );
+    }
+    const providerStatus = err instanceof Error && /^PROVIDER_HTTP_\d{3}$/.test(err.message)
+      ? err.message.replace("PROVIDER_HTTP_", "")
+      : null;
+    const providerTimedOut = err instanceof Error && err.message === "PROVIDER_TIMEOUT";
+    console.error(JSON.stringify({
+      event: "assistant.error",
+      request_id: requestId,
+      error: "provider_failure",
+      provider_status: providerStatus,
+    }));
+    return NextResponse.json(
+      {
+        error: providerTimedOut
+          ? "Mavi tardo demasiado en responder. Intenta nuevamente."
+          : providerStatus === "429"
+            ? "El proveedor gratuito esta ocupado. Intenta nuevamente en unos minutos."
+            : "Mavi no pudo responder. Intenta de nuevo mas tarde.",
+        requestId,
+      },
+      { status: providerTimedOut ? 504 : providerStatus === "429" ? 503 : 500, headers },
+    );
+  }
+}
+
+function resolveWithin<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      resolve(fallback);
+    }, timeoutMs);
+
+    promise.then(
+      (value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(fallback);
+      },
+    );
+  });
+}
+
+function isAllowedOrigin(origin: string, requestUrl: string): boolean {
+  try {
+    const candidates = [new URL(requestUrl).origin];
+    if (process.env.NEXT_PUBLIC_SITE_URL) {
+      candidates.push(new URL(process.env.NEXT_PUBLIC_SITE_URL).origin);
+    }
+    return candidates.includes(new URL(origin).origin);
+  } catch {
+    return false;
+  }
+}

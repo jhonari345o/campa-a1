@@ -1,0 +1,29 @@
+name: Ingesta de datos de mercado
+
+# Corre la importacion de CSV de forma programada (nocturna) y bajo demanda.
+# Define los secrets del repositorio antes de activarlo:
+#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+on:
+  schedule:
+    - cron: "0 6 * * *" # 06:00 UTC (~01:00 Ecuador)
+  workflow_dispatch:
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Importar CSVs de data/
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          # Ajusta las rutas a tus archivos reales (o commitea en data/).
+          if [ -f data/advertisers.csv ]; then npx tsx scripts/ingest/import.ts advertisers data/advertisers.csv; fi
+          if [ -f data/investments.csv ]; then npx tsx scripts/ingest/import.ts investments data/investments.csv; fi
+          if [ -f data/metrics.csv ]; then npx tsx scripts/ingest/import.ts metrics data/metrics.csv; fi
