@@ -13,6 +13,7 @@ import {
   type DetailedMediaRecommendation,
 } from "@/lib/detailed-plan";
 import { BUSINESS_CATEGORY_OPTIONS } from "@/lib/form-catalogs";
+import { normalizeCoverageBrief, type CoverageSelection } from "@/lib/geographic-coverage";
 
 export type PlanBrief = {
   brand: string;
@@ -25,6 +26,7 @@ export type PlanBrief = {
   sex: string;
   socioeconomic: string;
   geography: string;
+  coverage?: CoverageSelection[];
   startDate: string;
   endDate: string;
   budgetUsd: number | null;
@@ -125,7 +127,7 @@ export async function generarPlan(
     ageRange: String(formData.get("ageRange") ?? "Personas 18+"),
     sex: String(formData.get("sex") ?? "Todas las personas"),
     socioeconomic: String(formData.get("socioeconomic") ?? "Todos los NSE"),
-    geography: String(formData.get("geography") ?? "").trim(),
+    ...normalizeCoverageBrief({ geography: String(formData.get("geography") ?? "").trim(), coverage: formData.get("coverage") }),
     startDate: String(formData.get("startDate") ?? ""),
     endDate: String(formData.get("endDate") ?? ""),
     budgetUsd,
@@ -224,6 +226,7 @@ export async function guardarPlan(input: Extract<PlanResult, { ok: true }>): Pro
     return { ok: false, error: "Tu rol no permite guardar planes." };
   }
 
+  input = { ...input, brief: { ...input.brief, ...normalizeCoverageBrief(input.brief) } };
   const db = await createClient();
   const name = (input.brief.brand || input.keyword || "Plan sin marca").slice(0, 120);
   const snapshot = {
@@ -282,6 +285,7 @@ export async function aprobarPlan(
   const canApprove = profile.is_platform_admin || Boolean(approvingCompany);
   if (!canApprove) return { ok: false, error: "El plan debe ser aprobado por un usuario autorizador." };
 
+  input = { ...input, brief: { ...input.brief, ...normalizeCoverageBrief(input.brief) } };
   let canonicalPlan: MediaPlan;
   try {
     canonicalPlan = await buildMediaPlan({

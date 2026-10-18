@@ -7,7 +7,8 @@ import type { PlanRow } from "@/lib/planner";
 import { mediaGroupForLabel } from "@/lib/media-groups";
 import type { Campaign } from "@/lib/campaigns";
 import { ejecutarCampana } from "@/app/campanas/actions";
-import { EcuadorTargetMap, type GeoTarget } from "@/app/pautar/EcuadorTargetMap";
+import { GeographicCoveragePicker } from "@/components/geography/GeographicCoveragePicker";
+import { coverageDescription, restoreCoverage, type CoverageSelection } from "@/lib/geographic-coverage";
 import {
   BUSINESS_CATEGORY_OPTIONS,
   COMMERCIAL_GOAL_UNIT_OPTIONS,
@@ -33,7 +34,8 @@ export function PlanForm({ initialPlan }: { initialPlan?: SavedMediaPlan | null 
   const [planId, setPlanId] = useState(initialPlan?.id ?? "");
   const [saveMessage, setSaveMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [savingProgress, startSavingProgress] = useTransition();
-  const [geoTarget, setGeoTarget] = useState<GeoTarget | null>(() => parseGeoTarget(stringValue(initialBrief.geography)));
+  const [coverage, setCoverage] = useState<CoverageSelection[]>(() => restoreCoverage(initialBrief));
+  const [coverageChanged, setCoverageChanged] = useState(false);
   const [stage, setStage] = useState<"brief" | "analysis" | "proposal" | "personalize" | "approved">("brief");
   const [approvedPlan, setApprovedPlan] = useState<{ id: string; rows: PlanRow[] } | null>(null);
   const [productMatrixApplies, setProductMatrixApplies] = useState(Boolean(initialBrief.productMatrixApplies));
@@ -45,11 +47,8 @@ export function PlanForm({ initialPlan }: { initialPlan?: SavedMediaPlan | null 
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }, [state]);
-  const geography = !geoTarget
-    ? ""
-    : geoTarget.scope === "country"
-      ? "Todo Ecuador"
-      : `${geoTarget.label} · ${geoTarget.radiusKm} km alrededor`;
+  const legacyGeography = !restoreCoverage(initialBrief).length ? stringValue(initialBrief.geography) : "";
+  const geography = coverage.length ? coverageDescription(coverage) : !coverageChanged ? legacyGeography : "";
   const initialSelectedMedia = Array.isArray(initialBrief.selectedMedia) ? initialBrief.selectedMedia.map(String) : [];
   const stageIndex = stage === "brief" ? 0 : stage === "analysis" ? 1 : stage === "proposal" ? 2 : stage === "personalize" ? 3 : 4;
   const stageCopy = stage === "brief"
@@ -68,6 +67,7 @@ export function PlanForm({ initialPlan }: { initialPlan?: SavedMediaPlan | null 
     const formData = new FormData(formRef.current);
     const brief = formDataRecord(formData);
     brief.geography = geography;
+    brief.coverage = coverage;
     brief.budgetUsd = numberOrNull(brief.budget);
     startSavingProgress(async () => {
       const result = await guardarProgresoBrief({ planId: planId || null, name: stringValue(brief.brand) || initialPlan?.name, brief });
@@ -120,10 +120,15 @@ export function PlanForm({ initialPlan }: { initialPlan?: SavedMediaPlan | null 
             <SelectField name="sex" label="Sexo" defaultValue={stringValue(initialBrief.sex) || "Todas las personas"}>{["Todas las personas", "Mujeres", "Hombres", "No binario", "Mujeres prioritario", "Hombres prioritario", "Por definir"].map((option) => <option key={option}>{option}</option>)}</SelectField>
             <SelectField name="socioeconomic" label="Nivel socioeconómico" defaultValue={stringValue(initialBrief.socioeconomic) || "Todos los NSE"}>{["Todos los NSE", "A", "B", "C+", "C-", "D", "A/B", "B/C+", "C+/C-", "C-/D", "Por definir"].map((option) => <option key={option}>{option}</option>)}</SelectField>
           </div>
-          <div className="planner-map-card">
-            <div><strong>Movilidad geográfica</strong><span>Busca una ciudad, marca un punto o selecciona todo Ecuador; el círculo representa el radio real de cobertura.</span></div>
+          <div className="mt-6">
             <input type="hidden" name="geography" value={geography} />
-            <EcuadorTargetMap value={geoTarget} onChange={setGeoTarget} />
+            <input type="hidden" name="coverage" value={JSON.stringify(coverage)} />
+            {legacyGeography && !coverageChanged && (
+              <p className="mb-3 rounded-xl border border-amber/40 bg-amber/10 p-3 text-sm" role="status">
+                Cobertura guardada anteriormente: <strong>{legacyGeography}</strong>. Se conserva hasta que selecciones provincias o cantones en el listado.
+              </p>
+            )}
+            <GeographicCoveragePicker value={coverage} onChange={(next) => { setCoverage(next); setCoverageChanged(true); }} />
           </div>
         </section>
 
@@ -796,16 +801,6 @@ function formDataRecord(formData: FormData): Record<string, unknown> {
 
 function stringValue(value: unknown) { return value == null ? "" : String(value); }
 function numberOrNull(value: unknown) { const number = Number(value); return Number.isFinite(number) && number > 0 ? number : null; }
-function parseGeoTarget(value: string): GeoTarget | null {
-  if (!value) return null;
-  if (value === "Todo Ecuador") return { scope: "country", label: "Todo Ecuador", latitude: -1.8312, longitude: -78.1834, radiusKm: 0 };
-  const match = value.match(/^(.+?) · (\d+(?:\.\d+)?) km alrededor$/);
-  if (!match) return null;
-  const known: Record<string, [number, number]> = { Guayaquil: [-2.170998, -79.922359], Quito: [-0.180653, -78.467834], Cuenca: [-2.900128, -79.005896], Manta: [-0.967653, -80.70891] };
-  const label = match[1]!.trim();
-  const coordinates = known[label] ?? [-1.8312, -78.1834];
-  return { scope: "radius", label, latitude: coordinates[0], longitude: coordinates[1], radiusKm: Number(match[2]) };
-}
 
 function Checklist({ name, label, options }: { name: string; label: string; options: string[] }) {
   const baseId = useId();
