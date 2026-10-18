@@ -103,6 +103,21 @@ export function GeographicCoveragePicker({ value, onChange }: GeographicCoverage
     return () => document.removeEventListener("mousedown", closeOnOutsideClick);
   }, [resultsOpen]);
 
+  useEffect(() => {
+    if (!resultsOpen) return;
+    const list = searchRootRef.current?.querySelector<HTMLElement>("[role='listbox']");
+    const option = list?.querySelector<HTMLElement>(`#coverage-option-${activeIndex}`);
+    if (!list || !option) return;
+    // Scroll only the results, never the page or surrounding planner.
+    const listBounds = list.getBoundingClientRect();
+    const optionBounds = option.getBoundingClientRect();
+    if (optionBounds.top < listBounds.top + 6) {
+      list.scrollTop += optionBounds.top - listBounds.top - 6;
+    } else if (optionBounds.bottom > listBounds.bottom - 6) {
+      list.scrollTop += optionBounds.bottom - listBounds.bottom + 6;
+    }
+  }, [activeIndex, resultsOpen]);
+
   const options = useMemo<CoverageOption[]>(() => {
     if (!provinces.length) return [];
     const provinceOptions = provinces.map((feature) => {
@@ -266,14 +281,16 @@ export function GeographicCoveragePicker({ value, onChange }: GeographicCoverage
   function handleSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setActiveIndex((current) => filtered.length ? Math.min(filtered.length - 1, current + 1) : 0);
+      setResultsOpen(true);
+      setActiveIndex((current) => resultsOpen && filtered.length ? Math.min(filtered.length - 1, current + 1) : 0);
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
+      setResultsOpen(true);
       setActiveIndex((current) => Math.max(0, current - 1));
     } else if (event.key === "Enter") {
       event.preventDefault();
       if (resultsOpen && filtered[activeIndex]) selectOption(filtered[activeIndex]);
-    } else if (event.key === "Escape") {
+    } else if (event.key === "Escape" || event.key === "Tab") {
       setResultsOpen(false);
     }
   }
