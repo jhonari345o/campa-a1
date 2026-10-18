@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { normalizeCoverageBrief } from "@/lib/geographic-coverage";
 import { getSessionProfile } from "@/lib/auth";
 import { getMyCompanies } from "@/lib/company";
 import { canCompanyRole } from "@/lib/permissions";
@@ -39,7 +40,7 @@ type SaveResult = { ok: true; id: string; version: number; message: string } | {
 export async function guardarProgresoBrief(input: SaveProgressInput): Promise<SaveResult> {
   const access = await planAccess();
   if (!access.ok) return access;
-  const brief = cleanObject(input.brief);
+  const brief: Record<string, unknown> = { ...cleanObject(input.brief), ...normalizeCoverageBrief(input.brief) };
   const name = cleanText(input.name || String(brief.brand ?? "") || "Plan sin marca", 120);
   const required = [brief.keyword, brief.objective, brief.geography, brief.budgetUsd ?? brief.budget];
   const progress = Math.min(35, 8 + required.filter(Boolean).length * 7);
