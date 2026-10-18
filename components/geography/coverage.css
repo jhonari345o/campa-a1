@@ -7,7 +7,7 @@
   border-radius: 18px;
   box-shadow: 0 7px 0 rgba(34, 57, 47, .06);
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   padding: 22px;
 }
 
@@ -57,6 +57,8 @@
 
 .geographic-coverage-field .coverage-search-panel {
   min-width: 0;
+  position: relative;
+  z-index: 2;
 }
 
 .geographic-coverage-field .coverage-national-toggle {
@@ -99,16 +101,31 @@
 .geographic-coverage-field .coverage-national-toggle b { color: var(--signal); font-size: 15px; text-align: center; }
 
 .geographic-coverage-field .coverage-search {
+  align-items: center;
   background: var(--white);
   border: 1px solid #bcc2bf;
   border-radius: 12px;
+  display: grid;
+  gap: 9px;
+  grid-template-columns: 20px minmax(0, 1fr);
   padding: 5px 8px;
+  position: relative;
   z-index: 12;
 }
 
 .geographic-coverage-field .coverage-search:focus-within { border-color: var(--signal); box-shadow: 0 0 0 3px var(--signal-soft); }
-.geographic-coverage-field .brief-form .coverage-search input { border: 0; box-shadow: none; padding-left: 3px; }
-.geographic-coverage-field .brief-form .coverage-search input:focus { outline: 0; }
+.geographic-coverage-field .coverage-search > span { color: var(--muted); font-size: 18px; text-align: center; }
+.geographic-coverage-field .coverage-search input {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: var(--forest);
+  font: inherit;
+  min-width: 0;
+  padding: 8px 3px;
+  width: 100%;
+}
+.geographic-coverage-field .coverage-search input:focus { outline: 0; }
 
 .geographic-coverage-field .coverage-results {
   background: var(--white);
@@ -116,12 +133,21 @@
   border-radius: 12px;
   box-shadow: 0 18px 40px rgba(23, 40, 31, .19);
   left: 0;
-  max-height: 315px;
+  list-style: none;
+  margin: 0;
+  max-height: min(315px, 30vh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  padding: 6px;
   position: absolute;
   right: 0;
-  top: 61px;
+  top: calc(100% + 6px);
   z-index: 70;
 }
+
+.geographic-coverage-field .coverage-results li { margin: 0; }
+.geographic-coverage-field .coverage-result-state { color: var(--muted); font-size: 11px; padding: 18px; }
 
 .geographic-coverage-field .coverage-results button {
   align-items: center;
@@ -230,6 +256,8 @@
   min-width: 0;
   overflow: hidden;
   padding: 14px;
+  position: relative;
+  z-index: 1;
 }
 
 .geographic-coverage-field .map-card-top {
@@ -353,3 +381,7 @@
 @media(max-width:700px){.geographic-coverage-field{padding:16px}.geographic-coverage-field .coverage-field-heading{align-items:flex-start;flex-direction:column;gap:10px}.geographic-coverage-field .coverage-field-heading span{font-size:19px}.geographic-coverage-field .coverage-chips{grid-template-columns:1fr}.geographic-coverage-field .map-stage{min-height:280px}.geographic-coverage-field .coverage-map-legend{flex-wrap:wrap}}
 
 .geographic-coverage-field .coverage-map-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:1}
+
+@media (max-width: 700px) {
+  .geographic-coverage-field .coverage-results { max-height: min(250px, 25vh); }
+}
