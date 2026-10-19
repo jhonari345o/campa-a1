@@ -1,3 +1,5 @@
+import "server-only";
+
 // Archivo generado por scripts/generate_warner_postbuy.py. No editar a mano.
 export type PostbuyPlacement = {
   id: string;
