@@ -1,0 +1,73 @@
+.page {
+  min-height: 100vh;
+  min-height: 100svh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.06fr) minmax(0, 1fr);
+  color: #22392f;
+  background: #f4f5f2;
+}
+
+.welcome {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 48px;
+  padding: clamp(32px, 5vw, 88px);
+  background: #22392f;
+  background-image: repeating-linear-gradient(135deg, transparent, transparent 34px, #ffffff03 35px, #ffffff03 36px);
+  color: #fff;
+}
+
+.brand { align-self: flex-start; font-size: 24px; }
+.brand:focus-visible { outline: 3px solid #9bdd87; outline-offset: 8px; border-radius: 4px; }
+.message { max-width: 590px; }
+.kicker { margin: 0 0 20px; color: #9bdd87; font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+.message h1 { margin: 0; font-size: clamp(36px, 3.8vw, 64px); font-weight: 900; line-height: 1.08; letter-spacing: -.045em; }
+.description { max-width: 430px; margin: 24px 0 0; color: #d1e0d4; font-size: 16px; line-height: 1.65; }
+.maviNote { display: flex; align-items: center; gap: 18px; padding-top: 28px; border-top: 1px solid #ffffff26; }
+.mavi { width: 76px; height: 76px; flex: 0 0 auto; border-radius: 50%; object-fit: cover; }
+.maviNote strong { font-size: 15px; font-weight: 800; }
+.maviNote p { margin: 5px 0 0; color: #d1e0d4; font-size: 13px; line-height: 1.5; }
+
+.access { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: clamp(32px, 5vw, 80px); }
+.formBlock { width: 100%; max-width: 400px; margin: auto; }
+.eyebrow { margin: 0 0 14px; color: #69716d; font-size: 11px; font-weight: 800; letter-spacing: .06em; }
+.formBlock h2 { margin: 0; font-size: clamp(28px, 2.5vw, 36px); font-weight: 900; line-height: 1.15; letter-spacing: -.035em; }
+.intro { margin: 14px 0 30px; color: #69716d; font-size: 14px; line-height: 1.6; }
+.form { display: flex; flex-direction: column; gap: 20px; }
+.field { min-width: 0; }
+.field label { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 800; }
+.field input { display: block; width: 100%; min-width: 0; border: 1px solid #d7ddd8; border-radius: 10px; background: #fafbf8; color: #22392f; padding: 13px 14px; font: inherit; font-size: 16px; line-height: 24px; }
+.field input::placeholder { color: #757e78; opacity: 1; }
+.field input:focus { outline: 2px solid #007d00; outline-offset: 2px; border-color: #007d00; }
+.passwordField { position: relative; }
+.passwordField input { padding-right: 58px; }
+.passwordToggle { position: absolute; top: 4px; right: 4px; bottom: 4px; display: flex; align-items: center; justify-content: center; width: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #69716d; cursor: pointer; }
+.passwordToggle:hover { background: #e7eee4; color: #22392f; }
+.passwordToggle svg, .submit svg { width: 20px; height: 20px; flex: 0 0 auto; }
+.passwordToggle:focus-visible, .submit:focus-visible { outline: 3px solid #007d00; outline-offset: 3px; }
+.submit { display: flex; align-items: center; justify-content: center; gap: 14px; width: 100%; min-height: 52px; padding: 13px 18px; border: 0; border-radius: 10px; background: #00a100; color: #07140e; font: inherit; font-size: 15px; font-weight: 900; cursor: pointer; }
+.submit:hover:not(:disabled) { background: #0ab10a; }
+.submit:disabled { opacity: .65; cursor: wait; }
+.error { margin: 0; padding: 12px 14px; border: 1px solid #e7b6ae; border-radius: 10px; background: #fff1ee; color: #8e3024; font-size: 14px; line-height: 1.5; }
+.help { margin-top: 32px; padding-top: 24px; border-top: 1px solid #d7ddd8; }
+.help strong { font-size: 13px; font-weight: 800; }
+.help p { margin: 6px 0 0; color: #69716d; font-size: 13px; line-height: 1.5; }
+.footnote { margin: 36px 0 0; color: #69716d; font-size: 12px; text-align: center; }
+
+@media (max-width: 700px) {
+  .page { grid-template-columns: minmax(0, 1fr); }
+  .welcome { padding: 25px 27px; gap: 24px; }
+  .brand { font-size: 19px; }
+  .message h1 { max-width: 460px; font-size: 30px; }
+  .kicker, .description { display: none; }
+  .maviNote { padding-top: 0; gap: 13px; border-top: 0; }
+  .mavi { width: 54px; height: 54px; }
+  .maviNote strong { font-size: 14px; }
+  .maviNote p { font-size: 12px; }
+  .access { padding: 32px 27px 25px; }
+  .formBlock { max-width: 450px; }
+  .formBlock h2 { font-size: 28px; }
+  .intro { margin-bottom: 24px; }
+  .footnote { margin-top: 28px; }
+}
