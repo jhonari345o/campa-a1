@@ -6,7 +6,13 @@ frontend:
   phases:
     preBuild:
       commands:
+        - nvm use 22
         - npm ci
+        # Bloquear el despliegue si hay vulnerabilidades altas en dependencias de produccion.
+        - npm run security:deps
+        - npm run typecheck
+        - npm run lint
+        - npm test
     build:
       commands:
         # Next.js carga estas variables en el runtime SSR. No usar next.config
