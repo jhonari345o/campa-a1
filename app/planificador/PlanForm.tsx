@@ -22,6 +22,16 @@ import {
 import type { SavedMediaPlan } from "@/lib/media-workspace";
 import { guardarProgresoBrief } from "./workspace-actions";
 import { PlanOrderButton } from "./PlanOrderButton";
+import { MediaTypeIcon, type MediaType } from "@/components/MediaTypeIcon";
+
+const MEDIA_OPTIONS: { value: MediaType; label: string }[] = [
+  { value: "television", label: "Televisión" },
+  { value: "radio", label: "Radio" },
+  { value: "ooh", label: "Vía pública" },
+  { value: "press", label: "Prensa" },
+  { value: "digital", label: "Digital" },
+  { value: "influencers", label: "Influenciadores" },
+];
 
 const money = (n: number | null) =>
   n == null ? "—" : new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
@@ -142,8 +152,8 @@ export function PlanForm({ initialPlan }: { initialPlan?: SavedMediaPlan | null 
           <fieldset className="planner-media-selector">
             <legend>Medios a considerar *</legend>
             <div>
-              {[["television", "TV", "Televisión"], ["radio", "RA", "Radio"], ["ooh", "VP", "Vía pública"], ["press", "PR", "Prensa"], ["digital", "DI", "Digital"], ["influencers", "IN", "Influenciadores"]].map(([value, mark, label]) => (
-                <label key={value}><input name="selectedMedia" value={value} type="checkbox" defaultChecked={initialSelectedMedia.length === 0 || initialSelectedMedia.includes(value)} /><span>{mark}</span><strong>{label}</strong><i>✓</i></label>
+              {MEDIA_OPTIONS.map(({ value, label }) => (
+                <label key={value}><input name="selectedMedia" value={value} type="checkbox" defaultChecked={initialSelectedMedia.length === 0 || initialSelectedMedia.includes(value)} /><span><MediaTypeIcon type={value} /></span><strong>{label}</strong><i aria-hidden="true">✓</i></label>
               ))}
             </div>
           </fieldset>
