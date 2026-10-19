@@ -1,0 +1,11 @@
+import fs from 'node:fs';
+import {fileURLToPath} from 'node:url';
+import {findParentBoundary} from '../components/geography/geography-parentage.mjs';
+const read=(name)=>JSON.parse(fs.readFileSync(new URL(`../public/data/${name}.geojson`,import.meta.url),'utf8')).features;
+const provinces=read('ecuador-provinces'),cantons=read('ecuador-cantons');
+const labels={Manabi:'Manabí',Sucumbios:'Sucumbíos',Samborondon:'Samborondón'};
+const label=(f)=>labels[f.properties.shapeName]??f.properties.shapeName;
+const norm=(v)=>v.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,'-');
+const entries=[...provinces.map(f=>({shapeId:f.properties.shapeID,key:`province:${norm(label(f))}`,kind:'province',label:label(f)})),...cantons.map(f=>{const parent=findParentBoundary(f,provinces);if(!parent)throw new Error(`Sin provincia: ${label(f)}`);return {shapeId:f.properties.shapeID,key:`city:${norm(label(f))}:${norm(label(parent))}`,kind:'city',label:label(f),context:label(parent)}})];
+fs.writeFileSync(fileURLToPath(new URL('../lib/ecuador-geography.json',import.meta.url)),JSON.stringify(entries,null,2)+'\n');
+console.log(`${provinces.length} polígonos provinciales y ${cantons.length} polígonos cantonales indexados.`);

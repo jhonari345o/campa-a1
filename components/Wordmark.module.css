@@ -1,0 +1,23 @@
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.logo {
+  display: block;
+  height: 2.45em;
+  width: auto;
+  max-width: none;
+  object-fit: contain;
+}
+
+.one {
+  display: block;
+  /* Full approved lockup; spacing and optical alignment live in the SVG. */
+  width: 8.90953em;
+  height: auto;
+  max-width: none;
+  object-fit: contain;
+}
