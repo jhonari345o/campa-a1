@@ -252,7 +252,9 @@ def read_campaigns(book_path: Path, evidence_root: Path) -> list[dict[str, Any]]
 
 def type_script(campaigns: list[dict[str, Any]]) -> str:
     data = json.dumps(campaigns, ensure_ascii=False, indent=2)
-    return f'''// Archivo generado por scripts/generate_warner_postbuy.py. No editar a mano.
+    return f'''import "server-only";
+
+// Archivo generado por scripts/generate_warner_postbuy.py. No editar a mano.
 export type PostbuyPlacement = {{
   id: string;
   sourceRow: number;
@@ -387,7 +389,7 @@ def main() -> None:
     verify_control_book(args.visual_book, args.control_book)
     public_root = args.repo / "public" / "postbuy" / "warner"
     extract_logo_files(args.logos, public_root / "logos")
-    campaigns = read_campaigns(args.visual_book, public_root)
+    campaigns = read_campaigns(args.visual_book, args.repo / "private" / "postbuy" / "warner")
 
     (args.repo / "lib" / "warner-postbuy-data.ts").write_text(type_script(campaigns), encoding="utf-8")
     import_root = args.repo / "supabase" / "imports" / "warner_2026"

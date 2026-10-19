@@ -49,6 +49,9 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   outputFileTracingRoot: process.cwd(),
+  outputFileTracingIncludes: {
+    "/postbuy/warner/evidence/*": ["./private/postbuy/warner/evidence/**/*.webp"],
+  },
   async headers() {
     return [
       {
