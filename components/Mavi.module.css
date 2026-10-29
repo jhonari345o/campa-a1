@@ -1,0 +1,2 @@
+.avatar { position: relative; display: inline-block; width: var(--mavi-avatar-size, 40px); height: var(--mavi-avatar-size, 40px); flex: 0 0 auto; overflow: hidden; border-radius: 50%; background: #e6efdf; vertical-align: middle; }
+.avatarImage { position: absolute; left: -43%; top: 0; width: 210%; max-width: none; height: auto; user-select: none; }

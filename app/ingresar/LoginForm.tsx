@@ -65,6 +65,8 @@ export function LoginForm() {
             name="password"
             type={showPassword ? "text" : "password"}
             autoComplete="current-password"
+            autoCapitalize="none"
+            spellCheck={false}
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -92,7 +94,7 @@ export function LoginForm() {
         </p>
       )}
       <button type="submit" disabled={loading} className={styles.submit}>
-        <span>{loading ? "Ingresando…" : "Ingresar"}</span>
+        <span>{loading ? "Ingresando…" : "Iniciar sesión"}</span>
         {!loading && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" /></svg>}
       </button>
     </form>

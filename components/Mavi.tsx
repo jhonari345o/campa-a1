@@ -1,4 +1,6 @@
+import type { CSSProperties } from "react";
 import { clsx } from "@/lib/clsx";
+import styles from "./Mavi.module.css";
 
 /**
  * Mavi — la iguana de Guayaquil, mascota de Ad Mavericks One.
@@ -9,13 +11,21 @@ import { clsx } from "@/lib/clsx";
 /** Carita de Mavi para avatares (chat, encabezados). */
 export function MaviAvatar({ size = 40, className }: { size?: number; className?: string }) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src="/mavi/mavi-cara.png"
-      alt="Mavi"
-      className={clsx("rounded-full bg-signal/10 object-cover object-top", className)}
-      style={{ width: size, height: size }}
-    />
+    <span
+      data-mavi-avatar
+      className={clsx(styles.avatar, className)}
+      style={{ "--mavi-avatar-size": `${size}px` } as CSSProperties}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/mavi/mavi-portal-v2.webp"
+        width={554}
+        height={900}
+        alt="Mavi, la iguana de Ad Mavericks"
+        className={styles.avatarImage}
+        draggable={false}
+      />
+    </span>
   );
 }
 
@@ -32,7 +42,9 @@ export function MaviFull({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src="/mavi/mavi.png"
+      src="/mavi/mavi-portal-v2.webp"
+      width={554}
+      height={900}
       alt="Mavi, la iguana de Ad Mavericks"
       className={clsx("select-none", float && "mavi-float", className)}
       style={{ height, width: "auto" }}
@@ -74,7 +86,9 @@ export function MaviScene({
     <div className="relative inline-block" style={{ height }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/mavi/mavi.png"
+        src="/mavi/mavi-portal-v2.webp"
+        width={554}
+        height={900}
         alt="Mavi, la iguana de Ad Mavericks"
         className={clsx("select-none", MOTION_CLASS[motion])}
         style={{ height, width: "auto" }}
