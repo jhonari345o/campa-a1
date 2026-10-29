@@ -22,3 +22,24 @@ Auth user creation and the database transaction are separate. The service-only p
 - Compare desktop and mobile views, including planner CTA visibility above Mavi.
 
 Léttera uses the existing approved source logo in `public/partners/lettera/` and charcoal/beige references from https://lettera.ec/. No official Léttera brand manual or Visby font license was available; the established application font is retained. Client records, credentials and commercial reports must not be committed to the repository.
+# Private client campaign library
+
+Migration 0018 adds workspace-scoped clients, campaigns, versioned document summaries
+and comparable metrics. The /clientes route reads with the signed-in user's session.
+The private Storage bucket also enforces membership, publication status and exact
+document paths. Client users have read-only access to the library; planning permissions
+remain governed by migration 0017.
+
+Keep source emails, original commercial files, provenance and prepared imports outside
+this public repository. Use scripts/prepare-workspace-library.ts with an explicit
+company UUID and exact active company name to prepare an atomic SQL file outside Git.
+The script performs no network calls. Review and execute that file only after applying
+0017 and 0018 and verifying the actual tenant. It does not remove existing records.
+Each attachment requires a separate client-safety review before enabling downloads.
+
+Comparisons preserve plan/report versions. Differences appear only when period,
+coverage and measurement basis match; missing spend is never converted to zero.
+Estimates remain labeled as estimates.
+
+Offline verification: application tests and scripts/test-customer-rls.mjs (PGlite,
+synthetic tenants). These checks do not replace authenticated production validation.

@@ -8,7 +8,7 @@ import { Wordmark } from "./Wordmark";
 import { cerrarSesion } from "@/app/consola/actions";
 import { MaviFloatingAssistant } from "./MaviFloatingAssistant";
 
-type ActivePage = "mercado" | "consola" | "panel" | "asistente" | "planificador" | "campanas" | "pautar" | "reportes" | "laboratorio";
+type ActivePage = "mercado" | "consola" | "panel" | "asistente" | "planificador" | "campanas" | "pautar" | "reportes" | "laboratorio" | "clientes";
 
 type AppHeaderProps = {
   workspace?: WorkspaceIdentity | null;
@@ -46,6 +46,7 @@ const PAGE_TITLES: Record<ActivePage, string> = {
   consola: "Consola de administración",
   reportes: "Reportes",
   laboratorio: "Laboratorio creativo",
+  clientes: "Clientes y campañas",
 };
 
 export function AppHeader({ name, isAdmin, active = "panel", title, catalogSection, workspace }: AppHeaderProps) {
@@ -68,6 +69,7 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
 
         <div className="portal-sidebar-scroll">
           <nav className="portal-nav" aria-label="Creación y gestión">
+            <Link href="/clientes" onClick={close} className={`portal-nav-item ${active === "clientes" ? "is-active" : ""}`}><span>↗</span><strong>Clientes y campañas</strong></Link>
             {CREATION.map((item) => {
               const showingSavedPlans = Boolean(title?.toLocaleLowerCase("es").includes("guardado"));
               const selected = item.id === "plans"
@@ -82,7 +84,7 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
               );
             })}
             <Link href="/campanas" onClick={close} className={`portal-nav-item ${active === "campanas" ? "is-active" : ""}`}><span>06</span><strong>Órdenes</strong></Link>
-            <ReportNavigationItem active={active === "reportes"} isAdmin={isAdmin} onClick={close} />
+            {workspace?.brand !== "lettera" && <ReportNavigationItem active={active === "reportes"} isAdmin={isAdmin} onClick={close} />}
           </nav>
 
           <nav className="portal-catalog-nav" aria-label="Catálogo general de medios">

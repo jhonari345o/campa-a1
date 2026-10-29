@@ -28,6 +28,7 @@ export default async function PanelPage() {
       <MaviTour isAdmin={profile.is_platform_admin} />
       <main id="workspace-content" className="mx-auto max-w-5xl px-6 py-10">
         {profile.workspace && <WorkspaceWelcome name={profile.workspace.name} />}
+        <Link href="/clientes" className="library-panel-link"><div><strong>Clientes y campañas</strong><small>Planes de medios, reportes y comparaciones por cliente.</small></div><span aria-hidden>↗</span></Link>
         <div className="flex items-center gap-4">
           <MaviScene
             height={104}
