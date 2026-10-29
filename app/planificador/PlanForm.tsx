@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
 import type { ReactNode } from "react";
-import { aprobarPlan, generarPlan, guardarPlan, type PlanResult } from "./actions";
+import { enviarPlanParaRevision, aprobarPlan, generarPlan, guardarPlan, type PlanResult } from "./actions";
 import type { PlanRow } from "@/lib/planner";
 import { mediaGroupForLabel } from "@/lib/media-groups";
 import type { Campaign } from "@/lib/campaigns";
@@ -27,7 +27,7 @@ const money = (n: number | null) =>
   n == null ? "—" : new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 const pct = (n: number) => `${(n * 100).toFixed(0)}%`;
 
-export function PlanForm({ initialPlan }: { initialPlan?: SavedMediaPlan | null }) {
+export function PlanForm({ initialPlan, canApprove = false, workspaceName = "Ad Mavericks" }: { initialPlan?: SavedMediaPlan | null; canApprove?: boolean; workspaceName?: string }) {
   const initialBrief = initialPlan?.brief ?? {};
   const [state, formAction, pending] = useActionState<PlanResult | null, FormData>(generarPlan, null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -59,7 +59,7 @@ export function PlanForm({ initialPlan }: { initialPlan?: SavedMediaPlan | null 
         ? { eyebrow: "Propuesta", title: "Un plan completo, explicado medio por medio.", description: "La inversión se distribuye sin superar el presupuesto y mantiene separadas las validaciones pendientes." }
         : stage === "personalize"
           ? { eyebrow: "Personaliza", title: "Ajusta el peso de cada ejecución.", description: "Cada cambio redistribuye el presupuesto inmediatamente y conserva el 100% de la inversión." }
-          : { eyebrow: "Aprobado", title: "Plan registrado y listo para coordinación.", description: "La versión aprobada queda guardada con su brief, análisis, propuesta y distribución final." };
+          : { eyebrow: canApprove ? "Aprobado" : "En revisión", title: "Plan registrado y listo para coordinación.", description: "Tu versión queda guardada con su brief, análisis, propuesta y distribución final." };
 
   function saveProgress() {
     if (!formRef.current) return;
@@ -81,7 +81,7 @@ export function PlanForm({ initialPlan }: { initialPlan?: SavedMediaPlan | null 
   return (
     <div className="planner-portal-shell">
       <nav className="planner-progress" aria-label="Progreso del plan">
-        {[["01", "Brief"], ["02", "Análisis"], ["03", "Propuesta"], ["04", "Personaliza"], ["05", "Aprobado"]].map(([number, label], index) => (
+        {[["01", "Brief"], ["02", "Análisis"], ["03", "Propuesta"], ["04", "Personaliza"], ["05", canApprove ? "Aprobado" : "En revisión"]].map(([number, label], index) => (
           <div key={number} className={index === stageIndex ? "is-active" : index < stageIndex ? "is-complete" : ""}><span>{index < stageIndex ? "✓" : number}</span><strong>{label}</strong></div>
         ))}
         <button type="button" onClick={saveProgress} disabled={savingProgress}>{savingProgress ? "Guardando…" : "Guardar progreso"}</button>
@@ -90,7 +90,7 @@ export function PlanForm({ initialPlan }: { initialPlan?: SavedMediaPlan | null 
 
       <header className="planner-hero">
         <div><p>{stageCopy.eyebrow}</p><h1>{stageCopy.title}</h1><span>{stageCopy.description}</span></div>
-        <aside><small>Organización activa</small><strong>Ad Mavericks</strong><span>Workspace privado · Ecuador</span></aside>
+        <aside><small>Organización activa</small><strong>{workspaceName}</strong><span>Espacio privado · Ecuador</span></aside>
       </header>
 
       <form ref={formRef} action={formAction} className={`planner-form ${stage === "brief" ? "" : "hidden"}`} aria-hidden={stage !== "brief"}>
@@ -252,8 +252,8 @@ export function PlanForm({ initialPlan }: { initialPlan?: SavedMediaPlan | null 
 
       {state?.ok && stage === "analysis" && <AnalysisStage result={state} onBack={() => setStage("brief")} onContinue={() => setStage("proposal")} />}
       {state?.ok && stage === "proposal" && <ProposalStage result={state} onBack={() => setStage("analysis")} onPersonalize={() => setStage("personalize")} />}
-      {state?.ok && stage === "personalize" && <PersonalizeStage result={state} onBack={() => setStage("proposal")} onApproved={(approved) => { setApprovedPlan(approved); setStage("approved"); }} />}
-      {state?.ok && stage === "approved" && approvedPlan && <ApprovedStage result={state} approved={approvedPlan} />}
+      {state?.ok && stage === "personalize" && <PersonalizeStage canApprove={canApprove} result={state} onBack={() => setStage("proposal")} onApproved={(approved) => { setApprovedPlan(approved); setStage("approved"); }} />}
+      {state?.ok && stage === "approved" && approvedPlan && <ApprovedStage canApprove={canApprove} result={state} approved={approvedPlan} />}
     </div>
   );
 }
@@ -313,7 +313,7 @@ function ProposalStage({ result, onBack, onPersonalize }: { result: Extract<Plan
   </section>;
 }
 
-function PersonalizeStage({ result, onBack, onApproved }: { result: Extract<PlanResult, { ok: true }>; onBack: () => void; onApproved: (approved: { id: string; rows: PlanRow[] }) => void }) {
+function PersonalizeStage({ result, onBack, onApproved, canApprove }: { canApprove: boolean; result: Extract<PlanResult, { ok: true }>; onBack: () => void; onApproved: (approved: { id: string; rows: PlanRow[] }) => void }) {
   const [rows, setRows] = useState(result.plan.plan);
   const [approving, setApproving] = useState(false);
   const [approvalError, setApprovalError] = useState<string | null>(null);
@@ -337,7 +337,7 @@ function PersonalizeStage({ result, onBack, onApproved }: { result: Extract<Plan
     setApproving(true);
     setApprovalError(null);
     try {
-      const response = await aprobarPlan(result, rows);
+      const response = await (canApprove ? aprobarPlan : enviarPlanParaRevision)(result, rows);
       if (!response.ok) setApprovalError(response.error);
       else onApproved({ id: response.id, rows: response.rows });
     } catch {
@@ -363,16 +363,16 @@ function PersonalizeStage({ result, onBack, onApproved }: { result: Extract<Plan
     </div>
     <aside className="planner-analysis-rules"><strong>Antes de aprobar</strong><ul><li>✓ La personalización conserva el presupuesto principal.</li><li>✓ Tarifas, cupos, permisos, derechos e impuestos siguen sujetos a confirmación.</li><li>✓ La Idea WOW mantiene su presupuesto y factibilidad en un módulo independiente.</li></ul></aside>
     {approvalError && <p className="mt-4 rounded-xl border border-coral/40 bg-coral/10 p-4 text-sm font-bold text-[#a13b31]">{approvalError}</p>}
-    <div className="planner-submit-bar"><div><small>Última etapa</small><strong>Registrar esta distribución como la versión aprobada</strong></div><button type="button" onClick={approve} disabled={approving} className="btn btn-primary disabled:opacity-60">{approving ? "Registrando…" : "Aprobar plan →"}</button></div>
+    <div className="planner-submit-bar"><div><small>Última etapa</small><strong>{canApprove ? "Registrar esta distribución como la versión aprobada" : "Enviar esta distribución al equipo para revisión"}</strong></div><button type="button" onClick={approve} disabled={approving} className="btn btn-primary disabled:opacity-60">{approving ? "Registrando…" : canApprove ? "Aprobar plan →" : "Enviar a revisión →"}</button></div>
   </section>;
 }
 
-function ApprovedStage({ result, approved }: { result: Extract<PlanResult, { ok: true }>; approved: { id: string; rows: PlanRow[] } }) {
+function ApprovedStage({ result, approved, canApprove }: { canApprove: boolean; result: Extract<PlanResult, { ok: true }>; approved: { id: string; rows: PlanRow[] } }) {
   return <section className="planner-approved-stage">
-    <div className="planner-approved-heading"><span>✓</span><div><p>Plan de medios aprobado</p><h2>Gracias por construir tu plan con Ad Mavericks One.</h2><small>Versión registrada · {approved.id.slice(0, 8).toUpperCase()}</small></div></div>
+    <div className="planner-approved-heading"><span>✓</span><div><p>{canApprove ? "Plan de medios aprobado" : "Plan enviado a revisión"}</p><h2>Gracias por construir tu plan con Ad Mavericks One.</h2><small>Versión registrada · {approved.id.slice(0, 8).toUpperCase()}</small></div></div>
     <div className="planner-approved-summary"><div><span>Marca</span><strong>{result.brief.brand || result.keyword}</strong></div><div><span>Presupuesto</span><strong>{money(result.brief.budgetUsd)}</strong></div><div><span>Cobertura</span><strong>{result.brief.geography || "Por confirmar"}</strong></div><div><span>Medios</span><strong>{approved.rows.length}</strong></div></div>
     <div className="planner-approved-lines">{approved.rows.map((row) => <div key={row.label}><span>{row.label}</span><strong>{pct(row.pct)} · {money(row.amount)}</strong></div>)}</div>
-    <p className="planner-approved-note">El equipo coordinará disponibilidad, negociación, cumplimiento, medición y ejecución. La aprobación del plan no sustituye las órdenes finales de cada proveedor o plataforma.</p>
+    <p className="planner-approved-note">El equipo coordinará disponibilidad, negociación, cumplimiento, medición y ejecución. Tu solicitud no autoriza compras ni activa campañas; requiere revisión del equipo responsable.</p>
     <div className="grid gap-3 sm:grid-cols-3"><a href="/planificador?view=plans" className="btn btn-secondary">Ver planes guardados</a><a href="/campanas" className="btn btn-secondary">Ir a campañas</a><PlanOrderButton planId={approved.id} /></div>
   </section>;
 }

@@ -130,11 +130,18 @@ export async function crearCliente(
     };
   }
 
+  const brandKey = String(formData.get("brand_key") ?? "one");
+  if (!["one", "lettera"].includes(brandKey)) return { ok: false, error: "La identidad seleccionada no es válida." };
+  if (brandKey !== "one") {
+    const { data: ready } = await admin.rpc("customer_access_ready");
+    if (ready !== "0017") return { ok: false, error: "Aplica primero la migración de clientes en Supabase." };
+  }
   // 1. Crear la empresa (tenant).
   const { data: company, error: companyErr } = await admin
     .from("companies")
     .insert({
       name,
+      ...(brandKey !== "one" ? { brand_key: brandKey } : {}),
       slug: companySlug(name),
       legal_id: legalId,
       seats,

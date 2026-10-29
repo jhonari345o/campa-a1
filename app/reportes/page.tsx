@@ -50,7 +50,7 @@ export default async function ReportesPage() {
 
   return (
     <div className="min-h-screen">
-      <AppHeader name={profile.full_name ?? profile.email ?? "Ad Mavericks"} isAdmin={profile.is_platform_admin} active="reportes" />
+      <AppHeader name={profile.full_name ?? profile.email ?? "Ad Mavericks"} isAdmin={profile.is_platform_admin} workspace={profile.workspace} active="reportes" />
       <main id="workspace-content" className="portal-page portal-page-planner">
         {!hasReports ? (
           <section className="reports-locked">

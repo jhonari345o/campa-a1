@@ -3,6 +3,16 @@
 @tailwind utilities;
 
 :root {
+  --color-forest: 34 57 47;
+  --color-forest-deep: 23 40 31;
+  --color-forest-ink: 23 54 42;
+  --color-signal: 0 161 0;
+  --color-signal-dark: 0 125 0;
+  --color-fog: 244 245 242;
+  --color-concrete: 223 227 221;
+  --color-border: 215 221 216;
+  --color-muted: 105 113 109;
+
   --forest: #22392f;
   --forest-deep: #17281f;
   --signal: #00a100;

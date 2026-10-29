@@ -1,3 +1,4 @@
+import { WorkspaceWelcome } from "@/components/WorkspaceWelcome";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
@@ -23,9 +24,10 @@ export default async function PanelPage() {
 
   return (
     <div className="min-h-screen">
-      <AppHeader name={name} isAdmin={profile.is_platform_admin} active="panel" />
+      <AppHeader name={name} isAdmin={profile.is_platform_admin} workspace={profile.workspace} active="panel" />
       <MaviTour isAdmin={profile.is_platform_admin} />
-      <main className="mx-auto max-w-5xl px-6 py-10">
+      <main id="workspace-content" className="mx-auto max-w-5xl px-6 py-10">
+        {profile.workspace && <WorkspaceWelcome name={profile.workspace.name} />}
         <div className="flex items-center gap-4">
           <MaviScene
             height={104}
@@ -34,12 +36,12 @@ export default async function PanelPage() {
             className="hidden shrink-0 sm:block"
           />
           <div>
-            <h1 className="text-3xl font-black tracking-tight">
+            <h2 className="text-3xl font-black tracking-tight">
               Hola{profile.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}.
-            </h1>
+            </h2>
             <p className="mt-1 text-muted">
               {companies.length > 0
-                ? "Estoy revisando los datos de tu empresa. Solo tu equipo tiene acceso."
+                ? "Aquí encontrarás los planes y solicitudes de tu equipo."
                 : "Bienvenido a Ad Mavericks One. Yo te guio."}
             </p>
           </div>

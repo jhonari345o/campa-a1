@@ -1,3 +1,5 @@
+import { getMyCompanies } from "@/lib/company";
+import { workspaceIdentity, type WorkspaceIdentity } from "@/lib/workspace-brand";
 import { createClient } from "@/lib/supabase/server";
 
 export type Profile = {
@@ -5,6 +7,7 @@ export type Profile = {
   full_name: string | null;
   email: string | null;
   is_platform_admin: boolean;
+  workspace?: WorkspaceIdentity | null;
 };
 
 /** Devuelve el usuario autenticado y su perfil, o null si no hay sesion. */
@@ -29,5 +32,6 @@ export async function getSessionProfile(): Promise<Profile | null> {
       is_platform_admin: false,
     };
   }
-  return profile as Profile;
+  const companies = profile.is_platform_admin ? [] : await getMyCompanies(user.id);
+  return { ...profile, workspace: workspaceIdentity(companies, profile.is_platform_admin) } as Profile;
 }

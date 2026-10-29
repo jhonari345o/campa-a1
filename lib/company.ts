@@ -13,6 +13,7 @@ export type MyCompany = {
   id: string;
   name: string;
   slug: string;
+  brand_key?: string;
   status: string;
   seats: number;
   created_at: string;
@@ -28,11 +29,19 @@ export type TeamMember = {
 /** Empresas a las que pertenece el usuario, con su rol. */
 export async function getMyCompanies(userId: string): Promise<MyCompany[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  let { data, error } = await supabase
     .from("company_members")
-    .select("role, companies(id, name, slug, status, seats, created_at)")
+    .select("role, companies(id, name, slug, brand_key, status, seats, created_at)")
     .eq("user_id", userId);
 
+  // Rolling deployment: preserve existing workspaces before migration 0017.
+  if (error?.code === "42703" || error?.code === "PGRST200" || error?.code === "PGRST204") {
+    const legacy = await supabase.from("company_members")
+      .select("role, companies(id, name, slug, status, seats, created_at)").eq("user_id", userId);
+    data = legacy.data as typeof data;
+    error = legacy.error;
+  }
+  if (error) return [];
   return (data ?? [])
     .map((row) => {
       const c = row.companies as unknown as Omit<MyCompany, "role"> | null;

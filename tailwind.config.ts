@@ -14,18 +14,18 @@ const config: Config = {
     extend: {
       colors: {
         forest: {
-          DEFAULT: "#22392f",
-          deep: "#17281f",
-          ink: "#17362a",
+          DEFAULT: "rgb(var(--color-forest) / <alpha-value>)",
+          deep: "rgb(var(--color-forest-deep) / <alpha-value>)",
+          ink: "rgb(var(--color-forest-ink) / <alpha-value>)",
         },
         signal: {
-          DEFAULT: "#00a100",
-          dark: "#007d00",
+          DEFAULT: "rgb(var(--color-signal) / <alpha-value>)",
+          dark: "rgb(var(--color-signal-dark) / <alpha-value>)",
         },
-        fog: "#f4f5f2",
-        concrete: "#dfe3dd",
-        border: "#d7ddd8",
-        muted: "#69716d",
+        fog: "rgb(var(--color-fog) / <alpha-value>)",
+        concrete: "rgb(var(--color-concrete) / <alpha-value>)",
+        border: "rgb(var(--color-border) / <alpha-value>)",
+        muted: "rgb(var(--color-muted) / <alpha-value>)",
         sky: "#4b9eff",
         amber: "#f4bc3b",
         coral: "#ff735c",
