@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import { MaviAvatar } from "@/components/Mavi";
 import { Wordmark } from "@/components/Wordmark";
 import { LoginForm } from "./LoginForm";
 import styles from "./login.module.css";
@@ -21,7 +21,7 @@ export default function IngresarPage() {
           </p>
         </div>
         <div className={styles.maviNote}>
-          <Image src="/mavi/mavi-cara.png" alt="Mavi, la iguana de Ad Mavericks" width={80} height={80} className={styles.mavi} />
+          <MaviAvatar size={76} className={styles.mavi} />
           <div>
             <strong>Mavi te acompaña.</strong>
             <p>Tú decides. Mavi te ayuda a avanzar.</p>
