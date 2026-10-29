@@ -71,3 +71,8 @@
   .intro { margin-bottom: 24px; }
   .footnote { margin-top: 28px; }
 }
+
+.helpLink { display: inline-flex; align-items: center; min-height: 44px; margin-top: 4px; color: #23663d; font-size: 13px; font-weight: 800; text-decoration: underline; text-underline-offset: 4px; }
+.backLink { display: inline-flex; align-items: center; min-height: 44px; color: #58665e; font-size: 13px; font-weight: 700; }
+.backLink:hover { text-decoration: underline; text-underline-offset: 4px; }
+.helpLink:focus-visible, .backLink:focus-visible { outline: 3px solid #007d00; outline-offset: 3px; border-radius: 4px; }

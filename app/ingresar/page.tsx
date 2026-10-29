@@ -4,7 +4,7 @@ import { Wordmark } from "@/components/Wordmark";
 import { LoginForm } from "./LoginForm";
 import styles from "./login.module.css";
 
-export const metadata = { title: "Ingresar" };
+export const metadata = { title: "Iniciar sesión" };
 
 export default function IngresarPage() {
   return (
@@ -31,18 +31,19 @@ export default function IngresarPage() {
       <section className={styles.access} aria-labelledby="login-title">
         <div className={styles.formBlock}>
           <p className={styles.eyebrow}>Tu cuenta de Ad Mavericks One</p>
-          <h2 id="login-title">Ingresa a tu cuenta</h2>
+          <h2 id="login-title">Inicia sesión</h2>
           <p className={styles.intro}>
             Usa el correo y la contraseña que te asignó tu administrador.
           </p>
           <LoginForm />
           <div className={styles.help}>
-            <strong>¿Aún no tienes acceso?</strong>
-            <p>Contacta a Ad Mavericks para habilitar tu cuenta.</p>
+            <strong>¿Necesitas ayuda para ingresar?</strong>
+            <p>Tu administrador puede ayudarte con tu cuenta.</p>
+            <Link href="/#contacto" className={styles.helpLink}>Solicitar acceso o ayuda</Link>
           </div>
         </div>
         <p className={styles.footnote}>
-          Colaboradores, proveedores y clientes.
+          <Link href="/" className={styles.backLink}>← Volver al inicio</Link>
         </p>
       </section>
     </main>

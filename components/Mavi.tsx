@@ -32,7 +32,9 @@ export function MaviFull({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src="/mavi/mavi.png"
+      src="/mavi/mavi-portal-v2.webp"
+      width={554}
+      height={900}
       alt="Mavi, la iguana de Ad Mavericks"
       className={clsx("select-none", float && "mavi-float", className)}
       style={{ height, width: "auto" }}
@@ -74,7 +76,9 @@ export function MaviScene({
     <div className="relative inline-block" style={{ height }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/mavi/mavi.png"
+        src="/mavi/mavi-portal-v2.webp"
+        width={554}
+        height={900}
         alt="Mavi, la iguana de Ad Mavericks"
         className={clsx("select-none", MOTION_CLASS[motion])}
         style={{ height, width: "auto" }}

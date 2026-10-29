@@ -1,3 +1,5 @@
+import Link from "next/link";
+import styles from "./home.module.css";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { MaviFull } from "@/components/Mavi";
@@ -7,7 +9,7 @@ export default function HomePage() {
   return (
     <>
       <SiteHeader />
-      <main>
+      <main id="contenido" className={styles.page} tabIndex={-1}>
         <Hero />
         <Plataforma />
         <ComoFunciona />
@@ -41,36 +43,44 @@ function Precios() {
 
 function Hero() {
   return (
-    <section className="mx-auto max-w-6xl px-6 pb-8 pt-14">
-      <div className="relative overflow-hidden rounded-hero bg-[linear-gradient(115deg,#17281f,#22392f_55%,#24596a)] px-8 py-16 text-white shadow-panel sm:px-16 sm:py-24">
-        <span className="text-xs font-black uppercase tracking-[0.1em] text-signal">
-          Central de medios · Ecuador
-        </span>
-        <h1 className="mt-4 max-w-3xl text-[clamp(2.6rem,6vw,5rem)] font-black leading-[0.96] tracking-tightest">
-          Tu central de medios del nuevo siglo.
-        </h1>
-        <p className="mt-6 max-w-xl text-lg text-white/75">
-          Ad Mavericks convierte una operacion compleja de medios en una
-          experiencia clara, segura y extraordinariamente facil de comprender.
-        </p>
-        <div className="mt-9 flex flex-wrap gap-4">
-          <a href="#contacto" className="btn btn-primary">
-            Solicitar acceso →
-          </a>
-          <a href="#como-funciona" className="btn btn-secondary">
-            Ver como funciona
-          </a>
+    <section className={styles.hero} aria-labelledby="home-title">
+      <div className={styles.panel}>
+        <div className={styles.intro}>
+          <p className={styles.kicker}>Tu central de medios · Ecuador</p>
+          <h1 id="home-title">Tu equipo. Tus medios. Un mismo lugar.</h1>
+          <p className={styles.description}>
+            Planifica campañas, coordina con tu equipo y da seguimiento a tus proyectos desde Ad Mavericks One.
+          </p>
         </div>
-        <div className="accent-line mt-10" />
-        <MaviFull
-          height={360}
-          className="pointer-events-none absolute bottom-0 right-6 z-[1] hidden lg:block"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-40 -top-72 h-[550px] w-[550px] rounded-full border border-white/15"
-          style={{ boxShadow: "0 0 0 45px rgba(255,255,255,.035), 0 0 0 92px rgba(255,255,255,.02)" }}
-        />
+        <section className={styles.access} aria-labelledby="access-title">
+          <span className={styles.accessIcon} aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 4h5a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-5M3 12h12m-4-4 4 4-4 4" />
+            </svg>
+          </span>
+          <p className={styles.eyebrow}>Acceso al portal</p>
+          <h2 id="access-title">Bienvenido de nuevo.</h2>
+          <p className={styles.instructions}>
+            Entra con el correo y la contraseña que te asignó tu administrador.
+          </p>
+          <Link href="/ingresar" className={styles.login}>
+            Iniciar sesión
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" /></svg>
+          </Link>
+          <p className={styles.audience}>Clientes · Proveedores · Colaboradores</p>
+          <div className={styles.request}>
+            <p>¿Es tu primera vez aquí?</p>
+            <a href="#contacto">Solicitar acceso o ayuda <span aria-hidden="true">&nbsp;↗</span></a>
+          </div>
+        </section>
+        <div className={styles.companion}>
+          <div className={styles.companionCopy}>
+            <strong>Mavi te acompaña.</strong>
+            <p>Tú decides. Mavi te ayuda a avanzar.</p>
+            <a href="#plataforma" className={styles.learnMore}>Conoce la plataforma <span aria-hidden="true">↓</span></a>
+          </div>
+          <MaviFull height={220} float={false} className={styles.mascot} />
+        </div>
       </div>
     </section>
   );
@@ -251,18 +261,18 @@ function Contacto() {
     <section id="contacto" className="mx-auto max-w-6xl px-6 py-20">
       <div className="rounded-panel bg-forest px-8 py-14 text-white sm:px-14">
         <h2 className="max-w-2xl text-[clamp(1.8rem,3vw,2.8rem)] font-black leading-tight tracking-tight">
-          El siguiente paso.
+          ¿Necesitas acceso o ayuda?
         </h2>
         <p className="mt-4 max-w-xl text-white/75">
-          Confirmar unas pocas decisiones y entregar los primeros accesos. Con eso
-          arrancamos la Fase 1: seguridad, cuentas y la Consola de Alta de Clientes.
+          El acceso se habilita por invitación. Si necesitas una cuenta o ayuda para
+          ingresar, contacta a tu administrador o al equipo de Ad Mavericks.
         </p>
         <div className="mt-8 flex flex-wrap gap-4">
           <a href="mailto:hola@admavericks.one" className="btn btn-primary">
             Escribir a Ad Mavericks →
           </a>
           <a href="/ingresar" className="btn btn-ghost">
-            Ingresar a mi cuenta
+            Iniciar sesión
           </a>
         </div>
       </div>
