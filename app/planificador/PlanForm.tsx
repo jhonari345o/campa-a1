@@ -1,6 +1,10 @@
 "use client";
 
 import { useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
+import { InfomediaCategoryPicker } from "@/components/InfomediaCategoryPicker";
+import { InfomediaResearchPanel } from "@/components/InfomediaResearchPanel";
+import { restoreResearch } from "@/lib/infomedia";
+import type { CategoryCatalog } from "@/lib/infomedia-server";
 import type { ReactNode } from "react";
 import { aprobarPlan, generarPlan, guardarPlan, type PlanResult } from "./actions";
 import type { PlanRow } from "@/lib/planner";
@@ -10,7 +14,6 @@ import { ejecutarCampana } from "@/app/campanas/actions";
 import { GeographicCoveragePicker } from "@/components/geography/GeographicCoveragePicker";
 import { coverageDescription, restoreCoverage, type CoverageSelection } from "@/lib/geographic-coverage";
 import {
-  BUSINESS_CATEGORY_OPTIONS,
   COMMERCIAL_GOAL_UNIT_OPTIONS,
   COMMERCIAL_KPI_OPTIONS,
   CONVERSION_EVENT_OPTIONS,
@@ -27,7 +30,8 @@ const money = (n: number | null) =>
   n == null ? "—" : new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 const pct = (n: number) => `${(n * 100).toFixed(0)}%`;
 
-export function PlanForm({ initialPlan }: { initialPlan?: SavedMediaPlan | null }) {
+export function PlanForm({ initialPlan, categoryCatalog }: { initialPlan?: SavedMediaPlan | null; categoryCatalog: CategoryCatalog }) {
+  const savedResearch = restoreResearch(initialPlan?.analysis?.research);
   const initialBrief = initialPlan?.brief ?? {};
   const [state, formAction, pending] = useActionState<PlanResult | null, FormData>(generarPlan, null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -93,15 +97,13 @@ export function PlanForm({ initialPlan }: { initialPlan?: SavedMediaPlan | null 
         <aside><small>Organización activa</small><strong>Ad Mavericks</strong><span>Workspace privado · Ecuador</span></aside>
       </header>
 
+      {stage === "brief" && savedResearch && <details className="planner-details"><summary>Consultar investigación guardada</summary><InfomediaResearchPanel research={savedResearch} /></details>}
       <form ref={formRef} action={formAction} className={`planner-form ${stage === "brief" ? "" : "hidden"}`} aria-hidden={stage !== "brief"}>
         <section className="planner-form-section">
           <SectionNumber number="01" title="Objetivo de la campaña" description="Define la marca, su categoría y el resultado que debe priorizar el plan." />
           <div className="planner-fields planner-fields-two">
             <Field name="brand" label="Marca" placeholder="Nombre de la marca" defaultValue={stringValue(initialBrief.brand)} />
-            <SelectField name="keyword" label="Rubro o giro principal *" defaultValue={stringValue(initialBrief.keyword)} required>
-              <option value="" disabled>Selecciona el rubro principal</option>
-              <CatalogOptions options={BUSINESS_CATEGORY_OPTIONS} />
-            </SelectField>
+            <InfomediaCategoryPicker showPeriod initialYear={Number(initialBrief.referenceYear) || 0} categories={categoryCatalog.categories} error={categoryCatalog.error} initialId={stringValue(initialBrief.categoryId)} initialLabel={stringValue(initialBrief.keyword)} />
             <SelectField name="objective" label="Objetivo principal" defaultValue={stringValue(initialBrief.objective) || "Ventas"}>
               {["Reconocimiento", "Alcance", "Consideración", "Tráfico", "Interacción", "Reproducciones", "Generación de leads", "Mensajes", "Ventas", "Visitas al local", "Descargas de app", "Retención", "Otro"].map((option) => <option key={option}>{option}</option>)}
             </SelectField>
@@ -245,7 +247,7 @@ export function PlanForm({ initialPlan }: { initialPlan?: SavedMediaPlan | null 
 
         <div className="planner-submit-bar">
           <div><small>Siguiente etapa</small><strong>Análisis de audiencia, mercado y combinación de medios</strong></div>
-          <button type="submit" disabled={pending} className="btn btn-primary disabled:opacity-60">{pending ? "Armando tu plan…" : "Generar plan de medios →"}</button>
+          <button type="submit" disabled={pending} className="btn btn-primary disabled:opacity-60">{pending ? "Armando tu plan…" : "Analizar categoría y audiencia →"}</button>
         </div>
         {state?.ok === false && <p className="rounded-xl border border-coral/40 bg-coral/10 px-4 py-3 text-sm font-bold text-[#a13b31]">{state.error}</p>}
       </form>
@@ -269,6 +271,8 @@ function AnalysisStage({ result, onBack, onContinue }: { result: Extract<PlanRes
       <div><p>Análisis estratégico</p><h2>{analysis.profileLabel}</h2><span>{analysis.category} · {analysis.periodLabel}</span></div>
       <button type="button" className="btn btn-secondary" onClick={onBack}>Editar brief</button>
     </div>
+
+    <InfomediaResearchPanel research={result.research} brand={result.brief.brand} objective={result.objective} />
 
     <div className="planner-analysis-context">
       <article><span>Grupo objetivo</span><strong>{analysis.targetLabel}</strong><small>Compatibilidad validada por fuente y medio</small></article>
@@ -406,7 +410,9 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
       <div className="rounded-panel border border-border bg-white p-6 shadow-panel">
         <h2 className="text-xl font-black tracking-tight">Tu plan de medios</h2>
         <p className="mt-1 text-sm text-muted">
-          {plan.basis === "giro"
+          {plan.basis === "infomedia"
+            ? `Referencia: ${keyword} · ${plan.referencePeriod}. La inversión observada orienta la propuesta; las ponderaciones por objetivo son criterios de planificación.`
+            : plan.basis === "giro"
             ? `Basado en patrones agregados de negocios comparables a "${keyword}".`
             : plan.basis === "sector"
               ? `Basado en el sector ${plan.profileLabel.toLowerCase()} y en el brief ingresado.`

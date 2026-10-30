@@ -1,5 +1,6 @@
 "use server";
 
+import { getInfomediaCatalog, getCategoryResearch } from "@/lib/infomedia-server";
 import { revalidatePath } from "next/cache";
 import { normalizeCoverageBrief } from "@/lib/geographic-coverage";
 import { getSessionProfile } from "@/lib/auth";
@@ -16,6 +17,7 @@ export type SaveProgressInput = {
 };
 
 export type ManualPlanDraft = {
+  categoryId: string;
   planId?: string | null;
   name: string;
   brand: string;
@@ -41,6 +43,12 @@ export async function guardarProgresoBrief(input: SaveProgressInput): Promise<Sa
   const access = await planAccess();
   if (!access.ok) return access;
   const brief: Record<string, unknown> = { ...cleanObject(input.brief), ...normalizeCoverageBrief(input.brief) };
+  if (brief.categoryId) {
+    const catalog = await getInfomediaCatalog();
+    const category = catalog.categories.find((item) => item.id === brief.categoryId);
+    if (!category) return { ok: false, error: "La categoría ya no está disponible. Selecciónala nuevamente." };
+    brief.keyword = category.label;
+  }
   const name = cleanText(input.name || String(brief.brand ?? "") || "Plan sin marca", 120);
   const required = [brief.keyword, brief.objective, brief.geography, brief.budgetUsd ?? brief.budget];
   const progress = Math.min(35, 8 + required.filter(Boolean).length * 7);
@@ -63,6 +71,8 @@ export async function guardarProgresoBrief(input: SaveProgressInput): Promise<Sa
 export async function guardarPlanManual(input: ManualPlanDraft): Promise<SaveResult> {
   const access = await planAccess();
   if (!access.ok) return access;
+  let category;
+  try { category = (await getCategoryResearch(input.categoryId)).category; } catch { return { ok: false, error: "Selecciona una categoría válida de Infomedia." }; }
   const budgetUsd = Number(input.budgetUsd);
   if (!Number.isFinite(budgetUsd) || budgetUsd <= 0 || budgetUsd > 10_000_000) {
     return { ok: false, error: "Define un presupuesto válido para el plan manual." };
@@ -85,7 +95,8 @@ export async function guardarPlanManual(input: ManualPlanDraft): Promise<SaveRes
 
   const brief = {
     brand: cleanText(input.brand, 120),
-    keyword: cleanText(input.keyword, 160),
+    keyword: category.label,
+    categoryId: category.id,
     objective: cleanText(input.objective, 120),
     priority: cleanText(input.priority, 120),
     audience: cleanText(input.audience, 1000),

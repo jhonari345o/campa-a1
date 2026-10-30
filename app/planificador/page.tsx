@@ -1,3 +1,4 @@
+import { getInfomediaCatalog } from "@/lib/infomedia-server";
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { getSessionProfile } from "@/lib/auth";
@@ -41,6 +42,7 @@ export default async function PlanificadorPage({
     ? params.section as CatalogSection
     : "digital";
 
+  const categoryCatalog = view === "planner" || view === "diy" ? await getInfomediaCatalog() : { categories: [] };
   const catalogNeeded = view === "media" || view === "diy";
   const selectedPlanNeeded = (view === "planner" || view === "diy" || view === "versions") && Boolean(params.plan);
   const [radio, influencers, plans, selectedPlan, versions, oohLocations, collaboration, catalogHealth] = await Promise.all([
@@ -74,7 +76,7 @@ export default async function PlanificadorPage({
         ) : view === "plans" ? (
           <SavedPlans plans={plans} />
         ) : view === "diy" ? (
-          <DiyPlanner radio={radio} influencers={influencers} oohLocations={oohLocations} initialPlan={selectedPlan} />
+          <DiyPlanner categoryCatalog={categoryCatalog} radio={radio} influencers={influencers} oohLocations={oohLocations} initialPlan={selectedPlan} />
         ) : view === "versions" ? (
           <PlanVersions plan={selectedPlan} versions={versions} comments={collaboration.comments} approvals={collaboration.approvals} />
         ) : (
@@ -84,7 +86,7 @@ export default async function PlanificadorPage({
               Completa el brief, revisa la recomendación y guarda un borrador privado.
               La plataforma recomienda; tu equipo conserva el control.
             </p>
-            <div className="mt-8"><PlanForm initialPlan={selectedPlan} /></div>
+            <div className="mt-8"><PlanForm categoryCatalog={categoryCatalog} initialPlan={selectedPlan} /></div>
           </>
         )}
       </main>

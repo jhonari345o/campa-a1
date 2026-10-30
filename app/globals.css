@@ -898,3 +898,45 @@ body {
   .warner-movie-tabs button,.warner-placement-card,.warner-placement-visual > img,.warner-progress i,.warner-detail-button span { transition:none; }
   .warner-placement-detail { animation:none; }
 }
+
+/* Authenticated Infomedia planning controls. Popover stays inside its field. */
+.infomedia-picker { position: relative; min-width: 0; }
+.infomedia-picker > label { display: block; font-size: .875rem; font-weight: 800; margin-bottom: .45rem; }
+.infomedia-picker > input:not([type="hidden"]) { display: block; width: 100%; min-height: 3rem; border: 1px solid #dce4df; border-radius: .85rem; padding: .85rem 1rem; background: #f4f6f3; color: #203e32; }
+.infomedia-picker > input:focus { outline: 2px solid #008f18; outline-offset: 2px; }
+.infomedia-picker > small { display: block; font-size: .75rem; color: #5b6d63; margin-top: .4rem; }
+.infomedia-options { position: absolute; z-index: 40; top: 5.5rem; left: 0; width: 100%; max-height: min(19rem, 45vh); overflow-y: auto; overscroll-behavior: contain; border: 1px solid #cad8ce; border-radius: 1rem; background: white; box-shadow: 0 14px 40px #163d2726; padding: .4rem; }
+.infomedia-options > button { display: block; width: 100%; border: 0; border-radius: .6rem; padding: .75rem; text-align: left; font-size: .875rem; color: #203e32; white-space: normal; }
+.infomedia-options > button:hover, .infomedia-options > button.is-active { background: #eaf5e9; }
+.infomedia-options > p { padding: 1rem; font-size: .8rem; }
+.infomedia-research { margin: 1.5rem 0; padding: clamp(1rem, 3vw, 2rem); background: white; border: 1px solid #dce4df; border-radius: 1.5rem; color: #203e32; }
+.infomedia-research > header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; align-items: center; }
+.infomedia-research header p { font-size: .72rem; font-weight: 900; text-transform: uppercase; letter-spacing: .12em; color: #177044; }
+.infomedia-research h2 { font-size: 1.7rem; font-weight: 900; margin: .4rem 0; }
+.infomedia-research h3 { font-size: 1rem; font-weight: 800; margin-bottom: 1rem; }
+.infomedia-research header span, .infomedia-research small { font-size: .75rem; color: #5b6d63; }
+.infomedia-research header label { font-size: .75rem; font-weight: 700; }
+.infomedia-research select { display: block; margin-top: .4rem; padding: .75rem; border-radius: .75rem; border: 1px solid #cad8ce; background: #f4f6f3; max-width: 100%; }
+.infomedia-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .75rem; margin: 1.5rem 0; }
+.infomedia-metrics article { background: #f1f6f0; border-radius: 1rem; padding: 1rem; }
+.infomedia-metrics strong { display: block; font-size: clamp(1.2rem, 2.5vw, 1.9rem); margin-top: .4rem; }
+.infomedia-note { color: #5b6d63; font-size: .8rem; line-height: 1.6; margin: 1rem 0; }
+.infomedia-columns { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.5fr); gap: 2rem; margin: 1.5rem 0; }
+.infomedia-bar-row { margin-bottom: .85rem; }
+.infomedia-bar-row > div { display: flex; justify-content: space-between; gap: 1rem; font-size: .85rem; }
+.infomedia-bar-row meter { width: 100%; height: .7rem; accent-color: #147243; }
+.infomedia-table-wrap { overflow-x: auto; max-width: 100%; }
+.infomedia-research table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+.infomedia-research th, .infomedia-research td { padding: .7rem .5rem; border-bottom: 1px solid #e6ece7; text-align: left; }
+.infomedia-research thead th { color: #5b6d63; font-weight: 700; }
+.infomedia-research tbody th { max-width: 16rem; }
+.infomedia-research summary { cursor: pointer; font-size: .9rem; font-weight: 800; padding: 1rem 0; }
+.infomedia-ai { border-top: 1px solid #dce4df; margin-top: 1.5rem; padding-top: 1.5rem; }
+.infomedia-ai p, .infomedia-ai li { font-size: .85rem; line-height: 1.6; }
+.infomedia-ai button { margin: 1rem 0; }
+.infomedia-ai aside { background: #f1f6f0; padding: 1rem; border-radius: 1rem; }
+.infomedia-ai ul { list-style: disc; margin: .5rem 0 .5rem 1.3rem; }
+@media (max-width: 700px) { .infomedia-columns, .infomedia-metrics { grid-template-columns: 1fr; } .infomedia-research h2 { font-size: 1.4rem; } }
+
+.infomedia-picker .infomedia-period-field { margin-top: .7rem; font-size: .75rem; }
+.infomedia-period-field select { display: block; width: 100%; padding: .65rem; border-radius: .65rem; margin-top: .4rem; border: 1px solid #cad8ce; background: #f4f6f3; }

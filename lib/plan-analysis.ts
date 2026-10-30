@@ -220,7 +220,7 @@ export function buildPlanAnalysis(input: PlanAnalysisInput, plan: MediaPlan): Pl
   return {
     category: input.keyword,
     profileLabel: plan.profileLabel,
-    periodLabel: "Catálogo comercial 2026 + base interna disponible",
+    periodLabel: plan.referencePeriod || "Referencia histórica del plan guardado",
     targetLabel: `${input.audienceType} · ${input.ageRange} · ${input.sex} · ${input.socioeconomic}`,
     coverageLabel: input.geography || "Cobertura por definir",
     commercialReadiness,
@@ -228,6 +228,7 @@ export function buildPlanAnalysis(input: PlanAnalysisInput, plan: MediaPlan): Pl
     findings,
     signals,
     guardrails: [
+      ...(plan.unobservedMedia?.length ? [`Sin inversión observada de esta categoría para ${plan.unobservedMedia.join(", ")}. No reciben presupuesto automático; pueden evaluarse en el constructor manual.`] : []),
       "Cada medio conserva su KPI válido; no se suman TRP, rankings, impresiones, circulación u OTS para inventar alcance único.",
       "Ticket, margen, capacidad y portafolio orientan la priorización, pero no constituyen una promesa de ROI.",
       "Tarifas, disponibilidad, derechos, permisos y fuentes de audiencia se reconfirman antes de emitir una orden.",
