@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
 import { InfomediaCategoryPicker } from "@/components/InfomediaCategoryPicker";
+import { TgiResearchPanel } from "@/components/TgiResearchPanel";
 import { InfomediaResearchPanel } from "@/components/InfomediaResearchPanel";
 import { restoreResearch } from "@/lib/infomedia";
 import type { CategoryCatalog } from "@/lib/infomedia-server";
@@ -97,7 +98,7 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
         <aside><small>Organización activa</small><strong>{workspaceName}</strong><span>Espacio privado · Ecuador</span></aside>
       </header>
 
-      {stage === "brief" && savedResearch && <details className="planner-details"><summary>Consultar investigación guardada</summary><InfomediaResearchPanel research={savedResearch} /></details>}
+      {stage === "brief" && savedResearch && <details className="planner-details"><summary>Consultar investigación guardada</summary><InfomediaResearchPanel research={savedResearch} /><TgiResearchPanel research={savedResearch.tgi} selectedMedia={initialSelectedMedia} /></details>}
       <form ref={formRef} action={formAction} className={`planner-form ${stage === "brief" ? "" : "hidden"}`} aria-hidden={stage !== "brief"}>
         <section className="planner-form-section">
           <SectionNumber number="01" title="Objetivo de la campaña" description="Define la marca, su categoría y el resultado que debe priorizar el plan." />
@@ -118,7 +119,7 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
           <SectionNumber number="02" title="Audiencia y geografía" description="Delimita a quién debe llegar la campaña y dónde tiene sentido invertir." />
           <div className="planner-fields planner-fields-four">
             <SelectField name="audienceType" label="Tipo de audiencia" defaultValue={stringValue(initialBrief.audienceType) || "B2C"}><option>B2C</option><option>B2B</option><option>Mixta</option></SelectField>
-            <SelectField name="ageRange" label="Edad" defaultValue={stringValue(initialBrief.ageRange) || "Personas 18+"}>{["Todas las edades", "13-17", "18-24", "25-34", "35-44", "45-54", "55-64", "65+", "18-34", "25-54", "Personas 18+"].map((option) => <option key={option}>{option}</option>)}</SelectField>
+            <SelectField name="ageRange" label="Edad" defaultValue={stringValue(initialBrief.ageRange) || "Personas 18+"}>{["Todas las edades", "13-17", "18-24", "25-34", "35-44", "45-54", "55-64", "65+", "15-34", "18-34", "25-54", "35+", "Personas 18+"].map((option) => <option key={option}>{option}</option>)}</SelectField>
             <SelectField name="sex" label="Sexo" defaultValue={stringValue(initialBrief.sex) || "Todas las personas"}>{["Todas las personas", "Mujeres", "Hombres", "No binario", "Mujeres prioritario", "Hombres prioritario", "Por definir"].map((option) => <option key={option}>{option}</option>)}</SelectField>
             <SelectField name="socioeconomic" label="Nivel socioeconómico" defaultValue={stringValue(initialBrief.socioeconomic) || "Todos los NSE"}>{["Todos los NSE", "A", "B", "C+", "C-", "D", "A/B", "B/C+", "C+/C-", "C-/D", "Por definir"].map((option) => <option key={option}>{option}</option>)}</SelectField>
           </div>
@@ -273,9 +274,10 @@ function AnalysisStage({ result, onBack, onContinue }: { result: Extract<PlanRes
     </div>
 
     <InfomediaResearchPanel research={result.research} brand={result.brief.brand} objective={result.objective} />
+    <TgiResearchPanel research={result.research.tgi} selectedMedia={result.brief.selectedMedia} />
 
     <div className="planner-analysis-context">
-      <article><span>Grupo objetivo</span><strong>{analysis.targetLabel}</strong><small>Compatibilidad validada por fuente y medio</small></article>
+      <article><span>Grupo objetivo</span><strong>{analysis.targetLabel}</strong><small>Compatibilidad indicada en cada fuente</small></article>
       <article><span>Cobertura</span><strong>{analysis.coverageLabel}</strong><small>Rutas e inventario se reconfirman</small></article>
       <article><span>Contexto comercial</span><strong>{analysis.commercialReadiness}% completo</strong><small>No bloquea la recomendación</small></article>
       <article><span>Preparación digital</span><strong>{analysis.digitalReadiness == null ? "No aplica" : `${analysis.digitalReadiness}% completa`}</strong><small>Solo influye cuando Digital está seleccionado</small></article>

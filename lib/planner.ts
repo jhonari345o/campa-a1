@@ -1,6 +1,7 @@
 import type { CategoryResearch } from "@/lib/infomedia";
 import { MEDIA_TYPE_LABELS } from "@/lib/market";
 import { mediaGroupForLabel, type MediaGroup } from "@/lib/media-groups";
+import { tgiUsage } from "@/lib/tgi";
 
 export { mediaGroupForLabel } from "@/lib/media-groups";
 
@@ -31,6 +32,7 @@ export type MediaPlan = {
   basis: "giro" | "sector" | "mercado" | "infomedia";
   referencePeriod?: string;
   unobservedMedia?: string[];
+  evidence?: { group: MediaGroup; categoryShare: number | null; tgiUsage: number | null; contextual: boolean; score: number }[];
   benchmark: PlanRow[];
   plan: PlanRow[];
   profileLabel: string;
@@ -228,13 +230,25 @@ export async function buildMediaPlan(input: PlanInput): Promise<MediaPlan> {
 
   const marketGroups = aggregateMarketGroups(byMedia, total);
   const selectedGroups = new Set<MediaGroup>((input.selectedMedia?.length ? input.selectedMedia : Object.keys(FALLBACK_SHARE)).filter((group): group is MediaGroup => Object.hasOwn(FALLBACK_SHARE, group)));
+  const highestShare = Math.max(0, ...[...selectedGroups].map((group) => marketGroups.get(group) ?? 0));
   const weightedGroups = [...selectedGroups].map((group) => {
     const marketShare = marketGroups.get(group) ?? 0;
-    const weight = marketShare
-      * profile.channelBias[group]
-      * objectiveBias(group, input.objective ?? "")
-      * priorityBias(group, input.priority ?? "");
-    return { group, weight };
+    const usage = tgiUsage(group, input.research.tgi);
+    const contextual = input.research.tgi?.relationship !== "age_matched";
+    // Recovered research flow: category investment + audience consumption + objective.
+    // These are planning weights, not reach estimates. No missing pressure is fabricated.
+    const categoryStrength = highestShare > 0 ? marketShare / highestShare : 0;
+    const audienceStrength = usage === null ? 0 : usage / 100 * (contextual ? 0.65 : 1);
+    const objectiveStrength = group === "digital"
+      ? (/ventas|leads|tráfico|mensajes|instalaciones/i.test(input.objective ?? "")
+        ? input.trackingStatus === "Implementado y validado" ? 1 : 0.72 : 0.82)
+      : ({ television: 0.92, radio: 0.88, ooh: 0.88, press: 0.82, influencers: 0.84 })[group];
+    const score = marketShare <= 0 && usage === null ? 0
+      : (categoryStrength * 0.32 + audienceStrength * 0.24 + objectiveStrength * 0.28) / (0.32 + (usage === null ? 0 : 0.24) + 0.28);
+    const weight = input.research.tgi
+      ? score * profile.channelBias[group] * priorityBias(group, input.priority ?? "")
+      : marketShare * profile.channelBias[group] * objectiveBias(group, input.objective ?? "") * priorityBias(group, input.priority ?? "");
+    return { group, weight, categoryShare: marketGroups.has(group) ? marketShare : null, tgiUsage: usage, contextual, score };
   });
   if (weightedGroups.every((item) => item.weight === 0)) throw new Error("NO_CATEGORY_MEDIA_EVIDENCE");
   const groupTotal = weightedGroups.reduce((sum, item) => sum + item.weight, 0) || 1;
@@ -275,6 +289,7 @@ export async function buildMediaPlan(input: PlanInput): Promise<MediaPlan> {
     matched: period.totals.activeBrands,
     referencePeriod: period.periodLabel,
     unobservedMedia: [...selectedGroups].filter((group) => !marketGroups.get(group)).map((group) => group === "digital" ? "Digital" : GROUP_LABELS[group]),
+    evidence: weightedGroups.map(({ group, categoryShare, tgiUsage: usage, contextual, score }) => ({ group, categoryShare, tgiUsage: usage, contextual, score })),
     totalRef: total,
     basis,
     benchmark,

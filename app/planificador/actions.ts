@@ -109,7 +109,7 @@ export async function generarPlan(
 
   let research: CategoryResearch;
   try {
-    research = withReferenceYear(await getCategoryResearch(String(formData.get("categoryId") ?? ""), String(formData.get("brand") ?? "")), Number(formData.get("referenceYear") ?? 0));
+    research = withReferenceYear(await getCategoryResearch(String(formData.get("categoryId") ?? ""), String(formData.get("brand") ?? ""), { ageRange: String(formData.get("ageRange") ?? ""), sex: String(formData.get("sex") ?? ""), socioeconomic: String(formData.get("socioeconomic") ?? ""), audienceType: String(formData.get("audienceType") ?? ""), geography: String(formData.get("geography") ?? "") }), Number(formData.get("referenceYear") ?? 0));
   } catch {
     return { ok: false, error: "Selecciona una categoría de Infomedia con investigación disponible. Si el catálogo no carga, solicita su habilitación al administrador." };
   }
@@ -215,7 +215,7 @@ export async function generarPlan(
       : { ...plan, matched: 0, totalRef: 0 };
     return { ok: true, research, plan: safePlan, campaigns, analysis, detail, keyword, objective, audience, brief };
   } catch (err) {
-    if (err instanceof Error && err.message === "NO_CATEGORY_MEDIA_EVIDENCE") return { ok: false, error: "La fuente no registra inversión de esta categoría en los medios seleccionados. Revisa otros medios o utiliza el constructor manual." };
+    if (err instanceof Error && err.message === "NO_CATEGORY_MEDIA_EVIDENCE") return { ok: false, error: "No hay inversión de categoría ni consumo TGI disponibles para los medios seleccionados. Revisa otros medios o utiliza el constructor manual." };
     if (err instanceof Error && err.message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
       return { ok: false, error: "El planificador aun no esta habilitado (falta la clave de servicio)." };
     }
@@ -238,7 +238,7 @@ export async function guardarPlan(input: Extract<PlanResult, { ok: true }>): Pro
   }
 
   try {
-    const research = withReferenceYear(await getCategoryResearch(input.brief.categoryId || "", input.brief.brand), input.brief.referenceYear || 0);
+    const research = withReferenceYear(await getCategoryResearch(input.brief.categoryId || "", input.brief.brand, input.brief), input.brief.referenceYear || 0);
     input = { ...input, research, keyword: research.category.label, brief: { ...input.brief, keyword: research.category.label } };
   } catch { return { ok: false, error: "No se pudo validar la investigación antes de guardar." }; }
   input = { ...input, brief: { ...input.brief, ...normalizeCoverageBrief(input.brief) } };
@@ -307,7 +307,7 @@ async function registrarDistribucion(
   input = { ...input, brief: { ...input.brief, ...normalizeCoverageBrief(input.brief) } };
   let canonicalPlan: MediaPlan;
   try {
-    const research = withReferenceYear(await getCategoryResearch(input.brief.categoryId || "", input.brief.brand), input.brief.referenceYear || 0);
+    const research = withReferenceYear(await getCategoryResearch(input.brief.categoryId || "", input.brief.brand, input.brief), input.brief.referenceYear || 0);
     input = { ...input, research, keyword: research.category.label, brief: { ...input.brief, keyword: research.category.label } };
     canonicalPlan = await buildMediaPlan({
       research,

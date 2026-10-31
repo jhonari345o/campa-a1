@@ -160,5 +160,16 @@ try {
  await assert.rejects(db.exec(wrongName));checks++;
  await db.exec('rollback');
 } finally { await rm(scratch,{recursive:true,force:true}); }
+await db.exec('reset role');
+await db.exec(await source('supabase/migrations/0021_tgi_research.sql'));
+await asUser(admin,'service_role');
+await db.query("insert into tgi_research(id,payload,source_sha256) values('synthetic','{\"indicators\":[]}',repeat('a',64))");checks++;
+for (const [user,role] of [[planner,'authenticated'],[admin,'authenticated'],['','anon']]) {
+ await asUser(user,role); await denied('select * from tgi_research');
+ await denied("update tgi_research set active=true");
+}
+await db.exec('reset role');
+assert.equal((await db.query("select relrowsecurity from pg_class where oid='public.tgi_research'::regclass")).rows[0].relrowsecurity,true);checks++;
+await db.exec(await source('supabase/migrations/0021_tgi_research.sql'));checks++;
 await db.close();
 console.log(JSON.stringify({status:'passed',checks,environment:'isolated PostgreSQL/PGlite; synthetic data; not production'}));

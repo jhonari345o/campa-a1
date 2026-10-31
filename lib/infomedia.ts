@@ -1,3 +1,4 @@
+import { restoreTgi, type TgiResearch } from "@/lib/tgi";
 /** Public contracts only. Licensed observations are stored privately in Supabase. */
 export type InfomediaCategory = { id: string; label: string; periods?: { year: number; label: string }[] };
 export type ResearchBrand = { brand: string; estimatedInvestment: number; notices: number; soi: number; soa: number };
@@ -18,6 +19,7 @@ export type CategoryResearch = {
   category: InfomediaCategory;
   dataThrough: string;
   referenceYear?: number;
+  tgi?: TgiResearch;
   periods: ResearchPeriod[];
 };
 export function lookupKey(value: string): string {
@@ -87,6 +89,7 @@ export function restoreResearch(value: unknown): CategoryResearch | undefined {
     return { ...period, brands: period.topBrands, pressureContexts: array(period.pressureContexts).map((value) => ({ ...object(value), brands: object(value).topBrands })) };
   }) };
   const restored = projectResearch({ id: category.id, label: category.label }, normalized, text(saved.dataThrough));
+  restored.tgi = restoreTgi(saved.tgi);
   if (!restored.periods.length) return undefined;
   try { return withReferenceYear(restored, numeric(saved.referenceYear)); } catch { return undefined; }
 }
