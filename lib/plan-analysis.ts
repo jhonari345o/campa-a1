@@ -31,6 +31,9 @@ export type PlanAnalysis = {
 };
 
 export type PlanAnalysisInput = {
+  startDate?: string;
+  endDate?: string;
+  coverage?: import("./geographic-coverage").CoverageSelection[];
   keyword: string;
   objective: string;
   priority: string;

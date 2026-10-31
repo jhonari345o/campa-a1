@@ -1,5 +1,5 @@
 import { optionalWithinBudget } from "@/lib/optional-task";
-import { chatCompletion } from "@/lib/assistant/llm";
+import { bedrockChat } from "@/lib/assistant/llm";
 import { buildLiveTrendContext, type LiveTrendSource } from "@/lib/assistant/trends";
 import { isAiAssistantEnabled, isAiWebTrendsEnabled } from "@/lib/commercial";
 import {
@@ -11,7 +11,7 @@ import { mediaGroupForLabel, type MediaGroup } from "@/lib/media-groups";
 import type { PlanAnalysisInput } from "@/lib/plan-analysis";
 import type { MediaPlan, PlanRow } from "@/lib/planner";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { TV_RATE_CATALOGS, type TvOffer } from "@/lib/tv-rate-catalog";
+import { compatibleTv, compatibleRadio, sourceDescription, emptyBroadcastCatalog, type BroadcastCatalog, type BroadcastTvOffer } from "@/lib/broadcast-catalog";
 
 export type DetailedExecution = {
   id: string;
@@ -56,16 +56,6 @@ export type DetailedMediaRecommendation = {
   liveSources: LiveTrendSource[];
   channelPlans: DetailedChannelPlan[];
   checks: string[];
-};
-
-type RadioMetric = {
-  station_name: unknown;
-  genre: unknown;
-  rating: unknown;
-  share: unknown;
-  reach_pct: unknown;
-  audience_rank: unknown;
-  reach_rank: unknown;
 };
 
 type CatalogRate = {
@@ -137,16 +127,16 @@ export async function buildDetailedMediaRecommendation(
   ];
   let available: DetailedMediaRecommendation = {
     engine: "datos", aiNarrative: null, liveSources: [], checks,
-    channelPlans: plan.plan.map((row) => buildChannelPlan(row, brief, [], [], [], [])),
+    channelPlans: plan.plan.map((row) => buildChannelPlan(row, brief, emptyBroadcastCatalog, [], [], [])),
   };
   return optionalWithinBudget(async (signal) => {
-    const [radio, ooh, oohLocations, influencers] = await Promise.all([
-      selectedGroups.has("radio") ? readRadioMetrics(signal) : Promise.resolve([]),
+    const [broadcast, ooh, oohLocations, influencers] = await Promise.all([
+      selectedGroups.has("radio") || selectedGroups.has("television") ? import("@/lib/broadcast-server").then(m=>m.getBroadcastCatalog()).catch(()=>emptyBroadcastCatalog) : Promise.resolve(emptyBroadcastCatalog),
       selectedGroups.has("ooh") ? readOohInventory(signal) : Promise.resolve([]),
       selectedGroups.has("ooh") ? readOohLocations(signal) : Promise.resolve([]),
       selectedGroups.has("influencers") ? readInfluencers(signal) : Promise.resolve([]),
     ]);
-    const channelPlans = plan.plan.map((row) => buildChannelPlan(row, brief, radio, ooh, oohLocations, influencers));
+    const channelPlans = plan.plan.map((row) => buildChannelPlan(row, brief, broadcast, ooh, oohLocations, influencers));
     available = { ...available, channelPlans };
     const live = isAiWebTrendsEnabled()
       ? await buildLiveTrendContext(`${brief.keyword} ${brief.objective} ${brief.audience} ${brief.geography} tendencias mercado consumo`, signal)
@@ -160,7 +150,7 @@ export async function buildDetailedMediaRecommendation(
 function buildChannelPlan(
   row: PlanRow,
   brief: PlanAnalysisInput,
-  radio: RadioMetric[],
+  broadcast: BroadcastCatalog,
   ooh: OohCatalogRow[],
   oohLocations: OohLocationRow[],
   influencers: InfluencerRow[],
@@ -173,8 +163,8 @@ function buildChannelPlan(
     objective: channelObjective(kind, brief.objective),
     rationale: row.rationale ?? "Ejecución priorizada por el mix recomendado y el brief.",
   };
-  if (kind === "television") return { ...common, executions: televisionExecutions(row, brief) };
-  if (kind === "radio") return { ...common, executions: radioExecutions(row, brief, radio) };
+  if (kind === "television") return { ...common, executions: televisionExecutions(row, brief, broadcast) };
+  if (kind === "radio") return { ...common, executions: radioExecutions(row, brief, broadcast) };
   if (kind === "ooh") {
     const located = oohLocationExecutions(row, brief, oohLocations);
     return { ...common, executions: located.length ? located : oohExecutions(row, brief, ooh) };
@@ -184,67 +174,23 @@ function buildChannelPlan(
   return { ...common, executions: digitalExecutions(row, brief) };
 }
 
-function televisionExecutions(row: PlanRow, brief: PlanAnalysisInput): DetailedExecution[] {
-  const candidates = Object.values(TV_RATE_CATALOGS).flatMap((catalog) =>
-    catalog.offers
-      .filter((offer) => offer.priceUsd != null && offer.priceUsd > 0)
-      .map((offer) => ({ catalog, offer, score: scoreTvOffer(offer, brief, row.amount) })),
-  ).sort((a, b) => b.score - a.score || (a.offer.priceUsd ?? 0) - (b.offer.priceUsd ?? 0));
-  const chosen: typeof candidates = [];
-  const providers = new Set<string>();
-  for (const candidate of candidates) {
-    if (chosen.length >= 3) break;
-    if (providers.has(candidate.catalog.channelSlug)) continue;
-    chosen.push(candidate);
-    providers.add(candidate.catalog.channelSlug);
-  }
-  return allocate(row.amount, chosen.length).map((budget, index) => {
-    const { catalog, offer } = chosen[index];
-    const price = offer.priceUsd!;
-    return {
-      id: `tv-${catalog.channelSlug}-${offer.id}`,
-      provider: channelName(catalog.channelSlug),
-      product: offer.title,
-      location: offer.market || marketFromGeography(brief.geography),
-      schedule: `${offer.day} · ${offer.schedule}`,
-      budgetUsd: budget,
-      referenceUnitPriceUsd: price,
-      estimatedUnits: budget == null ? null : Math.max(1, Math.floor(budget / price)),
-      unit: offer.unit,
-      status: "validacion",
-      evidence: `${catalog.priceBasis}. Verificado: ${catalog.lastVerified}.`,
-      nextStep: "Confirmar afinidad del programa, rating homologado, vigencia, cupo, IVA y negociación final.",
-    };
+function televisionExecutions(row: PlanRow, brief: PlanAnalysisInput, catalog: BroadcastCatalog): DetailedExecution[] {
+  const candidates = compatibleTv(catalog, brief).filter(c=>c.offer.priceUsd > 0 && (row.amount == null || c.offer.priceUsd <= row.amount))
+    .sort((a,b)=>scoreTvOffer(b.offer,brief,row.amount)-scoreTvOffer(a.offer,brief,row.amount));
+  const chosen = candidates.filter((c,i,all)=>all.findIndex(x=>x.source.provider===c.source.provider)===i).slice(0,3);
+  if (!chosen.length) return [pendingExecution("tv","Programas por validar",brief.geography,row.amount,"No hay una tarifa que cubra todas las fechas, plaza y condiciones del brief. Consulta las ediciones disponibles en Televisión.")];
+  return allocate(row.amount,chosen.length).map((budget,index)=>{
+    const {source,offer}=chosen[index];
+    return {id:offer.id,provider:source.label,product:offer.title,location:source.market,schedule:`${offer.day} · ${offer.schedule}`,budgetUsd:budget,referenceUnitPriceUsd:offer.priceUsd,estimatedUnits:budget==null?null:Math.floor(budget/offer.priceUsd),unit:`spot ${source.spotSeconds} s`,status:"validacion",evidence:`${sourceDescription(source)}. ${source.conditions}`,nextStep:"Confirmar programa, público, cupo y condiciones comerciales antes de ordenar."};
   });
 }
 
-function radioExecutions(row: PlanRow, brief: PlanAnalysisInput, radio: RadioMetric[]): DetailedExecution[] {
-  const preferred = preferredRadioGenres(brief);
-  const ranked = radio
-    .map((station) => ({ station, score: scoreRadio(station, preferred) }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3);
-  if (!ranked.length) return [pendingExecution("radio", "Emisoras por plaza", brief.geography, row.amount, "El ranking de radio no respondió en esta consulta.")];
-  return allocate(row.amount, ranked.length).map((budget, index) => {
-    const station = ranked[index].station;
-    const genre = value(station.genre) || "Género por confirmar";
-    const reach = numeric(station.reach_pct);
-    const rating = numeric(station.rating);
-    const rank = numeric(station.audience_rank);
-    return {
-      id: `radio-${slug(value(station.station_name))}`,
-      provider: value(station.station_name),
-      product: `Cuñas y menciones · ${genre}`,
-      location: marketFromStation(value(station.station_name), brief.geography),
-      schedule: preferredRadioSchedule(brief),
-      budgetUsd: budget,
-      referenceUnitPriceUsd: null,
-      estimatedUnits: null,
-      unit: "pauta por cotizar",
-      status: "validacion",
-      evidence: [rank ? `ranking de audiencia #${rank}` : "ranking pendiente", rating ? `rating ${rating}` : null, reach ? `reach ${reach}%` : null].filter(Boolean).join(" · "),
-      nextStep: "Solicitar tarifario, cobertura técnica, franja, frecuencia y vigencia antes de emitir la orden.",
-    };
+function radioExecutions(row: PlanRow, brief: PlanAnalysisInput, catalog: BroadcastCatalog): DetailedExecution[] {
+  const ranked=compatibleRadio(catalog,brief).slice(0,3);
+  if (!ranked.length) return [pendingExecution("radio","Emisoras por plaza y público",brief.geography,row.amount,"No hay un estudio con la misma plaza y público del brief. Los cortes disponibles pueden consultarse por separado en Radio.")];
+  return allocate(row.amount,ranked.length).map((budget,index)=>{
+    const {source,row:station}=ranked[index];
+    return {id:station.id,provider:station.name,product:`Cuñas y menciones · ${station.genre||"Género no indicado"}`,location:source.market,schedule:source.daypart,budgetUsd:budget,referenceUnitPriceUsd:null,estimatedUnits:null,unit:"pauta por cotizar",status:"validacion",evidence:`${sourceDescription(source)} · rating ${station.rating ?? "—"} · share ${station.share ?? "—"}%. Referencia histórica; no es alcance de campaña.`,nextStep:"Confirmar tarifa y disponibilidad para la campaña. El ranking conserva la franja y público medidos."};
   });
 }
 
@@ -456,15 +402,6 @@ function influencerExecutions(row: PlanRow, brief: PlanAnalysisInput, profiles: 
   });
 }
 
-async function readRadioMetrics(signal?: AbortSignal): Promise<RadioMetric[]> {
-  try {
-    const { data, error } = await createAdminClient(signal).rpc("get_radio_catalog");
-    return error ? [] : (data ?? []) as RadioMetric[];
-  } catch {
-    return [];
-  }
-}
-
 async function readOohInventory(signal?: AbortSignal): Promise<OohCatalogRow[]> {
   try {
     const { data, error } = await createAdminClient(signal)
@@ -504,7 +441,7 @@ async function readInfluencers(signal?: AbortSignal): Promise<InfluencerRow[]> {
 }
 
 async function buildAiNarrative(brief: PlanAnalysisInput, channels: DetailedChannelPlan[], liveContext: string, signal?: AbortSignal): Promise<string | null> {
-  if (!isAiAssistantEnabled()) return null;
+  if (!isAiAssistantEnabled() || process.env.INFOMEDIA_AWS_AI_ENABLED !== "true" || !process.env.BEDROCK_MODEL_ID) return null;
   const compact = channels.map((channel) => ({
     medio: channel.label,
     presupuesto: channel.budgetUsd,
@@ -517,7 +454,7 @@ async function buildAiNarrative(brief: PlanAnalysisInput, channels: DetailedChan
     })),
   }));
   try {
-    return await chatCompletion([
+    return await bedrockChat([
       {
         role: "system",
         content: "Eres el estratega de medios de Ad Mavericks One. Redacta en español de Ecuador un dictamen de máximo 180 palabras. Usa exclusivamente los candidatos y cifras entregados. Explica por qué encajan con el giro, objetivo, audiencia y geografía; señala la principal validación pendiente. No inventes métricas, ubicaciones, tarifas ni resultados.",
@@ -540,8 +477,8 @@ async function buildAiNarrative(brief: PlanAnalysisInput, channels: DetailedChan
   }
 }
 
-function scoreTvOffer(offer: TvOffer, brief: PlanAnalysisInput, budget: number | null): number {
-  const text = normalize(`${offer.title} ${offer.schedule} ${offer.market ?? ""}`);
+function scoreTvOffer(offer: BroadcastTvOffer, brief: PlanAnalysisInput, budget: number | null): number {
+  const text = normalize(`${offer.title} ${offer.schedule}`);
   const audience = normalize(`${brief.audience} ${brief.ageRange} ${brief.audienceType} ${brief.keyword}`);
   const objective = normalize(brief.objective);
   let score = 1;
@@ -551,34 +488,10 @@ function scoreTvOffer(offer: TvOffer, brief: PlanAnalysisInput, budget: number |
   if (/reconocimiento|alcance/.test(objective) && /19:|20:|21:|estelar|noticiero iii|destiny/.test(text)) score += 3;
   if (/venta|lead|mensaje|eficiencia|visita/.test(objective) && (offer.priceUsd ?? Infinity) <= 1500) score += 3;
   if (budget && offer.priceUsd && offer.priceUsd <= budget / 3) score += 2;
-  if (locationScore(offer.market || "", brief.geography) > 0) score += 2;
   return score;
 }
 
-function preferredRadioGenres(brief: PlanAnalysisInput): string[] {
-  const text = normalize(`${brief.keyword} ${brief.audience} ${brief.ageRange} ${brief.audienceType}`);
-  if (/b2b|empresa|profesional|finanz|inmobili|politic/.test(text)) return ["NOTICIAS", "DEPORTES"];
-  if (/13-17|18-24|18-34|joven|moda|tecnolog|univers/.test(text)) return ["POP/JUVENIL", "MUSICA EN INGLES"];
-  if (/deporte|auto|moto|futbol/.test(text)) return ["DEPORTES", "NOTICIAS"];
-  if (/famil|hogar|salud|farmacia/.test(text)) return ["TROPICAL VARIADA", "ROMANTICA", "NOTICIAS"];
-  return ["TROPICAL VARIADA", "POP/JUVENIL", "NOTICIAS"];
-}
 
-function scoreRadio(station: RadioMetric, preferred: string[]): number {
-  const genre = normalize(value(station.genre));
-  const genreIndex = preferred.findIndex((item) => genre.includes(normalize(item)));
-  const affinity = genreIndex < 0 ? 0 : (preferred.length - genreIndex) * 4;
-  const rank = numeric(station.audience_rank) ?? 999;
-  const reachRank = numeric(station.reach_rank) ?? 999;
-  return affinity + Math.max(0, 12 - rank) + Math.max(0, 8 - reachRank) + (numeric(station.rating) ?? 0);
-}
-
-function preferredRadioSchedule(brief: PlanAnalysisInput): string {
-  const text = normalize(`${brief.audience} ${brief.businessModel} ${brief.keyword}`);
-  if (/b2b|empresa|profesional|trabaj/.test(text)) return "Movilidad laboral · mañana y tarde";
-  if (/restaurante|comida|delivery|retail|tienda/.test(text)) return "Antes de compra · media mañana, almuerzo y regreso a casa";
-  return "Franjas de mayor afinidad por confirmar con la emisora";
-}
 
 function influencerCategory(brief: PlanAnalysisInput): string {
   const text = normalize(`${brief.keyword} ${brief.audience}`);
@@ -631,27 +544,12 @@ function digitalReady(brief: PlanAnalysisInput): boolean {
   return Boolean(brief.digitalDestination) && ready(tracking) && ready(accounts);
 }
 
-function channelName(slugValue: string): string {
-  const names: Record<string, string> = {
-    ecuavisa: "Ecuavisa",
-    "red-comercial": "Red Comercial · RTS/TVC",
-    teleamazonas: "Teleamazonas",
-    "tc-television": "TC Televisión",
-    "catomedia-ucsg": "Catomedia · UCSG TV",
-  };
-  return names[slugValue] ?? slugValue;
-}
 
 function marketFromGeography(geography: string): string {
   if (!geography) return "Plaza por confirmar";
   return geography.split("·")[0]?.trim() || geography;
 }
 
-function marketFromStation(station: string, geography: string): string {
-  if (/\(q\)|\(uio\)|quito/i.test(station)) return "Quito";
-  if (/\(g\)|\(gye\)|guayaquil/i.test(station)) return "Guayaquil";
-  return marketFromGeography(geography);
-}
 
 function scoreOohLocation(location: OohLocationRow, brief: PlanAnalysisInput, budget: number | null) {
   const city = value(location.city);

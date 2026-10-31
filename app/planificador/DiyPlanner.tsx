@@ -5,17 +5,17 @@ import type { CategoryCatalog } from "@/lib/infomedia-server";
 import { resolveCategory } from "@/lib/infomedia";
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
-import { DIGITAL_PLATFORMS, PRESS_OUTLETS, type InfluencerProfile, type RadioStation } from "@/lib/media-catalog";
+import { DIGITAL_PLATFORMS, PRESS_OUTLETS, type InfluencerProfile } from "@/lib/media-catalog";
 import type { MediaGroup } from "@/lib/media-groups";
 import type { OohLocationOption, SavedMediaPlan } from "@/lib/media-workspace";
 import { buildPlanningScenarios, mediaGroupLabel, type PlanningScenario } from "@/lib/plan-optimizer";
-import { TV_RATE_CATALOGS } from "@/lib/tv-rate-catalog";
+import { tvValidity, sameMarket, sourceDescription, radioCompatibility, validateBroadcastSelections, type BroadcastCatalog, type BroadcastBrief } from "@/lib/broadcast-catalog";
 import { ECUADOR_PROVINCE_OPTIONS } from "@/lib/form-catalogs";
 import { guardarPlanManual, type ManualPlanDraft } from "./workspace-actions";
 import { CampaignTwin } from "./CampaignTwin";
 
-type TvPick = { id: string; channel: string; title: string; schedule: string; market: string; unitPrice: number | null; quantity: number };
-type RadioPick = { name: string; spotsPerDay: number; days: number };
+type TvPick = { sourceId?: string; context?: string; id: string; channel: string; title: string; schedule: string; market: string; unitPrice: number | null; quantity: number };
+type RadioPick = { id?: string; sourceId?: string; context?: string; name: string; spotsPerDay: number; days: number };
 type OohPick = { id: string; name: string; city: string; status: string; rate: number | null; months: number };
 type PressPick = { slug: string; name: string; format: string; quantity: number };
 type DigitalPick = { slug: string; name: string; pct: number };
@@ -43,20 +43,24 @@ const FALLBACK_OOH: OohLocationOption[] = [
 ];
 
 export function DiyPlanner({
-  radio,
+  broadcast,
   influencers,
   oohLocations,
   initialPlan,
   categoryCatalog,
 }: {
+  broadcast: BroadcastCatalog;
   categoryCatalog: CategoryCatalog;
-  radio: RadioStation[];
   influencers: InfluencerProfile[];
   oohLocations: OohLocationOption[];
   initialPlan?: SavedMediaPlan | null;
 }) {
   const initialBrief = initialPlan?.brief ?? {};
   const initialSelection = initialPlan?.selection ?? {};
+  const [startDate,setStartDate]=useState(stringValue(initialBrief.startDate));
+  const [endDate,setEndDate]=useState(stringValue(initialBrief.endDate));
+  const [ageRange,setAgeRange]=useState(stringValue(initialBrief.ageRange)||"Personas 18+");
+  const [sex,setSex]=useState(stringValue(initialBrief.sex)||"Todas las personas");
   const [planId, setPlanId] = useState(initialPlan?.id ?? "");
   const [name, setName] = useState(stringValue(initialPlan?.name) || "Plan multimedia personalizado");
   const [brand, setBrand] = useState(stringValue(initialBrief.brand));
@@ -125,7 +129,7 @@ export function DiyPlanner({
       interests,
       audienceType,
       budgetUsd: budget,
-      geographies,
+      geographies, startDate, endDate, ageRange, sex,
       selectedMedia,
       scenarioId: scenario?.id ?? "recommended",
       digitalReady,
@@ -184,8 +188,9 @@ export function DiyPlanner({
 
       {scenario && <CampaignTwin scenario={scenario} budgetUsd={budget} geographies={geographies} digitalReady={digitalReady} onApplyBudget={setBudget} />}
 
-      {selectedMedia.includes("television") && <TvConfigurator picks={tv} onChange={setTv} />}
-      {selectedMedia.includes("radio") && <RadioConfigurator stations={radio} picks={radioPicks} onChange={setRadioPicks} />}
+      <section className="rounded-panel border border-border bg-white p-5"><h2 className="font-black">Fechas y público para contrastar las fuentes</h2><div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><label className="text-sm font-bold">Inicio<input type="date" className="block w-full rounded-xl border p-3" value={startDate} onChange={e=>setStartDate(e.target.value)}/></label><label className="text-sm font-bold">Fin<input type="date" className="block w-full rounded-xl border p-3" value={endDate} onChange={e=>setEndDate(e.target.value)}/></label><Select label="Edad" value={ageRange} onChange={setAgeRange} options={["Personas 18+","18-34","35+","25-54"].map(x=>[x,x])}/><Select label="Sexo" value={sex} onChange={setSex} options={["Todas las personas","Mujeres","Hombres"].map(x=>[x,x])}/></div></section>
+      {selectedMedia.includes("television") && <TvConfigurator catalog={broadcast} brief={{startDate,endDate,geography:geographies.join(","),ageRange,sex,socioeconomic:"Todos los NSE",audienceType}} picks={tv} onChange={setTv} />}
+      {selectedMedia.includes("radio") && <RadioConfigurator catalog={broadcast} brief={{startDate,endDate,geography:geographies.join(","),ageRange,sex,socioeconomic:"Todos los NSE",audienceType}} picks={radioPicks} onChange={setRadioPicks} />}
       {selectedMedia.includes("ooh") && <OohConfigurator locations={locations} picks={ooh} onChange={setOoh} />}
       {selectedMedia.includes("digital") && <DigitalConfigurator picks={digital} onChange={setDigital} ready={digitalReady} onReadyChange={setDigitalReady} />}
       {selectedMedia.includes("press") && <PressConfigurator picks={press} onChange={setPress} />}
@@ -199,25 +204,17 @@ export function DiyPlanner({
   );
 }
 
-function TvConfigurator({ picks, onChange }: { picks: TvPick[]; onChange: (value: TvPick[]) => void }) {
-  const catalogs = Object.entries(TV_RATE_CATALOGS);
-  const [catalogKey, setCatalogKey] = useState(catalogs[0]?.[0] ?? "");
-  const catalog = TV_RATE_CATALOGS[catalogKey];
-  const [offerIndex, setOfferIndex] = useState(0);
-  const offer = catalog?.offers[offerIndex];
-  function add() {
-    if (!catalog || !offer) return;
-    const id = `${catalogKey}-${offerIndex}`;
-    if (picks.some((item) => item.id === id)) return;
-    onChange([...picks, { id, channel: channelLabel(catalog.channelSlug), title: offer.title, schedule: `${offer.day} · ${offer.schedule}`, market: offer.market ?? "Por confirmar", unitPrice: offer.priceUsd, quantity: 1 }]);
-  }
-  return <Configurator number="04" eyebrow="Televisión" title="Selecciona canales, programas y presión"><div className="grid gap-3 lg:grid-cols-[1fr_2fr_auto]"><Select label="Canal" value={catalogKey} onChange={(value) => { setCatalogKey(value); setOfferIndex(0); }} options={catalogs.map(([key, item]) => [key, channelLabel(item.channelSlug)])} /><Select label="Programa o paquete" value={String(offerIndex)} onChange={(value) => setOfferIndex(Number(value))} options={(catalog?.offers ?? []).map((item, index) => [String(index), `${item.title} · ${item.schedule} · ${item.priceUsd == null ? "cotizar" : money(item.priceUsd)}`])} /><button type="button" onClick={add} className="btn btn-primary self-end">Agregar</button></div><PickList items={picks} empty="Selecciona programas para construir spots y costo tarifable." render={(item) => <><div><strong>{item.channel} · {item.title}</strong><small>{item.schedule} · {item.market} · {item.unitPrice == null ? "Tarifa pendiente" : `${money(item.unitPrice)} por unidad`}</small></div><NumberCompact value={item.quantity} onChange={(quantity) => onChange(picks.map((pick) => pick.id === item.id ? { ...pick, quantity } : pick))} /><Remove onClick={() => onChange(picks.filter((pick) => pick.id !== item.id))} /></>} /></Configurator>;
+function TvConfigurator({catalog,brief,picks,onChange}:{catalog:BroadcastCatalog;brief:BroadcastBrief;picks:TvPick[];onChange:(v:TvPick[])=>void}) {
+ const sources=catalog.sources.filter(s=>s.kind==='tv'); const [sourceId,setSourceId]=useState(sources[0]?.id??''); const source=sources.find(s=>s.id===sourceId);
+ const offers=catalog.tv.filter(o=>o.sourceId===sourceId); const [offerId,setOfferId]=useState(''); const offer=offers.find(o=>o.id===offerId)??offers[0];
+ const valid=!!source&&tvValidity(source,brief.startDate,brief.endDate); const scoped=!!source&&sameMarket(source,brief)&&!source.annualContract;
+ function add(){if(!offer||!source||!valid||picks.some(p=>p.id===offer.id))return;onChange([...picks,{id:offer.id,sourceId:source.id,context:sourceDescription(source),channel:source.label,title:offer.title,schedule:`${offer.day} · ${offer.schedule}`,market:source.market,unitPrice:scoped?offer.priceUsd:null,quantity:1}]);}
+ return <Configurator number="04" eyebrow="Televisión" title="Tarifas por edición y fechas"><div className="grid gap-3 lg:grid-cols-2"><Select label="Canal y vigencia" value={sourceId} onChange={v=>{setSourceId(v);setOfferId('');}} options={sources.map(s=>[s.id,`${s.label} · ${s.periodStart} – ${s.periodEnd}`])}/><Select label="Programa" value={offer?.id??''} onChange={setOfferId} options={offers.map(o=>[o.id,`${o.title} · ${o.day} · ${money(o.priceUsd)}`])}/></div>{source&&<p className="mt-3 text-xs">{sourceDescription(source)} · {source.conditions}</p>}{!valid&&<p className="mt-3 font-bold">Define fechas dentro de la vigencia de este tarifario.</p>}{valid&&!scoped&&<p className="mt-3 text-sm">La plaza o condición contractual requiere validación. Se agregará el programa sin aplicar un costo al plan.</p>}<button type="button" disabled={!valid||!offer} onClick={add} className="btn btn-primary mt-4 disabled:opacity-50">Agregar programa</button><PickList items={picks} empty="Selecciona una edición compatible con las fechas de campaña." render={item=><><div><strong>{item.channel} · {item.title}</strong><small>{item.context??item.market} · {(() => { const v=validateBroadcastSelections(catalog,brief,{tv:[item]}); return !v.ok?v.error:((v.selections.tv as TvPick[])[0].unitPrice==null?'Costo pendiente de validación':money((v.selections.tv as TvPick[])[0].unitPrice!)); })()}</small></div><NumberCompact value={item.quantity} onChange={quantity=>onChange(picks.map(p=>p.id===item.id?{...p,quantity}:p))}/><Remove onClick={()=>onChange(picks.filter(p=>p.id!==item.id))}/></>}/></Configurator>;
 }
-
-function RadioConfigurator({ stations, picks, onChange }: { stations: RadioStation[]; picks: RadioPick[]; onChange: (value: RadioPick[]) => void }) {
-  const [name, setName] = useState(stations[0]?.name ?? "");
-  function add() { if (name && !picks.some((item) => item.name === name)) onChange([...picks, { name, spotsPerDay: 6, days: 20 }]); }
-  return <Configurator number="05" eyebrow="Radio" title="Construye frecuencia territorial"><div className="flex flex-col gap-3 sm:flex-row"><Select label="Emisora" value={name} onChange={setName} options={stations.map((item) => [item.name, `${item.name}${item.audienceRank ? ` · ranking ${item.audienceRank}` : ""}`])} /><button type="button" onClick={add} className="btn btn-primary self-end">Agregar</button></div><PickList items={picks} empty="Elige emisoras; ranking no equivale a alcance acumulado." render={(item) => <><div><strong>{item.name}</strong><small>{item.spotsPerDay * item.days} cuñas planificadas · tarifa por confirmar</small></div><label className="text-xs font-bold">Cuñas/día<NumberCompact value={item.spotsPerDay} onChange={(spotsPerDay) => onChange(picks.map((pick) => pick.name === item.name ? { ...pick, spotsPerDay } : pick))} /></label><label className="text-xs font-bold">Días<NumberCompact value={item.days} onChange={(days) => onChange(picks.map((pick) => pick.name === item.name ? { ...pick, days } : pick))} /></label><Remove onClick={() => onChange(picks.filter((pick) => pick.name !== item.name))} /></>} /></Configurator>;
+function RadioConfigurator({catalog,brief,picks,onChange}:{catalog:BroadcastCatalog;brief:BroadcastBrief;picks:RadioPick[];onChange:(v:RadioPick[])=>void}) {
+ const sources=catalog.sources.filter(s=>s.kind==='radio');const [sourceId,setSourceId]=useState(sources[0]?.id??'');const source=sources.find(s=>s.id===sourceId);const rows=catalog.radio.filter(r=>r.sourceId===sourceId).sort((a,b)=>(b.rating??-1)-(a.rating??-1));const [rowId,setRowId]=useState('');const row=rows.find(r=>r.id===rowId)??rows[0];const mismatch=source?radioCompatibility(source,brief):'No hay estudio disponible';
+ function add(){if(!row||!source||mismatch||picks.some(p=>p.id===row.id))return;onChange([...picks,{id:row.id,sourceId,context:sourceDescription(source),name:row.name,spotsPerDay:6,days:20}]);}
+ return <Configurator number="05" eyebrow="Radio" title="Selecciona un estudio compatible"><Select label="Estudio de radio" value={sourceId} onChange={v=>{setSourceId(v);setRowId('');}} options={sources.map(s=>[s.id,sourceDescription(s)])}/><Select label="Emisora del estudio" value={row?.id??''} onChange={setRowId} options={rows.map(r=>[r.id,`${r.name} · rating ${r.rating??'—'}`])}/>{mismatch&&<p className="mt-3 text-sm font-bold">{mismatch}. Puedes consultar el estudio en el catálogo sin aplicarlo al plan.</p>}<button type="button" disabled={!!mismatch||!row} onClick={add} className="btn btn-primary mt-3 disabled:opacity-50">Agregar emisora</button><PickList items={picks} empty="Cada selección conserva la fuente y el público del ranking." render={item=><><div><strong>{item.name}</strong><small>{item.context??'Selección histórica sin estudio asociado'} · {item.spotsPerDay*item.days} cuñas{(() => {const s=catalog.sources.find(s=>s.id===item.sourceId);const m=s?radioCompatibility(s,brief):'Selecciona nuevamente un estudio';return m?` · ${m}`:'';})()}</small></div><NumberCompact value={item.spotsPerDay} onChange={spotsPerDay=>onChange(picks.map(p=>p===item?{...p,spotsPerDay}:p))}/><Remove onClick={()=>onChange(picks.filter(p=>p!==item))}/></>}/></Configurator>;
 }
 
 function OohConfigurator({ locations, picks, onChange }: { locations: OohLocationOption[]; picks: OohPick[]; onChange: (value: OohPick[]) => void }) {
@@ -272,4 +269,3 @@ function mediaArray(value: unknown): MediaGroup[] { return arrayOfStrings(value)
 function scenarioValue(value: unknown): PlanningScenario["id"] { const id = value && typeof value === "object" ? (value as { id?: unknown }).id : null; return id === "efficiency" || id === "presence" ? id : "recommended"; }
 function normalize(value: string) { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); }
 function zone(id: string, name: string, city: string, latitude: number, longitude: number): OohLocationOption { return { id, assetCode: id, status: "zone_candidate", providerName: null, name, city, province: "Guayas", address: name, latitude, longitude, format: "Zona para búsqueda de inventario", monthlyRateUsd: null, productionRateUsd: null, audienceTags: ["adultos 25-45 · hipótesis"], contextTags: ["movilidad urbana"], affluenceIndex: null, sourceNote: "Zona candidata; requiere proveedor, flujo, tarifa y disponibilidad.", verifiedAt: "2026-08-27" }; }
-function channelLabel(slug: string) { return slug === "ecuavisa" ? "Ecuavisa" : slug === "red-comercial" ? "RTS / TVC" : slug.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }

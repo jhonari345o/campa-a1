@@ -1,3 +1,4 @@
+import { getBroadcastCatalog } from "@/lib/broadcast-server";
 import { getInfomediaCatalog } from "@/lib/infomedia-server";
 import { getMyCompanies } from "@/lib/company";
 import { canCompanyRole } from "@/lib/permissions";
@@ -11,7 +12,6 @@ import {
   getMySavedPlans,
   getOohLocationCatalog,
   getPlanCollaboration,
-  getRadioCatalog,
   getCatalogHealth,
 } from "@/lib/media-workspace";
 import type { CatalogSection } from "@/lib/media-catalog";
@@ -49,8 +49,7 @@ export default async function PlanificadorPage({
   const categoryCatalog = view === "planner" || view === "diy" ? await getInfomediaCatalog() : { categories: [] };
   const catalogNeeded = view === "media" || view === "diy";
   const selectedPlanNeeded = (view === "planner" || view === "diy" || view === "versions") && Boolean(params.plan);
-  const [radio, influencers, plans, selectedPlan, versions, oohLocations, collaboration, catalogHealth] = await Promise.all([
-    catalogNeeded ? getRadioCatalog() : Promise.resolve([]),
+  const [influencers, plans, selectedPlan, versions, oohLocations, collaboration, catalogHealth, broadcast] = await Promise.all([
     catalogNeeded ? getInfluencerCatalog() : Promise.resolve([]),
     view === "plans" ? getMySavedPlans(profile.id) : Promise.resolve([]),
     selectedPlanNeeded ? getMySavedPlan(profile.id, params.plan!) : Promise.resolve(null),
@@ -58,6 +57,7 @@ export default async function PlanificadorPage({
     view === "diy" ? getOohLocationCatalog() : Promise.resolve([]),
     view === "versions" && params.plan ? getPlanCollaboration(profile.id, params.plan) : Promise.resolve({ comments: [], approvals: [] }),
     view === "media" ? getCatalogHealth() : Promise.resolve(null),
+    catalogNeeded ? getBroadcastCatalog() : Promise.resolve({ sources: [], tv: [], radio: [] }),
   ]);
 
   return (
@@ -76,11 +76,11 @@ export default async function PlanificadorPage({
       />
       <main id="workspace-content" className={`portal-page ${view === "media" ? "portal-page-wide" : "portal-page-planner"}`}>
         {view === "media" ? (
-          <MediaCatalog section={section} radio={radio} influencers={influencers} health={catalogHealth} />
+          <MediaCatalog broadcast={broadcast} section={section} influencers={influencers} health={catalogHealth} />
         ) : view === "plans" ? (
           <SavedPlans plans={plans} />
         ) : view === "diy" ? (
-          <DiyPlanner categoryCatalog={categoryCatalog} radio={radio} influencers={influencers} oohLocations={oohLocations} initialPlan={selectedPlan} />
+          <DiyPlanner broadcast={broadcast} categoryCatalog={categoryCatalog} influencers={influencers} oohLocations={oohLocations} initialPlan={selectedPlan} />
         ) : view === "versions" ? (
           <PlanVersions canApprove={profile.is_platform_admin || companies.some(c => c.id === selectedPlan?.companyId && c.status === "activa" && canCompanyRole(c.role, "campaign:approve"))} plan={selectedPlan} versions={versions} comments={collaboration.comments} approvals={collaboration.approvals} />
         ) : (

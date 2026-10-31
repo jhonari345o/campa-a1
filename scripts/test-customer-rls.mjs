@@ -171,5 +171,18 @@ for (const [user,role] of [[planner,'authenticated'],[admin,'authenticated'],[''
 await db.exec('reset role');
 assert.equal((await db.query("select relrowsecurity from pg_class where oid='public.tgi_research'::regclass")).rows[0].relrowsecurity,true);checks++;
 await db.exec(await source('supabase/migrations/0021_tgi_research.sql'));checks++;
+// Versioned broadcast catalog: authorized readers only, no client writes.
+await db.exec(await source('supabase/migrations/0022_broadcast_catalog.sql'));
+await db.query("insert into broadcast_sources(id,kind,label,provider,period_start,period_end,market,target,source_sha256) values('sample','tv','Synthetic','Synthetic','2026-11-01','2026-11-30','Quito','General',repeat('b',64))");
+await db.query("insert into broadcast_tv_offers(id,source_id,day,title,schedule,price_usd) values('offer','sample','Monday','Test','10:00',150)");
+for(const u of [admin,planner]) {
+ await asUser(u);await count('select id from broadcast_sources',[],1);await count('select id from broadcast_tv_offers',[],1);
+ await denied("update broadcast_tv_offers set price_usd=1");
+}
+await asUser(overflow);await count('select id from broadcast_sources',[],0);await count('select id from broadcast_tv_offers',[],0);
+await asUser('','anon');await denied('select * from broadcast_sources');await denied('select * from broadcast_radio_metrics');
+await db.exec('reset role');await db.query("update broadcast_sources set active=false");
+await asUser(planner);await count('select id from broadcast_tv_offers',[],0);
+await db.exec('reset role');await db.exec(await source('supabase/migrations/0022_broadcast_catalog.sql'));checks++;
 await db.close();
 console.log(JSON.stringify({status:'passed',checks,environment:'isolated PostgreSQL/PGlite; synthetic data; not production'}));
