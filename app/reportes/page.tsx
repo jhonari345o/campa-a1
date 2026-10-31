@@ -50,8 +50,9 @@ export default async function ReportesPage() {
 
   return (
     <div className="min-h-screen">
-      <AppHeader name={profile.full_name ?? profile.email ?? "Ad Mavericks"} isAdmin={profile.is_platform_admin} active="reportes" />
+      <AppHeader name={profile.full_name ?? profile.email ?? "Ad Mavericks"} isAdmin={profile.is_platform_admin} workspace={profile.workspace} active="reportes" />
       <main id="workspace-content" className="portal-page portal-page-planner">
+        <a href="/clientes" className="library-panel-link"><div><strong>Reportes por cliente</strong><small>Abre una campaña para consultar su plan de medios y comparar resultados.</small></div><span aria-hidden>↗</span></a>
         {!hasReports ? (
           <section className="reports-locked">
             <span>05</span>

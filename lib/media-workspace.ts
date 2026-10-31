@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { InfluencerProfile, RadioStation } from "@/lib/media-catalog";
 
 export type SavedMediaPlan = {
+  companyId?: string | null;
   id: string;
   name: string;
   status: string;
@@ -140,12 +141,13 @@ export async function getMySavedPlans(userId: string): Promise<SavedMediaPlan[]>
   const db = await createClient();
   const { data, error } = await db
     .from("media_plans")
-    .select("id, name, status, mode, stage, version, progress, brief, analysis, proposal, selection, updated_at")
+    .select("id, company_id, name, status, mode, stage, version, progress, brief, analysis, proposal, selection, updated_at")
     .order("updated_at", { ascending: false })
     .limit(50);
   if (error) return [];
   return (data ?? []).map((row) => ({
     id: String(row.id),
+    companyId: row.company_id ? String(row.company_id) : null,
     name: String(row.name),
     status: String(row.status),
     mode: String(row.mode),
@@ -166,12 +168,13 @@ export async function getMySavedPlan(userId: string, planId: string): Promise<Sa
   const db = await createClient();
   const { data, error } = await db
     .from("media_plans")
-    .select("id, name, status, mode, stage, version, progress, brief, analysis, proposal, selection, updated_at")
+    .select("id, company_id, name, status, mode, stage, version, progress, brief, analysis, proposal, selection, updated_at")
     .eq("id", planId)
     .maybeSingle();
   if (error || !data) return null;
   return {
     id: String(data.id),
+    companyId: data.company_id ? String(data.company_id) : null,
     name: String(data.name),
     status: String(data.status),
     mode: String(data.mode),

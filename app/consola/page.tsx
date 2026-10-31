@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Wordmark } from "@/components/Wordmark";
 import { getSessionProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { CrearUsuarioClienteForm } from "./CrearUsuarioClienteForm";
 import { CrearClienteForm } from "./CrearClienteForm";
 import { CrearAdministradorForm } from "./CrearAdministradorForm";
 import { cerrarSesion } from "./actions";
@@ -40,18 +41,21 @@ export default async function ConsolaPage() {
       .limit(20),
   ]);
 
+  const { data: accessVersion } = await supabase.rpc("customer_access_ready");
+
   return (
     <div className="min-h-screen">
       <ConsolaHeader name={profile.full_name ?? profile.email ?? "Ad Mavericks"} />
       <main className="mx-auto max-w-5xl px-6 py-10">
         <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr]">
-          <CrearClienteForm />
+          <CrearClienteForm brandingReady={accessVersion === "0017"} />
           <RecentClients companies={companies ?? []} />
         </div>
         <div className="mt-8 grid gap-8 lg:grid-cols-[1.15fr_1fr]">
           <CrearAdministradorForm />
           <AdministrativeAccess administrators={administrators ?? []} />
         </div>
+        <CrearUsuarioClienteForm companies={companies ?? []} ready={accessVersion === "0017"} />
         <MetaConnectionCenter />
         <PagoPluxConnectionCenter />
         <IntegrationReadiness />

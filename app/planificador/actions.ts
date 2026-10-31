@@ -286,21 +286,23 @@ export async function guardarPlan(input: Extract<PlanResult, { ok: true }>): Pro
   return { ok: true, id: String(data.id) };
 }
 
-export async function aprobarPlan(
-  input: Extract<PlanResult, { ok: true }>,
-  customizedRows: PlanRow[],
+export async function aprobarPlan(input: Extract<PlanResult, { ok: true }>, customizedRows: PlanRow[]) {
+  return registrarDistribucion(input, customizedRows, true);
+}
+
+export async function enviarPlanParaRevision(input: Extract<PlanResult, { ok: true }>, customizedRows: PlanRow[]) {
+  return registrarDistribucion(input, customizedRows, false);
+}
+
+async function registrarDistribucion(
+  input: Extract<PlanResult, { ok: true }>, customizedRows: PlanRow[], approval: boolean,
 ): Promise<{ ok: true; id: string; rows: PlanRow[] } | { ok: false; error: string }> {
   const profile = await getSessionProfile();
   if (!profile) return { ok: false, error: "Debes iniciar sesión." };
   const companies = await getMyCompanies(profile.id);
-  const approvingCompany = companies.find(
-    (item) => item.status === "activa" && canCompanyRole(item.role, "plan") && canCompanyRole(item.role, "campaign:approve"),
-  );
-  const company = profile.is_platform_admin
-    ? companies.find((item) => item.status === "activa" && canCompanyRole(item.role, "plan"))
-    : approvingCompany;
-  const canApprove = profile.is_platform_admin || Boolean(approvingCompany);
-  if (!canApprove) return { ok: false, error: "El plan debe ser aprobado por un usuario autorizador." };
+  const company = companies.find((item) => item.status === "activa" && canCompanyRole(item.role, "plan")
+    && (!approval || canCompanyRole(item.role, "campaign:approve")));
+  if (!profile.is_platform_admin && !company) return { ok: false, error: "Tu rol no permite registrar esta decisión." };
 
   input = { ...input, brief: { ...input.brief, ...normalizeCoverageBrief(input.brief) } };
   let canonicalPlan: MediaPlan;
@@ -364,16 +366,16 @@ export async function aprobarPlan(
     owner_id: profile.id,
     company_id: company?.id ?? null,
     name,
-    status: "aprobado",
+    status: approval ? "aprobado" : "revision",
     mode: "guiado",
-    stage: "aprobado",
+    stage: approval ? "aprobado" : "personaliza",
     version: 1,
-    progress: 100,
+    progress: approval ? 100 : 85,
     brief: input.brief,
     analysis: { ...analysis, research: input.research },
-    proposal: { plan: rows, campaigns, detail, approved_at: new Date().toISOString() },
+    proposal: { plan: rows, campaigns, detail, ...(approval ? { approved_at: new Date().toISOString() } : {}) },
   }).select("id").single();
-  if (error || !data) return { ok: false, error: "No se pudo registrar la aprobación del plan." };
+  if (error || !data) return { ok: false, error: "No se pudo guardar la distribución del plan." };
   await db.from("media_plan_versions").insert({ plan_id: data.id, version: 1, actor_id: profile.id, snapshot });
   revalidatePath("/planificador");
   return { ok: true, id: String(data.id), rows };

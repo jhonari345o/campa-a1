@@ -110,7 +110,7 @@ export default async function CampanasPage({
     <div className="min-h-screen">
       <AppHeader
         name={profile.full_name ?? profile.email ?? "Ad Mavericks"}
-        isAdmin={profile.is_platform_admin}
+        isAdmin={profile.is_platform_admin} workspace={profile.workspace}
         active="campanas"
       />
       <main className="mx-auto max-w-5xl px-6 py-10">
