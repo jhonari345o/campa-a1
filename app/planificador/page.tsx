@@ -56,7 +56,7 @@ export default async function PlanificadorPage({
     view === "versions" && params.plan ? getMyPlanVersions(profile.id, params.plan) : Promise.resolve([]),
     view === "diy" ? getOohLocationCatalog() : Promise.resolve([]),
     view === "versions" && params.plan ? getPlanCollaboration(profile.id, params.plan) : Promise.resolve({ comments: [], approvals: [] }),
-    view === "media" ? getCatalogHealth() : Promise.resolve(null),
+    view === "media" && section !== "tv" && section !== "radio" ? getCatalogHealth() : Promise.resolve(null),
     catalogNeeded ? getBroadcastCatalog() : Promise.resolve({ sources: [], tv: [], radio: [] }),
   ]);
 

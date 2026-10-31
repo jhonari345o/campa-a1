@@ -52,7 +52,7 @@ export function MediaCatalog({
         <Link href="/planificador?view=planner" className="media-portal-plan-button">Armar plan de medios <span>→</span></Link>
       </header>
 
-      {health && (
+      {health && section !== "tv" && section !== "radio" && (
         <aside className="mx-4 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-white px-5 py-4 shadow-panel sm:mx-8">
           <div><strong className="text-sm text-forest">Control de vigencia 2026</strong><p className="mt-1 text-xs text-muted">Solo “cotizable” representa una referencia comercial; tarifa, cupo y disponibilidad se confirman antes de ordenar.</p></div>
           <div className="flex flex-wrap gap-2 text-[10px] font-black uppercase"><span className="rounded-full bg-signal/15 px-3 py-1 text-signal-dark">{health.cotizable} cotizables</span><span className="rounded-full bg-amber/15 px-3 py-1 text-[#805900]">{health.validation} por validar</span><span className="rounded-full bg-coral/10 px-3 py-1 text-[#a13b31]">{health.stale + health.withoutDate} sin vigencia actual</span></div>
