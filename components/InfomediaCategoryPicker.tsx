@@ -25,7 +25,7 @@ export function InfomediaCategoryPicker({ categories, initialId = "", initialLab
     listRef.current?.querySelectorAll('[role="option"]')[next]?.scrollIntoView({ block: "nearest" });
   }
   return <div className="infomedia-picker" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
-    <label htmlFor={id}>Categoría de Infomedia *</label>
+    <label htmlFor={id}>Categoría *</label>
     <input type="hidden" name="categoryId" value={selected?.id ?? ""} />
     {showPeriod && <input type="hidden" name="referenceYear" value={year} />}
     <input type="hidden" name="keyword" value={selected?.label ?? ""} />
@@ -45,7 +45,7 @@ export function InfomediaCategoryPicker({ categories, initialId = "", initialLab
           event.preventDefault(); move(event.key === "Home" ? 0 : results.length - 1);
         }
       }} />
-    {open && categories.length > 0 && <div ref={listRef} id={`${id}-list`} role="listbox" aria-label="Categorías de Infomedia" className="infomedia-options">
+    {open && categories.length > 0 && <div ref={listRef} id={`${id}-list`} role="listbox" aria-label="Categorías" className="infomedia-options">
       {results.map((category, index) => <button key={category.id} id={`${id}-option-${index}`} type="button" role="option"
         aria-selected={selected?.id === category.id} className={index === active ? "is-active" : ""}
         onMouseDown={(event) => event.preventDefault()} onClick={() => choose(category)}>{category.label}</button>)}
