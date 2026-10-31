@@ -12,10 +12,13 @@ import {
   buildDetailedMediaRecommendation,
   type DetailedMediaRecommendation,
 } from "@/lib/detailed-plan";
-import { BUSINESS_CATEGORY_OPTIONS } from "@/lib/form-catalogs";
+import { getCategoryResearch } from "@/lib/infomedia-server";
+import { withReferenceYear, type CategoryResearch } from "@/lib/infomedia";
 import { normalizeCoverageBrief, type CoverageSelection } from "@/lib/geographic-coverage";
 
 export type PlanBrief = {
+  categoryId?: string;
+  referenceYear?: number;
   brand: string;
   keyword: string;
   objective: string;
@@ -74,6 +77,7 @@ export type PlanResult =
   | {
       ok: true;
       plan: MediaPlan;
+      research: CategoryResearch;
       campaigns: Campaign[];
       analysis: PlanAnalysis;
       detail: DetailedMediaRecommendation;
@@ -103,21 +107,26 @@ export async function generarPlan(
     if (!allowed) return { ok: false, error: "Tu rol no permite generar planes." };
   }
 
-  const keyword = String(formData.get("keyword") ?? "").trim();
+  let research: CategoryResearch;
+  try {
+    research = withReferenceYear(await getCategoryResearch(String(formData.get("categoryId") ?? ""), String(formData.get("brand") ?? ""), { ageRange: String(formData.get("ageRange") ?? ""), sex: String(formData.get("sex") ?? ""), socioeconomic: String(formData.get("socioeconomic") ?? ""), audienceType: String(formData.get("audienceType") ?? ""), geography: String(formData.get("geography") ?? "") }), Number(formData.get("referenceYear") ?? 0));
+  } catch {
+    return { ok: false, error: "Selecciona una categoría de Infomedia con investigación disponible. Si el catálogo no carga, solicita su habilitación al administrador." };
+  }
+  const keyword = research.category.label;
   const objective = String(formData.get("objective") ?? "").trim();
   const audience = String(formData.get("audience") ?? "").trim();
-  const budgetRaw = String(formData.get("budget") ?? "").replace(/[^0-9.]/g, "");
+  const budgetRaw = String(formData.get("budget") ?? "").trim();
   const budgetUsd = budgetRaw ? Number(budgetRaw) : null;
 
-  if (!BUSINESS_CATEGORY_OPTIONS.some((option) => option.value === keyword)) {
-    return { ok: false, error: "Selecciona el rubro o giro principal de tu negocio." };
-  }
-
-  const selectedMedia = formData.getAll("selectedMedia").map(String);
+  const selectedMedia = [...new Set(formData.getAll("selectedMedia").map(String))].filter((medium) => ["television", "radio", "ooh", "press", "digital", "influencers"].includes(medium));
   if (!selectedMedia.length) {
     return { ok: false, error: "Selecciona al menos un medio para el plan." };
   }
+  if (budgetUsd !== null && (!Number.isFinite(budgetUsd) || budgetUsd <= 0 || budgetUsd > 10_000_000)) return { ok: false, error: "Define un presupuesto válido." };
   const brief: PlanBrief = {
+    categoryId: research.category.id,
+    referenceYear: research.referenceYear,
     brand: String(formData.get("brand") ?? "").trim(),
     keyword,
     objective,
@@ -173,6 +182,7 @@ export async function generarPlan(
 
   try {
     const plan = await buildMediaPlan({
+      research,
       keyword,
       budgetUsd,
       selectedMedia,
@@ -203,8 +213,9 @@ export async function generarPlan(
     const safePlan = profile.is_platform_admin
       ? plan
       : { ...plan, matched: 0, totalRef: 0 };
-    return { ok: true, plan: safePlan, campaigns, analysis, detail, keyword, objective, audience, brief };
+    return { ok: true, research, plan: safePlan, campaigns, analysis, detail, keyword, objective, audience, brief };
   } catch (err) {
+    if (err instanceof Error && err.message === "NO_CATEGORY_MEDIA_EVIDENCE") return { ok: false, error: "No hay inversión de categoría ni consumo TGI disponibles para los medios seleccionados. Revisa otros medios o utiliza el constructor manual." };
     if (err instanceof Error && err.message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
       return { ok: false, error: "El planificador aun no esta habilitado (falta la clave de servicio)." };
     }
@@ -226,11 +237,16 @@ export async function guardarPlan(input: Extract<PlanResult, { ok: true }>): Pro
     return { ok: false, error: "Tu rol no permite guardar planes." };
   }
 
+  try {
+    const research = withReferenceYear(await getCategoryResearch(input.brief.categoryId || "", input.brief.brand, input.brief), input.brief.referenceYear || 0);
+    input = { ...input, research, keyword: research.category.label, brief: { ...input.brief, keyword: research.category.label } };
+  } catch { return { ok: false, error: "No se pudo validar la investigación antes de guardar." }; }
   input = { ...input, brief: { ...input.brief, ...normalizeCoverageBrief(input.brief) } };
   const db = await createClient();
   const name = (input.brief.brand || input.keyword || "Plan sin marca").slice(0, 120);
   const snapshot = {
     brief: input.brief,
+    research: input.research,
     plan: input.plan,
     campaigns: input.campaigns,
     detail: input.detail,
@@ -249,6 +265,7 @@ export async function guardarPlan(input: Extract<PlanResult, { ok: true }>): Pro
       brief: input.brief,
       analysis: {
         ...input.analysis,
+        research: input.research,
         basis: input.plan.basis,
         benchmark: input.plan.benchmark,
         strategySummary: input.plan.strategySummary,
@@ -269,27 +286,32 @@ export async function guardarPlan(input: Extract<PlanResult, { ok: true }>): Pro
   return { ok: true, id: String(data.id) };
 }
 
-export async function aprobarPlan(
-  input: Extract<PlanResult, { ok: true }>,
-  customizedRows: PlanRow[],
+export async function aprobarPlan(input: Extract<PlanResult, { ok: true }>, customizedRows: PlanRow[]) {
+  return registrarDistribucion(input, customizedRows, true);
+}
+
+export async function enviarPlanParaRevision(input: Extract<PlanResult, { ok: true }>, customizedRows: PlanRow[]) {
+  return registrarDistribucion(input, customizedRows, false);
+}
+
+async function registrarDistribucion(
+  input: Extract<PlanResult, { ok: true }>, customizedRows: PlanRow[], approval: boolean,
 ): Promise<{ ok: true; id: string; rows: PlanRow[] } | { ok: false; error: string }> {
   const profile = await getSessionProfile();
   if (!profile) return { ok: false, error: "Debes iniciar sesión." };
   const companies = await getMyCompanies(profile.id);
-  const approvingCompany = companies.find(
-    (item) => item.status === "activa" && canCompanyRole(item.role, "plan") && canCompanyRole(item.role, "campaign:approve"),
-  );
-  const company = profile.is_platform_admin
-    ? companies.find((item) => item.status === "activa" && canCompanyRole(item.role, "plan"))
-    : approvingCompany;
-  const canApprove = profile.is_platform_admin || Boolean(approvingCompany);
-  if (!canApprove) return { ok: false, error: "El plan debe ser aprobado por un usuario autorizador." };
+  const company = companies.find((item) => item.status === "activa" && canCompanyRole(item.role, "plan")
+    && (!approval || canCompanyRole(item.role, "campaign:approve")));
+  if (!profile.is_platform_admin && !company) return { ok: false, error: "Tu rol no permite registrar esta decisión." };
 
   input = { ...input, brief: { ...input.brief, ...normalizeCoverageBrief(input.brief) } };
   let canonicalPlan: MediaPlan;
   try {
+    const research = withReferenceYear(await getCategoryResearch(input.brief.categoryId || "", input.brief.brand, input.brief), input.brief.referenceYear || 0);
+    input = { ...input, research, keyword: research.category.label, brief: { ...input.brief, keyword: research.category.label } };
     canonicalPlan = await buildMediaPlan({
-      keyword: input.brief.keyword,
+      research,
+      keyword: research.category.label,
       budgetUsd: input.brief.budgetUsd,
       selectedMedia: input.brief.selectedMedia,
       objective: input.brief.objective,
@@ -339,21 +361,21 @@ export async function aprobarPlan(
   const detail = await buildDetailedMediaRecommendation(input.brief, { ...canonicalPlan, plan: rows });
   const db = await createClient();
   const name = (input.brief.brand || input.keyword || "Plan sin marca").slice(0, 120);
-  const snapshot = { brief: input.brief, analysis, proposal: { ...canonicalPlan, plan: rows, detail }, campaigns };
+  const snapshot = { brief: input.brief, research: input.research, analysis, proposal: { ...canonicalPlan, plan: rows, detail }, campaigns };
   const { data, error } = await db.from("media_plans").insert({
     owner_id: profile.id,
     company_id: company?.id ?? null,
     name,
-    status: "aprobado",
+    status: approval ? "aprobado" : "revision",
     mode: "guiado",
-    stage: "aprobado",
+    stage: approval ? "aprobado" : "personaliza",
     version: 1,
-    progress: 100,
+    progress: approval ? 100 : 85,
     brief: input.brief,
-    analysis,
-    proposal: { plan: rows, campaigns, detail, approved_at: new Date().toISOString() },
+    analysis: { ...analysis, research: input.research },
+    proposal: { plan: rows, campaigns, detail, ...(approval ? { approved_at: new Date().toISOString() } : {}) },
   }).select("id").single();
-  if (error || !data) return { ok: false, error: "No se pudo registrar la aprobación del plan." };
+  if (error || !data) return { ok: false, error: "No se pudo guardar la distribución del plan." };
   await db.from("media_plan_versions").insert({ plan_id: data.id, version: 1, actor_id: profile.id, snapshot });
   revalidatePath("/planificador");
   return { ok: true, id: String(data.id), rows };

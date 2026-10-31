@@ -49,7 +49,7 @@ export default async function PautarPage({
     <div className="min-h-screen">
       <AppHeader
         name={profile.full_name ?? profile.email ?? "Ad Mavericks"}
-        isAdmin={profile.is_platform_admin}
+        isAdmin={profile.is_platform_admin} workspace={profile.workspace}
         active="pautar"
       />
       <main className="mx-auto max-w-2xl px-6 py-10">

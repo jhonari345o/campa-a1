@@ -20,6 +20,9 @@ export function mediaGroupForLabel(label: string): MediaGroup | null {
     "streaming",
     "sitios y apps",
   ];
+  if (value === "digital" || value === "internet") return "digital";
+  if (value === "vp") return "ooh";
+  if (value === "suplemento") return "press";
   if (digitalTerms.some((key) => value.includes(key))) return "digital";
   if (value.includes("tv") || value.includes("television")) return "television";
   if (value.includes("radio")) return "radio";

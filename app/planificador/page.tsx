@@ -1,3 +1,6 @@
+import { getInfomediaCatalog } from "@/lib/infomedia-server";
+import { getMyCompanies } from "@/lib/company";
+import { canCompanyRole } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { getSessionProfile } from "@/lib/auth";
@@ -32,6 +35,8 @@ export default async function PlanificadorPage({
   if (!supabaseConfigured) redirect("/consola");
   const profile = await getSessionProfile();
   if (!profile) redirect("/ingresar");
+  const companies = await getMyCompanies(profile.id);
+  const canApprove = profile.is_platform_admin || companies.some(c => c.status === "activa" && canCompanyRole(c.role, "campaign:approve"));
   const params = await searchParams;
   const view = ["media", "plans", "diy", "versions"].includes(params.view ?? "")
     ? params.view!
@@ -41,6 +46,7 @@ export default async function PlanificadorPage({
     ? params.section as CatalogSection
     : "digital";
 
+  const categoryCatalog = view === "planner" || view === "diy" ? await getInfomediaCatalog() : { categories: [] };
   const catalogNeeded = view === "media" || view === "diy";
   const selectedPlanNeeded = (view === "planner" || view === "diy" || view === "versions") && Boolean(params.plan);
   const [radio, influencers, plans, selectedPlan, versions, oohLocations, collaboration, catalogHealth] = await Promise.all([
@@ -58,7 +64,7 @@ export default async function PlanificadorPage({
     <div className="min-h-screen">
       <AppHeader
         name={profile.full_name ?? profile.email ?? "Ad Mavericks"}
-        isAdmin={profile.is_platform_admin}
+        isAdmin={profile.is_platform_admin} workspace={profile.workspace}
         active="planificador"
         catalogSection={view === "media" ? section : undefined}
         title={view === "media"
@@ -74,9 +80,9 @@ export default async function PlanificadorPage({
         ) : view === "plans" ? (
           <SavedPlans plans={plans} />
         ) : view === "diy" ? (
-          <DiyPlanner radio={radio} influencers={influencers} oohLocations={oohLocations} initialPlan={selectedPlan} />
+          <DiyPlanner categoryCatalog={categoryCatalog} radio={radio} influencers={influencers} oohLocations={oohLocations} initialPlan={selectedPlan} />
         ) : view === "versions" ? (
-          <PlanVersions plan={selectedPlan} versions={versions} comments={collaboration.comments} approvals={collaboration.approvals} />
+          <PlanVersions canApprove={profile.is_platform_admin || companies.some(c => c.id === selectedPlan?.companyId && c.status === "activa" && canCompanyRole(c.role, "campaign:approve"))} plan={selectedPlan} versions={versions} comments={collaboration.comments} approvals={collaboration.approvals} />
         ) : (
           <>
             <h1 className="text-3xl font-black tracking-tight">Planificador de medios</h1>
@@ -84,7 +90,7 @@ export default async function PlanificadorPage({
               Completa el brief, revisa la recomendación y guarda un borrador privado.
               La plataforma recomienda; tu equipo conserva el control.
             </p>
-            <div className="mt-8"><PlanForm initialPlan={selectedPlan} /></div>
+            <div className="mt-8"><PlanForm categoryCatalog={categoryCatalog} workspaceName={profile.workspace?.name} canApprove={canApprove} initialPlan={selectedPlan} /></div>
           </>
         )}
       </main>

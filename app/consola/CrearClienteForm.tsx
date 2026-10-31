@@ -5,7 +5,7 @@ import { useState } from "react";
 import { crearCliente, type CrearClienteResult } from "./actions";
 import { PLANS } from "@/lib/plans";
 
-export function CrearClienteForm() {
+export function CrearClienteForm({ brandingReady = false }: { brandingReady?: boolean }) {
   const [state, formAction, pending] = useActionState<CrearClienteResult | null, FormData>(
     crearCliente,
     null,
@@ -68,6 +68,11 @@ export function CrearClienteForm() {
             </p>
           )}
         </div>
+        <label className="grid gap-1 text-sm font-black sm:col-span-2">Identidad del espacio
+          <select name="brand_key" defaultValue="one" className="rounded-xl border border-border bg-fog px-4 py-3">
+            <option value="one">Ad Mavericks One</option><option value="lettera" disabled={!brandingReady}>Léttera</option>
+          </select>
+        </label>
         <div className="sm:col-span-2">
           <button type="submit" disabled={pending} className="btn btn-primary disabled:opacity-60">
             {pending ? "Generando..." : "Generar cliente →"}
@@ -96,8 +101,7 @@ function CompanyResult({ companyName, planName }: { companyName: string; planNam
         {planName ? ` (plan ${planName})` : ""} creado correctamente.
       </p>
       <p className="mt-3 text-xs text-muted">
-        Usa el panel de administradores para crear los accesos autorizados en
-        Supabase. No existe autorregistro publico.
+        Usa «Agregar usuario a una empresa» para crear accesos de cliente. No existe autorregistro publico.
       </p>
     </div>
   );

@@ -1,5 +1,6 @@
 "use server";
 
+import { getInfomediaCatalog, getCategoryResearch } from "@/lib/infomedia-server";
 import { revalidatePath } from "next/cache";
 import { normalizeCoverageBrief } from "@/lib/geographic-coverage";
 import { getSessionProfile } from "@/lib/auth";
@@ -16,6 +17,7 @@ export type SaveProgressInput = {
 };
 
 export type ManualPlanDraft = {
+  categoryId: string;
   planId?: string | null;
   name: string;
   brand: string;
@@ -41,6 +43,12 @@ export async function guardarProgresoBrief(input: SaveProgressInput): Promise<Sa
   const access = await planAccess();
   if (!access.ok) return access;
   const brief: Record<string, unknown> = { ...cleanObject(input.brief), ...normalizeCoverageBrief(input.brief) };
+  if (brief.categoryId) {
+    const catalog = await getInfomediaCatalog();
+    const category = catalog.categories.find((item) => item.id === brief.categoryId);
+    if (!category) return { ok: false, error: "La categoría ya no está disponible. Selecciónala nuevamente." };
+    brief.keyword = category.label;
+  }
   const name = cleanText(input.name || String(brief.brand ?? "") || "Plan sin marca", 120);
   const required = [brief.keyword, brief.objective, brief.geography, brief.budgetUsd ?? brief.budget];
   const progress = Math.min(35, 8 + required.filter(Boolean).length * 7);
@@ -63,6 +71,8 @@ export async function guardarProgresoBrief(input: SaveProgressInput): Promise<Sa
 export async function guardarPlanManual(input: ManualPlanDraft): Promise<SaveResult> {
   const access = await planAccess();
   if (!access.ok) return access;
+  let category;
+  try { category = (await getCategoryResearch(input.categoryId)).category; } catch { return { ok: false, error: "Selecciona una categoría válida de Infomedia." }; }
   const budgetUsd = Number(input.budgetUsd);
   if (!Number.isFinite(budgetUsd) || budgetUsd <= 0 || budgetUsd > 10_000_000) {
     return { ok: false, error: "Define un presupuesto válido para el plan manual." };
@@ -85,7 +95,8 @@ export async function guardarPlanManual(input: ManualPlanDraft): Promise<SaveRes
 
   const brief = {
     brand: cleanText(input.brand, 120),
-    keyword: cleanText(input.keyword, 160),
+    keyword: category.label,
+    categoryId: category.id,
     objective: cleanText(input.objective, 120),
     priority: cleanText(input.priority, 120),
     audience: cleanText(input.audience, 1000),
@@ -132,7 +143,11 @@ export async function crearOrdenDesdePlan(planId: string): Promise<
     .eq("id", planId)
     .maybeSingle();
   if (error || !plan) return { ok: false, error: "No se encontró el plan." };
-  if (!profile.is_platform_admin && plan.owner_id !== profile.id) return { ok: false, error: "No puedes ordenar este plan." };
+  if (!profile.is_platform_admin) {
+    const companies = await getMyCompanies(profile.id);
+    const canRequest = companies.some(c => c.id === plan.company_id && c.status === "activa" && canCompanyRole(c.role, "campaign:create"));
+    if (plan.owner_id !== profile.id || !canRequest) return { ok: false, error: "Tu rol no permite solicitar esta campaña." };
+  }
   if (!['revision', 'aprobado'].includes(String(plan.status))) {
     return { ok: false, error: "Guarda el plan para revisión o apruébalo antes de crear una orden." };
   }
@@ -194,13 +209,14 @@ export async function decidirPlan(planId: string, decision: "approved" | "change
   if (planError || !plan) return { ok: false, error: "No se encontró el plan." };
   const companies = await getMyCompanies(profile.id);
   const companyApproval = companies.some((company) => company.id === plan.company_id && company.status === "activa" && canCompanyRole(company.role, "campaign:approve"));
-  if (!profile.is_platform_admin && plan.owner_id !== profile.id && !companyApproval) return { ok: false, error: "Tu rol no permite decidir sobre este plan." };
+  if (!profile.is_platform_admin && !companyApproval) return { ok: false, error: "Tu rol no permite decidir sobre este plan." };
   const cleanNote = cleanText(note, 2000) || null;
   const { error } = await db.from("media_plan_approvals").insert({ plan_id: planId, actor_id: profile.id, decision, note: cleanNote, plan_version: Number(plan.version) });
   if (error) return { ok: false, error: schemaMessage(error.message, "No se pudo registrar la decisión.") };
-  await db.from("media_plans").update(decision === "approved"
+  const { error: updateError } = await db.from("media_plans").update(decision === "approved"
     ? { status: "aprobado", stage: "aprobado", progress: 100 }
     : { status: "revision", stage: "personaliza", progress: 85 }).eq("id", planId);
+  if (updateError) return { ok: false, error: "La decisión quedó registrada, pero no se pudo actualizar el estado del plan. Solicita revisión al administrador." };
   revalidatePath("/planificador");
   revalidatePath("/campanas");
   return { ok: true, message: decision === "approved" ? "Plan aprobado con trazabilidad." : "Cambios solicitados y enviados al historial." };

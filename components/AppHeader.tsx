@@ -1,14 +1,17 @@
 "use client";
 
+import Image from "next/image";
+import type { WorkspaceIdentity } from "@/lib/workspace-brand";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Wordmark } from "./Wordmark";
 import { cerrarSesion } from "@/app/consola/actions";
 import { MaviFloatingAssistant } from "./MaviFloatingAssistant";
 
-type ActivePage = "mercado" | "consola" | "panel" | "asistente" | "planificador" | "campanas" | "pautar" | "reportes" | "laboratorio";
+type ActivePage = "mercado" | "consola" | "panel" | "asistente" | "planificador" | "campanas" | "pautar" | "reportes" | "laboratorio" | "clientes";
 
 type AppHeaderProps = {
+  workspace?: WorkspaceIdentity | null;
   name: string;
   isAdmin: boolean;
   active?: ActivePage;
@@ -43,9 +46,10 @@ const PAGE_TITLES: Record<ActivePage, string> = {
   consola: "Consola de administración",
   reportes: "Reportes",
   laboratorio: "Laboratorio creativo",
+  clientes: "Clientes y campañas",
 };
 
-export function AppHeader({ name, isAdmin, active = "panel", title, catalogSection }: AppHeaderProps) {
+export function AppHeader({ name, isAdmin, active = "panel", title, catalogSection, workspace }: AppHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const close = () => setMenuOpen(false);
   const displayTitle = title ?? PAGE_TITLES[active];
@@ -54,15 +58,18 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
   return (
     <>
       <a href="#workspace-content" className="portal-skip-link">Saltar al contenido principal</a>
-      <aside className={`portal-sidebar ${menuOpen ? "is-open" : ""}`} aria-label="Navegación principal">
+      <aside data-workspace-brand={workspace?.brand ?? "one"} className={`portal-sidebar ${menuOpen ? "is-open" : ""}`} aria-label="Navegación principal">
         <button type="button" className="portal-sidebar-close" onClick={close} aria-label="Cerrar menú">×</button>
-        <Link href="/panel" onClick={close} className="portal-sidebar-brand" aria-label="Ir al inicio de Ad Mavericks One">
-          <Wordmark one invert className="text-[18px]" />
+        <Link href="/panel" onClick={close} className="portal-sidebar-brand" aria-label={`Ir al inicio de ${workspace?.name ?? "Ad Mavericks One"}`}>
+          {workspace?.brand === "lettera"
+            ? <Image src="/partners/lettera/lettera-logo.png" width={2048} height={493} alt="Léttera" className="workspace-lettera-logo" priority />
+            : <Wordmark one invert className="text-[18px]" />}
         </Link>
-        <span className="portal-private-badge">Beta privada</span>
+        <span className="portal-private-badge">{workspace ? "Espacio de cliente" : "Beta privada"}</span>
 
         <div className="portal-sidebar-scroll">
           <nav className="portal-nav" aria-label="Creación y gestión">
+            <Link href="/clientes" onClick={close} className={`portal-nav-item ${active === "clientes" ? "is-active" : ""}`}><span>↗</span><strong>Clientes y campañas</strong></Link>
             {CREATION.map((item) => {
               const showingSavedPlans = Boolean(title?.toLocaleLowerCase("es").includes("guardado"));
               const selected = item.id === "plans"
@@ -77,7 +84,7 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
               );
             })}
             <Link href="/campanas" onClick={close} className={`portal-nav-item ${active === "campanas" ? "is-active" : ""}`}><span>06</span><strong>Órdenes</strong></Link>
-            <ReportNavigationItem active={active === "reportes"} isAdmin={isAdmin} onClick={close} />
+            {workspace?.brand !== "lettera" && <ReportNavigationItem active={active === "reportes"} isAdmin={isAdmin} onClick={close} />}
           </nav>
 
           <nav className="portal-catalog-nav" aria-label="Catálogo general de medios">
@@ -107,7 +114,7 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
         </div>
 
         <div className="portal-sidebar-foot">
-          <p>Workspace privado</p><strong>Ad Mavericks</strong><span>Comprador autorizado · Datos controlados</span>
+          <p>Espacio privado</p><strong>{workspace?.name ?? "Ad Mavericks"}</strong><span>{workspace ? "Con tecnología de Ad Mavericks One" : "Comprador autorizado · Datos controlados"}</span>
         </div>
       </aside>
 
@@ -117,15 +124,15 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
         <button type="button" className="portal-menu-button" onClick={() => setMenuOpen(true)} aria-label="Abrir menú" aria-expanded={menuOpen}>
           <span /><span /><span />
         </button>
-        <div className="portal-topbar-copy"><p>Ad Mavericks One</p><strong>{displayTitle}</strong></div>
+        <div className="portal-topbar-copy"><p>{workspace?.name ?? "Ad Mavericks One"}</p><strong>{displayTitle}</strong></div>
         <div className="portal-topbar-account">
           <span className="portal-license-pill"><i />Licencia activa</span>
           <details className="portal-account-menu">
             <summary aria-label={`Abrir menú de cuenta de ${name}`}><span>{initial}</span><b>{name}</b><i>⌄</i></summary>
             <div>
               <strong>{name}</strong>
-              <small>{isAdmin ? "Administrador de plataforma" : "Usuario autorizado"}</small>
-              <p>Ad Mavericks One · workspace privado</p>
+              <small>{isAdmin ? "Administrador de plataforma" : workspace?.role === "planner" ? "Planificador" : "Usuario autorizado"}</small>
+              <p>{workspace?.name ?? "Ad Mavericks One"} · espacio privado</p>
               <form action={cerrarSesion}><button type="submit">Cerrar sesión</button></form>
             </div>
           </details>

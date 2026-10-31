@@ -1,11 +1,13 @@
-import { createAdminClient } from "@/lib/supabase/admin";
+import type { CategoryResearch } from "@/lib/infomedia";
 import { MEDIA_TYPE_LABELS } from "@/lib/market";
 import { mediaGroupForLabel, type MediaGroup } from "@/lib/media-groups";
+import { tgiUsage } from "@/lib/tgi";
 
 export { mediaGroupForLabel } from "@/lib/media-groups";
 
 export type PlanInput = {
   keyword: string;
+  research: CategoryResearch;
   budgetUsd?: number | null;
   selectedMedia?: string[];
   objective?: string;
@@ -27,7 +29,10 @@ export type PlanRow = {
 export type MediaPlan = {
   matched: number;
   totalRef: number;
-  basis: "giro" | "sector" | "mercado";
+  basis: "giro" | "sector" | "mercado" | "infomedia";
+  referencePeriod?: string;
+  unobservedMedia?: string[];
+  evidence?: { group: MediaGroup; categoryShare: number | null; tgiUsage: number | null; contextual: boolean; score: number }[];
   benchmark: PlanRow[];
   plan: PlanRow[];
   profileLabel: string;
@@ -201,40 +206,17 @@ export function filterPlanByMedia(rows: PlanRow[], selectedMedia: string[] | und
 }
 
 export async function buildMediaPlan(input: PlanInput): Promise<MediaPlan> {
-  const db = createAdminClient();
   const keyword = input.keyword.trim();
   const profile = strategicProfileFor(keyword, input.audienceType, input.businessModel);
-  const { data: raw } = await db
-    .from("ad_investments")
-    .select("media_type, amount_usd, advertisers(name, sector)")
-    .limit(4000);
-
-  const allRows = raw ?? [];
-  const needle = comparable(keyword).trim();
-  const related = allRows.filter((row) => {
-    const advertiser = row.advertisers as unknown as { name?: string; sector?: string } | null;
-    const text = comparable(`${advertiser?.name ?? ""} ${advertiser?.sector ?? ""}`);
-    return needle.length > 1 && text.includes(needle);
-  });
-  const sectorRows = allRows.filter((row) => {
-    const advertiser = row.advertisers as unknown as { sector?: string } | null;
-    const sector = comparable(advertiser?.sector ?? "");
-    return Boolean(sector) && profile.keywords.some((term) => containsTerm(sector, term));
-  });
-
-  const selectedRows = related.length >= 3 ? related : sectorRows.length >= 3 ? sectorRows : allRows;
-  const basis: MediaPlan["basis"] = related.length >= 3 ? "giro" : sectorRows.length >= 3 ? "sector" : "mercado";
+  const period = input.research.referenceYear ? input.research.periods.find((item) => item.year === input.research.referenceYear) : input.research.periods[0];
+  if (!period || input.research.category.label !== keyword) throw new Error("CATEGORY_RESEARCH_REQUIRED");
+  const basis = "infomedia" as const;
   const byMedia = new Map<string, number>();
-  const advertisers = new Set<string>();
   let total = 0;
-  for (const row of selectedRows) {
-    const amount = Number(row.amount_usd ?? 0);
-    if (amount <= 0) continue;
-    const key = String(row.media_type ?? "otros");
-    byMedia.set(key, (byMedia.get(key) ?? 0) + amount);
-    total += amount;
-    const advertiser = row.advertisers as unknown as { name?: string } | null;
-    if (advertiser?.name) advertisers.add(advertiser.name);
+  for (const row of period.mediaMix) {
+    if (!Number.isFinite(row.estimatedInvestment) || row.estimatedInvestment <= 0) continue;
+    byMedia.set(row.media, (byMedia.get(row.media) ?? 0) + row.estimatedInvestment);
+    total += row.estimatedInvestment;
   }
 
   const budget = input.budgetUsd && input.budgetUsd > 0 ? input.budgetUsd : null;
@@ -247,25 +229,39 @@ export async function buildMediaPlan(input: PlanInput): Promise<MediaPlan> {
     }));
 
   const marketGroups = aggregateMarketGroups(byMedia, total);
-  const selectedGroups = new Set<MediaGroup>((input.selectedMedia?.length ? input.selectedMedia : Object.keys(FALLBACK_SHARE)) as MediaGroup[]);
+  const selectedGroups = new Set<MediaGroup>((input.selectedMedia?.length ? input.selectedMedia : Object.keys(FALLBACK_SHARE)).filter((group): group is MediaGroup => Object.hasOwn(FALLBACK_SHARE, group)));
+  const highestShare = Math.max(0, ...[...selectedGroups].map((group) => marketGroups.get(group) ?? 0));
   const weightedGroups = [...selectedGroups].map((group) => {
-    const marketShare = marketGroups.get(group) ?? FALLBACK_SHARE[group];
-    const weight = marketShare
-      * profile.channelBias[group]
-      * objectiveBias(group, input.objective ?? "")
-      * priorityBias(group, input.priority ?? "");
-    return { group, weight };
+    const marketShare = marketGroups.get(group) ?? 0;
+    const usage = tgiUsage(group, input.research.tgi);
+    const contextual = input.research.tgi?.relationship !== "age_matched";
+    // Recovered research flow: category investment + audience consumption + objective.
+    // These are planning weights, not reach estimates. No missing pressure is fabricated.
+    const categoryStrength = highestShare > 0 ? marketShare / highestShare : 0;
+    const audienceStrength = usage === null ? 0 : usage / 100 * (contextual ? 0.65 : 1);
+    const objectiveStrength = group === "digital"
+      ? (/ventas|leads|tráfico|mensajes|instalaciones/i.test(input.objective ?? "")
+        ? input.trackingStatus === "Implementado y validado" ? 1 : 0.72 : 0.82)
+      : ({ television: 0.92, radio: 0.88, ooh: 0.88, press: 0.82, influencers: 0.84 })[group];
+    const score = marketShare <= 0 && usage === null ? 0
+      : (categoryStrength * 0.32 + audienceStrength * 0.24 + objectiveStrength * 0.28) / (0.32 + (usage === null ? 0 : 0.24) + 0.28);
+    const weight = input.research.tgi
+      ? score * profile.channelBias[group] * priorityBias(group, input.priority ?? "")
+      : marketShare * profile.channelBias[group] * objectiveBias(group, input.objective ?? "") * priorityBias(group, input.priority ?? "");
+    return { group, weight, categoryShare: marketGroups.has(group) ? marketShare : null, tgiUsage: usage, contextual, score };
   });
+  if (weightedGroups.every((item) => item.weight === 0)) throw new Error("NO_CATEGORY_MEDIA_EVIDENCE");
   const groupTotal = weightedGroups.reduce((sum, item) => sum + item.weight, 0) || 1;
   const plan: PlanRow[] = [];
 
   for (const item of weightedGroups) {
+    if (item.weight <= 0) continue;
     const groupPct = item.weight / groupTotal;
     if (item.group === "digital") {
       const split = normalizeDigitalSplit(profile.digitalSplit);
       for (const [key, share] of split) {
         const pct = groupPct * share;
-        if (pct < 0.012) continue;
+
         plan.push({
           label: DIGITAL_LABELS[key],
           pct,
@@ -290,7 +286,10 @@ export async function buildMediaPlan(input: PlanInput): Promise<MediaPlan> {
   const priority = input.priority?.trim() || "balance";
 
   return {
-    matched: advertisers.size,
+    matched: period.totals.activeBrands,
+    referencePeriod: period.periodLabel,
+    unobservedMedia: [...selectedGroups].filter((group) => !marketGroups.get(group)).map((group) => group === "digital" ? "Digital" : GROUP_LABELS[group]),
+    evidence: weightedGroups.map(({ group, categoryShare, tgiUsage: usage, contextual, score }) => ({ group, categoryShare, tgiUsage: usage, contextual, score })),
     totalRef: total,
     basis,
     benchmark,

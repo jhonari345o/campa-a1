@@ -1,5 +1,8 @@
 "use client";
 
+import { InfomediaCategoryPicker } from "@/components/InfomediaCategoryPicker";
+import type { CategoryCatalog } from "@/lib/infomedia-server";
+import { resolveCategory } from "@/lib/infomedia";
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { DIGITAL_PLATFORMS, PRESS_OUTLETS, type InfluencerProfile, type RadioStation } from "@/lib/media-catalog";
@@ -7,7 +10,7 @@ import type { MediaGroup } from "@/lib/media-groups";
 import type { OohLocationOption, SavedMediaPlan } from "@/lib/media-workspace";
 import { buildPlanningScenarios, mediaGroupLabel, type PlanningScenario } from "@/lib/plan-optimizer";
 import { TV_RATE_CATALOGS } from "@/lib/tv-rate-catalog";
-import { BUSINESS_CATEGORY_OPTIONS, ECUADOR_PROVINCE_OPTIONS } from "@/lib/form-catalogs";
+import { ECUADOR_PROVINCE_OPTIONS } from "@/lib/form-catalogs";
 import { guardarPlanManual, type ManualPlanDraft } from "./workspace-actions";
 import { CampaignTwin } from "./CampaignTwin";
 
@@ -44,7 +47,9 @@ export function DiyPlanner({
   influencers,
   oohLocations,
   initialPlan,
+  categoryCatalog,
 }: {
+  categoryCatalog: CategoryCatalog;
   radio: RadioStation[];
   influencers: InfluencerProfile[];
   oohLocations: OohLocationOption[];
@@ -55,7 +60,9 @@ export function DiyPlanner({
   const [planId, setPlanId] = useState(initialPlan?.id ?? "");
   const [name, setName] = useState(stringValue(initialPlan?.name) || "Plan multimedia personalizado");
   const [brand, setBrand] = useState(stringValue(initialBrief.brand));
-  const [keyword, setKeyword] = useState(stringValue(initialBrief.keyword));
+  const initialCategory = resolveCategory(categoryCatalog.categories, stringValue(initialBrief.categoryId), stringValue(initialBrief.keyword));
+  const [keyword, setKeyword] = useState(initialCategory?.label ?? "");
+  const [categoryId, setCategoryId] = useState(initialCategory?.id ?? "");
   const [objective, setObjective] = useState(stringValue(initialBrief.objective) || "Ventas");
   const [priority, setPriority] = useState(stringValue(initialBrief.priority) || "Balance");
   const [audienceType, setAudienceType] = useState(stringValue(initialBrief.audienceType) || "B2C");
@@ -110,6 +117,7 @@ export function DiyPlanner({
       name,
       brand,
       keyword,
+      categoryId,
       objective,
       priority,
       audience,
@@ -145,7 +153,7 @@ export function DiyPlanner({
         <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Field label="Nombre del plan" value={name} onChange={setName} />
           <Field label="Marca" value={brand} onChange={setBrand} />
-          <Select label="Rubro o giro" value={keyword} onChange={setKeyword} options={BUSINESS_CATEGORY_OPTIONS.map((item) => [item.value, item.label])} placeholder="Seleccionar rubro" />
+          <InfomediaCategoryPicker categories={categoryCatalog.categories} error={categoryCatalog.error} initialId={stringValue(initialBrief.categoryId)} initialLabel={stringValue(initialBrief.keyword)} onSelect={(category) => { setKeyword(category?.label ?? ""); setCategoryId(category?.id ?? ""); }} />
           <Select label="Objetivo" value={objective} onChange={setObjective} options={["Reconocimiento", "Alcance", "Tráfico", "Interacción", "Mensajes", "Leads", "Ventas", "Visitas al local"].map((item) => [item, item])} />
           <Select label="Prioridad" value={priority} onChange={setPriority} options={["Cobertura", "Frecuencia", "Eficiencia", "Conversión", "Afinidad", "Presencia local", "Balance"].map((item) => [item, item])} />
           <Select label="Tipo de audiencia" value={audienceType} onChange={setAudienceType} options={["B2C", "B2B", "Mixta"].map((item) => [item, item])} />

@@ -65,7 +65,7 @@ export async function chatCompletion(
 }
 
 // ---- Amazon Bedrock (Converse API: unificada para Llama/Mistral/Nova) ----
-async function bedrockChat(messages: LlmMessage[], opts?: { maxTokens?: number; temperature?: number }) {
+export async function bedrockChat(messages: LlmMessage[], opts?: { maxTokens?: number; temperature?: number }) {
   const region = process.env.BEDROCK_REGION || "us-east-1";
   const accessKeyId = process.env.BEDROCK_ACCESS_KEY_ID;
   const secretAccessKey = process.env.BEDROCK_SECRET_ACCESS_KEY;
@@ -106,6 +106,7 @@ async function bedrockChat(messages: LlmMessage[], opts?: { maxTokens?: number; 
       messages: convo,
       inferenceConfig: { maxTokens: opts?.maxTokens ?? 1024, temperature: opts?.temperature ?? 0.4 },
     }),
+    { abortSignal: AbortSignal.timeout(18000) },
   );
 
   const reply = res.output?.message?.content?.[0]?.text;

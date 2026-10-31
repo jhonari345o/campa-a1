@@ -1,8 +1,13 @@
 "use client";
 
 import { useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
+import { InfomediaCategoryPicker } from "@/components/InfomediaCategoryPicker";
+import { TgiResearchPanel } from "@/components/TgiResearchPanel";
+import { InfomediaResearchPanel } from "@/components/InfomediaResearchPanel";
+import { restoreResearch } from "@/lib/infomedia";
+import type { CategoryCatalog } from "@/lib/infomedia-server";
 import type { ReactNode } from "react";
-import { aprobarPlan, generarPlan, guardarPlan, type PlanResult } from "./actions";
+import { enviarPlanParaRevision, aprobarPlan, generarPlan, guardarPlan, type PlanResult } from "./actions";
 import type { PlanRow } from "@/lib/planner";
 import { mediaGroupForLabel } from "@/lib/media-groups";
 import type { Campaign } from "@/lib/campaigns";
@@ -10,7 +15,6 @@ import { ejecutarCampana } from "@/app/campanas/actions";
 import { GeographicCoveragePicker } from "@/components/geography/GeographicCoveragePicker";
 import { coverageDescription, restoreCoverage, type CoverageSelection } from "@/lib/geographic-coverage";
 import {
-  BUSINESS_CATEGORY_OPTIONS,
   COMMERCIAL_GOAL_UNIT_OPTIONS,
   COMMERCIAL_KPI_OPTIONS,
   CONVERSION_EVENT_OPTIONS,
@@ -27,7 +31,8 @@ const money = (n: number | null) =>
   n == null ? "—" : new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 const pct = (n: number) => `${(n * 100).toFixed(0)}%`;
 
-export function PlanForm({ initialPlan }: { initialPlan?: SavedMediaPlan | null }) {
+export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, workspaceName = "Ad Mavericks" }: { initialPlan?: SavedMediaPlan | null; categoryCatalog: CategoryCatalog; canApprove?: boolean; workspaceName?: string }) {
+  const savedResearch = restoreResearch(initialPlan?.analysis?.research);
   const initialBrief = initialPlan?.brief ?? {};
   const [state, formAction, pending] = useActionState<PlanResult | null, FormData>(generarPlan, null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -59,7 +64,7 @@ export function PlanForm({ initialPlan }: { initialPlan?: SavedMediaPlan | null 
         ? { eyebrow: "Propuesta", title: "Un plan completo, explicado medio por medio.", description: "La inversión se distribuye sin superar el presupuesto y mantiene separadas las validaciones pendientes." }
         : stage === "personalize"
           ? { eyebrow: "Personaliza", title: "Ajusta el peso de cada ejecución.", description: "Cada cambio redistribuye el presupuesto inmediatamente y conserva el 100% de la inversión." }
-          : { eyebrow: "Aprobado", title: "Plan registrado y listo para coordinación.", description: "La versión aprobada queda guardada con su brief, análisis, propuesta y distribución final." };
+          : { eyebrow: canApprove ? "Aprobado" : "En revisión", title: "Plan registrado y listo para coordinación.", description: "Tu versión queda guardada con su brief, análisis, propuesta y distribución final." };
 
   function saveProgress() {
     if (!formRef.current) return;
@@ -81,7 +86,7 @@ export function PlanForm({ initialPlan }: { initialPlan?: SavedMediaPlan | null 
   return (
     <div className="planner-portal-shell">
       <nav className="planner-progress" aria-label="Progreso del plan">
-        {[["01", "Brief"], ["02", "Análisis"], ["03", "Propuesta"], ["04", "Personaliza"], ["05", "Aprobado"]].map(([number, label], index) => (
+        {[["01", "Brief"], ["02", "Análisis"], ["03", "Propuesta"], ["04", "Personaliza"], ["05", canApprove ? "Aprobado" : "En revisión"]].map(([number, label], index) => (
           <div key={number} className={index === stageIndex ? "is-active" : index < stageIndex ? "is-complete" : ""}><span>{index < stageIndex ? "✓" : number}</span><strong>{label}</strong></div>
         ))}
         <button type="button" onClick={saveProgress} disabled={savingProgress}>{savingProgress ? "Guardando…" : "Guardar progreso"}</button>
@@ -90,18 +95,16 @@ export function PlanForm({ initialPlan }: { initialPlan?: SavedMediaPlan | null 
 
       <header className="planner-hero">
         <div><p>{stageCopy.eyebrow}</p><h1>{stageCopy.title}</h1><span>{stageCopy.description}</span></div>
-        <aside><small>Organización activa</small><strong>Ad Mavericks</strong><span>Workspace privado · Ecuador</span></aside>
+        <aside><small>Organización activa</small><strong>{workspaceName}</strong><span>Espacio privado · Ecuador</span></aside>
       </header>
 
+      {stage === "brief" && savedResearch && <details className="planner-details"><summary>Consultar investigación guardada</summary><InfomediaResearchPanel research={savedResearch} /><TgiResearchPanel research={savedResearch.tgi} selectedMedia={initialSelectedMedia} /></details>}
       <form ref={formRef} action={formAction} className={`planner-form ${stage === "brief" ? "" : "hidden"}`} aria-hidden={stage !== "brief"}>
         <section className="planner-form-section">
           <SectionNumber number="01" title="Objetivo de la campaña" description="Define la marca, su categoría y el resultado que debe priorizar el plan." />
           <div className="planner-fields planner-fields-two">
             <Field name="brand" label="Marca" placeholder="Nombre de la marca" defaultValue={stringValue(initialBrief.brand)} />
-            <SelectField name="keyword" label="Rubro o giro principal *" defaultValue={stringValue(initialBrief.keyword)} required>
-              <option value="" disabled>Selecciona el rubro principal</option>
-              <CatalogOptions options={BUSINESS_CATEGORY_OPTIONS} />
-            </SelectField>
+            <InfomediaCategoryPicker showPeriod initialYear={Number(initialBrief.referenceYear) || 0} categories={categoryCatalog.categories} error={categoryCatalog.error} initialId={stringValue(initialBrief.categoryId)} initialLabel={stringValue(initialBrief.keyword)} />
             <SelectField name="objective" label="Objetivo principal" defaultValue={stringValue(initialBrief.objective) || "Ventas"}>
               {["Reconocimiento", "Alcance", "Consideración", "Tráfico", "Interacción", "Reproducciones", "Generación de leads", "Mensajes", "Ventas", "Visitas al local", "Descargas de app", "Retención", "Otro"].map((option) => <option key={option}>{option}</option>)}
             </SelectField>
@@ -116,7 +119,7 @@ export function PlanForm({ initialPlan }: { initialPlan?: SavedMediaPlan | null 
           <SectionNumber number="02" title="Audiencia y geografía" description="Delimita a quién debe llegar la campaña y dónde tiene sentido invertir." />
           <div className="planner-fields planner-fields-four">
             <SelectField name="audienceType" label="Tipo de audiencia" defaultValue={stringValue(initialBrief.audienceType) || "B2C"}><option>B2C</option><option>B2B</option><option>Mixta</option></SelectField>
-            <SelectField name="ageRange" label="Edad" defaultValue={stringValue(initialBrief.ageRange) || "Personas 18+"}>{["Todas las edades", "13-17", "18-24", "25-34", "35-44", "45-54", "55-64", "65+", "18-34", "25-54", "Personas 18+"].map((option) => <option key={option}>{option}</option>)}</SelectField>
+            <SelectField name="ageRange" label="Edad" defaultValue={stringValue(initialBrief.ageRange) || "Personas 18+"}>{["Todas las edades", "13-17", "18-24", "25-34", "35-44", "45-54", "55-64", "65+", "15-34", "18-34", "25-54", "35+", "Personas 18+"].map((option) => <option key={option}>{option}</option>)}</SelectField>
             <SelectField name="sex" label="Sexo" defaultValue={stringValue(initialBrief.sex) || "Todas las personas"}>{["Todas las personas", "Mujeres", "Hombres", "No binario", "Mujeres prioritario", "Hombres prioritario", "Por definir"].map((option) => <option key={option}>{option}</option>)}</SelectField>
             <SelectField name="socioeconomic" label="Nivel socioeconómico" defaultValue={stringValue(initialBrief.socioeconomic) || "Todos los NSE"}>{["Todos los NSE", "A", "B", "C+", "C-", "D", "A/B", "B/C+", "C+/C-", "C-/D", "Por definir"].map((option) => <option key={option}>{option}</option>)}</SelectField>
           </div>
@@ -245,15 +248,15 @@ export function PlanForm({ initialPlan }: { initialPlan?: SavedMediaPlan | null 
 
         <div className="planner-submit-bar">
           <div><small>Siguiente etapa</small><strong>Análisis de audiencia, mercado y combinación de medios</strong></div>
-          <button type="submit" disabled={pending} className="btn btn-primary disabled:opacity-60">{pending ? "Armando tu plan…" : "Generar plan de medios →"}</button>
+          <button type="submit" disabled={pending} className="btn btn-primary disabled:opacity-60">{pending ? "Armando tu plan…" : "Analizar categoría y audiencia →"}</button>
         </div>
         {state?.ok === false && <p className="rounded-xl border border-coral/40 bg-coral/10 px-4 py-3 text-sm font-bold text-[#a13b31]">{state.error}</p>}
       </form>
 
       {state?.ok && stage === "analysis" && <AnalysisStage result={state} onBack={() => setStage("brief")} onContinue={() => setStage("proposal")} />}
       {state?.ok && stage === "proposal" && <ProposalStage result={state} onBack={() => setStage("analysis")} onPersonalize={() => setStage("personalize")} />}
-      {state?.ok && stage === "personalize" && <PersonalizeStage result={state} onBack={() => setStage("proposal")} onApproved={(approved) => { setApprovedPlan(approved); setStage("approved"); }} />}
-      {state?.ok && stage === "approved" && approvedPlan && <ApprovedStage result={state} approved={approvedPlan} />}
+      {state?.ok && stage === "personalize" && <PersonalizeStage canApprove={canApprove} result={state} onBack={() => setStage("proposal")} onApproved={(approved) => { setApprovedPlan(approved); setStage("approved"); }} />}
+      {state?.ok && stage === "approved" && approvedPlan && <ApprovedStage canApprove={canApprove} result={state} approved={approvedPlan} />}
     </div>
   );
 }
@@ -270,8 +273,11 @@ function AnalysisStage({ result, onBack, onContinue }: { result: Extract<PlanRes
       <button type="button" className="btn btn-secondary" onClick={onBack}>Editar brief</button>
     </div>
 
+    <InfomediaResearchPanel research={result.research} brand={result.brief.brand} objective={result.objective} />
+    <TgiResearchPanel research={result.research.tgi} selectedMedia={result.brief.selectedMedia} />
+
     <div className="planner-analysis-context">
-      <article><span>Grupo objetivo</span><strong>{analysis.targetLabel}</strong><small>Compatibilidad validada por fuente y medio</small></article>
+      <article><span>Grupo objetivo</span><strong>{analysis.targetLabel}</strong><small>Compatibilidad indicada en cada fuente</small></article>
       <article><span>Cobertura</span><strong>{analysis.coverageLabel}</strong><small>Rutas e inventario se reconfirman</small></article>
       <article><span>Contexto comercial</span><strong>{analysis.commercialReadiness}% completo</strong><small>No bloquea la recomendación</small></article>
       <article><span>Preparación digital</span><strong>{analysis.digitalReadiness == null ? "No aplica" : `${analysis.digitalReadiness}% completa`}</strong><small>Solo influye cuando Digital está seleccionado</small></article>
@@ -313,7 +319,7 @@ function ProposalStage({ result, onBack, onPersonalize }: { result: Extract<Plan
   </section>;
 }
 
-function PersonalizeStage({ result, onBack, onApproved }: { result: Extract<PlanResult, { ok: true }>; onBack: () => void; onApproved: (approved: { id: string; rows: PlanRow[] }) => void }) {
+function PersonalizeStage({ result, onBack, onApproved, canApprove }: { canApprove: boolean; result: Extract<PlanResult, { ok: true }>; onBack: () => void; onApproved: (approved: { id: string; rows: PlanRow[] }) => void }) {
   const [rows, setRows] = useState(result.plan.plan);
   const [approving, setApproving] = useState(false);
   const [approvalError, setApprovalError] = useState<string | null>(null);
@@ -337,7 +343,7 @@ function PersonalizeStage({ result, onBack, onApproved }: { result: Extract<Plan
     setApproving(true);
     setApprovalError(null);
     try {
-      const response = await aprobarPlan(result, rows);
+      const response = await (canApprove ? aprobarPlan : enviarPlanParaRevision)(result, rows);
       if (!response.ok) setApprovalError(response.error);
       else onApproved({ id: response.id, rows: response.rows });
     } catch {
@@ -363,16 +369,16 @@ function PersonalizeStage({ result, onBack, onApproved }: { result: Extract<Plan
     </div>
     <aside className="planner-analysis-rules"><strong>Antes de aprobar</strong><ul><li>✓ La personalización conserva el presupuesto principal.</li><li>✓ Tarifas, cupos, permisos, derechos e impuestos siguen sujetos a confirmación.</li><li>✓ La Idea WOW mantiene su presupuesto y factibilidad en un módulo independiente.</li></ul></aside>
     {approvalError && <p className="mt-4 rounded-xl border border-coral/40 bg-coral/10 p-4 text-sm font-bold text-[#a13b31]">{approvalError}</p>}
-    <div className="planner-submit-bar"><div><small>Última etapa</small><strong>Registrar esta distribución como la versión aprobada</strong></div><button type="button" onClick={approve} disabled={approving} className="btn btn-primary disabled:opacity-60">{approving ? "Registrando…" : "Aprobar plan →"}</button></div>
+    <div className="planner-submit-bar"><div><small>Última etapa</small><strong>{canApprove ? "Registrar esta distribución como la versión aprobada" : "Enviar esta distribución al equipo para revisión"}</strong></div><button type="button" onClick={approve} disabled={approving} className="btn btn-primary disabled:opacity-60">{approving ? "Registrando…" : canApprove ? "Aprobar plan →" : "Enviar a revisión →"}</button></div>
   </section>;
 }
 
-function ApprovedStage({ result, approved }: { result: Extract<PlanResult, { ok: true }>; approved: { id: string; rows: PlanRow[] } }) {
+function ApprovedStage({ result, approved, canApprove }: { canApprove: boolean; result: Extract<PlanResult, { ok: true }>; approved: { id: string; rows: PlanRow[] } }) {
   return <section className="planner-approved-stage">
-    <div className="planner-approved-heading"><span>✓</span><div><p>Plan de medios aprobado</p><h2>Gracias por construir tu plan con Ad Mavericks One.</h2><small>Versión registrada · {approved.id.slice(0, 8).toUpperCase()}</small></div></div>
+    <div className="planner-approved-heading"><span>✓</span><div><p>{canApprove ? "Plan de medios aprobado" : "Plan enviado a revisión"}</p><h2>Gracias por construir tu plan con Ad Mavericks One.</h2><small>Versión registrada · {approved.id.slice(0, 8).toUpperCase()}</small></div></div>
     <div className="planner-approved-summary"><div><span>Marca</span><strong>{result.brief.brand || result.keyword}</strong></div><div><span>Presupuesto</span><strong>{money(result.brief.budgetUsd)}</strong></div><div><span>Cobertura</span><strong>{result.brief.geography || "Por confirmar"}</strong></div><div><span>Medios</span><strong>{approved.rows.length}</strong></div></div>
     <div className="planner-approved-lines">{approved.rows.map((row) => <div key={row.label}><span>{row.label}</span><strong>{pct(row.pct)} · {money(row.amount)}</strong></div>)}</div>
-    <p className="planner-approved-note">El equipo coordinará disponibilidad, negociación, cumplimiento, medición y ejecución. La aprobación del plan no sustituye las órdenes finales de cada proveedor o plataforma.</p>
+    <p className="planner-approved-note">El equipo coordinará disponibilidad, negociación, cumplimiento, medición y ejecución. Tu solicitud no autoriza compras ni activa campañas; requiere revisión del equipo responsable.</p>
     <div className="grid gap-3 sm:grid-cols-3"><a href="/planificador?view=plans" className="btn btn-secondary">Ver planes guardados</a><a href="/campanas" className="btn btn-secondary">Ir a campañas</a><PlanOrderButton planId={approved.id} /></div>
   </section>;
 }
@@ -406,7 +412,9 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
       <div className="rounded-panel border border-border bg-white p-6 shadow-panel">
         <h2 className="text-xl font-black tracking-tight">Tu plan de medios</h2>
         <p className="mt-1 text-sm text-muted">
-          {plan.basis === "giro"
+          {plan.basis === "infomedia"
+            ? `Referencia: ${keyword} · ${plan.referencePeriod}. La inversión observada orienta la propuesta; las ponderaciones por objetivo son criterios de planificación.`
+            : plan.basis === "giro"
             ? `Basado en patrones agregados de negocios comparables a "${keyword}".`
             : plan.basis === "sector"
               ? `Basado en el sector ${plan.profileLabel.toLowerCase()} y en el brief ingresado.`

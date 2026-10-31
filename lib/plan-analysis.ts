@@ -162,7 +162,12 @@ export function buildPlanAnalysis(input: PlanAnalysisInput, plan: MediaPlan): Pl
       planningKpi: kind === "digital" ? digitalKpi(input.objective, input.digitalObjective) : rule.kpi,
       rationale: plan.plan.find((row) => mediaGroupForLabel(row.label) === kind)?.rationale
         ?? "Se conserva para que el planner valide su función dentro del mix.",
-      evidence: rule.evidence,
+      evidence: (() => {
+        const source = plan.evidence?.find((row) => row.group === kind);
+        if (!source) return rule.evidence;
+        return [source.categoryShare === null ? "Sin inversión observada en la categoría" : `Infomedia: ${(source.categoryShare * 100).toFixed(1)}% de la inversión de categoría`,
+          source.tgiUsage === null ? "Sin indicador TGI comparable" : `TGI: ${source.tgiUsage.toFixed(1)}% de consumo declarado${source.contextual ? " (contextual)" : " en el corte de edad"}`].join(" · ");
+      })(),
       validation: rule.validation,
       status,
     };
@@ -220,7 +225,7 @@ export function buildPlanAnalysis(input: PlanAnalysisInput, plan: MediaPlan): Pl
   return {
     category: input.keyword,
     profileLabel: plan.profileLabel,
-    periodLabel: "Catálogo comercial 2026 + base interna disponible",
+    periodLabel: plan.referencePeriod || "Referencia histórica del plan guardado",
     targetLabel: `${input.audienceType} · ${input.ageRange} · ${input.sex} · ${input.socioeconomic}`,
     coverageLabel: input.geography || "Cobertura por definir",
     commercialReadiness,
@@ -228,6 +233,8 @@ export function buildPlanAnalysis(input: PlanAnalysisInput, plan: MediaPlan): Pl
     findings,
     signals,
     guardrails: [
+      ...(plan.unobservedMedia?.length ? [`Sin inversión observada de esta categoría para ${plan.unobservedMedia.join(", ")}. Solo se proponen automáticamente cuando existe un indicador de consumo TGI; los demás permanecen para evaluación manual.`] : []),
+      "La recomendación pondera evidencia de categoría, consumo de medios y objetivo. Los pesos son criterios de planificación; el consumo TGI no es alcance ni afinidad de compradores de la categoría.",
       "Cada medio conserva su KPI válido; no se suman TRP, rankings, impresiones, circulación u OTS para inventar alcance único.",
       "Ticket, margen, capacidad y portafolio orientan la priorización, pero no constituyen una promesa de ROI.",
       "Tarifas, disponibilidad, derechos, permisos y fuentes de audiencia se reconfirman antes de emitir una orden.",

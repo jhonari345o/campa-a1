@@ -40,7 +40,7 @@ export default async function MercadoPage() {
     <div className="min-h-screen">
       <AppHeader
         name={profile.full_name ?? profile.email ?? "Ad Mavericks"}
-        isAdmin={profile.is_platform_admin}
+        isAdmin={profile.is_platform_admin} workspace={profile.workspace}
         active="mercado"
       />
       <main className="mx-auto max-w-6xl px-6 py-10">
