@@ -151,8 +151,8 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
           <fieldset className="planner-media-selector">
             <legend>Medios a considerar *</legend>
             <div>
-              {[["television", "TV", "Televisión"], ["radio", "RA", "Radio"], ["ooh", "VP", "Vía pública"], ["press", "PR", "Prensa"], ["digital", "DI", "Digital"], ["influencers", "IN", "Influenciadores"]].map(([value, mark, label]) => (
-                <label key={value}><input name="selectedMedia" value={value} type="checkbox" defaultChecked={initialSelectedMedia.length === 0 || initialSelectedMedia.includes(value)} /><span>{mark}</span><strong>{label}</strong><i>✓</i></label>
+              {[["television", "Televisión"], ["radio", "Radio"], ["ooh", "Vía pública"], ["press", "Prensa"], ["digital", "Digital"], ["influencers", "Influenciadores"]].map(([value, label]) => (
+                <label key={value}><input name="selectedMedia" value={value} type="checkbox" defaultChecked={initialSelectedMedia.length === 0 || initialSelectedMedia.includes(value)} /><span aria-hidden="true"><MediaSelectionIcon medium={value} /></span><strong>{label}</strong><i aria-hidden="true">✓</i></label>
               ))}
             </div>
           </fieldset>
@@ -387,6 +387,18 @@ function ApprovedStage({ result, approved, canApprove }: { canApprove: boolean; 
     <p className="planner-approved-note">El equipo coordinará disponibilidad, negociación, cumplimiento, medición y ejecución. Tu solicitud no autoriza compras ni activa campañas; requiere revisión del equipo responsable.</p>
     <div className="grid gap-3 sm:grid-cols-3"><a href="/planificador?view=plans" className="btn btn-secondary">Ver planes guardados</a><a href="/campanas" className="btn btn-secondary">Ir a campañas</a><PlanOrderButton planId={approved.id} /></div>
   </section>;
+}
+
+function MediaSelectionIcon({ medium }: { medium: string }) {
+  const artwork: Record<string, ReactNode> = {
+    television: <><path d="m8 3 4 4 4-4" /><rect x="3" y="7" width="18" height="12" rx="2.5" /><path d="M8 22h8M12 19v3" /></>,
+    radio: <><path d="m6 7 13-4" /><rect x="3" y="7" width="18" height="14" rx="2.5" /><circle cx="8.5" cy="14" r="2.5" /><path d="M15 11h3M15 15h3M15 18h1" /></>,
+    ooh: <><rect x="2" y="4" width="20" height="13" rx="2" /><path d="M7 17v5M17 17v5M6 8h7M6 12h11" /></>,
+    press: <><path d="M4 3h14v16a2 2 0 0 0 4 0V8h-4M4 3v16a2 2 0 0 0 2 2h14" /><rect x="7" y="7" width="4" height="4" rx=".5" /><path d="M14 7h1M14 11h1M7 15h8M7 18h8" /></>,
+    digital: <><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M9 17v4M6 21h8m-1-11 8 3-3 1-1 3-4-7Z" /></>,
+    influencers: <><circle cx="9" cy="7" r="3" /><path d="M3 21v-2a6 6 0 0 1 12 0v2M19 3l1.1 2.9L23 7l-2.9 1.1L19 11l-1.1-2.9L15 7l2.9-1.1L19 3ZM18 16h4M20 14v4" /></>,
+  };
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">{artwork[medium]}</svg>;
 }
 
 function catalogSection(group: string) {
