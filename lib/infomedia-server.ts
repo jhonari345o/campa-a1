@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { projectResearch, type InfomediaCategory, type CategoryResearch } from "@/lib/infomedia";
+import { projectResearch, projectBrandPage, type InfomediaCategory, type CategoryResearch } from "@/lib/infomedia";
 
 import { projectTgi, type TgiTarget } from "@/lib/tgi";
 
@@ -17,8 +17,8 @@ export async function getInfomediaCatalog(): Promise<CategoryCatalog> {
   if (error || !data?.length) return { categories: [], error: "El catálogo de Infomedia está pendiente de carga." };
   return { categories: data as InfomediaCategory[] };
 }
-export async function getCategoryResearch(categoryId: string, focusBrand = "", target?: TgiTarget): Promise<CategoryResearch> {
-  if (!/^im_[a-f0-9]{24}$/.test(categoryId)) throw new Error("CATEGORY_REQUIRED");
+async function readAuthorizedCategory(categoryId: string) {
+  if (typeof categoryId !== "string" || !/^im_[a-f0-9]{24}$/.test(categoryId)) throw new Error("CATEGORY_REQUIRED");
   const catalog = await getInfomediaCatalog();
   const category = catalog.categories.find((item) => item.id === categoryId);
   if (!category) throw new Error("CATEGORY_UNAVAILABLE");
@@ -26,6 +26,16 @@ export async function getCategoryResearch(categoryId: string, focusBrand = "", t
   const db = createAdminClient();
   const { data, error } = await db.from("infomedia_research").select("payload, data_through").eq("category_id", categoryId).single();
   if (error || !data) throw new Error("RESEARCH_UNAVAILABLE");
+  return { category, data, db };
+}
+export async function getCategoryBrandPage(categoryId: string, year: number, query: string, page: number, dataThrough: string) {
+  const { data } = await readAuthorizedCategory(categoryId);
+  // A saved analysis must not silently mix its snapshot with a newer source cut.
+  if (data.data_through !== dataThrough) throw new Error("RESEARCH_CUT_CHANGED");
+  return projectBrandPage(data.payload, year, query, page);
+}
+export async function getCategoryResearch(categoryId: string, focusBrand = "", target?: TgiTarget): Promise<CategoryResearch> {
+  const { category, data, db } = await readAuthorizedCategory(categoryId);
   const research = projectResearch(category, data.payload, data.data_through, focusBrand.slice(0, 160));
   if (!research.periods.length) throw new Error("RESEARCH_UNAVAILABLE");
   if (target) {

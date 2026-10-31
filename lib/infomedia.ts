@@ -2,6 +2,7 @@ import { restoreTgi, type TgiResearch } from "@/lib/tgi";
 /** Public contracts only. Licensed observations are stored privately in Supabase. */
 export type InfomediaCategory = { id: string; label: string; periods?: { year: number; label: string }[] };
 export type ResearchBrand = { brand: string; estimatedInvestment: number; notices: number; soi: number; soa: number };
+export type ResearchBrandPage = { year: number; periodLabel: string; query: string; page: number; pageSize: number; total: number; rows: ResearchBrand[] };
 export type ResearchPeriod = {
   year: number;
   periodLabel: string;
@@ -43,6 +44,17 @@ const text = (value: unknown) => typeof value === "string" ? value.slice(0, 180)
 function brand(value: unknown): ResearchBrand {
   const row = object(value);
   return { brand: text(row.brand), estimatedInvestment: numeric(row.estimatedInvestment), notices: numeric(row.notices), soi: numeric(row.soi), soa: numeric(row.soa) };
+}
+/** Only a bounded, selected-period projection leaves the private category snapshot. */
+export function projectBrandPage(payload: unknown, year: number, query = "", requestedPage = 1): ResearchBrandPage {
+  if (!Number.isInteger(year) || typeof query !== "string" || query.length > 100 || !Number.isSafeInteger(requestedPage) || requestedPage < 1) throw new Error("INVALID_BRAND_QUERY");
+  const sourcePeriod = array(object(payload).periods).find(value => object(value).year === year);
+  if (!sourcePeriod) throw new Error("REFERENCE_PERIOD_UNAVAILABLE");
+  const period = object(sourcePeriod), terms = lookupKey(query).split(" ").filter(Boolean);
+  const rows = array(period.brands).map(brand).filter(item => item.brand && terms.every(term => lookupKey(item.brand).includes(term)))
+    .sort((a, b) => b.estimatedInvestment - a.estimatedInvestment || a.brand.localeCompare(b.brand, "es"));
+  const pageSize = 10, page = Math.min(requestedPage, Math.max(1, Math.ceil(rows.length / pageSize)));
+  return { year, periodLabel: text(period.periodLabel), query: query.trim(), page, pageSize, total: rows.length, rows: rows.slice((page - 1) * pageSize, page * pageSize) };
 }
 /** Whitelist and bound the selected category response; never return the private snapshot. */
 export function projectResearch(category: InfomediaCategory, payload: unknown, dataThrough: string, focus = ""): CategoryResearch {
