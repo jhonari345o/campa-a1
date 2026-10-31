@@ -4,6 +4,7 @@ import type { CategoryResearch } from "@/lib/infomedia";
 import type { ResearchAdvice } from "@/lib/infomedia-ai";
 import { interpretarCategoria } from "@/app/planificador/research-actions";
 import { ResearchBrandExplorer } from "@/components/ResearchBrandExplorer";
+import styles from "./InfomediaResearchPanel.module.css";
 const money = (n: number) => new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 const percent = (n: number) => new Intl.NumberFormat("es-EC", { style: "percent", maximumFractionDigits: 1 }).format(n);
 export function InfomediaResearchPanel({ research, brand = "", objective = "" }: { research?: CategoryResearch; brand?: string; objective?: string }) {
@@ -13,9 +14,9 @@ export function InfomediaResearchPanel({ research, brand = "", objective = "" }:
   const [pending, start] = useTransition();
   if (!research?.periods.length) return null;
   const period = research.periods[periodIndex] ?? research.periods[0];
-  return <section className="infomedia-research" aria-label="Investigación de categoría">
-    <header><div><p>Infomedia · investigación de categoría</p><h2>{research.category.label}</h2><span>Datos hasta {research.dataThrough} · {period.sourceTarget}</span></div>
-      <label>Consultar período<select value={periodIndex} onChange={(event) => setPeriodIndex(Number(event.target.value))}>{research.periods.map((item, index) => <option key={item.year} value={index}>{item.periodLabel}</option>)}</select></label>
+  return <section className={`infomedia-research ${styles.radar}`} aria-label="Investigación de categoría">
+    <header><div><p>01 · Radar de categoría</p><h2>{research.category.label}</h2><span>Infomedia · Datos hasta {research.dataThrough} · {period.sourceTarget}</span></div>
+      <div className={styles.periodControls}><span className={styles.year}>{period.year}</span><label>Consultar período<select value={periodIndex} onChange={(event) => setPeriodIndex(Number(event.target.value))}>{research.periods.map((item, index) => <option key={item.year} value={index}>{item.periodLabel}</option>)}</select></label></div>
     </header>
     <div className="infomedia-metrics">
       <article><small>Inversión estimada observada</small><strong>{money(period.totals.estimatedInvestment)}</strong></article>
