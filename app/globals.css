@@ -205,7 +205,7 @@ body {
 .planner-details summary::-webkit-details-marker { display:none; }
 .planner-details[open] summary { border-bottom:1px solid #dfe5e1; }
 .planner-details > div { margin:0; padding:18px 0 20px; }
-.planner-submit-bar { position:sticky; bottom:18px; z-index:10; display:flex; align-items:center; justify-content:space-between; gap:24px; margin-top:20px; border:1px solid rgb(23 40 31 / 18%); border-radius:20px; background:rgb(30 58 46 / 96%); padding:18px 20px; color:#fff; box-shadow:0 18px 45px rgb(23 40 31 / 28%); backdrop-filter:blur(15px); }
+.planner-submit-bar { position:sticky; bottom:100px; z-index:10; display:flex; align-items:center; justify-content:space-between; gap:24px; margin-top:20px; border:1px solid rgb(23 40 31 / 18%); border-radius:20px; background:rgb(30 58 46 / 96%); padding:18px 20px; color:#fff; box-shadow:0 18px 45px rgb(23 40 31 / 28%); backdrop-filter:blur(15px); }
 .planner-submit-bar small,.planner-submit-bar strong { display:block; }
 .planner-submit-bar small { color:#76e980; font-size:9px; font-weight:900; text-transform:uppercase; }
 .planner-submit-bar strong { margin-top:2px; font-size:11px; }

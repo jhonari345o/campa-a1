@@ -34,7 +34,13 @@ const pct = (n: number) => `${(n * 100).toFixed(0)}%`;
 export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, workspaceName = "Ad Mavericks" }: { initialPlan?: SavedMediaPlan | null; categoryCatalog: CategoryCatalog; canApprove?: boolean; workspaceName?: string }) {
   const savedResearch = restoreResearch(initialPlan?.analysis?.research);
   const initialBrief = initialPlan?.brief ?? {};
-  const [state, formAction, pending] = useActionState<PlanResult | null, FormData>(generarPlan, null);
+  const [state, formAction, pending] = useActionState<PlanResult | null, FormData>(async (previous, data) => {
+    try {
+      return await generarPlan(previous, data);
+    } catch {
+      return { ok: false, error: "La conexión con el servidor se interrumpió. Tu brief sigue aquí; vuelve a intentarlo en unos momentos." };
+    }
+  }, null);
   const formRef = useRef<HTMLFormElement>(null);
   const [planId, setPlanId] = useState(initialPlan?.id ?? "");
   const [saveMessage, setSaveMessage] = useState<{ ok: boolean; text: string } | null>(null);

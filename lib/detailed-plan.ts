@@ -1,3 +1,4 @@
+import { optionalWithinBudget } from "@/lib/optional-task";
 import { chatCompletion } from "@/lib/assistant/llm";
 import { buildLiveTrendContext, type LiveTrendSource } from "@/lib/assistant/trends";
 import { isAiAssistantEnabled, isAiWebTrendsEnabled } from "@/lib/commercial";
@@ -124,16 +125,9 @@ type InfluencerRow = {
 export async function buildDetailedMediaRecommendation(
   brief: PlanAnalysisInput,
   plan: MediaPlan,
+  timeoutMs = 18_000,
 ): Promise<DetailedMediaRecommendation> {
   const selectedGroups = new Set(plan.plan.map((row) => mediaGroupForLabel(row.label)).filter(Boolean));
-  const [radio, ooh, oohLocations, influencers] = await Promise.all([
-    selectedGroups.has("radio") ? readRadioMetrics() : Promise.resolve([]),
-    selectedGroups.has("ooh") ? readOohInventory() : Promise.resolve([]),
-    selectedGroups.has("ooh") ? readOohLocations() : Promise.resolve([]),
-    selectedGroups.has("influencers") ? readInfluencers() : Promise.resolve([]),
-  ]);
-
-  const channelPlans = plan.plan.map((row) => buildChannelPlan(row, brief, radio, ooh, oohLocations, influencers));
   const checks = [
     "Los presupuestos por ejecución conservan el total recomendado para cada medio.",
     "Tarifas y cantidades son referencias de planificación; disponibilidad, IVA y negociación se reconfirman antes de ordenar.",
@@ -141,11 +135,26 @@ export async function buildDetailedMediaRecommendation(
     "Las ubicaciones de vía pública solo se presentan como exactas cuando existen en el inventario; lo demás queda marcado para validación.",
     "Google Maps y Street View muestran el punto geográfico; la cobertura 360 depende de la disponibilidad de imágenes de Google.",
   ];
-  const live = isAiWebTrendsEnabled()
-    ? await buildLiveTrendContext(`${brief.keyword} ${brief.objective} ${brief.audience} ${brief.geography} tendencias mercado consumo`)
-    : { context: "", sources: [] };
-  const aiNarrative = await buildAiNarrative(brief, channelPlans, live.context);
-  return { engine: aiNarrative ? "datos+ia" : "datos", aiNarrative, liveSources: live.sources, channelPlans, checks };
+  let available: DetailedMediaRecommendation = {
+    engine: "datos", aiNarrative: null, liveSources: [], checks,
+    channelPlans: plan.plan.map((row) => buildChannelPlan(row, brief, [], [], [], [])),
+  };
+  return optionalWithinBudget(async (signal) => {
+    const [radio, ooh, oohLocations, influencers] = await Promise.all([
+      selectedGroups.has("radio") ? readRadioMetrics(signal) : Promise.resolve([]),
+      selectedGroups.has("ooh") ? readOohInventory(signal) : Promise.resolve([]),
+      selectedGroups.has("ooh") ? readOohLocations(signal) : Promise.resolve([]),
+      selectedGroups.has("influencers") ? readInfluencers(signal) : Promise.resolve([]),
+    ]);
+    const channelPlans = plan.plan.map((row) => buildChannelPlan(row, brief, radio, ooh, oohLocations, influencers));
+    available = { ...available, channelPlans };
+    const live = isAiWebTrendsEnabled()
+      ? await buildLiveTrendContext(`${brief.keyword} ${brief.objective} ${brief.audience} ${brief.geography} tendencias mercado consumo`, signal)
+      : { context: "", sources: [] };
+    available = { ...available, liveSources: live.sources };
+    const aiNarrative = await buildAiNarrative(brief, channelPlans, live.context, signal);
+    return { ...available, engine: aiNarrative ? "datos+ia" : "datos", aiNarrative };
+  }, () => available, timeoutMs);
 }
 
 function buildChannelPlan(
@@ -447,18 +456,18 @@ function influencerExecutions(row: PlanRow, brief: PlanAnalysisInput, profiles: 
   });
 }
 
-async function readRadioMetrics(): Promise<RadioMetric[]> {
+async function readRadioMetrics(signal?: AbortSignal): Promise<RadioMetric[]> {
   try {
-    const { data, error } = await createAdminClient().rpc("get_radio_catalog");
+    const { data, error } = await createAdminClient(signal).rpc("get_radio_catalog");
     return error ? [] : (data ?? []) as RadioMetric[];
   } catch {
     return [];
   }
 }
 
-async function readOohInventory(): Promise<OohCatalogRow[]> {
+async function readOohInventory(signal?: AbortSignal): Promise<OohCatalogRow[]> {
   try {
-    const { data, error } = await createAdminClient()
+    const { data, error } = await createAdminClient(signal)
       .from("media_catalog_items")
       .select("slug, name, coverage, status, status_note, metadata, media_catalog_rates(label, amount_usd, unit, status, conditions, metadata)")
       .eq("kind", "ooh")
@@ -469,9 +478,9 @@ async function readOohInventory(): Promise<OohCatalogRow[]> {
   }
 }
 
-async function readOohLocations(): Promise<OohLocationRow[]> {
+async function readOohLocations(signal?: AbortSignal): Promise<OohLocationRow[]> {
   try {
-    const { data, error } = await createAdminClient()
+    const { data, error } = await createAdminClient(signal)
       .from("ooh_locations")
       .select("id, asset_code, status, provider_name, asset_name, city, province, address, latitude, longitude, format, monthly_rate_usd, production_rate_usd, audience_tags, context_tags, affluence_index, affluence_source, street_view_pano_id, source_note, verified_at")
       .eq("active", true)
@@ -482,9 +491,9 @@ async function readOohLocations(): Promise<OohLocationRow[]> {
   }
 }
 
-async function readInfluencers(): Promise<InfluencerRow[]> {
+async function readInfluencers(signal?: AbortSignal): Promise<InfluencerRow[]> {
   try {
-    const { data, error } = await createAdminClient()
+    const { data, error } = await createAdminClient(signal)
       .from("influencer_profiles")
       .select("id, name, category, platform, followers, avg_views, engagement_pct, follower_quality_pct, influencer_rates(format, amount_usd)")
       .eq("active", true);
@@ -494,7 +503,7 @@ async function readInfluencers(): Promise<InfluencerRow[]> {
   }
 }
 
-async function buildAiNarrative(brief: PlanAnalysisInput, channels: DetailedChannelPlan[], liveContext: string): Promise<string | null> {
+async function buildAiNarrative(brief: PlanAnalysisInput, channels: DetailedChannelPlan[], liveContext: string, signal?: AbortSignal): Promise<string | null> {
   if (!isAiAssistantEnabled()) return null;
   const compact = channels.map((channel) => ({
     medio: channel.label,
@@ -525,7 +534,7 @@ async function buildAiNarrative(brief: PlanAnalysisInput, channels: DetailedChan
           fuentes_actuales: liveContext || "No se consultaron fuentes actuales para este plan.",
         }),
       },
-    ], { maxTokens: 320, temperature: 0.25 });
+    ], { maxTokens: 320, temperature: 0.25, signal });
   } catch {
     return null;
   }

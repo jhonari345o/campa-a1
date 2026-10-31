@@ -97,6 +97,7 @@ export async function generarPlan(
   _prev: PlanResult | null,
   formData: FormData,
 ): Promise<PlanResult> {
+  const startedAt = Date.now();
   const profile = await getSessionProfile();
   if (!profile) return { ok: false, error: "Debes iniciar sesion." };
   if (!profile.is_platform_admin) {
@@ -194,8 +195,9 @@ export async function generarPlan(
       conversionModel: brief.conversionModel,
       trackingStatus: brief.trackingStatus,
     });
-    const campaigns = selectedMedia.includes("digital")
-      ? await buildCurrentCampaigns({
+    const remainingMs = Math.max(1, 20_000 - (Date.now() - startedAt));
+    const [campaigns, detail] = await Promise.all([selectedMedia.includes("digital")
+      ? buildCurrentCampaigns({
           keyword,
           audience,
           objective,
@@ -206,10 +208,11 @@ export async function generarPlan(
           socioeconomic: brief.socioeconomic,
           businessModel: brief.businessModel,
           conversionModel: brief.conversionModel,
-        }, plan)
-      : [];
+        }, plan, remainingMs)
+      : Promise.resolve([]),
+      buildDetailedMediaRecommendation(brief, plan, remainingMs),
+    ]);
     const analysis = buildPlanAnalysis(brief, plan);
-    const detail = await buildDetailedMediaRecommendation(brief, plan);
     const safePlan = profile.is_platform_admin
       ? plan
       : { ...plan, matched: 0, totalRef: 0 };
