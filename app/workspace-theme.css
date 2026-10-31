@@ -36,6 +36,7 @@ body:has([data-workspace-brand="lettera"]) :is(.planner-progress .is-active span
 body:has([data-workspace-brand="lettera"]) :is(.planner-progress .is-complete span,.planner-progress button,.planner-wow-card,.planner-map-card,.planner-details,.planner-personalize-grid label,.mavi-floating-panel > nav,.mavi-floating-form > div input,.mavi-mini-message.is-assistant p) { background:#f5eee4; color:#322d2a; border-color:#dacfc1; }
 body:has([data-workspace-brand="lettera"]) .planner-section-heading > span { background:#322d2a; color:#edceab; }
 body:has([data-workspace-brand="lettera"]) .planner-media-selector label:has(input:checked) { border-color:#b99d7e; background:#f5eee4; box-shadow:inset 0 0 0 1px #edceab; }
+body:has([data-workspace-brand="lettera"]) .planner-media-selector label > span { --media-icon-accent:#a47a4e; --media-icon-soft:#eddfcf; --media-icon-paper:#fffaf2; background:linear-gradient(145deg,#fffaf2,#f1e8db); }
 body:has([data-workspace-brand="lettera"]) :is(input[type="checkbox"],input[type="range"]) { accent-color:#694c31; }
 body:has([data-workspace-brand="lettera"]) .mavi-floating-form > div input:focus { border-color:#694c31; }
 body:has([data-workspace-brand="lettera"]) .portal-catalog-link:hover { border-color:#b99d7e; background:rgb(237 206 171 / 9%); }
