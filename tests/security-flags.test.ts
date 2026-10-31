@@ -295,7 +295,7 @@ test("los recursos visuales del catálogo existen en el paquete público", () =>
 test("el análisis conserva KPI por medio y separa Idea WOW del presupuesto", async () => {
   const input: PlanAnalysisInput = {
     keyword: "retail", objective: "Ventas", priority: "Maximizar alcance único", audienceType: "B2C",
-    audience: "Compradores frecuentes", ageRange: "Personas 18+", sex: "Todas las personas",
+    audience: "  Compradores frecuentes  ", ageRange: "Personas 18+", sex: "Todas las personas",
     socioeconomic: "Todos los NSE", geography: "Guayaquil · 60 km alrededor", budgetUsd: 10_000,
     selectedMedia: ["television", "digital"], businessDescription: "Cadena de tiendas", businessModel: "Retail",
     conversionModel: "Checkout online", commercialGoalAmount: "500", averageTicket: "85", grossMargin: "30",
@@ -316,6 +316,9 @@ test("el análisis conserva KPI por medio y separa Idea WOW del presupuesto", as
     ],
   };
   const analysis = buildPlanAnalysis(input, plan);
+  assert.equal(analysis.audienceDescription, "Compradores frecuentes");
+  assert.equal(analysis.targetLabel.includes("Compradores"), false);
+  assert.equal(buildPlanAnalysis({ ...input, audience: "  " }, plan).audienceDescription, undefined);
 
   assert.equal(analysis.signals.find((signal) => signal.kind === "television")?.planningKpi, "Alcance 1+ y frecuencia");
   assert.equal(analysis.signals.find((signal) => signal.kind === "digital")?.status, "requiere_preparacion");

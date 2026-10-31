@@ -21,6 +21,7 @@ export type PlanAnalysis = {
   profileLabel: string;
   periodLabel: string;
   targetLabel: string;
+  audienceDescription?: string;
   coverageLabel: string;
   commercialReadiness: number;
   digitalReadiness: number | null;
@@ -230,6 +231,7 @@ export function buildPlanAnalysis(input: PlanAnalysisInput, plan: MediaPlan): Pl
     profileLabel: plan.profileLabel,
     periodLabel: plan.referencePeriod || "Referencia histórica del plan guardado",
     targetLabel: `${input.audienceType} · ${input.ageRange} · ${input.sex} · ${input.socioeconomic}`,
+    audienceDescription: input.audience.trim() || undefined,
     coverageLabel: input.geography || "Cobertura por definir",
     commercialReadiness,
     digitalReadiness,

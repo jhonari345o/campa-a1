@@ -3,6 +3,7 @@ import { useState, useTransition } from "react";
 import type { CategoryResearch } from "@/lib/infomedia";
 import type { ResearchAdvice } from "@/lib/infomedia-ai";
 import { interpretarCategoria } from "@/app/planificador/research-actions";
+import { ResearchBrandExplorer } from "@/components/ResearchBrandExplorer";
 const money = (n: number) => new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 const percent = (n: number) => new Intl.NumberFormat("es-EC", { style: "percent", maximumFractionDigits: 1 }).format(n);
 export function InfomediaResearchPanel({ research, brand = "", objective = "" }: { research?: CategoryResearch; brand?: string; objective?: string }) {
@@ -26,9 +27,7 @@ export function InfomediaResearchPanel({ research, brand = "", objective = "" }:
       <article><h3>Mezcla de medios observada</h3>{period.mediaMix.map((item) => <div className="infomedia-bar-row" key={item.media}>
         <div><span>{item.media}</span><strong>{percent(item.share)}</strong></div><meter min={0} max={1} value={item.share} aria-label={item.media} /><small>{money(item.estimatedInvestment)}</small>
       </div>)}</article>
-      <article><h3>Principales marcas</h3><div className="infomedia-table-wrap"><table><thead><tr><th>Marca</th><th>Inversión estimada</th><th>SOI</th><th>SOA</th></tr></thead><tbody>
-        {period.topBrands.map((item) => <tr key={item.brand}><th>{item.brand}</th><td>{money(item.estimatedInvestment)}</td><td>{percent(item.soi)}</td><td>{percent(item.soa)}</td></tr>)}
-      </tbody></table></div><small>SOI: participación de inversión. SOA: participación de avisos. Ninguna equivale a alcance.</small></article>
+      <ResearchBrandExplorer key={`${research.category.id}-${period.year}-${research.dataThrough}`} categoryId={research.category.id} dataThrough={research.dataThrough} period={period} />
     </div>
     {brand && <p className="infomedia-note">{period.focusBrand ? `${period.focusBrand.brand}: ${money(period.focusBrand.estimatedInvestment)} · SOI ${percent(period.focusBrand.soi)} · SOA ${percent(period.focusBrand.soa)}.` : `No hay coincidencia exacta para “${brand}” en este período. No se asignan datos de otras marcas.`}</p>}
     {period.pressureContexts.length > 0 && <details><summary>Presión publicitaria por medio y mercado</summary><p className="infomedia-note">Cada contexto conserva su target y plaza. No se suman GRP entre medios o mercados.</p><div className="infomedia-table-wrap"><table><thead><tr><th>Medio</th><th>Mercado</th><th>GRP del contexto</th><th>Marcas</th></tr></thead><tbody>{period.pressureContexts.map((item) => <tr key={`${item.media}-${item.market}`}><th>{item.media}</th><td>{item.market}</td><td>{item.grps.toLocaleString("es-EC", { maximumFractionDigits: 1 })}</td><td>{item.activeBrands}</td></tr>)}</tbody></table></div></details>}

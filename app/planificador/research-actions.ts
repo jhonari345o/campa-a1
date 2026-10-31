@@ -1,9 +1,21 @@
 "use server";
-import { withReferenceYear } from "@/lib/infomedia";
-import { getCategoryResearch } from "@/lib/infomedia-server";
+import { withReferenceYear, type ResearchBrandPage } from "@/lib/infomedia";
+import { getCategoryResearch, getCategoryBrandPage } from "@/lib/infomedia-server";
 import { createClient } from "@/lib/supabase/server";
 import { bedrockChat } from "@/lib/assistant/llm";
 import { parseResearchAdvice, researchAiEvidence, type ResearchAdvice } from "@/lib/infomedia-ai";
+
+export async function consultarMarcas(categoryId: string, year: number, query: string, page: number, dataThrough: string): Promise<
+  { ok: true; result: ResearchBrandPage } | { ok: false; error: string }
+> {
+  if (typeof categoryId !== "string" || !Number.isInteger(year) || typeof query !== "string" || query.length > 100 || !Number.isSafeInteger(page) || page < 1 || typeof dataThrough !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(dataThrough)) return { ok: false, error: "Revisa la búsqueda y vuelve a intentarlo." };
+  try {
+    return { ok: true, result: await getCategoryBrandPage(categoryId, year, query, page, dataThrough) };
+  } catch (error) {
+    if (error instanceof Error && error.message === "RESEARCH_CUT_CHANGED") return { ok: false, error: "El catálogo tiene un corte nuevo. Genera un análisis actualizado para explorar sus marcas." };
+    return { ok: false, error: "No pudimos consultar las marcas. Comprueba tu sesión y vuelve a intentarlo." };
+  }
+}
 
 export async function interpretarCategoria(categoryId: string, objective: string, referenceYear = 0): Promise<
   { ok: true; advice: ResearchAdvice } | { ok: false; error: string }

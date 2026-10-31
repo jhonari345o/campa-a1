@@ -289,6 +289,12 @@ function AnalysisStage({ result, onBack, onContinue }: { result: Extract<PlanRes
       <article><span>Preparación digital</span><strong>{analysis.digitalReadiness == null ? "No aplica" : `${analysis.digitalReadiness}% completa`}</strong><small>Solo influye cuando Digital está seleccionado</small></article>
     </div>
 
+    {analysis.audienceDescription && <aside className="rounded-2xl border border-border bg-white p-6">
+      <h3 className="text-sm font-black">Necesidades y comportamientos del brief</h3>
+      <p className="mt-2 whitespace-pre-wrap break-words text-sm text-forest">{analysis.audienceDescription}</p>
+      <p className="mt-2 text-xs text-muted">Criterio declarado para orientar la campaña. El corte TGI corresponde a los filtros indicados en el estudio.</p>
+    </aside>}
+
     <div className="planner-analysis-findings">
       {analysis.findings.map((finding) => <article key={finding.label} className={`status-${finding.status}`}>
         <span>{finding.label}</span><strong>{finding.value}</strong><p>{finding.detail}</p><small>{analysisStatus(finding.status)}</small>
