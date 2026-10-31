@@ -1,6 +1,8 @@
 "use server";
 
 import { getInfomediaCatalog, getCategoryResearch } from "@/lib/infomedia-server";
+import { getBroadcastCatalog } from "@/lib/broadcast-server";
+import { validateBroadcastSelections } from "@/lib/broadcast-catalog";
 import { revalidatePath } from "next/cache";
 import { normalizeCoverageBrief } from "@/lib/geographic-coverage";
 import { getSessionProfile } from "@/lib/auth";
@@ -17,6 +19,7 @@ export type SaveProgressInput = {
 };
 
 export type ManualPlanDraft = {
+  startDate?: string; endDate?: string; ageRange?: string; sex?: string;
   categoryId: string;
   planId?: string | null;
   name: string;
@@ -105,9 +108,16 @@ export async function guardarPlanManual(input: ManualPlanDraft): Promise<SaveRes
     audienceType: cleanText(input.audienceType, 40),
     budgetUsd,
     geography: geographies.join(" · "),
-    geographies,
+    geographies, startDate: input.startDate, endDate: input.endDate, ageRange: input.ageRange, sex: input.sex,
     selectedMedia,
   };
+  const rawSelections = cleanObject(input.selections);
+  const checked = validateBroadcastSelections(await getBroadcastCatalog(), {...brief, socioeconomic:"Todos los NSE"}, {
+    ...rawSelections,
+    tv: selectedMedia.includes("television") ? rawSelections.tv : [],
+    radio: selectedMedia.includes("radio") ? rawSelections.radio : [],
+  });
+  if (!checked.ok) return checked;
   const status = input.submitForReview ? "revision" : "borrador";
   const stage = input.submitForReview ? "personaliza" : "propuesta";
   return savePlanRecord({
@@ -126,7 +136,7 @@ export async function guardarPlanManual(input: ManualPlanDraft): Promise<SaveRes
       methodology: "Distribución determinística por objetivo, prioridad, tipo de audiencia, medios y cobertura; requiere validación comercial.",
     },
     proposal: { allocations: selectedScenario.allocations, validations: selectedScenario.validations },
-    selection: cleanObject(input.selections),
+    selection: checked.selections,
   });
 }
 

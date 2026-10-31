@@ -3,7 +3,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useMemo, useState } from "react";
-import type { ReactNode } from "react";
 import {
   CATALOG_SECTIONS,
   DIGITAL_PLATFORMS,
@@ -11,25 +10,26 @@ import {
   OOH_PROVIDERS,
   PRESS_OUTLETS,
   STATUS_LABELS,
-  TV_CHANNELS,
   type CatalogItem,
   type CatalogSection,
   type CatalogStatus,
   type DigitalPlatform,
   type InfluencerProfile,
-  type RadioStation,
 } from "@/lib/media-catalog";
-import { TV_RATE_CATALOGS, type TvOffer, type TvRateCatalog } from "@/lib/tv-rate-catalog";
+import { type TvOffer, type TvRateCatalog } from "@/lib/tv-rate-catalog";
 import type { CatalogHealth } from "@/lib/media-workspace";
 
+import { BroadcastCatalogPanel } from "./BroadcastCatalog";
+import type { BroadcastCatalog } from "@/lib/broadcast-catalog";
+
 export function MediaCatalog({
+  broadcast,
   section,
-  radio,
   influencers,
   health,
 }: {
+  broadcast: BroadcastCatalog;
   section: CatalogSection;
-  radio: RadioStation[];
   influencers: InfluencerProfile[];
   health: CatalogHealth | null;
 }) {
@@ -77,10 +77,8 @@ export function MediaCatalog({
       <div className="media-portal-panel" role="tabpanel">
         {section === "digital" && <DigitalSection />}
         {section === "influencers" && <InfluencerSection profiles={influencers} />}
-        {section === "radio" && <RadioSection stations={radio} />}
-        {section === "tv" && (
-          <DirectorySection eyebrow="Televisión" title="Canales para construir el mix" description="Explora cada canal y luego llévalo al plan para definir programas, frecuencia e inversión." items={TV_CHANNELS} countLabel="7 opciones" catalogs={TV_RATE_CATALOGS} />
-        )}
+        {section === "radio" && <BroadcastCatalogPanel kind="radio" catalog={broadcast} />}
+        {section === "tv" && <BroadcastCatalogPanel kind="tv" catalog={broadcast} />}
         {section === "ooh" && (
           <DirectorySection eyebrow="Vía pública" title="Proveedor, provincia y activo" description="Navega por proveedor y cobertura. Ubicaciones, producción, impuestos y disponibilidad se reconfirman antes de emitir una orden." items={OOH_PROVIDERS} countLabel="7 proveedores · 312 fichas incorporadas" />
         )}
@@ -245,87 +243,6 @@ function InfluencerCard({ profile }: { profile: InfluencerProfile }) {
       </div>
       <p className="mt-4 text-[10px] text-white/55">Vigencia, disponibilidad y derecho de pauta por reconfirmar.</p>
     </article>
-  );
-}
-
-function RadioSection({ stations }: { stations: RadioStation[] }) {
-  const [mode, setMode] = useState<"audience" | "reach">("audience");
-  const [query, setQuery] = useState("");
-  const [expanded, setExpanded] = useState(false);
-  const sorted = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase("es");
-    return stations
-      .filter((station) => !needle || `${station.name} ${station.genre ?? ""}`.toLocaleLowerCase("es").includes(needle))
-      .slice()
-      .sort((a, b) => mode === "audience"
-        ? (a.audienceRank ?? 999) - (b.audienceRank ?? 999)
-        : (a.reachRank ?? 999) - (b.reachRank ?? 999));
-  }, [mode, query, stations]);
-  const shown = expanded ? sorted : sorted.slice(0, 10);
-
-  return (
-    <section className="media-portal-section">
-      <SectionHeading eyebrow="Radio" title="Audiencia y alcance por emisora" description="Dos lecturas complementarias para ordenar alternativas sin sumar audiencias ni inventar alcance deduplicado." count={`${stations.length || 104} emisoras`} />
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Summary label="Emisoras observadas" value={String(stations.length || 104)} note="Directorio analizado" />
-        <Summary label="Líder en audiencia" value={stations.find((s) => s.audienceRank === 1)?.name ?? "Tropicálida"} note="Promedio del corte recibido" />
-        <Summary label="Líder en alcance" value={stations.find((s) => s.reachRank === 1)?.name ?? "Galaxia Super Stereo"} note="Alcance por emisora" />
-        <Summary label="Estado del corte" value="Por confirmar" note="Target, plaza, período y franja" />
-      </div>
-      <div className="mt-5 rounded-card border border-border bg-fog p-5">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="relative size-16 shrink-0 overflow-hidden rounded-2xl border border-border bg-white">
-              <Image src="/providers/radio/los40/logo.png" alt="Logo de LOS40 Ecuador" fill sizes="64px" className="object-contain p-2" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-signal-dark">Directorio público destacado</p>
-              <h3 className="mt-1 text-xl font-black">LOS40 Ecuador</h3>
-              <p className="text-sm text-muted">Música, entretenimiento y actualidad para cobertura nacional.</p>
-            </div>
-          </div>
-          <span className="rounded-full bg-signal/15 px-3 py-1 text-[10px] font-black uppercase text-signal-dark">Cotizable</span>
-        </div>
-        <div className="mt-4 grid gap-3 text-xs sm:grid-cols-3">
-          <p><strong>Cobertura:</strong> Ecuador</p>
-          <p><strong>Formatos:</strong> cuñas, menciones y contenido</p>
-          <p><strong>Condición:</strong> disponibilidad y tarifa por confirmar</p>
-        </div>
-      </div>
-      <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label="Lectura del ranking">
-        <Toggle pressed={mode === "audience"} onClick={() => { setMode("audience"); setExpanded(false); }}>Audiencia promedio</Toggle>
-        <Toggle pressed={mode === "reach"} onClick={() => { setMode("reach"); setExpanded(false); }}>Alcance por emisora</Toggle>
-      </div>
-      <label className="mt-5 block text-sm font-black">
-        Buscar emisora
-        <input value={query} onChange={(event) => setQuery(event.target.value)} className="mt-1 w-full rounded-xl border border-border bg-fog px-4 py-3 font-normal outline-none focus:border-signal" />
-      </label>
-      {stations.length === 0 ? <EmptyData message="La base de radio está protegida; aplica las importaciones Excel y la migración de catálogo para mostrarla." /> : (
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          {shown.map((station, index) => (
-            <article key={station.name} className="rounded-card border border-border bg-fog p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  {station.imagePath ? (
-                    <div className="relative size-12 shrink-0 overflow-hidden rounded-xl border border-border bg-white">
-                      <Image src={station.imagePath} alt={`Logo de ${station.name}`} fill sizes="48px" className="object-contain p-1" />
-                    </div>
-                  ) : <StationMonogram name={station.name} />}
-                  <div><span className="text-xs font-black text-signal-dark">{String(index + 1).padStart(2, "0")}</span><h3 className="font-black">{station.name}</h3><p className="text-xs text-muted">{station.genre ?? "Género por confirmar"}</p></div>
-                </div>
-                <strong className="text-right text-lg">{mode === "audience" ? compact(station.audience) : percent(station.reachPct)}</strong>
-              </div>
-              <dl className="mt-3 flex gap-4 text-xs text-muted">
-                <span>Rating <strong className="text-forest">{percent(station.rating)}</strong></span>
-                <span>Share <strong className="text-forest">{percent(station.share)}</strong></span>
-              </dl>
-            </article>
-          ))}
-        </div>
-      )}
-      {!expanded && sorted.length > shown.length && <button type="button" onClick={() => setExpanded(true)} className="btn btn-secondary mt-5 w-full">Ver las {sorted.length} emisoras</button>}
-      <p className="mt-5 rounded-xl bg-fog p-4 text-xs text-muted"><strong className="text-forest">Lectura metodológica:</strong> el ranking ordena alternativas; no suma emisoras ni sustituye el alcance deduplicado de campaña.</p>
-    </section>
   );
 }
 
@@ -510,7 +427,7 @@ function CatalogConditions() {
 
 function Metric({ label, value }: { label: string; value: string }) { return <div className="rounded-xl border border-white/15 bg-white/10 p-3"><dt className="text-[9px] font-black uppercase text-white/55">{label}</dt><dd className="mt-1 font-black">{value}</dd></div>; }
 function Summary({ label, value, note }: { label: string; value: string; note: string }) { return <article className="rounded-card border border-border bg-fog p-4"><span className="text-[10px] font-black uppercase text-muted">{label}</span><strong className="mt-1 block text-lg">{value}</strong><span className="text-xs text-muted">{note}</span></article>; }
-function Toggle({ pressed, onClick, children }: { pressed: boolean; onClick: () => void; children: ReactNode }) { return <button type="button" aria-pressed={pressed} onClick={onClick} className={`btn ${pressed ? "btn-ghost" : "btn-secondary"}`}>{children}</button>; }
+
 function EmptyData({ message }: { message: string }) { return <p className="mt-6 rounded-card border border-dashed border-border bg-fog p-6 text-center text-sm text-muted">{message}</p>; }
 function ListBlock({ title, items }: { title: string; items: string[] }) { return <div className="mt-4"><strong className="text-xs">{title}</strong><ul className="mt-1 space-y-1 text-xs text-muted">{items.map((item) => <li key={item}>✓ {item}</li>)}</ul></div>; }
 function ProviderMark({ item, size }: { item: CatalogItem; size: "small" | "large" }) {
@@ -521,7 +438,7 @@ function ProviderMark({ item, size }: { item: CatalogItem; size: "small" | "larg
   </div>;
 }
 function initials(name: string) { return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase(); }
-function StationMonogram({ name }: { name: string }) { return <div aria-hidden className="grid size-12 shrink-0 place-items-center rounded-xl bg-forest text-sm font-black text-white">{initials(name)}</div>; }
+
 function compact(value: number | null) { return value == null ? "Por confirmar" : new Intl.NumberFormat("es-EC", { notation: "compact", maximumFractionDigits: 1 }).format(value); }
 function percent(value: number | null) { return value == null ? "Por confirmar" : `${new Intl.NumberFormat("es-EC", { maximumFractionDigits: 2 }).format(value)}%`; }
 function money(value: number) { return new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value); }

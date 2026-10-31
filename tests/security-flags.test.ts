@@ -21,7 +21,6 @@ import {
   PRESS_OUTLETS,
   TV_CHANNELS,
 } from "../lib/media-catalog";
-import { TV_RATE_CATALOGS } from "../lib/tv-rate-catalog";
 import { verifyDlocalNotificationSignature } from "../lib/payments/dlocal-signature";
 import { computeCharge } from "../lib/pricing";
 import { buildPlanAnalysis, type PlanAnalysisInput } from "../lib/plan-analysis";
@@ -292,19 +291,6 @@ test("los recursos visuales del catálogo existen en el paquete público", () =>
   assert.equal(existsSync(resolve("public/providers/radio/los40/logo.png")), true);
 });
 
-test("el catálogo de televisión conserva programas, horarios y tarifas auditadas", () => {
-  assert.equal(TV_RATE_CATALOGS.ecuavisa.offers.length, 45);
-  assert.equal(TV_RATE_CATALOGS["red-comercial"].offers.length, 18);
-  assert.equal(TV_RATE_CATALOGS.teleamazonas.offers.length, 47);
-  assert.equal(TV_RATE_CATALOGS["tc-television"].offers.length, 61);
-  assert.equal(TV_RATE_CATALOGS["catomedia-ucsg"].offers.length, 15);
-
-  const ecuavisaDestiny = TV_RATE_CATALOGS.ecuavisa.offers.find(
-    (offer) => offer.title === "Destiny" && offer.market === "Guayaquil",
-  );
-  assert.equal(ecuavisaDestiny?.priceUsd, 4212);
-  assert.equal(ecuavisaDestiny?.unit, "spot 30 s");
-});
 
 test("el análisis conserva KPI por medio y separa Idea WOW del presupuesto", async () => {
   const input: PlanAnalysisInput = {
@@ -339,10 +325,10 @@ test("el análisis conserva KPI por medio y separa Idea WOW del presupuesto", as
   delete process.env.AI_ASSISTANT_ENABLED;
   const detail = await buildDetailedMediaRecommendation(input, plan);
   const television = detail.channelPlans.find((channel) => channel.kind === "television");
-  assert.equal(television?.executions.length, 3);
-  assert.equal(new Set(television?.executions.map((item) => item.provider)).size, 3);
+  assert.equal(television?.executions.length, 1);
+  assert.equal(television?.executions[0].status, "validacion");
   assert.equal(television?.executions.reduce((sum, item) => sum + Number(item.budgetUsd), 0), 6000);
-  assert.ok(television?.executions.every((item) => item.product && item.referenceUnitPriceUsd));
+  assert.ok(television?.executions.every((item) => item.product && item.referenceUnitPriceUsd === null));
   assert.equal(detail.channelPlans.find((channel) => channel.kind === "digital")?.executions[0].status, "validacion");
 });
 

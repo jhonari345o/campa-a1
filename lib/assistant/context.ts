@@ -1,7 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { MEDIA_TYPE_LABELS } from "@/lib/market";
 import { DIGITAL_PLATFORMS, OOH_PROVIDERS, PRESS_OUTLETS } from "@/lib/media-catalog";
-import { TV_RATE_CATALOGS } from "@/lib/tv-rate-catalog";
+import { getBroadcastCatalog } from "@/lib/broadcast-server";
+import { sourceDescription, emptyBroadcastCatalog } from "@/lib/broadcast-catalog";
 
 /**
  * Arma el contexto de Mavi. Corre del lado del servidor con la clave de
@@ -23,7 +24,7 @@ export async function buildMarketContext(question = ""): Promise<string> {
     { data: giros },
     { data: canales },
     { data: campanas },
-    { data: radio },
+    broadcast,
     { data: catalogItems },
   ] =
     await Promise.all([
@@ -36,7 +37,7 @@ export async function buildMarketContext(question = ""): Promise<string> {
       db.from("kb_giros").select("giro, publico, canales, tono, ideas"),
       db.from("kb_canales").select("canal, para_que, como_invertir, formato, tip"),
       db.from("kb_campanas").select("tipo, titulo, estructura"),
-      db.rpc("get_radio_catalog"),
+      process.env.AI_PROVIDER === "bedrock" && process.env.INFOMEDIA_AWS_AI_ENABLED === "true" ? getBroadcastCatalog() : Promise.resolve(emptyBroadcastCatalog),
       db.from("media_catalog_items").select("name, kind, coverage, status, status_note, metadata").eq("active", true),
     ]);
 
@@ -87,19 +88,17 @@ export async function buildMarketContext(question = ""): Promise<string> {
     (campanas ?? [])
       .map((c) => `- [${c.tipo}] ${c.titulo}: ${c.estructura}`)
       .join("\n") || "- (sin datos)";
-  const questionText = normalize(question);
-  const questionTerms = questionText.split(/[^a-z0-9]+/).filter((term) => term.length >= 4);
-  const tvLines = Object.values(TV_RATE_CATALOGS).flatMap((catalog) => {
-    const priced = catalog.offers.filter((offer) => offer.priceUsd != null);
-    const named = priced.filter((offer) => questionTerms.some((term) => normalize(`${catalog.channelSlug} ${offer.title}`).includes(term)));
-    const selected = named.length ? named.slice(0, 12) : priced.slice(0, 4);
-    return selected.map((offer) => `- ${channelName(catalog.channelSlug)} · ${offer.title} · ${offer.day} ${offer.schedule} · USD ${offer.priceUsd} por ${offer.unit} · referencia ${catalog.lastVerified}`);
-  }).join("\n");
-  const radioLines = ((radio ?? []) as Array<Record<string, unknown>>)
-    .sort((a, b) => Number(a.audience_rank ?? 9999) - Number(b.audience_rank ?? 9999))
-    .slice(0, 15)
-    .map((station) => `- ${station.station_name}: género ${station.genre || "por confirmar"}; ranking audiencia ${station.audience_rank || "pendiente"}; rating ${station.rating ?? "pendiente"}; reach ${station.reach_pct ?? "pendiente"}%`)
-    .join("\n") || "- Ranking no disponible en esta consulta.";
+  const questionTerms = normalize(question).split(/[^a-z0-9]+/).filter(term => term.length >= 4);
+  // Preserve complete study boundaries. Do not pool ranks or infer missing markets.
+  const relevant = broadcast.sources.filter(source => questionTerms.some(term => normalize(`${source.label} ${source.market} ${source.target}`).includes(term)));
+  const sources = relevant.length ? relevant : broadcast.sources;
+  const tvLines = sources.filter(source => source.kind === "tv").map(source =>
+    `- ${source.label}: ${sourceDescription(source)}. ${source.conditions}. Base ${source.spotSeconds ?? "no indicada"} s; mínimo ${source.minimumSeconds ?? "no indicado"} s. ${source.annualContract ? "Requiere contrato anual." : ""} Consulte el catálogo privado para cotizar únicamente dentro de la vigencia y plaza documentadas.`
+  ).join("\n");
+  const radioLines = sources.filter(source => source.kind === "radio").map(source => {
+    const rows = broadcast.radio.filter(row => row.sourceId === source.id).sort((a,b) => (b.rating ?? -1) - (a.rating ?? -1)).slice(0,5);
+    return `- ESTUDIO: ${source.label}. ${sourceDescription(source)}. ${source.conditions}\n` + rows.map(row => `  ${row.name}: rating ${row.rating ?? "no informado"}; share ${row.share ?? "no informado"}%; audiencia ${row.audience ?? "no informada"}.`).join("\n");
+  }).join("\n") || "- Ranking no disponible en esta consulta.";
   const loadedOoh = ((catalogItems ?? []) as Array<Record<string, unknown>>)
     .filter((item) => item.kind === "ooh")
     .map((item) => `- ${item.name}: cobertura ${item.coverage || "por confirmar"}; estado ${item.status}; ${item.status_note || "inventario por validar"}`);
@@ -138,7 +137,7 @@ export async function buildMarketContext(question = ""): Promise<string> {
     "CATALOGO ESPECIFICO DE TELEVISION (tarifas referenciales; no son reserva):",
     tvLines || "- (sin registros con tarifa)",
     "",
-    "EMISORAS DE RADIO (cada métrica conserva su metodología):",
+    "EMISORAS DE RADIO: cada bloque es un estudio separado. No comparar ni sumar plazas, sexos, bandas o franjas distintas. Audiencia no es alcance de campaña. No aplicar un corte a un público distinto:",
     radioLines,
     "",
     "VIA PUBLICA (solo usa una dirección o coordenada si aparece explícitamente):",
@@ -154,8 +153,4 @@ export async function buildMarketContext(question = ""): Promise<string> {
 
 function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-}
-
-function channelName(slug: string) {
-  return ({ ecuavisa: "Ecuavisa", "red-comercial": "Red Comercial RTS/TVC", teleamazonas: "Teleamazonas", "tc-television": "TC Televisión", "catomedia-ucsg": "Catomedia UCSG TV" } as Record<string, string>)[slug] ?? slug;
 }
