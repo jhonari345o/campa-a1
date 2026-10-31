@@ -46,7 +46,7 @@ export function ResearchBrandExplorer({ categoryId, dataThrough, period }: { cat
       </div>
     </div>}
     <div role="status" className="mb-2 text-xs text-muted">
-      {pending ? "Cargando marcas…" : result ? `${result.total} marcas${result.query ? ` para “${result.query}”` : ""} · ${period.periodLabel}` : ""}
+      {pending ? "Cargando marcas…" : result ? `${result.total} ${result.total === 1 ? "marca" : "marcas"}${result.query ? ` para “${result.query}”` : ""} · ${period.periodLabel}` : ""}
     </div>
     {error && <p role="alert" className="mb-3 text-sm">{error} {result && "Se mantienen los resultados de la última consulta completada."}</p>}
     <div className="infomedia-table-wrap"><table>
