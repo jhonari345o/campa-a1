@@ -7,7 +7,6 @@ import {
   CATALOG_SECTIONS,
   DIGITAL_PLATFORMS,
   INFLUENCER_IMAGE_SLUGS,
-  OOH_PROVIDERS,
   PRESS_OUTLETS,
   STATUS_LABELS,
   type CatalogItem,
@@ -21,17 +20,21 @@ import type { CatalogHealth } from "@/lib/media-workspace";
 
 import { BroadcastCatalogPanel } from "./BroadcastCatalog";
 import type { BroadcastCatalog } from "@/lib/broadcast-catalog";
+import type { OohCatalog } from "@/lib/ooh-catalog";
+import { OohCatalogPanel } from "./OohCatalog";
 
 export function MediaCatalog({
   broadcast,
   section,
   influencers,
   health,
+  ooh,
 }: {
   broadcast: BroadcastCatalog;
   section: CatalogSection;
   influencers: InfluencerProfile[];
   health: CatalogHealth | null;
+  ooh: OohCatalog;
 }) {
   return (
     <div className="media-portal-shell">
@@ -52,7 +55,7 @@ export function MediaCatalog({
         <Link href="/planificador?view=planner" className="media-portal-plan-button">Armar plan de medios <span>→</span></Link>
       </header>
 
-      {health && section !== "tv" && section !== "radio" && (
+      {health && section !== "tv" && section !== "radio" && section !== "ooh" && (
         <aside className="mx-4 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-white px-5 py-4 shadow-panel sm:mx-8">
           <div><strong className="text-sm text-forest">Control de vigencia 2026</strong><p className="mt-1 text-xs text-muted">Solo “cotizable” representa una referencia comercial; tarifa, cupo y disponibilidad se confirman antes de ordenar.</p></div>
           <div className="flex flex-wrap gap-2 text-[10px] font-black uppercase"><span className="rounded-full bg-signal/15 px-3 py-1 text-signal-dark">{health.cotizable} cotizables</span><span className="rounded-full bg-amber/15 px-3 py-1 text-[#805900]">{health.validation} por validar</span><span className="rounded-full bg-coral/10 px-3 py-1 text-[#a13b31]">{health.stale + health.withoutDate} sin vigencia actual</span></div>
@@ -80,7 +83,7 @@ export function MediaCatalog({
         {section === "radio" && <BroadcastCatalogPanel kind="radio" catalog={broadcast} />}
         {section === "tv" && <BroadcastCatalogPanel kind="tv" catalog={broadcast} />}
         {section === "ooh" && (
-          <DirectorySection eyebrow="Vía pública" title="Proveedor, provincia y activo" description="Navega por proveedor y cobertura. Ubicaciones, producción, impuestos y disponibilidad se reconfirman antes de emitir una orden." items={OOH_PROVIDERS} countLabel="7 proveedores · 312 fichas incorporadas" />
+          <OohCatalogPanel catalog={ooh} />
         )}
         {section === "press" && (
           <DirectorySection eyebrow="Prensa" title="Prensa por cobertura" description="Revisa cabeceras nacionales y publicaciones locales; fecha de publicación, edición, circulación, IVA y disponibilidad se confirman al cotizar." items={PRESS_OUTLETS} countLabel="7 medios en directorio" />
