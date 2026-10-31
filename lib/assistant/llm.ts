@@ -12,7 +12,7 @@ export type LlmMessage = { role: "system" | "user" | "assistant"; content: strin
  */
 export async function chatCompletion(
   messages: LlmMessage[],
-  opts?: { maxTokens?: number; temperature?: number },
+  opts?: { maxTokens?: number; temperature?: number; signal?: AbortSignal },
 ): Promise<string> {
   const preferred = process.env.AI_PROVIDER?.trim().toLowerCase();
   const openRouterFallbacks = (process.env.OPENROUTER_FALLBACK_MODELS
@@ -65,7 +65,7 @@ export async function chatCompletion(
 }
 
 // ---- Amazon Bedrock (Converse API: unificada para Llama/Mistral/Nova) ----
-export async function bedrockChat(messages: LlmMessage[], opts?: { maxTokens?: number; temperature?: number }) {
+export async function bedrockChat(messages: LlmMessage[], opts?: { maxTokens?: number; temperature?: number; signal?: AbortSignal }) {
   const region = process.env.BEDROCK_REGION || "us-east-1";
   const accessKeyId = process.env.BEDROCK_ACCESS_KEY_ID;
   const secretAccessKey = process.env.BEDROCK_SECRET_ACCESS_KEY;
@@ -106,7 +106,7 @@ export async function bedrockChat(messages: LlmMessage[], opts?: { maxTokens?: n
       messages: convo,
       inferenceConfig: { maxTokens: opts?.maxTokens ?? 1024, temperature: opts?.temperature ?? 0.4 },
     }),
-    { abortSignal: AbortSignal.timeout(18000) },
+    { abortSignal: opts?.signal ? AbortSignal.any([opts.signal, AbortSignal.timeout(18000)]) : AbortSignal.timeout(18000) },
   );
 
   const reply = res.output?.message?.content?.[0]?.text;
@@ -117,7 +117,7 @@ export async function bedrockChat(messages: LlmMessage[], opts?: { maxTokens?: n
 // ---- Endpoint compatible con OpenAI (vLLM / Ollama / TGI) ----
 async function openaiChat(
   messages: LlmMessage[],
-  opts: { maxTokens?: number; temperature?: number } | undefined,
+  opts: { maxTokens?: number; temperature?: number; signal?: AbortSignal } | undefined,
   provider: {
     baseUrl: string;
     model: string;
@@ -149,7 +149,7 @@ async function openaiChat(
         temperature: opts?.temperature ?? 0.4,
         stream: false,
       }),
-      signal: AbortSignal.timeout(requestTimeoutMs),
+      signal: opts?.signal ? AbortSignal.any([opts.signal, AbortSignal.timeout(requestTimeoutMs)]) : AbortSignal.timeout(requestTimeoutMs),
     });
   } catch (error) {
     if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {

@@ -1,3 +1,4 @@
+import { optionalWithinBudget } from "@/lib/optional-task";
 import { chatCompletion } from "@/lib/assistant/llm";
 import { buildLiveTrendContext, type LiveTrendSource } from "@/lib/assistant/trends";
 import { isAiAssistantEnabled, isAiWebTrendsEnabled } from "@/lib/commercial";
@@ -78,22 +79,30 @@ const PLATFORM_META: Record<CampaignKey, Pick<Campaign, "platform" | "icon" | "l
  * audiencia, objetivo, geografía, presupuesto y guías internas; luego incorpora
  * señales actuales y pide a la IA una campaña diferente para cada canal.
  */
-export async function buildCurrentCampaigns(input: CampaignInput, plan: MediaPlan): Promise<Campaign[]> {
+export async function buildCurrentCampaigns(input: CampaignInput, plan: MediaPlan, timeoutMs = 18_000): Promise<Campaign[]> {
+  return optionalWithinBudget(
+    (signal) => buildCampaignsWithSignal(input, plan, signal),
+    () => onlyFundedPlatforms(buildFallbackCampaigns(input, plan, [], "datos")),
+    timeoutMs,
+  );
+}
+
+async function buildCampaignsWithSignal(input: CampaignInput, plan: MediaPlan, signal: AbortSignal): Promise<Campaign[]> {
   const trendQuery = [
     input.keyword, input.objective, input.audience, input.ageRange, input.geography,
     "tendencias consumo campaña",
   ].filter(Boolean).join(" ");
   const [live, knowledge] = await Promise.all([
     isAiWebTrendsEnabled()
-      ? buildLiveTrendContext(trendQuery)
+      ? buildLiveTrendContext(trendQuery, signal)
       : Promise.resolve({ context: "", sources: [] as LiveTrendSource[] }),
-    readCampaignKnowledge(input.keyword),
+    readCampaignKnowledge(input.keyword, signal),
   ]);
   const fallback = buildFallbackCampaigns(input, plan, live.sources, live.sources.length ? "datos+internet" : "datos");
   if (!isAiAssistantEnabled()) return onlyFundedPlatforms(fallback);
 
   try {
-    const generated = await generateAiCampaigns(input, fallback, knowledge, live.context, live.sources);
+    const generated = await generateAiCampaigns(input, fallback, knowledge, live.context, live.sources, signal);
     if (!generated.length) return onlyFundedPlatforms(fallback);
     const byKey = new Map(generated.map((campaign) => [campaign.key, campaign]));
     const enriched = fallback.map((campaign) => {
@@ -219,6 +228,7 @@ async function generateAiCampaigns(
   knowledge: CampaignKnowledge,
   liveContext: string,
   liveSources: LiveTrendSource[],
+  signal?: AbortSignal,
 ): Promise<AiCampaign[]> {
   const sourceList = liveSources.map((source, index) => ({ index: index + 1, title: source.title, source: source.source, publishedAt: source.publishedAt }));
   const response = await chatCompletion([
@@ -245,13 +255,13 @@ async function generateAiCampaigns(
         contexto_fuentes: liveContext || "No se obtuvieron fuentes actuales pertinentes.",
       }),
     },
-  ], { maxTokens: 1800, temperature: 0.35 });
+  ], { maxTokens: 1800, temperature: 0.35, signal });
   return parseAiCampaigns(response);
 }
 
-async function readCampaignKnowledge(keyword: string): Promise<CampaignKnowledge> {
+async function readCampaignKnowledge(keyword: string, signal?: AbortSignal): Promise<CampaignKnowledge> {
   try {
-    const db = createAdminClient();
+    const db = createAdminClient(signal);
     const [girosResult, canalesResult, campaignsResult] = await Promise.all([
       db.from("kb_giros").select("giro, publico, canales, tono, ideas").limit(40),
       db.from("kb_canales").select("canal, para_que, como_invertir, formato, tip").limit(20),

@@ -9,7 +9,7 @@ import { createClient } from "@supabase/supabase-js";
  *  - Reservado para la Consola de Alta de Clientes del equipo Ad Mavericks:
  *    crear empresas, generar codigos de registro e invitar usuarios.
  */
-export function createAdminClient() {
+export function createAdminClient(signal?: AbortSignal) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -21,5 +21,9 @@ export function createAdminClient() {
 
   return createClient(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
+    ...(signal ? { global: { fetch: (input: RequestInfo | URL, init?: RequestInit) => fetch(input, {
+      ...init,
+      signal: init?.signal ? AbortSignal.any([signal, init.signal]) : signal,
+    }) } } : {}),
   });
 }

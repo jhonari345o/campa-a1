@@ -29,18 +29,19 @@ export function shouldUseLiveTrends(message: string): boolean {
   return LIVE_INTENT.test(message) || STRATEGY_INTENT.test(normalizeText(message));
 }
 
-export async function buildLiveTrendContext(message: string): Promise<{
+export async function buildLiveTrendContext(message: string, signal?: AbortSignal): Promise<{
   context: string;
   sources: LiveTrendSource[];
 }> {
   const terms = searchTerms(message);
   const query = terms.join(" ");
   const [trendSources, newsSources] = await Promise.all([
-    readRss("https://trends.google.com/trending/rss?geo=EC", 12, true),
+    readRss("https://trends.google.com/trending/rss?geo=EC", 12, true, signal),
     readRss(
       `https://news.google.com/rss/search?q=${encodeURIComponent(`${query} Ecuador when:${NEWS_LOOKBACK_DAYS}d`)}&hl=es-419&gl=EC&ceid=EC:es-419`,
       10,
       false,
+      signal,
     ),
   ]);
   const freshNews = newsSources.filter((item) => isFresh(item, NEWS_LOOKBACK_DAYS));
@@ -76,12 +77,12 @@ export async function buildLiveTrendContext(message: string): Promise<{
   };
 }
 
-async function readRss(url: string, limit: number, googleTrends: boolean): Promise<RssTrendSource[]> {
+async function readRss(url: string, limit: number, googleTrends: boolean, signal?: AbortSignal): Promise<RssTrendSource[]> {
   try {
     const response = await fetch(url, {
       headers: { "User-Agent": "AdMavericksOne/1.0 (+https://one.ad-mavericks.com)" },
       next: { revalidate: 900 },
-      signal: AbortSignal.timeout(8_000),
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(8_000)]) : AbortSignal.timeout(8_000),
     });
     if (!response.ok) return [];
     const xml = (await response.text()).slice(0, 500_000);
