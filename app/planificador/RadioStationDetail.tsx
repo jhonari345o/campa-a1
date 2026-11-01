@@ -1,10 +1,10 @@
 import Image from "next/image";
+import {CatalogRadioProducts} from "./CatalogShopping";
 import type { BroadcastCatalog } from "@/lib/broadcast-catalog";
 import { radioRegions, type RadioDirectoryEntry } from "@/lib/radio-directory";
 import { radioStationRankings, radioTariffStatus } from "@/lib/radio-station";
 import styles from "./RadioDirectory.module.css";
 
-const money = (value: number) => new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(value);
 const number = (value: number | null, decimals = 3) => value == null ? "—" : new Intl.NumberFormat("es-EC", { maximumFractionDigits: decimals }).format(value);
 const date = (value: string) => value.split("-").reverse().join("/");
 
@@ -25,12 +25,12 @@ export function RadioStationDetail({ station, catalog, asOf }: { station: RadioD
     </section>
     <section id="radio-tariffs" className={styles.detailSection} aria-labelledby="radio-tariffs-title">
       <p className={styles.eyebrow}>02 · Inversión</p><h4 id="radio-tariffs-title">Tarifas y formatos</h4>
-      {!profile.tariffs.length ? <p className={styles.missing}>Todavía no hay un tarifario incorporado para esta emisora.</p> : <div className={styles.editions}>{profile.tariffs.map(tariff => {
+      {!profile.tariffs.length ? <div><p className={styles.missing}>Selecciona las cuñas para solicitar una propuesta de esta emisora.</p><CatalogRadioProducts stationId={station.id}/></div> : <div className={styles.editions}>{profile.tariffs.map(tariff => {
         const status = radioTariffStatus(tariff, asOf);
         return <article key={tariff.id} className={styles.edition}>
           <div className={styles.editionHeading}><div><h5>{tariff.label}</h5><p>{tariff.edition}</p></div><span className={status === "Vigente" ? styles.current : styles.reference}>{status}</span></div>
           <dl className={styles.sourceFacts}><div><dt>Plaza de la tarifa</dt><dd>{tariff.market}</dd></div><div><dt>Público</dt><dd>{tariff.target}</dd></div><div><dt>Vigencia declarada</dt><dd>{tariff.validFrom && tariff.validTo ? `${date(tariff.validFrom)} – ${date(tariff.validTo)}` : "No especificada"}</dd></div><div><dt>Base comercial</dt><dd>{tariff.unit === "second" ? "USD por segundo" : "USD por cuña"} · {tariff.taxIncluded === false ? "Sin IVA" : tariff.taxIncluded === true ? "IVA incluido" : "Impuestos no declarados"}</dd></div></dl>
-          <div className={styles.tableWrap}><table><caption className="sr-only">Tarifas de {station.name} · {tariff.edition}</caption><thead><tr><th>Formato</th><th>Duración / unidad</th><th>Tarifa USD</th></tr></thead><tbody>{tariff.rates.map((rate, index) => <tr key={`${rate.label}-${index}`}><th scope="row">{rate.label}</th><td>{tariff.unit === "second" ? "1 segundo" : rate.seconds ? `${rate.seconds} segundos` : "Cuña"}</td><td>{money(rate.amountUsd)}</td></tr>)}</tbody></table></div>
+          <div className="grid gap-4 md:grid-cols-2">{tariff.rates.map((rate,index)=><div key={index}><h6 className="mt-4 text-sm font-bold">{rate.label}</h6><CatalogRadioProducts stationId={station.id} tariffId={tariff.id} rateIndex={index}/></div>)}</div>
           {tariff.conditions && <p className={styles.conditions}>{tariff.conditions}</p>}
         </article>;
       })}</div>}

@@ -14,6 +14,8 @@ export type MyCompany = {
   name: string;
   slug: string;
   brand_key?: string;
+  portal_kind?: string;
+  allowed_email_domains?: string[];
   status: string;
   seats: number;
   created_at: string;
@@ -31,7 +33,7 @@ export async function getMyCompanies(userId: string): Promise<MyCompany[]> {
   const supabase = await createClient();
   let { data, error } = await supabase
     .from("company_members")
-    .select("role, companies(id, name, slug, brand_key, status, seats, created_at)")
+    .select("role, companies(id, name, slug, brand_key, portal_kind, allowed_email_domains, status, seats, created_at)")
     .eq("user_id", userId);
 
   // Rolling deployment: preserve existing workspaces before migration 0017.

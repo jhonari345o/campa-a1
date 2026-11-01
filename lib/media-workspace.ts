@@ -1,3 +1,4 @@
+import { catalogAccess } from "./catalog-access-server";
 import { createClient } from "@/lib/supabase/server";
 import type { InfluencerProfile, RadioStation } from "@/lib/media-catalog";
 
@@ -108,7 +109,7 @@ function radioImagePath(name: string): string | null {
 }
 
 export async function getInfluencerCatalog(): Promise<InfluencerProfile[]> {
-  const db = await createClient();
+  const { db, isAdmin } = await catalogAccess();
   const { data, error } = await db
     .from("influencer_profiles")
     .select(
@@ -131,7 +132,7 @@ export async function getInfluencerCatalog(): Promise<InfluencerProfile[]> {
     engagementPct: numberOrNull(row.engagement_pct),
     followerQualityPct: numberOrNull(row.follower_quality_pct),
     rates: ((row.influencer_rates ?? []) as { id: unknown; format: unknown; amount_usd: unknown; tax_included: unknown; conditions: unknown }[])
-      .map((rate) => ({ id: String(rate.id), format: String(rate.format), amountUsd: Number(rate.amount_usd), taxIncluded: rate.tax_included === true, conditions: typeof rate.conditions === "string" ? rate.conditions : "" }))
+      .map((rate) => ({ id: String(rate.id), format: String(rate.format), amountUsd: isAdmin ? Number(rate.amount_usd) : null, taxIncluded: rate.tax_included === true, conditions: isAdmin && typeof rate.conditions === "string" ? rate.conditions : "" }))
       .sort((a, b) => a.format.localeCompare(b.format, "es")),
   }));
 }

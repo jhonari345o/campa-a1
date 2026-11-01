@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getSessionProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseCustomerInput } from "@/lib/customer-access";
+import { domainAllows } from "@/lib/portal-access";
 
 export type CustomerResult = { ok: false; error: string } |
   { ok: true; email: string; companyName: string; role: string; temporaryPassword: string };
@@ -16,15 +17,17 @@ export async function crearUsuarioCliente(_previous: CustomerResult | null, form
   if (!input || form.get("confirm_scope") !== "yes") return { ok: false, error: "Revisa la empresa, el correo y los permisos del acceso." };
   const admin = createAdminClient();
   // Fail closed: never create credentials before tenant guards have been migrated.
-  const { data: ready, error: readinessError } = await admin.rpc("customer_access_ready");
-  if (readinessError || ready !== "0017") return { ok: false, error: "El alta de clientes está bloqueada hasta aplicar y validar la migración de seguridad 0017 en Supabase." };
+  const { data: ready, error: readinessError } = await admin.rpc("portal_access_ready");
+  if (readinessError || ready !== "0029") return { ok: false, error: "El alta de clientes está bloqueada hasta aplicar y validar la migración de seguridad 0029 en Supabase." };
   const { data: company, error: companyError } = await admin.from("companies")
-    .select("id,name,status").eq("id", input.companyId).single();
+    .select("id,name,status,portal_kind,allowed_email_domains").eq("id", input.companyId).single();
   if (companyError || company?.status !== "activa") return { ok: false, error: "Selecciona una empresa activa." };
+  if (company.allowed_email_domains?.length && !domainAllows(input.email, company.allowed_email_domains)) return { ok: false, error: "Ese dominio no está autorizado para este espacio." };
+  if (company.portal_kind === "client" && input.role !== "viewer") return { ok: false, error: "Los accesos de cliente son de consulta." };
   const temporaryPassword = `${randomBytes(24).toString("base64url")}Aa1!`;
   const { data, error } = await admin.auth.admin.createUser({
     email: input.email, password: temporaryPassword, email_confirm: true,
-    user_metadata: { full_name: input.fullName }, app_metadata: { access_scope: "customer" },
+    user_metadata: { full_name: input.fullName }, app_metadata: { access_scope: "customer", must_change_password: true },
   });
   if (error || !data.user) return { ok: false, error: "No se creó la cuenta. Comprueba si ese correo ya tiene acceso; no se reemplazan usuarios ni contraseñas existentes." };
   const userId = data.user.id;

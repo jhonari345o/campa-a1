@@ -6,7 +6,7 @@ import { oohKey, oohMatches, oohProvinceGroups, oohRateUnit, type OohAsset, type
 import { CatalogOohProducts } from "./CatalogShopping";
 import type { OohPurchaseReference } from "@/lib/catalog-shopping-server";
 
-const money = (value: number) => new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value);
+const money = (value: number | null) => value == null ? "Consultar tarifa" : new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value);
 const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-signal-dark";
 
 export function OohCatalogPanel({ catalog, purchaseReferences = [] }: { catalog: OohCatalog; purchaseReferences?: OohPurchaseReference[] }) {

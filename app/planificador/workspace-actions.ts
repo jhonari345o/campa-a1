@@ -13,7 +13,7 @@ import { revalidatePath } from "next/cache";
 import { normalizeCoverageBrief } from "@/lib/geographic-coverage";
 import { getSessionProfile } from "@/lib/auth";
 import { getMyCompanies } from "@/lib/company";
-import { canCompanyRole } from "@/lib/permissions";
+import { canWorkspaceRole } from "@/lib/permissions";
 import { buildPlanningScenarios, type PlanningScenario } from "@/lib/plan-optimizer";
 import type { MediaGroup } from "@/lib/media-groups";
 import { createClient } from "@/lib/supabase/server";
@@ -174,7 +174,7 @@ export async function crearOrdenDesdePlan(planId: string): Promise<
   if (error || !plan) return { ok: false, error: "No se encontró el plan." };
   if (!profile.is_platform_admin) {
     const companies = await getMyCompanies(profile.id);
-    const canRequest = companies.some(c => c.id === plan.company_id && c.status === "activa" && canCompanyRole(c.role, "campaign:create"));
+    const canRequest = companies.some(c => c.id === plan.company_id && c.status === "activa" && canWorkspaceRole(c, "campaign:create"));
     if (plan.owner_id !== profile.id || !canRequest) return { ok: false, error: "Tu rol no permite solicitar esta campaña." };
   }
   if (!['revision', 'aprobado'].includes(String(plan.status))) {
@@ -237,7 +237,7 @@ export async function decidirPlan(planId: string, decision: "approved" | "change
   const { data: plan, error: planError } = await db.from("media_plans").select("id, owner_id, company_id, version").eq("id", planId).maybeSingle();
   if (planError || !plan) return { ok: false, error: "No se encontró el plan." };
   const companies = await getMyCompanies(profile.id);
-  const companyApproval = companies.some((company) => company.id === plan.company_id && company.status === "activa" && canCompanyRole(company.role, "campaign:approve"));
+  const companyApproval = companies.some((company) => company.id === plan.company_id && company.status === "activa" && canWorkspaceRole(company, "campaign:approve"));
   if (!profile.is_platform_admin && !companyApproval) return { ok: false, error: "Tu rol no permite decidir sobre este plan." };
   const cleanNote = cleanText(note, 2000) || null;
   const { error } = await db.from("media_plan_approvals").insert({ plan_id: planId, actor_id: profile.id, decision, note: cleanNote, plan_version: Number(plan.version) });
@@ -341,7 +341,7 @@ async function planAccess(): Promise<
   const profile = await getSessionProfile();
   if (!profile) return { ok: false, error: "Debes iniciar sesión." };
   const companies = await getMyCompanies(profile.id);
-  const company = companies.find((item) => item.status === "activa" && canCompanyRole(item.role, "plan"));
+  const company = companies.find((item) => item.status === "activa" && canWorkspaceRole(item, "plan"));
   if (!profile.is_platform_admin && !company) return { ok: false, error: "Tu rol no permite guardar planes." };
   return { ok: true, profileId: profile.id, companyId: company?.id ?? null };
 }

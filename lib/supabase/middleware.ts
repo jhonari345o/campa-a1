@@ -4,7 +4,7 @@ import { LEGAL_VERSIONS } from "@/lib/legal";
 
 const CONSENT_PROTECTED_ROUTES = [
   "/panel", "/consola", "/mercado", "/planificador", "/asistente",
-  "/campanas", "/pautar", "/reportes", "/laboratorio",
+  "/campanas", "/pautar", "/reportes", "/laboratorio", "/clientes", "/creditos", "/proveedores",
 ];
 
 /**
@@ -43,6 +43,12 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const pathname = request.nextUrl.pathname;
   const needsConsent = CONSENT_PROTECTED_ROUTES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  if (user?.app_metadata?.must_change_password === true && needsConsent) {
+    const target = request.nextUrl.clone(); target.pathname = "/cuenta/activar"; target.search = "";
+    const redirected = NextResponse.redirect(target);
+    response.cookies.getAll().forEach(cookie => redirected.cookies.set(cookie));
+    return redirected;
+  }
   if (user && needsConsent) {
     const { data: acceptance, error } = await supabase
       .from("legal_acceptances")

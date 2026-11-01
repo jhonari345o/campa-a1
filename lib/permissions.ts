@@ -10,3 +10,7 @@ const ACTION_ROLES: Record<CompanyAction, ReadonlySet<string>> = {
 export function canCompanyRole(role: string | null | undefined, action: CompanyAction): boolean {
   return Boolean(role && ACTION_ROLES[action].has(role));
 }
+
+export function canWorkspaceRole(company: {role:string;portal_kind?:string}, action: CompanyAction): boolean {
+ return (action === "read" || (company.portal_kind ?? "agency") === "agency") && canCompanyRole(company.role,action);
+}

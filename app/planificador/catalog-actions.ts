@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { getSessionProfile } from "@/lib/auth";
 import { getMyCompanies } from "@/lib/company";
-import { canCompanyRole } from "@/lib/permissions";
+import { canWorkspaceRole } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { canonicalCatalogOrder, catalogQuoteSignature, normalizeCatalogPicks, type CatalogCart, type CatalogProduct } from "@/lib/catalog-shopping";
@@ -16,8 +16,8 @@ export async function saveCatalogSelection(items: unknown, expectedVersion: numb
     const clean = normalizeCatalogPicks(items), db = await createClient();
     const { data, error } = await db.rpc("save_catalog_cart", { p_expected_version: expectedVersion, p_items: clean });
     if (error || !data) return { ok: false, error: "No se pudo guardar el carrito. Tu selección sigue aquí; vuelve a intentar." };
-    const cart = { version: Number(data.version), items: normalizeCatalogPicks(data.items) };
-    return data.ok ? { ok: true, cart } : { ok: false, cart, error: "El carrito cambió en otra pestaña. Recupera la versión guardada antes de continuar." };
+    const cart = { version: Number(data.version), items: normalizeCatalogPicks(data.items), expiresAt: data.expiresAt };
+    return data.ok ? { ok: true, cart } : { ok: false, cart, error: data.code === "expired" ? "El carrito venció tras dos horas sin cambios. Recupera la selección actual para continuar." : "El carrito cambió en otra pestaña. Recupera la versión guardada antes de continuar." };
   } catch { return { ok: false, error: "Revisa los productos y las cantidades del carrito." }; }
 }
 export type CatalogRequestResult = { ok: true; id: string; cart: CatalogCart } | { ok: false; error: string; products?: CatalogProduct[]; refreshCart?: boolean };
@@ -26,7 +26,7 @@ export async function submitCatalogSelection(input: { requestId: string; version
   if (!profile) return { ok: false, error: "Inicia sesión para enviar la solicitud." };
   if (!input || !uuid.test(input.requestId) || !Number.isSafeInteger(input.version) || input.version < 0 || typeof input.quote !== "string" || input.quote.length > 200_000 || typeof input.title !== "string" || !input.title.trim() || input.title.length > 120 || typeof input.notes !== "string" || input.notes.length > 2000 || typeof input.desiredStart !== "string" || (input.desiredStart && !validDate(input.desiredStart)) || (input.companyId != null && !uuid.test(input.companyId))) return { ok: false, error: "Revisa los datos de la solicitud." };
   const companies = await getMyCompanies(profile.id);
-  if (!profile.is_platform_admin && !companies.some(c => c.id === input.companyId && c.status === "activa" && canCompanyRole(c.role, "campaign:create"))) return { ok: false, error: "Tu rol no permite solicitar productos en este espacio." };
+  if (!profile.is_platform_admin && !companies.some(c => c.id === input.companyId && c.status === "activa" && (c.portal_kind ?? "agency") === "agency" && canWorkspaceRole(c, "campaign:create"))) return { ok: false, error: "Tu rol no permite solicitar productos en este espacio." };
   // Idempotent retries remain valid after the cart has been cleared by a successful request.
   const db = await createClient();
   const { data: previous } = await db.from("catalog_orders").select("id").eq("owner_id", profile.id).eq("request_id", input.requestId).maybeSingle();

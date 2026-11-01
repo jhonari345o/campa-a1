@@ -73,6 +73,8 @@ export function CrearClienteForm({ brandingReady = false }: { brandingReady?: bo
             <option value="one">Ad Mavericks One</option><option value="lettera" disabled={!brandingReady}>Léttera</option>
           </select>
         </label>
+        <label className="grid gap-1 text-sm font-black">Tipo de portal<select name="portal_kind" className="rounded-xl border border-border bg-fog p-3"><option value="agency">Agencia · planificación y coordinación</option><option value="client">Cliente · catálogo y reportes</option><option value="provider">Proveedor · medios y actualizaciones</option></select></label>
+        <label className="grid gap-1 text-sm font-black">Dominios de correo autorizados<input name="allowed_domains" maxLength={1000} placeholder="empresa.com, agencia.ec" className="rounded-xl border border-border bg-fog p-3"/><small className="font-normal text-muted">Las cuentas se crean desde administración.</small></label>
         <div className="sm:col-span-2">
           <button type="submit" disabled={pending} className="btn btn-primary disabled:opacity-60">
             {pending ? "Generando..." : "Generar cliente →"}

@@ -16,7 +16,7 @@ import {
   isMetaPausedDraftsEnabled,
   isMetaRealSpendEnabled,
 } from "@/lib/commercial";
-import { canCompanyRole } from "@/lib/permissions";
+import { canWorkspaceRole } from "@/lib/permissions";
 import { validateMetaConnection } from "@/lib/ads/meta";
 
 export type JobInput = {
@@ -43,7 +43,7 @@ export async function ejecutarCampana(input: JobInput): Promise<JobResult> {
   if (!company || company.status !== "activa") {
     return { ok: false, error: "Solo una cuenta de empresa puede ejecutar campanas." };
   }
-  if (!canCompanyRole(company.role, "campaign:create")) {
+  if (!canWorkspaceRole(company, "campaign:create")) {
     return { ok: false, error: "Tu rol no permite solicitar una campana." };
   }
 

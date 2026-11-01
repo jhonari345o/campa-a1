@@ -5,7 +5,7 @@ import { getSessionProfile } from "@/lib/auth";
 import { type MediaPlan, type PlanRow } from "@/lib/planner";
 import { buildCurrentCampaigns, type Campaign } from "@/lib/campaigns";
 import { getMyCompanies } from "@/lib/company";
-import { canCompanyRole } from "@/lib/permissions";
+import { canWorkspaceRole } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { buildPlanAnalysis, type PlanAnalysis } from "@/lib/plan-analysis";
 import {
@@ -105,7 +105,7 @@ export async function generarPlan(
   if (!profile.is_platform_admin) {
     const companies = await getMyCompanies(profile.id);
     const allowed = companies.some(
-      (company) => company.status === "activa" && canCompanyRole(company.role, "plan"),
+      (company) => company.status === "activa" && canWorkspaceRole(company, "plan"),
     );
     if (!allowed) return { ok: false, error: "Tu rol no permite generar planes." };
   }
@@ -225,7 +225,7 @@ export async function guardarPlan(input: Extract<PlanResult, { ok: true }>): Pro
 
   const companies = await getMyCompanies(profile.id);
   const company = companies.find(
-    (item) => item.status === "activa" && canCompanyRole(item.role, "plan"),
+    (item) => item.status === "activa" && canWorkspaceRole(item, "plan"),
   );
   if (!profile.is_platform_admin && !company) {
     return { ok: false, error: "Tu rol no permite guardar planes." };
@@ -300,8 +300,8 @@ async function registrarDistribucion(
   const profile = await getSessionProfile();
   if (!profile) return { ok: false, error: "Debes iniciar sesión." };
   const companies = await getMyCompanies(profile.id);
-  const company = companies.find((item) => item.status === "activa" && canCompanyRole(item.role, "plan")
-    && (!approval || canCompanyRole(item.role, "campaign:approve")));
+  const company = companies.find((item) => item.status === "activa" && canWorkspaceRole(item, "plan")
+    && (!approval || canWorkspaceRole(item, "campaign:approve")));
   if (!profile.is_platform_admin && !company) return { ok: false, error: "Tu rol no permite registrar esta decisión." };
 
   input = { ...input, brief: { ...input.brief, ...normalizeCoverageBrief(input.brief) } };
