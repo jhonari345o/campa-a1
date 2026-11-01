@@ -21,6 +21,8 @@ export type CampaignInsight = {
 };
 
 export type Campaign = {
+  /** Creative starting point with no measured score or live trend research. */
+  templateOnly?: boolean;
   key: CampaignKey;
   platform: string;
   icon: string;
@@ -81,7 +83,11 @@ const PLATFORM_META: Record<CampaignKey, Pick<Campaign, "platform" | "icon" | "l
  */
 export async function buildCurrentCampaigns(input: CampaignInput, plan: MediaPlan, timeoutMs = 18_000): Promise<Campaign[]> {
   // The research planner uses AWS exclusively. Creative templates do not trigger another provider.
-  if (plan.strategy) return onlyFundedPlatforms(buildFallbackCampaigns(input, plan, [], "datos"));
+  if (plan.strategy) return onlyFundedPlatforms(buildFallbackCampaigns(input, plan, [], "datos")).map(c => ({
+    ...c,
+    templateOnly: true,
+    copy: c.copy.split("\n").filter(line => !/^Señal (?:creativa )?a validar/.test(line)).join("\n").trim(),
+  }));
   return optionalWithinBudget(
     (signal) => buildCampaignsWithSignal(input, plan, signal),
     () => onlyFundedPlatforms(buildFallbackCampaigns(input, plan, [], "datos")),

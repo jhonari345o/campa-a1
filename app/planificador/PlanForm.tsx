@@ -280,7 +280,7 @@ function AnalysisStage({ result, onBack, onContinue }: { result: Extract<PlanRes
       <button type="button" className="btn btn-secondary" onClick={onBack}>Editar brief</button>
     </div>
 
-    <InfomediaResearchPanel research={result.research} brand={result.brief.brand} objective={result.objective} />
+    <InfomediaResearchPanel research={result.research} brand={result.brief.brand} objective={result.objective} hideInterpretation={Boolean(result.plan.strategy)} />
     <TgiResearchPanel research={result.research.tgi} selectedMedia={result.brief.selectedMedia} />
     {result.plan.strategy && <MediaStrategyPanel report={result.plan.strategy} />}
 
@@ -481,7 +481,7 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
 
       <div className="rounded-panel border border-border bg-white p-6 shadow-panel">
         <h3 className="text-sm font-black uppercase tracking-wide text-muted">
-          Como invierte tu giro (referencia)
+          {plan.strategy ? "Mezcla observada de la categoría" : "Como invierte tu giro (referencia)"}
         </h3>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[320px] text-left text-sm">
@@ -489,7 +489,7 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
               <tr className="text-xs font-black uppercase tracking-wide text-muted">
                 <th className="pb-2">Medio</th>
                 <th className="pb-2">Participacion</th>
-                {result.plan.plan.some((r) => r.amount != null) && <th className="pb-2">Sugerido</th>}
+                {!plan.strategy && result.plan.plan.some((r) => r.amount != null) && <th className="pb-2">Sugerido</th>}
               </tr>
             </thead>
             <tbody>
@@ -497,15 +497,14 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
                 <tr key={r.label} className="border-t border-border">
                   <td className="py-2 pr-4 font-bold text-forest">{r.label}</td>
                   <td className="py-2 pr-4">{pct(r.pct)}</td>
-                  {result.plan.plan.some((p) => p.amount != null) && <td className="py-2">{money(r.amount)}</td>}
+                  {!plan.strategy && result.plan.plan.some((p) => p.amount != null) && <td className="py-2">{money(r.amount)}</td>}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         <p className="mt-3 text-xs text-muted">
-          El desglose digital (Meta, Google, WhatsApp, TikTok) es una recomendacion de Ad Mavericks;
-          la referencia por medio proviene de datos de inversion del mercado.
+          {plan.strategy ? "La participación observada describe el mercado; la distribución recomendada figura arriba." : "El desglose digital es una recomendación de Ad Mavericks; la referencia por medio proviene de datos de inversión del mercado."}
         </p>
       </div>
 
@@ -513,10 +512,10 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
       {result.campaigns.length > 0 && <div>
         <div className="flex items-center gap-2">
           <span aria-hidden className="text-xl">🦎</span>
-          <h3 className="text-lg font-black tracking-tight">Radar de oportunidades · campañas calificadas por Mavi</h3>
+          <h3 className="text-lg font-black tracking-tight">{result.campaigns.every(c => c.templateOnly) ? "Ideas creativas para desarrollar" : "Radar de oportunidades · campañas calificadas por Mavi"}</h3>
         </div>
         <p className="mt-1 text-sm text-muted">
-          El radar cruza rubro, audiencia, objetivo, presupuesto y señales recientes con fecha y fuente. Descarta tendencias sin afinidad antes de proponer una ejecución; la aprobación y publicación siempre se confirman con una persona responsable.
+          {result.campaigns.every(c => c.templateOnly) ? "Conceptos de partida vinculados al brief y a las plataformas seleccionadas, para revisión creativa antes de producir." : "El radar cruza rubro, audiencia, objetivo, presupuesto y señales recientes con fecha y fuente. Descarta tendencias sin afinidad antes de proponer una ejecución; la aprobación y publicación siempre se confirman con una persona responsable."}
         </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {result.campaigns.map((c) => (
@@ -680,7 +679,7 @@ function CampaignCard({ c }: { c: Campaign }) {
         <div><dt className="inline font-black text-forest">Formato: </dt><dd className="inline">{c.formato}</dd></div>
       </dl>
 
-      <div className="campaign-current-insight">
+      {!c.templateOnly && <><div className="campaign-current-insight">
         <div className="campaign-current-score"><strong>{c.insight.total}</strong><span>/100</span></div>
         <div><b>Calificación estratégica actual</b><p>{c.insight.rationale}</p></div>
       </div>
@@ -691,7 +690,7 @@ function CampaignCard({ c }: { c: Campaign }) {
         <span>Factibilidad <b>{c.insight.feasibility}</b></span>
       </div>
       <aside className="campaign-trend-signal"><b>Señal usada</b><p>{c.insight.trendSignal}</p></aside>
-      {c.insight.sources.length > 0 && <div className="campaign-source-list">{c.insight.sources.map((source) => <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer">{source.title} · {source.source}{source.publishedAt ? ` · ${source.publishedAt}` : ""} ↗</a>)}</div>}
+      {c.insight.sources.length > 0 && <div className="campaign-source-list">{c.insight.sources.map((source) => <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer">{source.title} · {source.source}{source.publishedAt ? ` · ${source.publishedAt}` : ""} ↗</a>)}</div>}</>}
       <pre className="mt-2 whitespace-pre-wrap rounded-xl border border-border bg-fog px-3 py-3 text-xs text-forest">
         {currentCopy}
       </pre>
