@@ -112,7 +112,7 @@ export async function getInfluencerCatalog(): Promise<InfluencerProfile[]> {
   const { data, error } = await db
     .from("influencer_profiles")
     .select(
-      "id, slug, category, name, handle, platform, profile_url, followers, avg_views, engagement_pct, follower_quality_pct, influencer_rates(format, amount_usd)",
+      "id, slug, category, name, handle, platform, profile_url, followers, avg_views, engagement_pct, follower_quality_pct, influencer_rates(id, format, amount_usd, tax_included, conditions)",
     )
     .eq("active", true)
     .order("category")
@@ -130,8 +130,8 @@ export async function getInfluencerCatalog(): Promise<InfluencerProfile[]> {
     avgViews: numberOrNull(row.avg_views),
     engagementPct: numberOrNull(row.engagement_pct),
     followerQualityPct: numberOrNull(row.follower_quality_pct),
-    rates: ((row.influencer_rates ?? []) as { format: unknown; amount_usd: unknown }[])
-      .map((rate) => ({ format: String(rate.format), amountUsd: Number(rate.amount_usd) }))
+    rates: ((row.influencer_rates ?? []) as { id: unknown; format: unknown; amount_usd: unknown; tax_included: unknown; conditions: unknown }[])
+      .map((rate) => ({ id: String(rate.id), format: String(rate.format), amountUsd: Number(rate.amount_usd), taxIncluded: rate.tax_included === true, conditions: typeof rate.conditions === "string" ? rate.conditions : "" }))
       .sort((a, b) => a.format.localeCompare(b.format, "es")),
   }));
 }

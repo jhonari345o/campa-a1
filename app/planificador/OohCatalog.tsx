@@ -3,11 +3,13 @@ import Image from "next/image";
 import { useState } from "react";
 import { OOH_PROVIDERS } from "@/lib/media-catalog";
 import { oohKey, oohMatches, oohProvinceGroups, oohRateUnit, type OohAsset, type OohCatalog } from "@/lib/ooh-catalog";
+import { CatalogOohProducts } from "./CatalogShopping";
+import type { OohPurchaseReference } from "@/lib/catalog-shopping-server";
 
 const money = (value: number) => new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value);
 const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-signal-dark";
 
-export function OohCatalogPanel({ catalog }: { catalog: OohCatalog }) {
+export function OohCatalogPanel({ catalog, purchaseReferences = [] }: { catalog: OohCatalog; purchaseReferences?: OohPurchaseReference[] }) {
   const [providerSlug, setProviderSlug] = useState<string | null>(null);
   const [provinceKey, setProvinceKey] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -30,6 +32,7 @@ export function OohCatalogPanel({ catalog }: { catalog: OohCatalog }) {
       {province ? <button type="button" onClick={() => selectProvince(null)} className={`rounded-lg px-2 py-1 font-bold text-signal-dark hover:bg-fog ${focus}`}>{provider.name}</button> : <span aria-current="page" className="font-black">{provider.name}</span>}
       {province && <><span aria-hidden="true" className="text-muted">/</span><span aria-current="page" className="font-black">{province.name}</span></>}
     </nav>}
+    {provider && <PurchaseHistory rows={purchaseReferences.filter(r => r.provider_slug === providerSlug)} />}
     {catalog.error ? <p role="alert" className="mt-6 rounded-xl border border-border bg-fog p-5 text-sm">{catalog.error}</p> : !provider ? <>
       <label className="media-catalog-search">Buscar proveedor<input value={query} onChange={event => setQuery(event.target.value)} placeholder="Nombre del proveedor" /></label>
       <div className="media-directory-grid">
@@ -51,13 +54,13 @@ export function OohCatalogPanel({ catalog }: { catalog: OohCatalog }) {
       {!groups.length && <p className="mt-6 rounded-2xl border border-dashed border-border bg-fog p-6 text-sm text-muted">Este proveedor todavía no tiene fichas de ubicaciones incorporadas al catálogo.</p>}
     </> : <>
       <div className="mt-6 flex flex-wrap items-end gap-4"><label className="min-w-0 flex-1 text-sm font-black">Buscar en {province.name}<input value={query} onChange={event => setQuery(event.target.value)} placeholder="Ciudad, dirección, código o formato" className="mt-2 w-full rounded-xl border border-border bg-fog px-4 py-3 font-normal outline-none focus:border-signal focus:ring-2 focus:ring-signal/20" /></label><p role="status" className="pb-3 text-sm text-muted">{shown.length} de {province.assets.length} fichas</p></div>
-      <div className="mt-6 grid items-start gap-5 md:grid-cols-2 xl:grid-cols-3">{shown.map(asset => <OohAssetCard key={asset.id} asset={asset} />)}</div>
+      <div className="mt-6 grid items-start gap-5" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,280px),1fr))" }}>{shown.map(asset => <OohAssetCard key={asset.id} asset={asset} references={purchaseReferences.filter(r => r.asset_id === asset.id)} />)}</div>
       {!shown.length && <p className="py-10 text-center text-sm text-muted">No hay fichas que coincidan con esa búsqueda.</p>}
     </>}
   </section>;
 }
 
-function OohAssetCard({ asset }: { asset: OohAsset }) {
+function OohAssetCard({ asset, references }: { asset: OohAsset; references: OohPurchaseReference[] }) {
   const [imageFailed, setImageFailed] = useState(false);
   const photoUrl = `/api/ooh/images/${encodeURIComponent(asset.id)}`;
   const hasMap = asset.latitude != null && asset.longitude != null;
@@ -76,8 +79,14 @@ function OohAssetCard({ asset }: { asset: OohAsset }) {
         {asset.rates.length ? <ul className="mt-2 space-y-3">{asset.rates.map((rate, index) => <li key={index}><strong className="block text-xl font-black text-forest">{money(rate.amount)}</strong><span className="block text-xs text-muted">{oohRateUnit(rate)}{rate.component ? ` · ${rate.component}` : ""}</span></li>)}</ul> : <p className="mt-2 text-sm font-black">{asset.rateLabel.startsWith("$") ? asset.rateLabel : "Sin tarifa publicada"}</p>}
         {(asset.reference || asset.taxLabel) && <p className="mt-3 text-[10px] text-muted">{[asset.reference, asset.taxLabel].filter(Boolean).join(" · ")}</p>}
       </div>
+      <CatalogOohProducts assetId={asset.id} />
+      <PurchaseHistory rows={references} />
       {hasMap && <a href={`https://www.google.com/maps/search/?api=1&query=${asset.latitude},${asset.longitude}`} target="_blank" rel="noopener noreferrer" className={`mt-4 flex items-center gap-2 rounded-lg py-1 text-sm font-black text-signal-dark ${focus}`}><LocationIcon /> Ver ubicación en el mapa ↗</a>}
     </div>
   </article>;
+}
+function PurchaseHistory({ rows }: { rows: OohPurchaseReference[] }) {
+  if (!rows.length) return null;
+  return <details className="my-5 rounded-xl border border-amber/40 bg-amber/10 p-4 text-forest"><summary className="cursor-pointer text-sm font-black">Referencias internas de compra · {rows.length}</summary><p className="mt-3 text-xs text-muted">Costos históricos de Ad Mavericks · administración</p><div className="mt-3 max-h-[420px] overflow-auto"><table className="w-full min-w-[680px] text-left text-xs"><thead><tr><th className="p-2">Factura y ubicación</th><th className="p-2">Período</th><th className="p-2">Base de compra</th><th className="p-2">Pago registrado</th><th className="p-2">Costo por unidad</th></tr></thead><tbody>{rows.map(r => <tr key={r.id} className="border-t border-amber/20"><th scope="row" className="p-2"><strong>{r.invoice_number}</strong><span className="mt-1 block font-normal">{r.location}</span><span className="mt-1 block font-normal text-muted">{r.scope_note}</span></th><td className="p-2">{[r.period_start, r.period_end].filter(Boolean).join(" – ") || "Período no detallado"}</td><td className="p-2">{r.purchase_net_usd == null ? "Sin desglose" : money(Number(r.purchase_net_usd))}<small className="mt-1 block">{r.tax_label}</small></td><td className="p-2">{r.paid_usd == null ? "No verificado" : money(Number(r.paid_usd))}<small className="mt-1 block">{r.paid_at} · {r.payment_status === "verified" ? "Verificado" : r.payment_status === "partial" ? "Abono" : "Facturado"}</small></td><td className="p-2">{r.unit_price_usd == null ? "Sin asignación unitaria" : money(Number(r.unit_price_usd))}<small className="mt-1 block">{r.unit}</small></td></tr>)}</tbody></table></div></details>;
 }
 function LocationIcon() { return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>; }
