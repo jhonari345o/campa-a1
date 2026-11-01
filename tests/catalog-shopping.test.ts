@@ -47,6 +47,12 @@ test("withdrawn or changed OOH rates cannot silently become another product",()=
  assert.notEqual(oohProductKey(asset.id,asset.rates[0]),changed[2].key);
  assert.equal(catalogCartSummary(items,changed).unavailable,1);assert.throws(()=>canonicalCatalogOrder(items,changed));
 });
+test("null OOH components normalize to an empty component without losing the real price or unit",()=>{
+ const a=parseOohAsset({id:"null-component",provider_slug:"test",details:{format:"Valla fija",rates:[{amount:125,period:"month",basis:"per_unit",component:null,kind:"tariff"}]}})!;
+ const [p]=catalogProducts([],{assets:[a]});
+ assert.deepEqual(p.source.rate,{amount:125,period:"month",basis:"per_unit",component:""});
+ assert.equal(p.priceCents,12500);assert.equal(p.format,"Valla fija");assert.equal(p.unit,"mes · por unidad");
+});
 test("canonical orders use current server products and reject empty or excessive totals",()=>{
  const order=canonicalCatalogOrder([{productKey:products[0].key,quantity:2}],products);
  assert.equal(order.items[0].unitPriceCents,1234);assert.equal(order.items[0].taxIncluded,false);assert.equal(order.knownSubtotalCents,2468);

@@ -98,7 +98,7 @@ begin
    if not exists(select 1 from public.ooh_catalog_assets a where a.id=item#>>'{source,assetId}' and a.active
      and ((item#>'{source,rate}' is null and item->>'unitPriceCents' is null and coalesce(jsonb_array_length(a.details->'rates'),0)=0
        and item->>'productKey'='ooh:'||a.id||':quote')
-     or exists(select 1 from jsonb_array_elements(a.details->'rates') as rr(value) where jsonb_build_object('amount',rr.value->'amount','period',rr.value->'period','basis',rr.value->'basis','component',rr.value->'component')=item#>'{source,rate}'
+     or exists(select 1 from jsonb_array_elements(a.details->'rates') as rr(value) where jsonb_build_object('amount',rr.value->'amount','period',case when jsonb_typeof(rr.value->'period')='string' then left(rr.value->>'period',1000) else '' end,'basis',case when jsonb_typeof(rr.value->'basis')='string' then left(rr.value->>'basis',1000) else '' end,'component',case when jsonb_typeof(rr.value->'component')='string' then left(rr.value->>'component',1000) else '' end)=item#>'{source,rate}'
        and round((rr.value->>'amount')::numeric*100)=(item->>'unitPriceCents')::numeric)))
    then raise exception 'QUOTE_CHANGED'; end if;
   else raise exception 'Invalid medium'; end if;
