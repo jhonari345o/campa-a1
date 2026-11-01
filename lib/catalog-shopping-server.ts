@@ -12,7 +12,7 @@ export async function readCatalogCart(): Promise<CatalogCart> {
   const db = await createClient();
   const { data, error } = await db.rpc("load_catalog_cart");
   if (error) return { version: 0, items: [], error: "El carrito no está disponible en este momento." };
-  try { return { version: Number(data?.version ?? 0), items: normalizeCatalogPicks(data?.items ?? []), expiresAt: data?.expiresAt }; }
+  try { return { version: Number(data?.version ?? 0), items: normalizeCatalogPicks(data?.items ?? []), expiresAt: data?.expiresAt,clientId:data?.clientId??null }; }
   catch { return { version: 0, items: [], error: "No se pudo recuperar la selección guardada." }; }
 }
 export async function readShoppingProducts(items: { productKey: string }[]) {

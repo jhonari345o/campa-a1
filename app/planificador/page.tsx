@@ -1,3 +1,5 @@
+import {catalogClientContext} from "@/lib/catalog-client-server";
+import {CatalogClientSwitcher} from "./CatalogClientSwitcher";
 import { getBroadcastCatalog } from "@/lib/broadcast-server";
 import { getOohCatalog } from "@/lib/ooh-server";
 import { getRadioDirectory } from "@/lib/radio-directory-server";
@@ -74,6 +76,7 @@ export default async function PlanificadorPage({
     view === "media" && section === "ooh" && profile.is_platform_admin ? readOohPurchaseReferences() : Promise.resolve([]),
   ]);
 
+  const clientContext=await catalogClientContext();
   const shoppingProducts = catalogNeeded ? await priceCatalogProducts(catalogProducts(influencers, ooh, { broadcast, radio: radioDirectory, press })) : [];
   return (
     <div className="min-h-screen">
@@ -90,6 +93,7 @@ export default async function PlanificadorPage({
                 : "Planificador de medios"}
       />
       <main id="workspace-content" className={`portal-page ${view === "media" ? "portal-page-wide" : "portal-page-planner"}`}>
+        {clientContext&&<CatalogClientSwitcher {...clientContext}/>}
         {view === "media" ? (
           <MediaCatalog broadcast={broadcast} ooh={ooh} radioDirectory={radioDirectory} press={press} section={section} influencers={influencers} health={catalogHealth} shoppingProducts={shoppingProducts} shoppingCart={shoppingCart} shoppingCompanies={companies.filter(c => c.status === "activa" && canWorkspaceRole(c, "campaign:create")).map(c => ({ id: c.id, name: c.name }))} canPlan={profile.is_platform_admin || companies.some(c=>c.status==="activa"&&canWorkspaceRole(c,"plan"))} canRequest={profile.is_platform_admin || companies.some(c => c.status === "activa" && canWorkspaceRole(c, "campaign:create"))} isAdmin={profile.is_platform_admin} purchaseReferences={purchaseReferences} />
         ) : view === "plans" ? (

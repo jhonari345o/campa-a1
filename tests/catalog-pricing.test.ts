@@ -29,3 +29,8 @@ test("radio seconds, spot counts, press insertions and digital budgets stay dist
  assert.equal(totals.knownSubtotalCents,118000);assert.equal(totals.unavailable,0);
  const sanitized=scopeCatalogProducts(products,[],"2026-10-31",false);assert.equal(sanitized.find(p=>p.key===thirty.key)!.priceCents,null);assert.equal(sanitized.find(p=>p.key===digital.key)!.priceCents,100);
 });
+test('undated references remain visible without becoming live quotes or package budgets',()=>{
+ const p={...base,key:'ooh:workspace:reference',referenceOnly:true,referenceLabel:'Referencia sin vigencia declarada',source:{workspaceProductId:'reference'}};
+ const [row]=scopeCatalogProducts([p],[{...rate,productKey:p.key}], '2026-10-20',false);
+ assert.equal(row.priceCents,null);assert.equal(row.referencePriceCents,rate.priceCents);assert.equal(row.source.agreementId,undefined);assert.equal(row.taxIncluded,true);
+});

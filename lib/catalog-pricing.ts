@@ -6,13 +6,13 @@ export function scopeCatalogProducts(products: CatalogProduct[], rates: AgreedCa
   if (admin) return products;
   return products.map(p => {
     const matching = rates.filter(r => r.productKey === p.key && r.validFrom <= day && r.validTo >= day && Number.isSafeInteger(r.priceCents) && r.priceCents >= 0);
-    const rate = matching.length === 1 ? matching[0] : null;
+    const rate = !p.referenceOnly && matching.length === 1 ? matching[0] : null;
     const history = p.source.workspaceProductId ? rates.filter(r=>r.productKey===p.key&&Number.isSafeInteger(r.priceCents)&&r.priceCents>=0) : [];
     const reference = !rate && history.length===1 ? history[0] : null;
     // Source IDs are sufficient to resolve an order; raw acquisition rates must never reach a customer.
     const { rate: _privateRate, ...source } = p.source;
     void _privateRate;
-    return { ...p, source: { ...source, ...(rate ? { agreementId: rate.agreementId } : {}) }, priceCents: p.kind === "digital" && !p.source.workspaceProductId ? 100 : rate?.priceCents ?? null, taxIncluded: rate?.taxIncluded ?? null,
+    return { ...p, source: { ...source, ...(rate ? { agreementId: rate.agreementId } : {}) }, priceCents: p.kind === "digital" && !p.source.workspaceProductId ? 100 : rate?.priceCents ?? null, taxIncluded: rate?.taxIncluded ?? reference?.taxIncluded ?? null,
       referencePriceCents: reference?.priceCents ?? null, conditions: rate?.conditions ?? reference?.conditions ?? "", reference: rate ? `Acuerdo comercial · ${rate.validFrom} – ${rate.validTo}` : reference ? `Acuerdo comercial · ${reference.validFrom} – ${reference.validTo}` : p.kind === "digital" ? "Presupuesto solicitado" : "Tarifa de tu espacio", validFrom: rate?.validFrom ?? reference?.validFrom ?? null, validTo: rate?.validTo ?? reference?.validTo ?? null };
   });
 }

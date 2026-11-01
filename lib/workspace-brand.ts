@@ -3,7 +3,7 @@ export type WorkspaceIdentity = {
   companyId: string;
   name: string;
   role: string;
-  brand: "one" | "lettera" | "ucsg";
+  brand: "one" | "lettera" | "ucsg" | "mobil";
   kind?: PortalKind;
   clientPlanning?:boolean;
 };
@@ -19,5 +19,5 @@ export function workspaceIdentity(
   if (active.length !== 1) return null;
   const company = active[0];
   return { companyId: company.id, name: company.name, role: company.role,
-    brand: company.brand_key === "ucsg" ? "ucsg" : company.brand_key === "lettera" ? "lettera" : "one", kind: portalKind(company.portal_kind), clientPlanning:company.portal_kind==="client"&&company.client_planning_enabled===true };
+    brand: company.brand_key === "mobil" ? "mobil" : company.brand_key === "ucsg" ? "ucsg" : company.brand_key === "lettera" ? "lettera" : "one", kind: portalKind(company.portal_kind), clientPlanning:company.portal_kind==="client"&&company.client_planning_enabled===true };
 }

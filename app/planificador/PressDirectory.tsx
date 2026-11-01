@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import {CatalogPrice,CatalogInlineProduct,CatalogPressQuote} from "./CatalogShopping";
+import {CatalogPrice,CatalogInlineProduct,CatalogPressQuote,CatalogWorkspaceFormats} from "./CatalogShopping";
 import { useEffect, useRef, useState } from "react";
 import { pressEntriesForRegion, pressMatches, pressOfferMatches, pressRegions, pressEditionStatus, type PressCatalog, type PressEntry } from "@/lib/press-catalog";
 import { radioLandscapes } from "@/lib/radio-landscapes";
@@ -50,7 +50,7 @@ function PressProfile({ entry, asOf }: { entry: PressEntry; asOf: string }) {
     <nav className={common.detailNav} aria-label={`Secciones de ${entry.name}`}><a href="#press-coverage">Cobertura</a><a href="#press-formats">Formatos y tarifas</a></nav>
     <section id="press-coverage" className={common.detailSection} aria-labelledby="press-coverage-title"><p className={common.eyebrow}>01 · Territorio</p><h4 id="press-coverage-title">Cobertura y edición</h4><p>{entry.coverage}</p><div className={common.coverageTags}>{entry.regionKeys.map(key => <span key={key}>{pressRegions.find(region => region.key === key)?.label}</span>)}</div></section>
     <section id="press-formats" className={common.detailSection} aria-labelledby="press-formats-title"><p className={common.eyebrow}>02 · Formatos</p><h4 id="press-formats-title">Formatos y tarifas</h4>
-      {!edition ? <div><p className={common.missing}>Selecciona las inserciones para solicitar una propuesta de esta cabecera.</p><CatalogPressQuote id={entry.id}/></div> : <>
+      <CatalogWorkspaceFormats publicationId={entry.id}/>{!edition ? <div><p className={common.missing}>Selecciona las inserciones para solicitar una propuesta de esta cabecera.</p><CatalogPressQuote id={entry.id}/></div> : <>
         <label className={styles.field}>Edición del tarifario<select value={edition.id} onChange={event => { setEditionId(event.target.value); setFamily(""); setMarket(""); setQuery(""); }}>{entry.editions.map(edition => <option key={edition.id} value={edition.id}>{edition.label} · {edition.period}</option>)}</select></label>
         <div className={common.editionHeading}><div><h5>{edition.label}</h5><p>{edition.period} · {edition.taxIncluded === false ? "Sin IVA" : edition.taxIncluded === true ? "IVA incluido" : "Impuestos no declarados"}</p></div><span className={pressEditionStatus(edition, asOf) === "Vigente" ? common.current : common.reference}>{pressEditionStatus(edition, asOf)}</span></div>
         <div className={common.views} role="group" aria-label="Familia de formatos de prensa"><button type="button" aria-pressed={!currentFamily} onClick={() => { setFamily(""); setMarket(""); }}>Todos los formatos</button>{families.map(group => <button key={group} type="button" aria-pressed={currentFamily === group} onClick={() => { setFamily(group); setMarket(""); }}>{group}</button>)}</div>

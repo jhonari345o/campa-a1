@@ -15,10 +15,12 @@ import {
 import { getCategoryResearch } from "@/lib/infomedia-server";
 import { withReferenceYear, type CategoryResearch } from "@/lib/infomedia";
 import { normalizeCoverageBrief, type CoverageSelection } from "@/lib/geographic-coverage";
+import {catalogClientContext} from "@/lib/catalog-client-server";
 import { buildResearchRecommendation } from "@/lib/media-strategy-server";
 import { customizeStrategyPlan } from "@/lib/media-strategy";
 
 export type PlanBrief = {
+  clientId?:string|null;clientName?:string;
   categoryId?: string;
   referenceYear?: number;
   brand: string;
@@ -110,6 +112,8 @@ export async function generarPlan(
     if (!allowed) return { ok: false, error: "Tu rol no permite generar planes." };
   }
 
+  const clientContext=await catalogClientContext();
+  if(clientContext?.clients.length&&!clientContext.selected)return {ok:false,error:"Selecciona el cliente antes de generar su plan."};
   let research: CategoryResearch;
   try {
     research = withReferenceYear(await getCategoryResearch(String(formData.get("categoryId") ?? ""), String(formData.get("brand") ?? ""), { ageRange: String(formData.get("ageRange") ?? ""), sex: String(formData.get("sex") ?? ""), socioeconomic: String(formData.get("socioeconomic") ?? ""), audienceType: String(formData.get("audienceType") ?? ""), geography: String(formData.get("geography") ?? "") }, String(formData.get("competitors") ?? "")), Number(formData.get("referenceYear") ?? 0));
@@ -128,6 +132,7 @@ export async function generarPlan(
   }
   if (budgetUsd !== null && (!Number.isFinite(budgetUsd) || budgetUsd <= 0 || budgetUsd > 10_000_000)) return { ok: false, error: "Define un presupuesto válido." };
   const brief: PlanBrief = {
+    clientId:clientContext?.selected?.id??null,clientName:clientContext?.selected?.name??"",
     categoryId: research.category.id,
     referenceYear: research.referenceYear,
     brand: String(formData.get("brand") ?? "").trim(),

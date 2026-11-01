@@ -42,3 +42,7 @@ test('authorized client planners can prepare plans and requests without acquirin
  assert.equal(canWorkspaceRole(c,'plan'),true);assert.equal(canWorkspaceRole(c,'campaign:create'),true);assert.equal(canWorkspaceRole(c,'campaign:approve'),false);
  assert.equal(canWorkspaceRole({...c,client_planning_enabled:false},'plan'),false);assert.equal(canWorkspaceRole({...c,role:'admin'},'campaign:approve'),false);
 });
+test('Mobil branding follows authenticated membership while unknown identities fall back to One',()=>{
+ assert.equal(workspaceIdentity([{...company,brand_key:'mobil'}],false)?.brand,'mobil');
+ assert.equal(workspaceIdentity([{...company,brand_key:'user-supplied'}],false)?.brand,'one');
+});

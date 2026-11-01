@@ -1,3 +1,4 @@
+import {catalogClientContext} from "./catalog-client-server";
 import {priceCatalogProducts} from "./catalog-access-server";
 import "server-only";
 import { createHash } from "node:crypto";
@@ -68,6 +69,8 @@ async function loadCatalogs(brief:StrategyBrief):Promise<StrategyCatalogs> {
 export async function buildResearchRecommendation(brief:StrategyBrief,research:CategoryResearch,options:{allowAi?:boolean;timeoutMs?:number}={}):Promise<MediaPlan> {
   assertStrategyBrief(brief);
   const profile=await getSessionProfile();if(!profile)throw new Error("AUTH_REQUIRED");
+  const context=await catalogClientContext();
+  if(context?.clients.length&&(!context.selected||brief.clientId!==context.selected.id))throw new Error("CLIENT_CONTEXT_CHANGED");
   const asOf=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Guayaquil",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
   const generatedAt=new Date().toISOString(), model=process.env.BEDROCK_MODEL_ID?.trim()??null;
   let catalogs=EMPTY;
