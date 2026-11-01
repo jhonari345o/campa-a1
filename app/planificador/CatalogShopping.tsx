@@ -2,6 +2,7 @@
 import Image from "next/image";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CART_LIMITS, catalogCartSummary, catalogQuoteSignature, changeCatalogQuantity, type CatalogCart, type CatalogPick, type CatalogProduct } from "@/lib/catalog-shopping";
+import { catalogReferenceDisclosure } from "@/lib/catalog-rate-display";
 import { loadCatalogSelection, saveCatalogSelection, submitCatalogSelection } from "./catalog-actions";
 import styles from "./CatalogShopping.module.css";
 
@@ -94,14 +95,15 @@ export function CatalogShoppingLayout({ active, children }: { active: boolean; c
 }
 export function CatalogProductPicker({ product }: { product: CatalogProduct }) {
   const cart = useShopping(), quantity = cart.items.find(p => p.productKey === product.key)?.quantity ?? 0;
-  if (!cart.canRequest && !cart.isAdmin) return <div className={styles.product}><div className={styles.add}><span className={styles.productTitle}>{product.format}<small>{product.unit}</small></span><strong>{catalogMoney(product.priceCents)}</strong><small>{catalogTax(product.taxIncluded)}</small></div></div>;
+  if (!cart.canRequest && !cart.isAdmin) return <div className={styles.product}><div className={styles.add}><span className={styles.productTitle}>{product.format}<small>{product.unit}</small></span><strong>{catalogMoney(product.priceCents ?? product.referencePriceCents ?? null)}</strong><small>{catalogTax(product.taxIncluded)}</small></div><CatalogRateReference product={product}/></div>;
   return <div className={`${styles.product} ${quantity ? styles.selected : ""}`}>
     <button type="button" className={styles.add} disabled={cart.busy || quantity >= CART_LIMITS.quantity} aria-label={`Agregar ${product.name} · ${product.format} · ${product.provider} · ${product.unit}`} onClick={() => cart.change(product.key, 1)}>
       <span className={styles.productTitle}>{product.format}{product.kind === "ooh" && <small>{product.unit}</small>}</span>
-      <strong>{catalogMoney(product.priceCents)}</strong>
+      <strong>{catalogMoney(product.priceCents ?? product.referencePriceCents ?? null)}</strong>
       <span className={styles.addMark} aria-hidden="true">{quantity ? quantity : "+"}</span>
       <small>{catalogTax(product.taxIncluded)}</small>
     </button>
+    <CatalogRateReference product={product}/>
     {!!quantity && <div className={styles.selectedRow}><span>En tu carrito</span><Quantity product={product} quantity={quantity} /></div>}
   </div>;
 }
@@ -115,7 +117,12 @@ export function CatalogOohProducts({ assetId }: { assetId: string }) {
 }
 export function CatalogPrice({ productKey }: { productKey: string }) {
   const { products } = useShopping(), product = products.find(p => p.key === productKey);
-  return <><strong>{catalogMoney(product?.priceCents ?? null)}</strong><small className="block text-xs text-muted">{product ? catalogTax(product.taxIncluded) : ""}</small></>;
+  return <><strong>{catalogMoney(product?.priceCents ?? product?.referencePriceCents ?? null)}</strong><small className="block text-xs text-muted">{product ? catalogTax(product.taxIncluded) : ""}</small>{product && <CatalogRateReference product={product}/>}</>;
+}
+export function CatalogRateReference({ product, showAmount = false }: { product: CatalogProduct; showAmount?: boolean }) {
+  const reference = catalogReferenceDisclosure(product);
+  if (!reference) return null;
+  return <div className="mt-3 text-xs leading-relaxed"><span className="inline-block rounded-xl border border-border bg-white px-3 py-1 font-bold text-forest">{reference.label}{showAmount ? ` · ${catalogMoney(reference.priceCents)}` : ""}</span><p className="mt-2 text-muted">{reference.confirmation}</p></div>;
 }
 export function CatalogInlineProduct({ productKey, label = "Cantidad" }: { productKey: string; label?: string }) {
   const cart = useShopping(), product = cart.products.find(p => p.key === productKey);
@@ -134,7 +141,7 @@ export function CatalogRadioProducts({ stationId, tariffId, rateIndex }: { stati
 export function CatalogWorkspaceFormats({stationId,publicationId}:{stationId?:string;publicationId?:string}){
  const {products}=useShopping(),rows=products.filter(p=>p.source.workspaceProductId&&((stationId&&p.source.stationId===stationId)||(publicationId&&p.source.publicationId===publicationId)));
  if(!rows.length)return null;
- return <section className="my-5 grid gap-4"><h5 className="text-lg font-black">Formatos de tu cuenta</h5>{rows.map(p=><article key={p.key} className="rounded-xl border border-border bg-fog p-4"><h6 className="font-black">{p.name}</h6><p className="mt-2 text-sm">{p.format} · {p.location}</p><p className="mt-3 text-xl font-black">{catalogMoney(p.priceCents??p.referencePriceCents??null)}</p><p className="text-sm text-muted">{p.unit}{p.priceCents==null&&p.referencePriceCents!=null?' · Referencia':''}</p><p className="mt-2 text-xs text-muted">{p.referenceLabel||(p.validFrom&&p.validTo?`${p.validFrom} – ${p.validTo}`:p.reference)}</p>{p.conditions&&<p className="mt-2 text-sm">{p.conditions}</p>}<CatalogInlineProduct productKey={p.key}/></article>)}</section>;
+ return <section className="my-5 grid gap-4"><h5 className="text-lg font-black">Formatos de tu cuenta</h5>{rows.map(p=><article key={p.key} className="rounded-xl border border-border bg-fog p-4"><h6 className="font-black">{p.name}</h6><p className="mt-2 text-sm">{p.format} · {p.location}</p><p className="mt-3 text-xl font-black">{catalogMoney(p.priceCents??p.referencePriceCents??null)}</p><p className="text-sm text-muted">{p.unit}</p><CatalogRateReference product={p}/><p className="mt-2 text-xs text-muted">{p.referenceLabel||(p.validFrom&&p.validTo?`${p.validFrom} – ${p.validTo}`:p.reference)}</p>{p.conditions&&<p className="mt-2 text-sm">{p.conditions}</p>}<CatalogInlineProduct productKey={p.key}/></article>)}</section>;
 }
 export function CatalogPressQuote({ id }: { id: string }) { return <CatalogInlineProduct productKey={`press:${id}:quote`} label="Inserciones"/>; }
 export function CatalogDigitalBudget({ slug }: { slug: string }) { return <div className={styles.radioProduct}><p className="text-sm font-bold">Presupuesto para tu campaña</p><CatalogInlineProduct productKey={`digital:${slug}`} label="Inversión USD"/></div>; }
@@ -156,6 +163,7 @@ function CartContents({ compact = false }: { compact?: boolean }) {
     {!summary.lines.length ? <div className={styles.empty}><CartIcon /><h4>Elige tus medios</h4><p>Agrega cuñas, espacios y formatos de todo el catálogo.</p></div> : <div className={styles.cartLines}>{summary.lines.map(line => <article key={line.pick.productKey} className={styles.cartLine}>
       <div className={styles.lineHeading}>{line.product?.image && <Image src={line.product.image} alt="" width={48} height={48} unoptimized className={styles.thumbnail} />}<div><strong>{line.product?.provider ?? "Producto no disponible"}</strong><p>{line.product?.name}</p><small>{line.product?.format}{line.product?.kind === "ooh" ? ` · ${line.product.unit}` : ""}</small></div><button type="button" disabled={cart.busy} onClick={() => cart.remove(line.pick.productKey)} aria-label={`Quitar ${line.product?.name ?? "producto"} de ${line.product?.provider ?? "catálogo"}`}>×</button></div>
       {line.product && <><div className={styles.linePrice}><span>{catalogMoney(line.product.priceCents)} × {line.pick.quantity}</span><strong>{catalogMoney(line.subtotalCents)}</strong></div><div className={styles.lineControls}><small>{catalogTax(line.product.taxIncluded)}</small><Quantity product={line.product} quantity={line.pick.quantity} /></div></>}
+      {line.product && <CatalogRateReference product={line.product} showAmount/>}
     </article>)}</div>}
     {summary.lines.length > 0 && <div className={styles.total}><span>{summary.totalLabel}</span><strong>{catalogMoney(summary.knownSubtotalCents)}</strong>{summary.pendingPrice > 0 && <small>{summary.pendingPrice} {summary.pendingPrice === 1 ? "producto requiere" : "productos requieren"} cotización</small>}</div>}
     <div className={styles.cartFooter}><span className={styles.saveState} role="status">{cart.saving ? "Guardando selección…" : cart.error ? "Revisa el guardado de tu selección" : summary.lines.length ? "Selección guardada en tu cuenta" : "Selección privada"}</span>

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { scopeCatalogProducts, type AgreedCatalogRate } from "../lib/catalog-pricing";
+import { catalogReferenceDisclosure } from "../lib/catalog-rate-display";
 import { catalogCartSummary, catalogProducts, catalogQuoteSignature, type CatalogProduct } from "../lib/catalog-shopping";
 import type { BroadcastCatalog } from "../lib/broadcast-catalog";
 import type { RadioDirectoryCatalog } from "../lib/radio-directory";
@@ -33,4 +34,22 @@ test('undated references remain visible without becoming live quotes or package 
  const p={...base,key:'ooh:workspace:reference',referenceOnly:true,referenceLabel:'Referencia sin vigencia declarada',source:{workspaceProductId:'reference'}};
  const [row]=scopeCatalogProducts([p],[{...rate,productKey:p.key}], '2026-10-20',false);
  assert.equal(row.priceCents,null);assert.equal(row.referencePriceCents,rate.priceCents);assert.equal(row.source.agreementId,undefined);assert.equal(row.taxIncluded,true);
+ assert.equal(catalogReferenceDisclosure(row)?.label,"Última tarifa negociada");
+ const cart=catalogCartSummary([{productKey:row.key,quantity:30}],[row]);
+ assert.equal(cart.totalCents,null);assert.equal(cart.knownSubtotalCents,0);assert.equal(cart.pendingPrice,1);
+});
+test("explicit agreement expiry remains visible as a period tariff and cannot authorize a purchase",()=>{
+ const p={...base,source:{workspaceProductId:"dated-product"}};
+ const [row]=scopeCatalogProducts([p],[rate],"2026-11-01",false);
+ assert.equal(row.validFrom,"2026-10-01");assert.equal(row.validTo,"2026-10-31");
+ assert.equal(row.priceCents,null);assert.equal(row.source.agreementId,undefined);
+ assert.equal(catalogReferenceDisclosure(row)?.label,"Tarifa del período");
+ assert.equal(catalogCartSummary([{productKey:row.key,quantity:2}],[row]).totalCents,null);
+});
+test("current firm prices and missing references never receive a historical-rate disclosure",()=>{
+ const [active]=scopeCatalogProducts([base],[rate],"2026-10-31",false);
+ const [missing]=scopeCatalogProducts([base],[],"2026-10-31",false);
+ assert.equal(catalogReferenceDisclosure(active),null);assert.equal(catalogReferenceDisclosure(missing),null);
+ const freeReference={...base,priceCents:null,referencePriceCents:0,referenceOnly:true};
+ assert.equal(catalogReferenceDisclosure(freeReference)?.priceCents,0);
 });
