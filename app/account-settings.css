@@ -5,6 +5,7 @@
 .workspace-client-brand > span {font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--signal-dark);}
 .workspace-client-brand > strong {font-size:13px;color:var(--forest);}
 .workspace-client-brand-image {width:auto;max-width:142px;height:28px;object-fit:contain;}
+.workspace-client-brand-image.is-lettera {background:#322d2a;border-radius:6px;padding:3px 6px;}
 .account-controls {display:flex;align-items:center;gap:12px;}
 .account-avatar {display:block;flex:none;border-radius:27%;}
 .account-settings-gear {display:grid;place-items:center;width:44px;height:44px;flex:none;border:1px solid rgb(var(--color-concrete));border-radius:14px;background:#fff;color:#234937;transition:background .15s,transform .15s;}
@@ -92,6 +93,7 @@
  .portal-topbar-account {gap:0;}.account-controls {gap:3px;}.account-settings-gear {border:0;width:44px;height:44px;}.account-settings-gear svg {width:22px;height:22px;}
  .account-controls .portal-account-menu summary {min-width:40px;}.account-controls .portal-account-menu summary i {display:none;}.account-controls .account-avatar {width:32px;height:32px;}
  .portal-topbar .workspace-client-brand {position:absolute;right:14px;bottom:7px;min-width:0;max-width:100px;}.portal-topbar .workspace-client-brand > span {display:none;}.portal-topbar .workspace-client-brand-image {height:18px;max-width:85px;}.portal-topbar .workspace-client-brand > strong {font-size:10px;}
+ .portal-topbar .workspace-client-brand-image.is-lettera {height:22px;padding:2px 5px;}
  .activation-brands {gap:12px;}.activation-brands > a {font-size:15px;}.activation-brands .workspace-client-brand-image {height:20px;max-width:80px;}
  .account-settings-page {padding-top:25px!important;}.settings-page-heading {gap:13px;}.settings-heading-icon {width:52px;height:52px;border-radius:16px;}.settings-heading-icon svg {width:27px;height:27px;}.settings-page-heading > div > span {font-size:12px;}
  .settings-card {padding:20px;border-radius:20px;}.settings-avatar-grid {gap:8px;}.settings-avatar-option {min-height:125px;padding:12px 5px;}.settings-avatar-option svg {width:55px;height:55px;}.settings-avatar-option > span {font-size:10px;}
