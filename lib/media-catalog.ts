@@ -34,7 +34,7 @@ export type RadioStation = {
   imagePath: string | null;
 };
 
-export type InfluencerRate = { format: string; amountUsd: number };
+export type InfluencerRate = { id?: string; format: string; amountUsd: number; taxIncluded?: boolean; conditions?: string };
 export type InfluencerProfile = {
   id: string;
   slug: string;

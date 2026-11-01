@@ -23,6 +23,8 @@ import { MediaCatalog } from "./MediaCatalog";
 import { PlanForm } from "./PlanForm";
 import { PlanVersions } from "./PlanVersions";
 import { SavedPlans } from "./SavedPlans";
+import { catalogProducts } from "@/lib/catalog-shopping";
+import { readCatalogCart, readOohPurchaseReferences } from "@/lib/catalog-shopping-server";
 
 export const metadata = { title: "Planificador de medios" };
 
@@ -52,7 +54,7 @@ export default async function PlanificadorPage({
   const categoryCatalog = view === "planner" || view === "diy" ? await getInfomediaCatalog() : { categories: [] };
   const catalogNeeded = view === "media" || view === "diy";
   const selectedPlanNeeded = (view === "planner" || view === "diy" || view === "versions") && Boolean(params.plan);
-  const [influencers, plans, selectedPlan, versions, oohLocations, collaboration, catalogHealth, broadcast, ooh, radioDirectory, press] = await Promise.all([
+  const [influencers, plans, selectedPlan, versions, oohLocations, collaboration, catalogHealth, broadcast, ooh, radioDirectory, press, shoppingCart, purchaseReferences] = await Promise.all([
     catalogNeeded ? getInfluencerCatalog() : Promise.resolve([]),
     view === "plans" ? getMySavedPlans(profile.id) : Promise.resolve([]),
     selectedPlanNeeded ? getMySavedPlan(profile.id, params.plan!) : Promise.resolve(null),
@@ -61,9 +63,11 @@ export default async function PlanificadorPage({
     view === "versions" && params.plan ? getPlanCollaboration(profile.id, params.plan) : Promise.resolve({ comments: [], approvals: [] }),
     view === "media" && section !== "tv" && section !== "radio" && section !== "press" ? getCatalogHealth() : Promise.resolve(null),
     catalogNeeded ? getBroadcastCatalog() : Promise.resolve({ sources: [], tv: [], radio: [] }),
-    view === "diy" || (view === "media" && section === "ooh") ? getOohCatalog() : Promise.resolve({ assets: [] }),
+    view === "diy" || view === "media" ? getOohCatalog() : Promise.resolve({ assets: [] }),
     view === "media" && section === "radio" ? getRadioDirectory() : Promise.resolve({ stations: [] }),
     view === "diy" || (view === "media" && section === "press") ? getPressCatalog() : Promise.resolve({ entries: [] }),
+    view === "media" ? readCatalogCart() : Promise.resolve({ version: 0, items: [] }),
+    view === "media" && section === "ooh" && profile.is_platform_admin ? readOohPurchaseReferences() : Promise.resolve([]),
   ]);
 
   return (
@@ -82,7 +86,7 @@ export default async function PlanificadorPage({
       />
       <main id="workspace-content" className={`portal-page ${view === "media" ? "portal-page-wide" : "portal-page-planner"}`}>
         {view === "media" ? (
-          <MediaCatalog broadcast={broadcast} ooh={ooh} radioDirectory={radioDirectory} press={press} section={section} influencers={influencers} health={catalogHealth} />
+          <MediaCatalog broadcast={broadcast} ooh={ooh} radioDirectory={radioDirectory} press={press} section={section} influencers={influencers} health={catalogHealth} shoppingProducts={catalogProducts(influencers, ooh)} shoppingCart={shoppingCart} shoppingCompanies={companies.filter(c => c.status === "activa" && canCompanyRole(c.role, "campaign:create")).map(c => ({ id: c.id, name: c.name }))} canRequest={profile.is_platform_admin || companies.some(c => c.status === "activa" && canCompanyRole(c.role, "campaign:create"))} isAdmin={profile.is_platform_admin} purchaseReferences={purchaseReferences} />
         ) : view === "plans" ? (
           <SavedPlans plans={plans} />
         ) : view === "diy" ? (

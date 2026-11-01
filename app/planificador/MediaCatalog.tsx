@@ -24,6 +24,9 @@ import { RadioDirectoryPanel } from "./RadioDirectory";
 import { PressDirectoryPanel } from "./PressDirectory";
 import type { PressCatalog } from "@/lib/press-catalog";
 import type { RadioDirectoryCatalog } from "@/lib/radio-directory";
+import { CatalogProfileProducts, CatalogShoppingLayout, CatalogShoppingProvider, type ShoppingCompany } from "./CatalogShopping";
+import type { CatalogCart, CatalogProduct } from "@/lib/catalog-shopping";
+import type { OohPurchaseReference } from "@/lib/catalog-shopping-server";
 
 export function MediaCatalog({
   broadcast,
@@ -33,6 +36,12 @@ export function MediaCatalog({
   ooh,
   radioDirectory,
   press,
+  shoppingProducts,
+  shoppingCart,
+  shoppingCompanies,
+  canRequest,
+  isAdmin,
+  purchaseReferences,
 }: {
   broadcast: BroadcastCatalog;
   section: CatalogSection;
@@ -41,16 +50,21 @@ export function MediaCatalog({
   ooh: OohCatalog;
   radioDirectory: RadioDirectoryCatalog;
   press: PressCatalog;
+  shoppingProducts: CatalogProduct[];
+  shoppingCart: CatalogCart;
+  shoppingCompanies: ShoppingCompany[];
+  canRequest: boolean;
+  isAdmin: boolean;
+  purchaseReferences: OohPurchaseReference[];
 }) {
   return (
-    <div className="media-portal-shell">
+    <CatalogShoppingProvider products={shoppingProducts} cart={shoppingCart} companies={shoppingCompanies} canRequest={canRequest} isAdmin={isAdmin}><div className="media-portal-shell">
       <header className="media-portal-header">
         <div className="media-portal-header-copy">
           <p>Medios</p>
-          <h1>Directorio para construir tu plan</h1>
+          <h1>{section === "influencers" || section === "ooh" ? "Elige medios, arma tu compra." : "Directorio para construir tu plan"}</h1>
           <p className="media-portal-header-description">
-              Explora canales, emisoras, proveedores, cabeceras, plataformas y creadores antes
-              de armar una recomendación multimedios.
+              {section === "influencers" || section === "ooh" ? "Explora el catálogo, agrega productos y cantidades a tu carrito y prepara una solicitud independiente." : "Explora canales, emisoras, proveedores, cabeceras, plataformas y creadores antes de armar una recomendación multimedios."}
           </p>
           <div className="media-portal-header-legend" aria-label="Estados de la información del catálogo">
             <Status status="cotizable" />
@@ -83,19 +97,19 @@ export function MediaCatalog({
         ))}
       </nav>
 
-      <div className="media-portal-panel" role="tabpanel">
+      <CatalogShoppingLayout active={section === "influencers" || section === "ooh"}><div className="media-portal-panel" role="tabpanel">
         {section === "digital" && <DigitalSection />}
         {section === "influencers" && <InfluencerSection profiles={influencers} />}
         {section === "radio" && <RadioDirectoryPanel directory={radioDirectory} broadcast={broadcast} />}
         {section === "tv" && <BroadcastCatalogPanel kind="tv" catalog={broadcast} />}
         {section === "ooh" && (
-          <OohCatalogPanel catalog={ooh} />
+          <OohCatalogPanel catalog={ooh} purchaseReferences={purchaseReferences} />
         )}
         {section === "press" && (
           <PressDirectoryPanel catalog={press} />
         )}
-      </div>
-    </div>
+      </div></CatalogShoppingLayout>
+    </div></CatalogShoppingProvider>
   );
 }
 
@@ -152,8 +166,8 @@ function InfluencerSection({ profiles }: { profiles: InfluencerProfile[] }) {
       <SectionHeading
         eyebrow="Influenciadores"
         title="Encuentra el perfil desde su territorio creativo"
-        description="Compara métricas históricas y formatos comerciales. Cada condición se reconfirma antes de pautar."
-        count={`${profiles.length || 39} perfiles`}
+        description="Elige reels, stories y otros entregables. Pulsa cada producto para agregarlo y ajusta su cantidad."
+        count={`${profiles.length} perfiles`}
       />
       <div className="mt-6 grid gap-3 sm:grid-cols-3" role="group" aria-label="Categorías de influenciadores">
         {([
@@ -186,10 +200,10 @@ function InfluencerSection({ profiles }: { profiles: InfluencerProfile[] }) {
         <span className="rounded-xl bg-forest px-4 py-3 text-sm font-black text-white">{matches.length} perfiles</span>
       </div>
       {profiles.length === 0 ? (
-        <EmptyData message="La estructura está lista. Aplica la migración 0008 y carga el SQL privado del catálogo para mostrar los 39 perfiles." />
+        <EmptyData message="No hay perfiles disponibles en este momento. Vuelve a intentar más tarde." />
       ) : (
         <>
-          <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-6 grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,290px),1fr))" }}>
             {shown.map((profile) => <InfluencerCard key={profile.id} profile={profile} />)}
           </div>
           {!expanded && matches.length > shown.length && (
@@ -238,17 +252,10 @@ function InfluencerCard({ profile }: { profile: InfluencerProfile }) {
       </dl>
       <div className="mt-5 border-t border-white/15 pt-4">
         <div className="flex items-center justify-between gap-2">
-          <strong className="text-sm">Tarifas referenciales</strong>
-          <span className="rounded-full bg-[#c8ffc5] px-2 py-1 text-[9px] font-black uppercase text-forest">Sin IVA</span>
+          <strong className="text-sm">Elige tus productos</strong>
+          <span className="rounded-full bg-[#c8ffc5] px-2 py-1 text-[9px] font-black uppercase text-forest">Agregar al carrito</span>
         </div>
-        <dl className="mt-3 grid grid-cols-2 gap-2">
-          {profile.rates.map((rate) => (
-            <div key={rate.format} className="rounded-xl border border-white/15 bg-white/10 p-3">
-              <dt className="text-[9px] font-black uppercase text-white/60">{rate.format}</dt>
-              <dd className="mt-1 font-black">{money(rate.amountUsd)}</dd>
-            </div>
-          ))}
-        </dl>
+        <CatalogProfileProducts profileId={profile.id} />
       </div>
       <p className="mt-4 text-[10px] text-white/55">Vigencia, disponibilidad y derecho de pauta por reconfirmar.</p>
     </article>
@@ -283,4 +290,3 @@ function initials(name: string) { return name.split(/\s+/).filter(Boolean).slice
 
 function compact(value: number | null) { return value == null ? "Por confirmar" : new Intl.NumberFormat("es-EC", { notation: "compact", maximumFractionDigits: 1 }).format(value); }
 function percent(value: number | null) { return value == null ? "Por confirmar" : `${new Intl.NumberFormat("es-EC", { maximumFractionDigits: 2 }).format(value)}%`; }
-function money(value: number) { return new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value); }
