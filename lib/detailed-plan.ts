@@ -8,6 +8,7 @@ import {
   PRESS_OUTLETS,
 } from "@/lib/media-catalog";
 import { mediaGroupForLabel, type MediaGroup } from "@/lib/media-groups";
+import { mediaGroupLabel } from "@/lib/plan-optimizer";
 import type { PlanAnalysisInput } from "@/lib/plan-analysis";
 import type { MediaPlan, PlanRow } from "@/lib/planner";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -35,7 +36,7 @@ export type OohGeoRecommendation = {
   mapUrl: string;
   streetViewUrl: string;
   locationStatus: "inventory" | "zone_candidate";
-  fitScore: number;
+  fitScore: number | null;
   audienceFit: string;
   priceFit: string;
   trafficEvidence: string;
@@ -117,6 +118,7 @@ export async function buildDetailedMediaRecommendation(
   plan: MediaPlan,
   timeoutMs = 18_000,
 ): Promise<DetailedMediaRecommendation> {
+  if (plan.strategy) return strategyExecutions(brief, plan);
   const selectedGroups = new Set(plan.plan.map((row) => mediaGroupForLabel(row.label)).filter(Boolean));
   const checks = [
     "Los presupuestos por ejecución conservan el total recomendado para cada medio.",
@@ -145,6 +147,32 @@ export async function buildDetailedMediaRecommendation(
     const aiNarrative = await buildAiNarrative(brief, channelPlans, live.context, signal);
     return { ...available, engine: aiNarrative ? "datos+ia" : "datos", aiNarrative };
   }, () => available, timeoutMs);
+}
+
+/** A source-backed planning allocation is not an order or a predicted result. */
+function strategyExecutions(brief: PlanAnalysisInput, plan: MediaPlan): DetailedMediaRecommendation {
+  const strategy = plan.strategy!;
+  return {
+    engine: strategy.aiState === "validated" || strategy.aiState === "cached" ? "datos+ia" : "datos",
+    aiNarrative: !strategy.customized && (strategy.aiState === "validated" || strategy.aiState === "cached") ? strategy.summary : null,
+    liveSources: [],
+    checks: ["Las fuentes conservan su plaza, público, período y unidad originales.", "Las cantidades calculadas con tarifa compatible no superan la asignación del medio.", "Las partidas sin una tarifa compatible se mantienen como presupuesto pendiente de cotización."],
+    channelPlans: plan.plan.map(row => {
+      const kind = mediaGroupForLabel(row.label)!;
+      if (kind === "digital") return { kind, label: row.label, budgetUsd: row.amount, objective: channelObjective(kind,brief.objective), rationale: row.rationale ?? "", executions: digitalExecutions(row,brief) };
+      const allocation = strategy.allocations.find(a=>a.medium===kind), candidate=allocation?.candidate;
+      const sourceText = candidate?.sourceIds.map(id=>strategy.sources.find(s=>s.id===id)).filter(Boolean).map(s=>`${s!.label} · ${s!.period} · ${s!.market} · ${s!.target}`).join("; ");
+      const execution:DetailedExecution = candidate ? {
+        id:candidate.id,provider:candidate.provider,product:candidate.product,location:candidate.market,schedule:candidate.period,budgetUsd:row.amount,
+        referenceUnitPriceUsd:candidate.unitPriceUsd,estimatedUnits:allocation?.units??null,unit:candidate.unit,
+        status:candidate.unitPriceUsd!=null&&candidate.sourceUse==="comparable"&&(allocation?.units??0)>0?"cotizable":"validacion",
+        evidence:[sourceText,candidate.metrics.map(m=>`${m.label}: ${m.value} ${m.unit}`).join(" · "),candidate.note].filter(Boolean).join(". "),
+        nextStep:candidate.unitPriceUsd!=null?"Revisar la combinación, frecuencia y disponibilidad antes de emitir la orden.":"Completar una cotización con vigencia y plaza compatibles antes de cuantificar o comprar.",
+        ...(candidate.geo?{geo:{...candidate.geo,...googleMapUrls(candidate.geo.latitude,candidate.geo.longitude,""),locationStatus:"inventory" as const,fitScore:null,audienceFit:"Composición de audiencia no homologada para este soporte.",priceFit:"La tarifa conserva su unidad original y requiere vigencia para la campaña.",trafficEvidence:"Sin una medición de movilidad o alcance aplicable al brief."}}:{}),
+      } : pendingExecution(kind,`${mediaGroupLabel(kind)} por completar`,brief.geography,row.amount,"No hay un producto homologado para todos los filtros del brief.");
+      return {kind,label:row.label,budgetUsd:row.amount,objective:channelObjective(kind,brief.objective),rationale:row.rationale??"",executions:[execution]};
+    }),
+  };
 }
 
 function buildChannelPlan(

@@ -34,9 +34,9 @@ export async function getCategoryBrandPage(categoryId: string, year: number, que
   if (data.data_through !== dataThrough) throw new Error("RESEARCH_CUT_CHANGED");
   return projectBrandPage(data.payload, year, query, page);
 }
-export async function getCategoryResearch(categoryId: string, focusBrand = "", target?: TgiTarget): Promise<CategoryResearch> {
+export async function getCategoryResearch(categoryId: string, focusBrand = "", target?: TgiTarget, competitors = ""): Promise<CategoryResearch> {
   const { category, data, db } = await readAuthorizedCategory(categoryId);
-  const research = projectResearch(category, data.payload, data.data_through, focusBrand.slice(0, 160));
+  const research = projectResearch(category, data.payload, data.data_through, focusBrand.slice(0, 160), competitors.slice(0,4000).split(/[,;\n]+/).map(s=>s.trim()).filter(Boolean));
   if (!research.periods.length) throw new Error("RESEARCH_UNAVAILABLE");
   if (target) {
     const { data: study } = await db.from("tgi_research").select("payload").eq("id", "ecuador-2025-r1").eq("active", true).maybeSingle();

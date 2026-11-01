@@ -15,6 +15,7 @@ export function mediaGroupForLabel(label: string): MediaGroup | null {
     "spotify",
     "pinterest",
     "programmatic",
+    "retail media",
     "buscador",
     "redes sociales",
     "streaming",

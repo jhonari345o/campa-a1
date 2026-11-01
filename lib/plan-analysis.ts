@@ -17,6 +17,7 @@ export type AnalysisSignal = {
 };
 
 export type PlanAnalysis = {
+  strategy?: import("./media-strategy").StrategyReport;
   category: string;
   profileLabel: string;
   periodLabel: string;
@@ -226,7 +227,13 @@ export function buildPlanAnalysis(input: PlanAnalysisInput, plan: MediaPlan): Pl
       ].filter((item): item is string => Boolean(item))
     : [];
 
+  if (plan.strategy) {
+    findings[0] = { label:"Categoría y competencia", value:`${plan.strategy.competition.length} marcas observadas`, detail:"La comparación conserva el corte original de inversión estimada. Las marcas declaradas se buscan por coincidencia exacta dentro de la categoría.", status:plan.strategy.competition.length?"listo":"por_validar" };
+    findings[2] = { label:"Presupuesto", value:input.budgetUsd?money(input.budgetUsd):"Por definir", detail:plan.strategy.reserveUsd?"Hay presupuesto sin asignar hasta completar las fuentes o revisar la combinación.":"El total se conserva al centavo. Cada partida distingue tarifa compatible, cotización pendiente o presupuesto de plataforma.", status:!input.budgetUsd||plan.strategy.reserveUsd?"requiere_preparacion":plan.strategy.allocations.some(a=>a.readiness==="needs_quote")?"por_validar":"listo" };
+  }
+
   return {
+    ...(plan.strategy ? { strategy: plan.strategy } : {}),
     category: input.keyword,
     profileLabel: plan.profileLabel,
     periodLabel: plan.referencePeriod || "Referencia histórica del plan guardado",
@@ -238,7 +245,7 @@ export function buildPlanAnalysis(input: PlanAnalysisInput, plan: MediaPlan): Pl
     findings,
     signals,
     guardrails: [
-      ...(plan.unobservedMedia?.length ? [`Sin inversión observada de esta categoría para ${plan.unobservedMedia.join(", ")}. Solo se proponen automáticamente cuando existe un indicador de consumo TGI; los demás permanecen para evaluación manual.`] : []),
+      ...(plan.unobservedMedia?.length ? [`Sin inversión observada de esta categoría para ${plan.unobservedMedia.join(", ")}. ${plan.strategy?"Las opciones documentadas se presentan como alternativas, con su compatibilidad y cotización indicadas.":"Solo se proponen automáticamente cuando existe un indicador de consumo TGI; los demás permanecen para evaluación manual."}`] : []),
       "La recomendación pondera evidencia de categoría, consumo de medios y objetivo. Los pesos son criterios de planificación; el consumo TGI no es alcance ni afinidad de compradores de la categoría.",
       "Cada medio conserva su KPI válido; no se suman TRP, rankings, impresiones, circulación u OTS para inventar alcance único.",
       "Ticket, margen, capacidad y portafolio orientan la priorización, pero no constituyen una promesa de ROI.",

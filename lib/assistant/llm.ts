@@ -65,13 +65,14 @@ export async function chatCompletion(
 }
 
 // ---- Amazon Bedrock (Converse API: unificada para Llama/Mistral/Nova) ----
-export async function bedrockChat(messages: LlmMessage[], opts?: { maxTokens?: number; temperature?: number; signal?: AbortSignal }) {
+export async function bedrockChat(messages: LlmMessage[], opts?: { maxTokens?: number; temperature?: number; signal?: AbortSignal; maxAttempts?: number }) {
   const region = process.env.BEDROCK_REGION || "us-east-1";
   const accessKeyId = process.env.BEDROCK_ACCESS_KEY_ID;
   const secretAccessKey = process.env.BEDROCK_SECRET_ACCESS_KEY;
 
   const client = new BedrockRuntimeClient({
     region,
+    ...(opts?.maxAttempts ? { maxAttempts: opts.maxAttempts } : {}),
     ...(accessKeyId && secretAccessKey ? { credentials: { accessKeyId, secretAccessKey } } : {}),
   });
 
@@ -109,7 +110,8 @@ export async function bedrockChat(messages: LlmMessage[], opts?: { maxTokens?: n
     { abortSignal: opts?.signal ? AbortSignal.any([opts.signal, AbortSignal.timeout(18000)]) : AbortSignal.timeout(18000) },
   );
 
-  const reply = res.output?.message?.content?.[0]?.text;
+  if (res.stopReason === "max_tokens") throw new Error("BEDROCK_OUTPUT_TRUNCATED");
+  const reply = res.output?.message?.content?.flatMap(block => block.text ? [block.text] : []).join("\n");
   if (!reply) throw new Error("Bedrock no devolvio texto.");
   return reply.trim();
 }

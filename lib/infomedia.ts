@@ -10,6 +10,7 @@ export type ResearchPeriod = {
   totals: { estimatedInvestment: number; grossInvestment: number; notices: number; activeBrands: number };
   mediaMix: { media: string; estimatedInvestment: number; share: number }[];
   topBrands: ResearchBrand[];
+  declaredBrands?: ResearchBrand[];
   focusBrand: ResearchBrand | null;
   pressureContexts: {
     media: string; market: string; grps: number; activeBrands: number;
@@ -57,9 +58,10 @@ export function projectBrandPage(payload: unknown, year: number, query = "", req
   return { year, periodLabel: text(period.periodLabel), query: query.trim(), page, pageSize, total: rows.length, rows: rows.slice((page - 1) * pageSize, page * pageSize) };
 }
 /** Whitelist and bound the selected category response; never return the private snapshot. */
-export function projectResearch(category: InfomediaCategory, payload: unknown, dataThrough: string, focus = ""): CategoryResearch {
+export function projectResearch(category: InfomediaCategory, payload: unknown, dataThrough: string, focus = "", competitors: string[] = []): CategoryResearch {
   const source = object(payload);
   const focusKey = lookupKey(focus);
+  const competitorKeys = new Set(competitors.slice(0,12).map(lookupKey).filter(Boolean));
   const periods = array(source.periods).slice(0, 10).map((value): ResearchPeriod => {
     const row = object(value), totals = object(row.totals);
     const brands = array(row.brands).map(brand);
@@ -71,6 +73,7 @@ export function projectResearch(category: InfomediaCategory, payload: unknown, d
         return { media: text(item.media), estimatedInvestment: numeric(item.estimatedInvestment), share: numeric(item.share) };
       }),
       topBrands: brands.sort((a, b) => b.estimatedInvestment - a.estimatedInvestment).slice(0, 10),
+      ...(competitorKeys.size ? { declaredBrands: brands.filter(item => competitorKeys.has(lookupKey(item.brand))).slice(0,12) } : {}),
       focusBrand: focusKey ? brands.find((item) => lookupKey(item.brand) === focusKey) ?? null : null,
       pressureContexts: array(row.pressureContexts).slice(0, 12).map((value) => {
         const item = object(value);
