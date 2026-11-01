@@ -1,12 +1,14 @@
 import geography from "./ecuador-geography.json";
+import { projectRadioProfile, type RadioStationProfile } from "./radio-station";
 
 export type RadioRegion = { key: string; label: string };
 export type RadioDirectoryEntry = {
   id: string; name: string; regionKeys: string[]; city: string | null;
   dial: string | null; genres: string[]; description: string; logoPath: string | null;
   reviewedAt: string | null;
+  profile: RadioStationProfile;
 };
-export type RadioDirectoryCatalog = { stations: RadioDirectoryEntry[]; error?: string };
+export type RadioDirectoryCatalog = { stations: RadioDirectoryEntry[]; error?: string; asOfDate?: string };
 
 export const radioRegions: RadioRegion[] = [
   { key: "national", label: "Nacionales" },
@@ -26,7 +28,7 @@ export function radioDirectoryMatches(station: RadioDirectoryEntry, query: strin
   return radioSearchKey(query).split(" ").filter(Boolean).every(term => text.includes(term));
 }
 const text = (value: unknown, max = 180) => typeof value === "string" ? value.trim().slice(0, max) : "";
-/** Only directory fields leave the private table; no tariffs, raw sources or audience estimates. */
+/** Only whitelisted directory/profile fields leave the private table. */
 export function projectRadioDirectory(value: unknown): RadioDirectoryEntry[] {
   if (!Array.isArray(value)) return [];
   const entries = new Map<string, RadioDirectoryEntry>();
@@ -42,6 +44,7 @@ export function projectRadioDirectory(value: unknown): RadioDirectoryEntry[] {
       description: text(row.description, 600),
       logoPath: /^\/providers\/(?:radio\/[a-z0-9-]+\/logo\.(?:png|jpe?g|webp)|catomedia\/catomedia-logo\.png)$/.test(logo) ? logo : null,
       reviewedAt: /^\d{4}-\d{2}-\d{2}$/.test(text(row.reviewed_at)) ? row.reviewed_at : null,
+      profile: projectRadioProfile(row.profile),
     });
   }
   return [...entries.values()];
