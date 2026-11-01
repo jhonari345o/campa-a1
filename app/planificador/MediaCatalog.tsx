@@ -22,6 +22,8 @@ import { BroadcastCatalogPanel } from "./BroadcastCatalog";
 import type { BroadcastCatalog } from "@/lib/broadcast-catalog";
 import type { OohCatalog } from "@/lib/ooh-catalog";
 import { OohCatalogPanel } from "./OohCatalog";
+import { RadioDirectoryPanel } from "./RadioDirectory";
+import type { RadioDirectoryCatalog } from "@/lib/radio-directory";
 
 export function MediaCatalog({
   broadcast,
@@ -29,12 +31,14 @@ export function MediaCatalog({
   influencers,
   health,
   ooh,
+  radioDirectory,
 }: {
   broadcast: BroadcastCatalog;
   section: CatalogSection;
   influencers: InfluencerProfile[];
   health: CatalogHealth | null;
   ooh: OohCatalog;
+  radioDirectory: RadioDirectoryCatalog;
 }) {
   return (
     <div className="media-portal-shell">
@@ -80,7 +84,7 @@ export function MediaCatalog({
       <div className="media-portal-panel" role="tabpanel">
         {section === "digital" && <DigitalSection />}
         {section === "influencers" && <InfluencerSection profiles={influencers} />}
-        {section === "radio" && <BroadcastCatalogPanel kind="radio" catalog={broadcast} />}
+        {section === "radio" && <RadioDirectoryPanel directory={radioDirectory} broadcast={broadcast} />}
         {section === "tv" && <BroadcastCatalogPanel kind="tv" catalog={broadcast} />}
         {section === "ooh" && (
           <OohCatalogPanel catalog={ooh} />

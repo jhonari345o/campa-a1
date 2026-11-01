@@ -1,5 +1,6 @@
 import { getBroadcastCatalog } from "@/lib/broadcast-server";
 import { getOohCatalog } from "@/lib/ooh-server";
+import { getRadioDirectory } from "@/lib/radio-directory-server";
 import { getInfomediaCatalog } from "@/lib/infomedia-server";
 import { getMyCompanies } from "@/lib/company";
 import { canCompanyRole } from "@/lib/permissions";
@@ -50,7 +51,7 @@ export default async function PlanificadorPage({
   const categoryCatalog = view === "planner" || view === "diy" ? await getInfomediaCatalog() : { categories: [] };
   const catalogNeeded = view === "media" || view === "diy";
   const selectedPlanNeeded = (view === "planner" || view === "diy" || view === "versions") && Boolean(params.plan);
-  const [influencers, plans, selectedPlan, versions, oohLocations, collaboration, catalogHealth, broadcast, ooh] = await Promise.all([
+  const [influencers, plans, selectedPlan, versions, oohLocations, collaboration, catalogHealth, broadcast, ooh, radioDirectory] = await Promise.all([
     catalogNeeded ? getInfluencerCatalog() : Promise.resolve([]),
     view === "plans" ? getMySavedPlans(profile.id) : Promise.resolve([]),
     selectedPlanNeeded ? getMySavedPlan(profile.id, params.plan!) : Promise.resolve(null),
@@ -60,6 +61,7 @@ export default async function PlanificadorPage({
     view === "media" && section !== "tv" && section !== "radio" ? getCatalogHealth() : Promise.resolve(null),
     catalogNeeded ? getBroadcastCatalog() : Promise.resolve({ sources: [], tv: [], radio: [] }),
     view === "media" && section === "ooh" ? getOohCatalog() : Promise.resolve({ assets: [] }),
+    view === "media" && section === "radio" ? getRadioDirectory() : Promise.resolve({ stations: [] }),
   ]);
 
   return (
@@ -78,7 +80,7 @@ export default async function PlanificadorPage({
       />
       <main id="workspace-content" className={`portal-page ${view === "media" ? "portal-page-wide" : "portal-page-planner"}`}>
         {view === "media" ? (
-          <MediaCatalog broadcast={broadcast} ooh={ooh} section={section} influencers={influencers} health={catalogHealth} />
+          <MediaCatalog broadcast={broadcast} ooh={ooh} radioDirectory={radioDirectory} section={section} influencers={influencers} health={catalogHealth} />
         ) : view === "plans" ? (
           <SavedPlans plans={plans} />
         ) : view === "diy" ? (
