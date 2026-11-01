@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { ClientReports } from "@/components/ClientReports";
 import { AppHeader } from "@/components/AppHeader";
 import { getSessionProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -25,6 +26,8 @@ type ReportOrder = { id: string; status: string; media_budget_usd: number; creat
 export default async function ReportesPage() {
   const profile = await getSessionProfile();
   if (!profile) redirect("/ingresar");
+  if (!profile.is_platform_admin && profile.workspace?.kind === "provider") redirect("/proveedores");
+  if (!profile.is_platform_admin && profile.workspace?.kind === "client") return <ClientReports profile={profile} />;
   const db = await createClient();
   const [{ data }, { data: orderData }] = await Promise.all([
     db.from("campaign_jobs").select("id, platform, status, created_at, spec").order("created_at", { ascending: false }).limit(100),

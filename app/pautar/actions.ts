@@ -10,7 +10,7 @@ import { createDlocalCheckout, getDlocalCredentials } from "@/lib/payments/dloca
 import { getPagoPluxPublicConfig, getPaymentProvider, type PagoPluxPaybox } from "@/lib/payments/pagoplux";
 import { getMaxMetaBudgetUsd } from "@/lib/ads/config";
 import { isCommercialPaymentsEnabled } from "@/lib/commercial";
-import { canCompanyRole } from "@/lib/permissions";
+import { canWorkspaceRole } from "@/lib/permissions";
 import { LEGAL_VERSIONS } from "@/lib/legal";
 
 export type PautaInput = {
@@ -58,7 +58,7 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
   if (!company || company.status !== "activa") {
     return { ok: false, error: "Solo una cuenta de empresa puede pautar." };
   }
-  if (!canCompanyRole(company.role, "campaign:create")) {
+  if (!canWorkspaceRole(company, "campaign:create")) {
     return { ok: false, error: "Tu rol no permite crear una orden de pauta." };
   }
   if (input.commercialAcceptance !== true) {

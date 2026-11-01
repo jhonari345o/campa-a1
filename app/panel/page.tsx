@@ -1,4 +1,5 @@
 import { WorkspaceWelcome } from "@/components/WorkspaceWelcome";
+import { WorkspaceHome } from "@/components/WorkspaceHome";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
@@ -21,6 +22,8 @@ export default async function PanelPage() {
   const companies = await getMyCompanies(profile.id);
   const teams = await Promise.all(companies.map((c) => getCompanyTeam(c.id)));
   const name = profile.full_name ?? profile.email ?? "Ad Mavericks";
+
+  if (!profile.is_platform_admin && profile.workspace) return <div className="min-h-screen"><AppHeader name={name} isAdmin={false} workspace={profile.workspace} active="panel" /><WorkspaceHome workspace={profile.workspace} name={name} /></div>;
 
   return (
     <div className="min-h-screen">

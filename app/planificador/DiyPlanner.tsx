@@ -281,7 +281,7 @@ function PickList<T>({ items, empty, render }: { items: T[]; empty: string; rend
 function NumberCompact({ value, onChange }: { value: number; onChange: (value: number) => void }) { return <input type="number" min="1" value={value} onChange={(event) => onChange(Math.max(1, Number(event.target.value)))} className="h-10 w-20 rounded-lg border border-border bg-white px-2 text-center text-sm font-black" />; }
 function Remove({ onClick }: { onClick: () => void }) { return <button type="button" onClick={onClick} className="rounded-lg border border-coral/30 px-3 py-2 text-xs font-black text-[#a13b31]">Quitar</button>; }
 function percent(value: number) { return `${Math.round(value * 100)}%`; }
-function money(value: number) { return new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value); }
+function money(value: number | null) { if(value == null) return "Consultar tarifa"; return new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value); }
 function stringValue(value: unknown) { return typeof value === "string" ? value : ""; }
 function numberValue(value: unknown) { const number = Number(value); return Number.isFinite(number) ? number : 0; }
 function arrayOfStrings(value: unknown) { return Array.isArray(value) ? value.map(String).filter(Boolean) : []; }

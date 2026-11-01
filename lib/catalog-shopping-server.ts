@@ -1,3 +1,7 @@
+import { priceCatalogProducts } from "./catalog-access-server";
+import { getBroadcastCatalog } from "./broadcast-server";
+import { getRadioDirectory } from "./radio-directory-server";
+import { getPressCatalog } from "./press-server";
 import "server-only";
 import { createClient } from "./supabase/server";
 import { getInfluencerCatalog } from "./media-workspace";
@@ -6,18 +10,21 @@ import { catalogProducts, normalizeCatalogPicks, type CatalogCart } from "./cata
 
 export async function readCatalogCart(): Promise<CatalogCart> {
   const db = await createClient();
-  const { data, error } = await db.from("catalog_carts").select("version,items").maybeSingle();
+  const { data, error } = await db.rpc("load_catalog_cart");
   if (error) return { version: 0, items: [], error: "El carrito no está disponible en este momento." };
-  try { return { version: Number(data?.version ?? 0), items: normalizeCatalogPicks(data?.items ?? []) }; }
+  try { return { version: Number(data?.version ?? 0), items: normalizeCatalogPicks(data?.items ?? []), expiresAt: data?.expiresAt }; }
   catch { return { version: 0, items: [], error: "No se pudo recuperar la selección guardada." }; }
 }
 export async function readShoppingProducts(items: { productKey: string }[]) {
-  const [profiles, ooh] = await Promise.all([
+  const [profiles, ooh, broadcast, radio, press] = await Promise.all([
     items.some(i => i.productKey.startsWith("creator:")) ? getInfluencerCatalog() : Promise.resolve([]),
     items.some(i => i.productKey.startsWith("ooh:")) ? getOohCatalog() : Promise.resolve({ assets: [] }),
+    items.some(i => i.productKey.startsWith("tv:")) ? getBroadcastCatalog() : Promise.resolve({ sources: [], tv: [], radio: [] }),
+    items.some(i => i.productKey.startsWith("radio:")) ? getRadioDirectory() : Promise.resolve({ stations: [] }),
+    items.some(i => i.productKey.startsWith("press:")) ? getPressCatalog() : Promise.resolve({ entries: [] }),
   ]);
   if ("error" in ooh && ooh.error) throw new Error("CATALOG_UNAVAILABLE");
-  return catalogProducts(profiles, ooh);
+  return priceCatalogProducts(catalogProducts(profiles, ooh, { broadcast, radio, press }));
 }
 export type OohPurchaseReference = {
   id: string; provider_slug: string; asset_id: string | null; location: string; format: string;

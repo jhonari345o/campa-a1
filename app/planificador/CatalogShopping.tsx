@@ -111,19 +111,42 @@ export function CatalogOohProducts({ assetId }: { assetId: string }) {
   const { products } = useShopping();
   return <div className={styles.oohProducts}>{products.filter(p => p.source.assetId === assetId).map(p => <CatalogProductPicker product={p} key={p.key} />)}</div>;
 }
+export function CatalogPrice({ productKey }: { productKey: string }) {
+  const { products } = useShopping(), product = products.find(p => p.key === productKey);
+  return <><strong>{catalogMoney(product?.priceCents ?? null)}</strong><small className="block text-xs text-muted">{product ? catalogTax(product.taxIncluded) : ""}</small></>;
+}
+export function CatalogInlineProduct({ productKey, label = "Cantidad" }: { productKey: string; label?: string }) {
+  const cart = useShopping(), product = cart.products.find(p => p.key === productKey);
+  const [amount, setAmount] = useState("1");
+  if (!product) return null;
+  const quantity = Number(amount), selected = cart.items.find(p => p.productKey === productKey)?.quantity ?? 0;
+  return <div className={styles.inlineProduct}><label>{label}<input type="number" min={1} max={CART_LIMITS.quantity} step={1} value={amount} onChange={e => setAmount(e.target.value)} aria-label={`${label} de ${product.provider} · ${product.name} · ${product.unit}`} /></label><button type="button" disabled={cart.busy || !Number.isInteger(quantity) || quantity < 1 || quantity > CART_LIMITS.quantity} onClick={() => cart.change(productKey, quantity)}>Agregar +</button>{selected > 0 && <span role="status">{selected} en el carrito</span>}</div>;
+}
+export function CatalogRadioProducts({ stationId, tariffId, rateIndex }: { stationId: string; tariffId?: string; rateIndex?: number }) {
+  const { products } = useShopping();
+  const rows = products.filter(p => p.kind === "radio" && p.source.stationId === stationId && p.source.tariffId === tariffId && (rateIndex == null || p.source.rateIndex === rateIndex));
+  const [seconds, setSeconds] = useState(30);
+  const product = rows.find(p => p.source.seconds === seconds) ?? rows[0];
+  return product ? <div className={styles.radioProduct}>{rows.length > 1 && <label>Duración de la cuña<select value={product.source.seconds} onChange={e => setSeconds(Number(e.target.value))}>{rows.map(p => <option key={p.key} value={p.source.seconds}>{p.source.seconds} segundos</option>)}</select></label>}<p>{product.unit}</p><CatalogPrice productKey={product.key}/><CatalogInlineProduct productKey={product.key} label="Cuñas"/></div> : null;
+}
+export function CatalogPressQuote({ id }: { id: string }) { return <CatalogInlineProduct productKey={`press:${id}:quote`} label="Inserciones"/>; }
+export function CatalogDigitalBudget({ slug }: { slug: string }) { return <div className={styles.radioProduct}><p className="text-sm font-bold">Presupuesto para tu campaña</p><CatalogInlineProduct productKey={`digital:${slug}`} label="Inversión USD"/></div>; }
 function Quantity({ product, quantity }: { product: CatalogProduct; quantity: number }) {
   const { change, busy } = useShopping(), name = `${product.name} · ${product.format} · ${product.provider}`;
+  const [input, setInput] = useState(String(quantity));
+  useEffect(() => setInput(String(quantity)), [quantity]);
+  function commit() { const next = Number(input); if (input && Number.isInteger(next) && next >= 0 && next <= CART_LIMITS.quantity) change(product.key, next - quantity); else setInput(String(quantity)); }
   return <div className={styles.quantity} role="group" aria-label={`Cantidad de ${name}`}>
     <button type="button" aria-label={`Reducir ${name}`} disabled={busy} onClick={() => change(product.key, -1)}>−</button>
-    <output aria-label={`Cantidad seleccionada de ${name}`}>{quantity}</output>
+    <input type="number" min={0} max={CART_LIMITS.quantity} step={1} value={input} aria-label={`Cantidad seleccionada de ${name}`} disabled={busy} onChange={e => setInput(e.target.value)} onBlur={commit} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }} />
     <button type="button" aria-label={`Aumentar ${name}`} disabled={busy || quantity >= CART_LIMITS.quantity} onClick={() => change(product.key, 1)}>+</button>
   </div>;
 }
 function CartContents({ compact = false }: { compact?: boolean }) {
   const cart = useShopping(), summary = useMemo(() => catalogCartSummary(cart.items, cart.products), [cart.items, cart.products]);
   return <section className={styles.cart} aria-label="Carrito del catálogo">
-    <header className={styles.cartHeader}><CartIcon /><div><h3>Tu carrito</h3><p>Compras del catálogo</p></div><span>{summary.quantity}</span></header>
-    {!summary.lines.length ? <div className={styles.empty}><CartIcon /><h4>Elige tus productos</h4><p>Agrega formatos de influenciadores o espacios de vía pública.</p></div> : <div className={styles.cartLines}>{summary.lines.map(line => <article key={line.pick.productKey} className={styles.cartLine}>
+    <header className={styles.cartHeader}><CartIcon /><div><h3>Tu carrito</h3><p>Se guarda por dos horas sin cambios</p></div><span>{summary.quantity}</span></header>
+    {!summary.lines.length ? <div className={styles.empty}><CartIcon /><h4>Elige tus medios</h4><p>Agrega cuñas, espacios y formatos de todo el catálogo.</p></div> : <div className={styles.cartLines}>{summary.lines.map(line => <article key={line.pick.productKey} className={styles.cartLine}>
       <div className={styles.lineHeading}>{line.product?.image && <Image src={line.product.image} alt="" width={48} height={48} unoptimized className={styles.thumbnail} />}<div><strong>{line.product?.provider ?? "Producto no disponible"}</strong><p>{line.product?.name}</p><small>{line.product?.format}{line.product?.kind === "ooh" ? ` · ${line.product.unit}` : ""}</small></div><button type="button" disabled={cart.busy} onClick={() => cart.remove(line.pick.productKey)} aria-label={`Quitar ${line.product?.name ?? "producto"} de ${line.product?.provider ?? "catálogo"}`}>×</button></div>
       {line.product && <><div className={styles.linePrice}><span>{catalogMoney(line.product.priceCents)} × {line.pick.quantity}</span><strong>{catalogMoney(line.subtotalCents)}</strong></div><div className={styles.lineControls}><small>{catalogTax(line.product.taxIncluded)}</small><Quantity product={line.product} quantity={line.pick.quantity} /></div></>}
     </article>)}</div>}

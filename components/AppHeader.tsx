@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import type { WorkspaceIdentity } from "@/lib/workspace-brand";
+import { portalCapabilities, PORTAL_LABELS } from "@/lib/portal-access";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Wordmark } from "./Wordmark";
@@ -54,6 +55,8 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
   const close = () => setMenuOpen(false);
   const displayTitle = title ?? PAGE_TITLES[active];
   const initial = (name.trim()[0] || "A").toUpperCase();
+  const kind = workspace?.kind ?? "agency";
+  const capabilities = portalCapabilities(kind, workspace?.role ?? "", isAdmin);
 
   return (
     <>
@@ -65,12 +68,12 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
             ? <Image src="/partners/lettera/lettera-logo.png" width={2048} height={493} alt="Léttera" className="workspace-lettera-logo" priority />
             : <Wordmark one invert className="text-[18px]" />}
         </Link>
-        <span className="portal-private-badge">{workspace ? "Espacio de cliente" : "Beta privada"}</span>
+        <span className="portal-private-badge">{workspace ? PORTAL_LABELS[kind] : "Administración"}</span>
 
         <div className="portal-sidebar-scroll">
           <nav className="portal-nav" aria-label="Creación y gestión">
-            <Link href="/clientes" onClick={close} className={`portal-nav-item ${active === "clientes" ? "is-active" : ""}`}><span>↗</span><strong>Clientes y campañas</strong></Link>
-            {CREATION.map((item) => {
+            {capabilities.reports && <Link href={kind === "client" ? "/reportes" : "/clientes"} onClick={close} className={`portal-nav-item ${active === "clientes" ? "is-active" : ""}`}><span>↗</span><strong>{kind === "client" ? "Mis campañas" : "Clientes y campañas"}</strong></Link>}
+            {CREATION.filter(item => item.id === "panel" || capabilities.plan).map((item) => {
               const showingSavedPlans = Boolean(title?.toLocaleLowerCase("es").includes("guardado"));
               const selected = item.id === "plans"
                 ? showingSavedPlans
@@ -83,11 +86,13 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
                 </Link>
               );
             })}
-            <Link href="/campanas" onClick={close} className={`portal-nav-item ${active === "campanas" ? "is-active" : ""}`}><span>06</span><strong>Órdenes</strong></Link>
-            {workspace?.brand !== "lettera" && <ReportNavigationItem active={active === "reportes"} isAdmin={isAdmin} onClick={close} />}
+            {kind === "agency" && capabilities.reports && <Link href="/campanas" onClick={close} className={`portal-nav-item ${active === "campanas" ? "is-active" : ""}`}><span>06</span><strong>Órdenes</strong></Link>}
+            {kind === "client" ? <Link href="/reportes" onClick={close} className={`portal-nav-item ${active === "reportes" ? "is-active" : ""}`}><span>↗</span><strong>Reportes</strong></Link> : capabilities.reports && workspace?.brand !== "lettera" && <ReportNavigationItem active={active === "reportes"} isAdmin={isAdmin} onClick={close} />}
+            {kind === "provider" && <Link href="/proveedores" onClick={close} className="portal-nav-item"><span>↗</span><strong>Mis medios y novedades</strong></Link>}
+            {kind === "agency" && capabilities.request && <Link href="/creditos" onClick={close} className="portal-nav-item"><span>◎</span><strong>Crédito y facturación</strong></Link>}
           </nav>
 
-          <nav className="portal-catalog-nav" aria-label="Catálogo general de medios">
+          {capabilities.catalog && <nav className="portal-catalog-nav" aria-label="Catálogo general de medios">
             <div className="portal-catalog-title"><span>Explorar inventario</span><strong>CATÁLOGO GENERAL</strong><b>−</b></div>
             {CATALOG.map((item) => (
               <Link
@@ -99,15 +104,15 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
                 <span>{item.mark}</span><div><strong>{item.label}</strong><small>{item.detail}</small></div>
               </Link>
             ))}
-          </nav>
+          </nav>}
 
-          <Link href="/planificador?view=diy" onClick={close} className="portal-custom-plan-link">
+          {capabilities.plan && <Link href="/planificador?view=diy" onClick={close} className="portal-custom-plan-link">
             <span>Configura medio por medio</span><strong>CREA EL PLAN A TU MANERA</strong><b>→</b>
-          </Link>
+          </Link>}
 
           <nav className="portal-utility-nav" aria-label="Herramientas de la cuenta">
-            <Link href="/pautar" onClick={close}>Pautar con Mavi</Link>
-            <Link href="/campanas" onClick={close}>Campañas</Link>
+            {capabilities.request && <Link href="/pautar" onClick={close}>Pautar con Mavi</Link>}
+            {capabilities.reports && kind === "agency" && <Link href="/campanas" onClick={close}>Campañas</Link>}
             {isAdmin && <Link href="/mercado" onClick={close}>Inteligencia de mercado</Link>}
             {isAdmin && <Link href="/consola" onClick={close}>Administración</Link>}
           </nav>

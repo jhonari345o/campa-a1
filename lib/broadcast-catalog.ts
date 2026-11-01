@@ -7,7 +7,7 @@ export type BroadcastSource = {
   frequency: string; daypart: string; annualContract: boolean; conditions: string;
   spotSeconds: number | null; minimumSeconds: number | null; taxIncluded: boolean | null;
 };
-export type BroadcastTvOffer = { id: string; sourceId: string; day: string; title: string; schedule: string; priceUsd: number; target: string; note: string; };
+export type BroadcastTvOffer = { id: string; sourceId: string; day: string; title: string; schedule: string; priceUsd: number | null; target: string; note: string; };
 export type BroadcastRadioRow = { id: string; sourceId: string; name: string; genre: string; rating: number | null; share: number | null; audience: number | null; rank: number | null };
 export type BroadcastCatalog = { sources: BroadcastSource[]; tv: BroadcastTvOffer[]; radio: BroadcastRadioRow[]; error?: string };
 export type BroadcastBrief = { startDate?: string; endDate?: string; geography: string; coverage?: CoverageSelection[]; ageRange?: string; sex?: string; socioeconomic?: string; audienceType?: string; annualContract?: boolean };

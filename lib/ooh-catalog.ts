@@ -1,4 +1,4 @@
-export type OohRate = { amount: number; period: string; basis: string; component: string };
+export type OohRate = { amount: number | null; period: string; basis: string; component: string };
 export type OohAsset = {
   id: string; providerSlug: string; provinces: string[]; name: string; code: string;
   city: string; address: string; format: string; dimensions: string; brand: string;

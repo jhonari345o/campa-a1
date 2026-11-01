@@ -4,7 +4,7 @@ import { getRadioDirectory } from "@/lib/radio-directory-server";
 import { getPressCatalog } from "@/lib/press-server";
 import { getInfomediaCatalog } from "@/lib/infomedia-server";
 import { getMyCompanies } from "@/lib/company";
-import { canCompanyRole } from "@/lib/permissions";
+import { canWorkspaceRole } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { getSessionProfile } from "@/lib/auth";
@@ -23,6 +23,7 @@ import { MediaCatalog } from "./MediaCatalog";
 import { PlanForm } from "./PlanForm";
 import { PlanVersions } from "./PlanVersions";
 import { SavedPlans } from "./SavedPlans";
+import { priceCatalogProducts } from "@/lib/catalog-access-server";
 import { catalogProducts } from "@/lib/catalog-shopping";
 import { readCatalogCart, readOohPurchaseReferences } from "@/lib/catalog-shopping-server";
 
@@ -40,12 +41,15 @@ export default async function PlanificadorPage({
   if (!supabaseConfigured) redirect("/consola");
   const profile = await getSessionProfile();
   if (!profile) redirect("/ingresar");
+  if (!profile.is_platform_admin && !profile.workspace) redirect("/panel");
   const companies = await getMyCompanies(profile.id);
-  const canApprove = profile.is_platform_admin || companies.some(c => c.status === "activa" && canCompanyRole(c.role, "campaign:approve"));
+  const canApprove = profile.is_platform_admin || companies.some(c => c.status === "activa" && canWorkspaceRole(c, "campaign:approve"));
   const params = await searchParams;
   const view = ["media", "plans", "diy", "versions"].includes(params.view ?? "")
     ? params.view!
     : "planner";
+  if (!profile.is_platform_admin && profile.workspace?.kind === "provider") redirect("/proveedores");
+  if (!profile.is_platform_admin && profile.workspace?.kind === "client" && view !== "media") redirect("/reportes");
   const allowedSections = new Set<CatalogSection>(["tv", "radio", "ooh", "press", "digital", "influencers"]);
   const section = allowedSections.has(params.section as CatalogSection)
     ? params.section as CatalogSection
@@ -64,12 +68,13 @@ export default async function PlanificadorPage({
     view === "media" && section !== "tv" && section !== "radio" && section !== "press" ? getCatalogHealth() : Promise.resolve(null),
     catalogNeeded ? getBroadcastCatalog() : Promise.resolve({ sources: [], tv: [], radio: [] }),
     view === "diy" || view === "media" ? getOohCatalog() : Promise.resolve({ assets: [] }),
-    view === "media" && section === "radio" ? getRadioDirectory() : Promise.resolve({ stations: [] }),
-    view === "diy" || (view === "media" && section === "press") ? getPressCatalog() : Promise.resolve({ entries: [] }),
+    catalogNeeded ? getRadioDirectory() : Promise.resolve({ stations: [] }),
+    catalogNeeded ? getPressCatalog() : Promise.resolve({ entries: [] }),
     view === "media" ? readCatalogCart() : Promise.resolve({ version: 0, items: [] }),
     view === "media" && section === "ooh" && profile.is_platform_admin ? readOohPurchaseReferences() : Promise.resolve([]),
   ]);
 
+  const shoppingProducts = view === "media" ? await priceCatalogProducts(catalogProducts(influencers, ooh, { broadcast, radio: radioDirectory, press })) : [];
   return (
     <div className="min-h-screen">
       <AppHeader
@@ -86,13 +91,13 @@ export default async function PlanificadorPage({
       />
       <main id="workspace-content" className={`portal-page ${view === "media" ? "portal-page-wide" : "portal-page-planner"}`}>
         {view === "media" ? (
-          <MediaCatalog broadcast={broadcast} ooh={ooh} radioDirectory={radioDirectory} press={press} section={section} influencers={influencers} health={catalogHealth} shoppingProducts={catalogProducts(influencers, ooh)} shoppingCart={shoppingCart} shoppingCompanies={companies.filter(c => c.status === "activa" && canCompanyRole(c.role, "campaign:create")).map(c => ({ id: c.id, name: c.name }))} canRequest={profile.is_platform_admin || companies.some(c => c.status === "activa" && canCompanyRole(c.role, "campaign:create"))} isAdmin={profile.is_platform_admin} purchaseReferences={purchaseReferences} />
+          <MediaCatalog broadcast={broadcast} ooh={ooh} radioDirectory={radioDirectory} press={press} section={section} influencers={influencers} health={catalogHealth} shoppingProducts={shoppingProducts} shoppingCart={shoppingCart} shoppingCompanies={companies.filter(c => c.status === "activa" && (c.portal_kind ?? "agency") === "agency" && canWorkspaceRole(c, "campaign:create")).map(c => ({ id: c.id, name: c.name }))} canPlan={profile.is_platform_admin || (profile.workspace?.kind !== "client" && companies.some(c=>canWorkspaceRole(c,"plan")))} canRequest={profile.is_platform_admin || companies.some(c => c.status === "activa" && (c.portal_kind ?? "agency") === "agency" && canWorkspaceRole(c, "campaign:create"))} isAdmin={profile.is_platform_admin} purchaseReferences={purchaseReferences} />
         ) : view === "plans" ? (
           <SavedPlans plans={plans} />
         ) : view === "diy" ? (
           <DiyPlanner broadcast={broadcast} pressCatalog={press} oohCatalog={ooh} categoryCatalog={categoryCatalog} influencers={influencers} oohLocations={oohLocations} initialPlan={selectedPlan} />
         ) : view === "versions" ? (
-          <PlanVersions canApprove={profile.is_platform_admin || companies.some(c => c.id === selectedPlan?.companyId && c.status === "activa" && canCompanyRole(c.role, "campaign:approve"))} plan={selectedPlan} versions={versions} comments={collaboration.comments} approvals={collaboration.approvals} />
+          <PlanVersions canApprove={profile.is_platform_admin || companies.some(c => c.id === selectedPlan?.companyId && c.status === "activa" && canWorkspaceRole(c, "campaign:approve"))} plan={selectedPlan} versions={versions} comments={collaboration.comments} approvals={collaboration.approvals} />
         ) : (
           <>
             <h1 className="text-3xl font-black tracking-tight">Planificador de medios</h1>

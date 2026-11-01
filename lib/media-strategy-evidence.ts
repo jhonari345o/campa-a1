@@ -67,7 +67,7 @@ function radioPrice(tariff: RadioTariff, brief: StrategyBrief) {
   if (!datesCover(tariff.validFrom, tariff.validTo, brief) || !tariffMarket(tariff.market, brief)) return null;
   // Per-second rates require an explicit duration. Never assume a spot length.
   const rates = tariff.rates.filter(r => nonnegative(r.amountUsd) && r.amountUsd > 0 && (tariff.unit === "spot" || (r.seconds != null && r.seconds > 0)));
-  return rates.map(r => ({ label: r.label, amount: tariff.unit === "second" ? cents(r.amountUsd * r.seconds!) : r.amountUsd, unit: r.seconds ? `spot ${r.seconds} s` : "spot" })).sort((a,b) => a.amount - b.amount)[0] ?? null;
+  return rates.map(r => ({ label: r.label, amount: tariff.unit === "second" ? cents(r.amountUsd! * r.seconds!) : r.amountUsd!, unit: r.seconds ? `spot ${r.seconds} s` : "spot" })).sort((a,b) => a.amount - b.amount)[0] ?? null;
 }
 function territorialFit(city: string, provinces: string[], brief: StrategyBrief) {
   const scope = brief.coverage ?? [];
@@ -148,7 +148,7 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
   if(selected(brief,"ooh")) for(const asset of catalogs.ooh.assets) {
     if(!territorialFit(asset.city,asset.provinces,brief)) continue;
     const sid=addSource({id:`ooh:${asset.id}`,kind:"inventory",label:`${asset.brand || asset.providerSlug} · ${asset.name}`,period:asset.reference||"Corte no declarado",market:[asset.city,...asset.provinces].filter(Boolean).join(" · "),target:"Audiencia del soporte no medida",use:"context",note:"Inventario territorial; disponibilidad y vigencia comercial no confirmadas para esta campaña."});
-    const rate=asset.rates.filter(r=>r.amount>0).sort((a,b)=>a.amount-b.amount)[0];
+    const rate=asset.rates.filter(r=>r.amount!=null && r.amount>0).sort((a,b)=>a.amount!-b.amount!)[0];
     candidates.push({id:`ooh:${asset.id}`,medium:"ooh",provider:asset.brand||asset.providerSlug,product:[asset.name,asset.code].filter(Boolean).join(" · "),market:[asset.city,asset.address].filter(Boolean).join(" · "),target:"Sin audiencia homologada",period:asset.reference||"Corte no declarado",sourceIds:[sid],sourceUse:"context",unit:rate?oohRateUnit(rate):"unidad por definir",unitPriceUsd:null,referencePriceUsd:rate?.amount??null,minimumUnits:1,minimumSpendUsd:null,metrics:[],...(asset.latitude!=null&&asset.longitude!=null?{geo:{latitude:asset.latitude,longitude:asset.longitude}}:{}),note:"Referencia por unidad original. No se asume disponibilidad ni se convierte afluencia en alcance."});
   }
   if(selected(brief,"ooh")&&!candidates.some(c=>c.medium==="ooh")) gaps.push("Vía pública: no hay activos localizados dentro de las coberturas seleccionadas.");

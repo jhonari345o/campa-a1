@@ -4,7 +4,7 @@ export type RadioTariff = {
   id: string; label: string; edition: string; market: string; target: string;
   validFrom: string | null; validTo: string | null; taxIncluded: boolean | null;
   unit: "second" | "spot"; conditions: string;
-  rates: { label: string; amountUsd: number; seconds: number | null }[];
+  rates: { label: string; amountUsd: number | null; seconds: number | null }[];
 };
 export type RadioRankingLink = { sourceId: string; stationName: string; marketKeys: string[]; frequency: string };
 export type RadioStationProfile = { coverage: string; website: string | null; tariffs: RadioTariff[]; rankingLinks: RadioRankingLink[] };

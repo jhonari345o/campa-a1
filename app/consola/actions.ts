@@ -131,6 +131,9 @@ export async function crearCliente(
   }
 
   const brandKey = String(formData.get("brand_key") ?? "one");
+  const portalKind = String(formData.get("portal_kind") ?? "agency");
+  const allowedDomains = [...new Set(String(formData.get("allowed_domains") ?? "").toLowerCase().split(/[\s,;]+/).filter(Boolean))];
+  if (!["agency", "client", "provider"].includes(portalKind) || allowedDomains.length > 20 || allowedDomains.some(d => !/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}$/.test(d))) return { ok: false, error: "Revisa el tipo de portal y los dominios autorizados." };
   if (!["one", "lettera"].includes(brandKey)) return { ok: false, error: "La identidad seleccionada no es válida." };
   if (brandKey !== "one") {
     const { data: ready } = await admin.rpc("customer_access_ready");
@@ -141,6 +144,8 @@ export async function crearCliente(
     .from("companies")
     .insert({
       name,
+      portal_kind: portalKind,
+      allowed_email_domains: allowedDomains,
       ...(brandKey !== "one" ? { brand_key: brandKey } : {}),
       slug: companySlug(name),
       legal_id: legalId,

@@ -1,23 +1,27 @@
-import { INFLUENCER_IMAGE_SLUGS, OOH_PROVIDERS, type InfluencerProfile } from "./media-catalog";
+import { INFLUENCER_IMAGE_SLUGS, OOH_PROVIDERS, DIGITAL_PLATFORMS, type InfluencerProfile } from "./media-catalog";
+import type { BroadcastCatalog } from "./broadcast-catalog";
+import type { RadioDirectoryCatalog } from "./radio-directory";
+import type { PressCatalog } from "./press-catalog";
 import { oohRateUnit, type OohCatalog, type OohRate } from "./ooh-catalog";
 
-export const CART_LIMITS = { lines: 100, quantity: 99, totalCents: 1_000_000_000 } as const;
+export const CART_LIMITS = { lines: 100, quantity: 10_000, totalCents: 1_000_000_000 } as const;
 export type CatalogPick = { productKey: string; quantity: number };
-export type CatalogCart = { version: number; items: CatalogPick[]; error?: string };
+export type CatalogCart = { version: number; items: CatalogPick[]; error?: string; expiresAt?: string };
 export type CatalogProduct = {
-  key: string; kind: "influencer" | "ooh"; provider: string; name: string;
+  key: string; kind: "influencer" | "ooh" | "tv" | "radio" | "press" | "digital"; provider: string; name: string;
   format: string; unit: string; priceCents: number | null; taxIncluded: boolean | null;
   location: string; reference: string; image: string | null; conditions: string;
-  source: { rateId?: string; profileId?: string; assetId?: string; rate?: OohRate };
+  source: { rateId?: string; profileId?: string; assetId?: string; rate?: OohRate; rateIndex?: number; sourceId?: string; offerId?: string; stationId?: string; tariffId?: string; seconds?: number; publicationId?: string; editionId?: string; platformSlug?: string; agreementId?: string };
+  validFrom?: string | null; validTo?: string | null;
 };
 export type CatalogCartLine = { pick: CatalogPick; product: CatalogProduct | null; subtotalCents: number | null };
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
-const price = (value: number) => Number.isFinite(value) && value >= 0 && value <= CART_LIMITS.totalCents / 100 ? Math.round(value * 100) : null;
+const price = (value: number | null) => value != null && Number.isFinite(value) && value >= 0 && value <= CART_LIMITS.totalCents / 100 ? Math.round(value * 100) : null;
 
-export function oohProductKey(assetId: string, rate?: OohRate) {
-  return rate ? `ooh:${assetId}:${[rate.period, rate.basis, rate.component, String(rate.amount)].map(encodeURIComponent).join("|")}` : `ooh:${assetId}:quote`;
+export function oohProductKey(assetId: string, rate?: OohRate, index = 0) {
+  return rate ? `ooh:${assetId}:${index}` : `ooh:${assetId}:quote`;
 }
-export function catalogProducts(profiles: InfluencerProfile[], ooh: OohCatalog): CatalogProduct[] {
+export function catalogProducts(profiles: InfluencerProfile[], ooh: OohCatalog, extra?: { broadcast: BroadcastCatalog; radio: RadioDirectoryCatalog; press: PressCatalog }): CatalogProduct[] {
   const products: CatalogProduct[] = [];
   for (const profile of profiles) for (const rate of profile.rates) {
     if (!rate.id || !uuid.test(rate.id)) continue;
@@ -32,8 +36,8 @@ export function catalogProducts(profiles: InfluencerProfile[], ooh: OohCatalog):
   }
   for (const asset of ooh.assets) {
     const rates: Array<OohRate | undefined> = asset.rates.length ? asset.rates : [undefined];
-    for (const rate of rates) {
-      const key = oohProductKey(asset.id, rate);
+    for (const [rateIndex, rate] of rates.entries()) {
+      const key = oohProductKey(asset.id, rate, rateIndex);
       if (key.length > 2048) continue;
       const normalizedTax = asset.taxLabel.toLowerCase();
       products.push({
@@ -44,9 +48,28 @@ export function catalogProducts(profiles: InfluencerProfile[], ooh: OohCatalog):
         location: [asset.city, asset.address, asset.code].filter(Boolean).join(" · "),
         reference: asset.reference, image: asset.photo ? `/api/ooh/images/${encodeURIComponent(asset.id)}` : null,
         conditions: "Disponibilidad y período de contratación requieren revisión comercial.",
-        source: { assetId: asset.id, ...(rate ? { rate } : {}) },
+        source: { assetId: asset.id, ...(rate ? { rate, rateIndex } : {}) },
       });
     }
+  }
+  if (extra) {
+    for (const source of extra.broadcast.sources.filter(s => s.kind === "tv")) for (const offer of extra.broadcast.tv.filter(o => o.sourceId === source.id)) products.push({
+      key: `tv:${source.id}:${offer.id}`, kind: "tv", provider: source.label, name: offer.title, format: `${offer.day} · ${offer.schedule}`, unit: source.spotSeconds ? `cuña de ${source.spotSeconds} s` : "cuña · duración por confirmar", priceCents: price(offer.priceUsd), taxIncluded: source.taxIncluded,
+      location: source.market, reference: `${source.periodStart} – ${source.periodEnd} · ${offer.target || source.target}`, image: null, conditions: source.conditions, validFrom: source.periodStart, validTo: source.periodEnd, source: { sourceId: source.id, offerId: offer.id, ...(source.spotSeconds ? { seconds: source.spotSeconds } : {}) },
+    });
+    for (const station of extra.radio.stations) for (const tariff of station.profile.tariffs) for (const [rateIndex, rate] of tariff.rates.entries()) {
+      for (const seconds of tariff.unit === "second" ? [10,15,20,30,45,60] : [rate.seconds ?? 0]) products.push({
+        key: `radio:${station.id}:${tariff.id}:${rateIndex}:${seconds}`, kind: "radio", provider: station.name, name: rate.label, format: seconds ? `Cuña de ${seconds} s` : "Cuña", unit: seconds ? `cuña de ${seconds} s` : "cuña", priceCents: price(rate.amountUsd == null ? null : rate.amountUsd * (tariff.unit === "second" ? seconds : 1)), taxIncluded: tariff.taxIncluded,
+        location: tariff.market, reference: `${tariff.edition} · ${tariff.target}`, image: station.logoPath, conditions: tariff.conditions, validFrom: tariff.validFrom, validTo: tariff.validTo, source: { stationId: station.id, tariffId: tariff.id, rateIndex, seconds },
+      });
+    }
+    for (const publication of extra.press.entries) for (const edition of publication.editions) for (const offer of edition.offers) products.push({
+      key: `press:${publication.id}:${edition.id}:${offer.id}`, kind: "press", provider: publication.name, name: offer.name, format: offer.group, unit: offer.unit === "CPM" ? "1.000 impresiones" : offer.unit, priceCents: price(offer.priceUsd), taxIncluded: edition.taxIncluded,
+      location: offer.market, reference: `${edition.period} · ${offer.target}`, image: publication.logoPath, conditions: [...edition.conditions, offer.notes].filter(Boolean).join(" · "), validFrom: edition.validFrom, validTo: edition.validTo, source: { publicationId: publication.id, editionId: edition.id, offerId: offer.id },
+    });
+    for (const station of extra.radio.stations.filter(s=>!s.profile.tariffs.some(t=>t.rates.length))) products.push({ key:`radio:${station.id}:quote`,kind:"radio",provider:station.name,name:"Cuñas de radio",format:"Cuña",unit:"cuña · duración por definir",priceCents:null,taxIncluded:null,location:station.city??"",reference:"",image:station.logoPath,conditions:"",source:{stationId:station.id} });
+    for (const publication of extra.press.entries.filter(p=>!p.editions.some(e=>e.offers.length))) products.push({ key:`press:${publication.id}:quote`,kind:"press",provider:publication.name,name:"Espacio de prensa",format:"Formato por definir",unit:"inserción",priceCents:null,taxIncluded:null,location:publication.city??"",reference:"",image:publication.logoPath,conditions:"",source:{publicationId:publication.id} });
+    for (const platform of DIGITAL_PLATFORMS) products.push({ key: `digital:${platform.slug}`, kind: "digital", provider: platform.name, name: "Inversión de medios", format: "Presupuesto de plataforma", unit: "USD de inversión", priceCents: 100, taxIncluded: null, location: "Según el brief", reference: "Presupuesto solicitado", image: platform.imagePath ?? null, conditions: "El presupuesto se coordina antes de activar la pauta.", source: { platformSlug: platform.slug } });
   }
   return [...new Map(products.map(p => [p.key, p])).values()];
 }
@@ -58,7 +81,7 @@ export function normalizeCatalogPicks(value: unknown): CatalogPick[] {
   return value.map(row => {
     if (!row || typeof row !== "object" || Array.isArray(row)) throw new Error("INVALID_CART");
     const r = row as Record<string, unknown>;
-    if (Object.keys(r).some(k => !["productKey", "quantity"].includes(k)) || typeof r.productKey !== "string" || !/^(creator:|ooh:)/.test(r.productKey) || r.productKey.length > 2048 || /[\u0000-\u001f]/.test(r.productKey) || !Number.isInteger(r.quantity) || Number(r.quantity) < 1 || Number(r.quantity) > CART_LIMITS.quantity || seen.has(r.productKey)) throw new Error("INVALID_CART");
+    if (Object.keys(r).some(k => !["productKey", "quantity"].includes(k)) || typeof r.productKey !== "string" || !/^(creator:|ooh:|tv:|radio:|press:|digital:)/.test(r.productKey) || r.productKey.length > 2048 || /[\u0000-\u001f]/.test(r.productKey) || !Number.isInteger(r.quantity) || Number(r.quantity) < 1 || Number(r.quantity) > CART_LIMITS.quantity || seen.has(r.productKey)) throw new Error("INVALID_CART");
     seen.add(r.productKey);
     return { productKey: r.productKey, quantity: Number(r.quantity) };
   }).sort((a, b) => a.productKey.localeCompare(b.productKey));

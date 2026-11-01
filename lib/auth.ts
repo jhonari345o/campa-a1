@@ -1,4 +1,5 @@
 import { getMyCompanies } from "@/lib/company";
+import { redirect } from "next/navigation";
 import { workspaceIdentity, type WorkspaceIdentity } from "@/lib/workspace-brand";
 import { createClient } from "@/lib/supabase/server";
 
@@ -17,6 +18,7 @@ export async function getSessionProfile(): Promise<Profile | null> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
+  if (user.app_metadata?.must_change_password === true) redirect("/cuenta/activar");
 
   const { data: profile } = await supabase
     .from("profiles")

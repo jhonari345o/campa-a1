@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import {CatalogPrice,CatalogInlineProduct,CatalogPressQuote} from "./CatalogShopping";
 import { useEffect, useRef, useState } from "react";
 import { pressEntriesForRegion, pressMatches, pressOfferMatches, pressRegions, pressEditionStatus, type PressCatalog, type PressEntry } from "@/lib/press-catalog";
 import { radioLandscapes } from "@/lib/radio-landscapes";
@@ -7,7 +8,6 @@ import common from "./RadioDirectory.module.css";
 import styles from "./PressDirectory.module.css";
 
 const countLabel = (count: number) => `${count} ${count === 1 ? "cabecera" : "cabeceras"}`;
-const money = (value: number) => new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(value);
 export function PressDirectoryPanel({ catalog }: { catalog: PressCatalog }) {
   const [regionKey, setRegionKey] = useState<string | null>(null), [query, setQuery] = useState(""), [entryId, setEntryId] = useState<string | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -50,13 +50,13 @@ function PressProfile({ entry, asOf }: { entry: PressEntry; asOf: string }) {
     <nav className={common.detailNav} aria-label={`Secciones de ${entry.name}`}><a href="#press-coverage">Cobertura</a><a href="#press-formats">Formatos y tarifas</a></nav>
     <section id="press-coverage" className={common.detailSection} aria-labelledby="press-coverage-title"><p className={common.eyebrow}>01 · Territorio</p><h4 id="press-coverage-title">Cobertura y edición</h4><p>{entry.coverage}</p><div className={common.coverageTags}>{entry.regionKeys.map(key => <span key={key}>{pressRegions.find(region => region.key === key)?.label}</span>)}</div></section>
     <section id="press-formats" className={common.detailSection} aria-labelledby="press-formats-title"><p className={common.eyebrow}>02 · Formatos</p><h4 id="press-formats-title">Formatos y tarifas</h4>
-      {!edition ? <p className={common.missing}>Todavía no hay un tarifario incorporado para esta cabecera.</p> : <>
+      {!edition ? <div><p className={common.missing}>Selecciona las inserciones para solicitar una propuesta de esta cabecera.</p><CatalogPressQuote id={entry.id}/></div> : <>
         <label className={styles.field}>Edición del tarifario<select value={edition.id} onChange={event => { setEditionId(event.target.value); setFamily(""); setMarket(""); setQuery(""); }}>{entry.editions.map(edition => <option key={edition.id} value={edition.id}>{edition.label} · {edition.period}</option>)}</select></label>
         <div className={common.editionHeading}><div><h5>{edition.label}</h5><p>{edition.period} · {edition.taxIncluded === false ? "Sin IVA" : edition.taxIncluded === true ? "IVA incluido" : "Impuestos no declarados"}</p></div><span className={pressEditionStatus(edition, asOf) === "Vigente" ? common.current : common.reference}>{pressEditionStatus(edition, asOf)}</span></div>
         <div className={common.views} role="group" aria-label="Familia de formatos de prensa"><button type="button" aria-pressed={!currentFamily} onClick={() => { setFamily(""); setMarket(""); }}>Todos los formatos</button>{families.map(group => <button key={group} type="button" aria-pressed={currentFamily === group} onClick={() => { setFamily(group); setMarket(""); }}>{group}</button>)}</div>
         <div className={styles.filters}><label className={styles.field}>Cobertura del formato<select value={currentMarket} onChange={event => setMarket(event.target.value)}><option value="">Todas las plazas</option>{markets.map(market => <option key={market}>{market}</option>)}</select></label><label className={styles.field}>Buscar formato<input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Nombre, tamaño o posición" maxLength={100} /></label></div>
         <p className={styles.results} role="status">{offers.length} de {edition.offers.length} tarifas y formatos de esta edición</p>
-        <div className={`${common.tableWrap} ${styles.offerTable}`} tabIndex={0} role="region" aria-label={`Tarifas de ${entry.name}`}><table><caption className="sr-only">{entry.name} · {edition.label} · {currentMarket || "Todas las plazas"}</caption><thead><tr><th>Formato</th><th>Especificaciones</th><th>Plaza y público</th><th>Tarifa USD</th></tr></thead><tbody>{offers.map(offer => <tr key={offer.id}><th scope="row">{offer.name}<small>{offer.group}</small></th><td>{offer.specs}{offer.duration && <small>{offer.duration}</small>}{offer.notes && <small>{offer.notes}</small>}</td><td>{offer.market}<small>{offer.target}</small></td><td>{offer.priceUsd == null ? "Sin precio declarado" : money(offer.priceUsd)}<small>{offer.unit === "CPM" ? "por 1.000 impresiones" : `por ${offer.unit}`}</small></td></tr>)}</tbody></table></div>
+        <div className={`${common.tableWrap} ${styles.offerTable}`} tabIndex={0} role="region" aria-label={`Tarifas de ${entry.name}`}><table><caption className="sr-only">{entry.name} · {edition.label} · {currentMarket || "Todas las plazas"}</caption><thead><tr><th>Formato</th><th>Especificaciones</th><th>Plaza y público</th><th>Tarifa USD</th><th>Al carrito</th></tr></thead><tbody>{offers.map(offer => <tr key={offer.id}><th scope="row">{offer.name}<small>{offer.group}</small></th><td>{offer.specs}{offer.duration && <small>{offer.duration}</small>}{offer.notes && <small>{offer.notes}</small>}</td><td>{offer.market}<small>{offer.target}</small></td><td><CatalogPrice productKey={`press:${entry.id}:${edition.id}:${offer.id}`}/><small>{offer.unit === "CPM" ? "por 1.000 impresiones" : `por ${offer.unit}`}</small></td><td><CatalogInlineProduct productKey={`press:${entry.id}:${edition.id}:${offer.id}`}/></td></tr>)}</tbody></table></div>
         {!offers.length && <p className={common.missing}>No hay formatos que coincidan con esta búsqueda.</p>}
         <div className={styles.conditions}>{edition.conditions.map(condition => <p key={condition}>{condition}</p>)}</div>
       </>}

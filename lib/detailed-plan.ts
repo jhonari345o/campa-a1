@@ -203,13 +203,13 @@ function buildChannelPlan(
 }
 
 function televisionExecutions(row: PlanRow, brief: PlanAnalysisInput, catalog: BroadcastCatalog): DetailedExecution[] {
-  const candidates = compatibleTv(catalog, brief).filter(c=>c.offer.priceUsd > 0 && (row.amount == null || c.offer.priceUsd <= row.amount))
+  const candidates = compatibleTv(catalog, brief).filter(c=>c.offer.priceUsd != null && c.offer.priceUsd > 0 && (row.amount == null || c.offer.priceUsd <= row.amount))
     .sort((a,b)=>scoreTvOffer(b.offer,brief,row.amount)-scoreTvOffer(a.offer,brief,row.amount));
   const chosen = candidates.filter((c,i,all)=>all.findIndex(x=>x.source.provider===c.source.provider)===i).slice(0,3);
   if (!chosen.length) return [pendingExecution("tv","Programas por validar",brief.geography,row.amount,"No hay una tarifa que cubra todas las fechas, plaza y condiciones del brief. Consulta las ediciones disponibles en Televisión.")];
   return allocate(row.amount,chosen.length).map((budget,index)=>{
     const {source,offer}=chosen[index];
-    return {id:offer.id,provider:source.label,product:offer.title,location:source.market,schedule:`${offer.day} · ${offer.schedule}`,budgetUsd:budget,referenceUnitPriceUsd:offer.priceUsd,estimatedUnits:budget==null?null:Math.floor(budget/offer.priceUsd),unit:`spot ${source.spotSeconds} s`,status:"validacion",evidence:`${sourceDescription(source)}. ${source.conditions}`,nextStep:"Confirmar programa, público, cupo y condiciones comerciales antes de ordenar."};
+    return {id:offer.id,provider:source.label,product:offer.title,location:source.market,schedule:`${offer.day} · ${offer.schedule}`,budgetUsd:budget,referenceUnitPriceUsd:offer.priceUsd,estimatedUnits:budget==null?null:Math.floor(budget/offer.priceUsd!),unit:`spot ${source.spotSeconds} s`,status:"validacion",evidence:`${sourceDescription(source)}. ${source.conditions}`,nextStep:"Confirmar programa, público, cupo y condiciones comerciales antes de ordenar."};
   });
 }
 

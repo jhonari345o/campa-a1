@@ -24,7 +24,7 @@ import { RadioDirectoryPanel } from "./RadioDirectory";
 import { PressDirectoryPanel } from "./PressDirectory";
 import type { PressCatalog } from "@/lib/press-catalog";
 import type { RadioDirectoryCatalog } from "@/lib/radio-directory";
-import { CatalogProfileProducts, CatalogShoppingLayout, CatalogShoppingProvider, type ShoppingCompany } from "./CatalogShopping";
+import { CatalogDigitalBudget, CatalogProfileProducts, CatalogShoppingLayout, CatalogShoppingProvider, type ShoppingCompany } from "./CatalogShopping";
 import type { CatalogCart, CatalogProduct } from "@/lib/catalog-shopping";
 import type { OohPurchaseReference } from "@/lib/catalog-shopping-server";
 
@@ -40,6 +40,7 @@ export function MediaCatalog({
   shoppingCart,
   shoppingCompanies,
   canRequest,
+  canPlan,
   isAdmin,
   purchaseReferences,
 }: {
@@ -54,6 +55,7 @@ export function MediaCatalog({
   shoppingCart: CatalogCart;
   shoppingCompanies: ShoppingCompany[];
   canRequest: boolean;
+  canPlan: boolean;
   isAdmin: boolean;
   purchaseReferences: OohPurchaseReference[];
 }) {
@@ -62,9 +64,9 @@ export function MediaCatalog({
       <header className="media-portal-header">
         <div className="media-portal-header-copy">
           <p>Medios</p>
-          <h1>{section === "influencers" || section === "ooh" ? "Elige medios, arma tu compra." : "Directorio para construir tu plan"}</h1>
+          <h1>{canRequest ? "Elige medios, arma tu compra." : "Explora tu catálogo de medios"}</h1>
           <p className="media-portal-header-description">
-              {section === "influencers" || section === "ooh" ? "Explora el catálogo, agrega productos y cantidades a tu carrito y prepara una solicitud independiente." : "Explora canales, emisoras, proveedores, cabeceras, plataformas y creadores antes de armar una recomendación multimedios."}
+              {canRequest ? "Combina cuñas, espacios y formatos de distintos medios en una sola solicitud." : "Consulta formatos, coberturas y tarifas de tu espacio."}
           </p>
           <div className="media-portal-header-legend" aria-label="Estados de la información del catálogo">
             <Status status="cotizable" />
@@ -72,7 +74,7 @@ export function MediaCatalog({
             <Status status="directorio" />
           </div>
         </div>
-        <Link href="/planificador?view=planner" className="media-portal-plan-button">Armar plan de medios <span>→</span></Link>
+        {canPlan && <Link href="/planificador?view=planner" className="media-portal-plan-button">Armar plan de medios <span>→</span></Link>}
       </header>
 
       {health && section !== "tv" && section !== "radio" && section !== "ooh" && section !== "press" && (
@@ -97,7 +99,7 @@ export function MediaCatalog({
         ))}
       </nav>
 
-      <CatalogShoppingLayout active={section === "influencers" || section === "ooh"}><div className="media-portal-panel" role="tabpanel">
+      <CatalogShoppingLayout active={true}><div className="media-portal-panel" role="tabpanel">
         {section === "digital" && <DigitalSection />}
         {section === "influencers" && <InfluencerSection profiles={influencers} />}
         {section === "radio" && <RadioDirectoryPanel directory={radioDirectory} broadcast={broadcast} />}
@@ -144,6 +146,7 @@ function DigitalCard({ item }: { item: DigitalPlatform }) {
       <p className="mt-4 rounded-xl bg-fog p-3 text-xs text-muted">
         <strong className="text-forest">Medición:</strong> {item.measurement}
       </p>
+      <CatalogDigitalBudget slug={item.slug}/>
     </article>
   );
 }
