@@ -155,8 +155,9 @@ function maskMetaId(value?: string) {
 function IntegrationReadiness() {
   const paymentProvider = getPaymentProvider();
   const paymentReady = paymentProvider === "pagoplux" ? isPagoPluxConfigured() : isDlocalConfigured();
+  const aiReady = isAiAssistantEnabled() && Boolean(process.env.OPENROUTER_API_KEY || process.env.BEDROCK_MODEL_ID || process.env.DEEPSEEK_API_KEY);
   const checks = [
-    { label: "Mavi IA", ready: isAiAssistantEnabled() && Boolean(process.env.OPENROUTER_API_KEY || process.env.BEDROCK_MODEL_ID || process.env.DEEPSEEK_API_KEY), detail: isAiWebTrendsEnabled() ? "IA y señales web habilitadas" : "IA activa; tendencias web deshabilitadas" },
+    { label: "Mavi IA", ready: aiReady, detail: aiReady ? `Configuración de IA presente; conexión por verificar. Señales web ${isAiWebTrendsEnabled() ? "habilitadas" : "deshabilitadas"}.` : "Interpretación con IA pendiente de configuración. Motor de datos disponible en el planificador." },
     { label: "Mapas", ready: true, detail: process.env.NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY ? "OpenStreetMap + Google Maps configurado" : "OpenStreetMap activo; Google satélite/360 sin clave embebida" },
     { label: paymentProvider === "pagoplux" ? "PagoPlux" : "dLocal Go", ready: paymentReady, detail: paymentReady ? `${paymentProvider === "pagoplux" ? (process.env.NEXT_PUBLIC_PAGOPLUX_ENV === "live" ? "Producción" : "Sandbox") : (process.env.DLOCALGO_ENV === "live" ? "Producción" : "Sandbox")} configurado` : "Faltan credenciales y conciliación" },
     { label: "Cobros reales", ready: isCommercialPaymentsEnabled(), detail: isCommercialPaymentsEnabled() ? "Interruptor activo" : "Interruptor bloqueado" },
