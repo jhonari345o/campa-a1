@@ -10,7 +10,7 @@ export function ProfileSettings({ preferences, name, available }: { preferences:
   const [state, action, pending] = useActionState(guardarPreferencias, null);
   const [displayName, setDisplayName] = useState(preferences.displayName || name), [avatar, setAvatar] = useState(preferences.avatarKey), [tone, setTone] = useState(preferences.avatarTone), [reducedMotion, setReducedMotion] = useState(preferences.reducedMotion);
   useEffect(() => { if (state?.ok) window.dispatchEvent(new Event("one:preferences-updated")); }, [state]);
-  return <form action={action} className="settings-profile-form">
+  return <form action={action} onReset={event => event.preventDefault()} className="settings-profile-form">
     <div className="settings-profile-preview"><AccountAvatar animal={avatar} tone={tone} name={displayName} size={88}/><div><strong>{displayName || name}</strong><span>Tu avatar</span></div></div>
     <label className="settings-field">Nombre visible<input name="displayName" value={displayName} onChange={event => setDisplayName(event.target.value)} maxLength={120} autoComplete="name"/></label>
     <fieldset><legend>Selecciona tu avatar</legend><p className="settings-field-help">Elige un animal o usa tus iniciales.</p>

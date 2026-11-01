@@ -36,5 +36,5 @@ export async function getSessionProfile(): Promise<Profile | null> {
   }
   const companies = profile.is_platform_admin ? [] : await getMyCompanies(user.id);
   const { data: preferences } = await supabase.from("account_preferences").select("display_name").eq("user_id", user.id).maybeSingle();
-  return { ...profile, full_name: preferences?.display_name || profile.full_name, workspace: workspaceIdentity(companies, profile.is_platform_admin) } as Profile;
+  return { ...profile, full_name: preferences?.display_name?.trim() || profile.full_name?.trim() || null, workspace: workspaceIdentity(companies, profile.is_platform_admin) } as Profile;
 }
