@@ -14,7 +14,7 @@ export async function guardarPreferencias(_previous: SecurityResult | null, form
   if (!input) return { ok: false, message: "Revisa el nombre y el avatar seleccionado." };
   const db = await createClient(), { data: { user } } = await db.auth.getUser();
   if (!user || user.app_metadata?.must_change_password === true) return { ok: false, message: "Inicia sesión con tu contraseña personal para continuar." };
-  const { data: previous } = await db.from("account_preferences").select("avatar_image_path").eq("user_id", user.id).maybeSingle();
+  const { data: previous } = await db.from("account_preferences").select("user_id,avatar_image_path").eq("user_id", user.id).maybeSingle();
   const file = form.get("image");
   if (file instanceof File && file.size > 0) {
     if (!input.useCustomAvatar || file.size > MAX_AVATAR_UPLOAD_BYTES) return { ok: false, message: "Selecciona una imagen de perfil válida." };
@@ -28,8 +28,12 @@ export async function guardarPreferencias(_previous: SecurityResult | null, form
       const { error: uploadError } = await admin.storage.from(AVATAR_BUCKET).upload(path, image, { contentType: "image/webp", cacheControl: "0", upsert: false });
       if (uploadError) return { ok: false, message: "No se pudo guardar tu imagen. Vuelve a intentarlo." };
       // One metadata write commits the appearance fields and the new photo together.
-      const { error } = await db.from("account_preferences").upsert({ user_id: user.id, display_name: input.displayName, avatar_key: input.avatarKey, avatar_tone: input.avatarTone, reduced_motion: input.reducedMotion, avatar_image_path: path, use_custom_avatar: true }, { onConflict: "user_id" });
-      if (error) { await admin.storage.from(AVATAR_BUCKET).remove([path]); return { ok: false, message: "No se guardaron los cambios de tu perfil. Vuelve a intentarlo." }; }
+      const appearance = { display_name: input.displayName, avatar_key: input.avatarKey, avatar_tone: input.avatarTone, reduced_motion: input.reducedMotion, avatar_image_path: path, use_custom_avatar: true };
+      // Updating an existing row must never include the immutable user_id column.
+      const { data: saved, error } = previous?.user_id
+        ? await db.from("account_preferences").update(appearance).eq("user_id", user.id).select("user_id").maybeSingle()
+        : await db.from("account_preferences").insert({ user_id: user.id, ...appearance }).select("user_id").single();
+      if (error || saved?.user_id !== user.id) { await admin.storage.from(AVATAR_BUCKET).remove([path]); return { ok: false, message: "No se guardaron los cambios de tu perfil. Vuelve a intentarlo." }; }
       if (ownsAvatarPath(previous?.avatar_image_path, user.id) && previous.avatar_image_path !== path) await admin.storage.from(AVATAR_BUCKET).remove([previous.avatar_image_path]).catch(() => {});
       revalidatePath("/cuenta/configuracion");
       return { ok: true, message: "Tu perfil se actualizó.", version: avatarVersion(path) };
