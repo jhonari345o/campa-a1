@@ -11,9 +11,9 @@ export function ProfileSettings({ preferences, name, available }: { preferences:
   const [displayName, setDisplayName] = useState(preferences.displayName || name), [avatar, setAvatar] = useState(preferences.avatarKey), [tone, setTone] = useState(preferences.avatarTone), [reducedMotion, setReducedMotion] = useState(preferences.reducedMotion);
   useEffect(() => { if (state?.ok) window.dispatchEvent(new Event("one:preferences-updated")); }, [state]);
   return <form action={action} className="settings-profile-form">
-    <div className="settings-profile-preview"><AccountAvatar animal={avatar} tone={tone} name={displayName} size={88}/><div><strong>{displayName || name}</strong><span>Tu avatar en Ad Mavericks One</span></div></div>
+    <div className="settings-profile-preview"><AccountAvatar animal={avatar} tone={tone} name={displayName} size={88}/><div><strong>{displayName || name}</strong><span>Tu avatar</span></div></div>
     <label className="settings-field">Nombre visible<input name="displayName" value={displayName} onChange={event => setDisplayName(event.target.value)} maxLength={120} autoComplete="name"/></label>
-    <fieldset><legend>Elige tu avatar</legend><p className="settings-field-help">Cinco personajes de nuestra costa. También puedes usar tus iniciales.</p>
+    <fieldset><legend>Selecciona tu avatar</legend><p className="settings-field-help">Elige un animal o usa tus iniciales.</p>
       <div className="settings-avatar-grid">{[{ key: null, label: "Mis iniciales" }, ...AVATARS].map(item => <label className={`settings-avatar-option ${avatar === item.key ? "is-selected" : ""}`} key={item.key ?? "initials"}>
         <input type="radio" name="avatarKey" value={item.key ?? "initials"} checked={avatar === item.key} onChange={() => setAvatar(item.key)}/><AccountAvatar animal={item.key} tone={tone} name={displayName} size={64}/><span>{item.label}</span>{avatar === item.key && <b aria-hidden="true">✓</b>}
       </label>)}</div>
