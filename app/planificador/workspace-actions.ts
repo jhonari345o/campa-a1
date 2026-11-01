@@ -2,6 +2,12 @@
 
 import { getInfomediaCatalog, getCategoryResearch } from "@/lib/infomedia-server";
 import { getBroadcastCatalog } from "@/lib/broadcast-server";
+import { getPressCatalog } from "@/lib/press-server";
+import { validatePressPicks } from "@/lib/press-catalog";
+import { getOohCatalog } from "@/lib/ooh-server";
+import { getOohLocationCatalog, getInfluencerCatalog } from "@/lib/media-workspace";
+import { validateManualExtras } from "@/lib/diy-workspace";
+import { FALLBACK_OOH } from "@/lib/diy-zones";
 import { validateBroadcastSelections } from "@/lib/broadcast-catalog";
 import { revalidatePath } from "next/cache";
 import { normalizeCoverageBrief } from "@/lib/geographic-coverage";
@@ -19,6 +25,7 @@ export type SaveProgressInput = {
 };
 
 export type ManualPlanDraft = {
+  activeMedium?: MediaGroup;
   startDate?: string; endDate?: string; ageRange?: string; sex?: string;
   categoryId: string;
   planId?: string | null;
@@ -112,12 +119,22 @@ export async function guardarPlanManual(input: ManualPlanDraft): Promise<SaveRes
     selectedMedia,
   };
   const rawSelections = cleanObject(input.selections);
-  const checked = validateBroadcastSelections(await getBroadcastCatalog(), {...brief, socioeconomic:"Todos los NSE"}, {
-    ...rawSelections,
+  const [broadcast, press, ooh, legacyOoh, influencers] = await Promise.all([
+    getBroadcastCatalog(),
+    selectedMedia.includes("press") ? getPressCatalog() : Promise.resolve({ entries: [] }),
+    selectedMedia.includes("ooh") ? getOohCatalog() : Promise.resolve({ assets: [] }),
+    selectedMedia.includes("ooh") ? getOohLocationCatalog() : Promise.resolve([]),
+    selectedMedia.includes("influencers") ? getInfluencerCatalog() : Promise.resolve([]),
+  ]);
+  const checked = validateBroadcastSelections(broadcast, {...brief, socioeconomic:"Todos los NSE"}, {
     tv: selectedMedia.includes("television") ? rawSelections.tv : [],
     radio: selectedMedia.includes("radio") ? rawSelections.radio : [],
   });
   if (!checked.ok) return checked;
+  const checkedPress = validatePressPicks(press, selectedMedia.includes("press") ? rawSelections.press ?? [] : [], brief);
+  if (!checkedPress.ok) return checkedPress;
+  const checkedExtras = validateManualExtras({ selectedMedia, selections: { ...checked.selections, press: checkedPress.picks, ooh: rawSelections.ooh, digital: rawSelections.digital, influencers: rawSelections.influencers }, ooh, legacyOoh: legacyOoh.length ? legacyOoh : FALLBACK_OOH, influencers });
+  if (!checkedExtras.ok) return checkedExtras;
   const status = input.submitForReview ? "revision" : "borrador";
   const stage = input.submitForReview ? "personaliza" : "propuesta";
   return savePlanRecord({
@@ -132,11 +149,13 @@ export async function guardarPlanManual(input: ManualPlanDraft): Promise<SaveRes
     brief,
     analysis: {
       scenario: selectedScenario,
+      digitalReady: Boolean(input.digitalReady),
+      activeMedium: input.activeMedium && isMediaGroup(input.activeMedium) ? input.activeMedium : selectedMedia[0],
       alternatives: scenarios,
       methodology: "Distribución determinística por objetivo, prioridad, tipo de audiencia, medios y cobertura; requiere validación comercial.",
     },
     proposal: { allocations: selectedScenario.allocations, validations: selectedScenario.validations },
-    selection: checked.selections,
+    selection: checkedExtras.selections,
   });
 }
 

@@ -1,0 +1,10 @@
+.field { display:block; min-width:0; color:#203e32; font-size:13px; font-weight:900; }
+.field select,.field input { display:block; width:100%; min-height:48px; margin:8px 0 20px; border:1px solid #d7e0d9; border-radius:12px; background:#f4f7f3; padding:12px 16px; color:#203e32; font-size:14px; font-weight:400; }
+.field select:focus-visible,.field input:focus-visible { outline:3px solid #008b16; outline-offset:3px; }
+.filters { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
+.offerTable { border:1px solid #d7e0d9; border-radius:16px; }
+.offerTable table { min-width:650px; }
+.offerTable small { display:block; margin-top:6px; max-width:420px; color:#65766c; font-size:11px; font-weight:400; white-space:normal; }
+.offerTable td:last-child { white-space:normal; }
+.conditions { display:grid; gap:8px; margin-top:20px; color:#65766c; font-size:12px; line-height:1.7; }
+@media(max-width:600px) { .filters { grid-template-columns:1fr; gap:0; } }
