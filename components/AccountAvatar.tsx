@@ -7,10 +7,12 @@ export function AccountAvatar({ animal, tone = "forest", name = "", size = 40 }:
     <rect width="96" height="96" rx="26" fill={colors.background}/>
     {!animal ? <text x="48" y="52" textAnchor="middle" dominantBaseline="middle" fill="currentColor" fontSize="32" fontWeight="800">{initials(name)}</text> : null}
     {animal === "iguana" && <>
-      <path d="m33 27 4-12 9 11 8-13 5 14 12-7-1 15 10 8-7 10 1 11-13 12-21-1-15-10-5-16 7-15Z" fill="currentColor"/>
-      <path d="M30 48c8-12 27-15 39-5M29 58c11 9 25 12 37 3" fill="none" stroke={colors.background} strokeWidth="4" strokeLinecap="round"/>
-      <circle cx="58" cy="44" r="6" fill={colors.background}/><circle cx="60" cy="42" r="1.7" fill="currentColor"/>
-      <circle cx="40" cy="56" r="4" fill={colors.background}/><circle cx="69" cy="53" r="2" fill={colors.background}/>
+      <path d="m21 49-8-11 13-1-6-13 14 5 4-14 10 13 7-8 3 15Z" fill="currentColor"/>
+      <path d="M20 77V50c0-15 12-24 27-24 10 0 19 5 23 13l11 6c5 3 6 10 1 14-5 5-12 6-23 6L48 82l-9-8-9 4Z" fill="currentColor"/>
+      <path d="M43 56c10 5 23 5 34 0M46 67l4 5" fill="none" stroke={colors.background} strokeWidth="3" strokeLinecap="round"/>
+      <circle cx="58" cy="39" r="6" fill={colors.background}/><circle cx="59.5" cy="37.5" r="1.7" fill="currentColor"/>
+      <circle cx="39" cy="53" r="7" fill={colors.background}/><circle cx="39" cy="53" r="3.5" fill="currentColor"/>
+      <circle cx="77" cy="48" r="2" fill={colors.background}/>
     </>}
     {animal === "capuchin" && <>
       <circle cx="23" cy="47" r="11" fill="currentColor"/><circle cx="73" cy="47" r="11" fill="currentColor"/>
@@ -34,12 +36,14 @@ export function AccountAvatar({ animal, tone = "forest", name = "", size = 40 }:
       <path d="m44 33-1 5m10-5 1 5m-21 20-4 2m36-2 4 2m-35 5-4 2m32-2 4 2" stroke={colors.background} strokeWidth="3" strokeLinecap="round"/>
     </>}
     {animal === "crab" && <>
-      <path d="M25 47c-5-6-10-5-12-12-2-5 0-11 4-14l3 10 5 2 2-11c7 6 9 15 3 22l7 9Zm46 0c5-6 10-5 12-12 2-5 0-11-4-14l-3 10-5 2-2-11c-7 6-9 15-3 22l-7 9Z" fill="currentColor"/>
-      <path d="M24 58c0-12 11-20 24-20s24 8 24 20c0 12-11 19-24 19S24 70 24 58Z" fill="currentColor"/>
-      <path d="m39 43-3-13m21 13 3-13" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round"/>
-      <circle cx="35" cy="28" r="6" fill="currentColor"/><circle cx="61" cy="28" r="6" fill="currentColor"/>
-      <circle cx="35" cy="28" r="2.2" fill={colors.background}/><circle cx="61" cy="28" r="2.2" fill={colors.background}/>
-      <path d="M38 59c6 5 14 5 20 0m-17 9h14" fill="none" stroke={colors.background} strokeWidth="3" strokeLinecap="round"/>
+      <path d="M25 56 14 47l3-10 10 4 8 10Zm46 0 11-9-3-10-10 4-8 10Z" fill="currentColor"/>
+      <path d="M20 43C9 40 7 31 12 22l5-5 1 12 7-3-1-13c12 5 15 17 7 25l-8 7Z" fill="currentColor"/>
+      <path d="M20 43C9 40 7 31 12 22l5-5 1 12 7-3-1-13c12 5 15 17 7 25l-8 7Z" transform="matrix(-1 0 0 1 96 0)" fill="currentColor"/>
+      <path d="M24 56c2-10 12-16 24-16s22 6 24 16l-3 14c-12 9-30 9-42 0Z" fill="currentColor"/>
+      <path d="m40 43-1-15m17 15 1-15" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round"/>
+      <circle cx="39" cy="25" r="6" fill="currentColor"/><circle cx="57" cy="25" r="6" fill="currentColor"/>
+      <circle cx="39" cy="25" r="2.5" fill={colors.background}/><circle cx="57" cy="25" r="2.5" fill={colors.background}/>
+      <path d="M30 52c11-5 25-5 36 0m-25 9h14m-12 6h10" fill="none" stroke={colors.background} strokeWidth="3" strokeLinecap="round"/>
     </>}
   </svg>;
 }
