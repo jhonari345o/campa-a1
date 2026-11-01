@@ -7,8 +7,16 @@ import type { MediaGroup } from "../lib/media-groups";
 import { mediaGroupForLabel } from "../lib/media-groups";
 import { projectResearch } from "../lib/infomedia";
 import { strategyBrief, strategyCatalogs, strategyResearch, tvSource, tvStudy } from "./media-strategy-fixture";
+import { buildCurrentCampaigns } from "../lib/campaigns";
 
 const date="2026-10-31";
+test("source-backed plans keep creative templates separate from measured analysis",async()=>{
+  const b=strategyBrief({selectedMedia:["digital"]}),bundle=buildStrategyEvidence(b,strategyResearch,strategyCatalogs(),date),base=await buildMediaPlan({...b,research:scopePlanningResearch(strategyResearch,bundle)});
+  const plan=applyStrategyPlan(base,buildStrategyReport(b,bundle,base,{aiState:"not_configured",fingerprint:"test",generatedAt:date}),b);
+  const campaigns=await buildCurrentCampaigns({keyword:b.keyword,audience:b.audience,objective:b.objective},plan);
+  assert.ok(campaigns.length>0);
+  assert.ok(campaigns.every(c=>c.templateOnly&&c.insight.basis==="datos"&&!c.insight.sources.length&&!/Señal (?:creativa )?a validar/.test(c.copy)));
+});
 test("TV ratings require the exact audience, market, observation date and measurement basis",()=>{
   const b=strategyBrief();assert.equal(tvAudienceApplies(tvStudy,b,date),true);
   for(const patch of [{sex:"Mujeres"},{ageRange:"18-34"},{socioeconomic:"A/B"},{audienceType:"B2B"},{geography:"Guayaquil",coverage:[]},{startDate:"2026-08-01"},{startDate:"2028-01-01"}])assert.equal(tvAudienceApplies(tvStudy,strategyBrief(patch),date),false);
