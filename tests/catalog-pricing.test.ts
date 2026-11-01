@@ -44,6 +44,9 @@ test("explicit agreement expiry remains visible as a period tariff and cannot au
  assert.equal(row.validFrom,"2026-10-01");assert.equal(row.validTo,"2026-10-31");
  assert.equal(row.priceCents,null);assert.equal(row.source.agreementId,undefined);
  assert.equal(catalogReferenceDisclosure(row)?.label,"Tarifa del período");
+ const [scenario]=scopeCatalogProducts([{...p,referenceOnly:true}],[rate],"2026-11-01",false);
+ assert.equal(catalogReferenceDisclosure(scenario)?.label,"Tarifa del período");
+ assert.equal(scenario.validTo,"2026-10-31");assert.equal(scenario.priceCents,null);
  assert.equal(catalogCartSummary([{productKey:row.key,quantity:2}],[row]).totalCents,null);
 });
 test("current firm prices and missing references never receive a historical-rate disclosure",()=>{
