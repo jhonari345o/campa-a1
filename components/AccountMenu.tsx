@@ -23,7 +23,7 @@ export function AccountMenu({ name, isAdmin, workspaceName, role, preview = fals
   return <div className="account-controls">
     <Link href="/cuenta/configuracion" className="account-settings-gear" aria-label="Configuración de mi cuenta" title="Configuración de mi cuenta"><SettingsGear/></Link>
     <details className="portal-account-menu">
-      <summary aria-label={`Abrir menú de cuenta de ${displayName}`}><AccountAvatar animal={preview ? null : preferences.avatarKey} tone={preferences.avatarTone} name={displayName} size={36}/><b>{displayName}</b><i>⌄</i></summary>
+      <summary aria-label={`Abrir menú de cuenta de ${displayName}`}><AccountAvatar animal={preview ? null : preferences.avatarKey} tone={preferences.avatarTone} name={displayName} size={36} imageVersion={!preview && preferences.useCustomAvatar ? preferences.customAvatarVersion : null}/><b>{displayName}</b><i>⌄</i></summary>
       <div><strong>{displayName}</strong><small>{preview ? "Vista de consulta" : isAdmin ? "Administrador de plataforma" : role === "planner" ? "Planificador" : "Usuario autorizado"}</small><p>{workspaceName ?? "Ad Mavericks One"} · espacio privado</p>
         <Link href="/cuenta/configuracion">Mi perfil y configuración</Link>{preview ? <Link href="/consola">Volver a administración</Link> : <form action={cerrarSesion}><button type="submit">Cerrar sesión</button></form>}
       </div>

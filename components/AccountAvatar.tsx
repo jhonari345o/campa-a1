@@ -1,7 +1,20 @@
+"use client";
+import { useState } from "react";
+import { avatarImageUrl } from "@/lib/account-avatar";
 import { AVATAR_TONES, initials, type AvatarKey, type AvatarTone } from "@/lib/account-preferences";
 
 /** Original, code-native animal head glyphs. Two green tones; no third-party images. */
-export function AccountAvatar({ animal, tone = "forest", name = "", size = 40 }: { animal: AvatarKey | null; tone?: AvatarTone; name?: string; size?: number }) {
+type AvatarProps = { animal: AvatarKey | null; tone?: AvatarTone; name?: string; size?: number; imageVersion?: string | null };
+function PhotoAvatar({ src, ...fallback }: AvatarProps & { src: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <AccountAvatar {...fallback}/>;
+  // The authenticated route has no public or third-party image URL.
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt="" width={fallback.size ?? 40} height={fallback.size ?? 40} className="account-avatar" onError={() => setFailed(true)}/>;
+}
+export function AccountAvatar({ animal, tone = "forest", name = "", size = 40, imageVersion }: AvatarProps) {
+  const photo = avatarImageUrl(imageVersion);
+  if (photo) return <PhotoAvatar key={imageVersion} src={photo} animal={animal} tone={tone} name={name} size={size}/>;
   const colors = AVATAR_TONES.find(item => item.key === tone) ?? AVATAR_TONES[0];
   return <svg aria-hidden="true" focusable="false" viewBox="0 0 96 96" width={size} height={size} className="account-avatar" style={{ color: colors.foreground }}>
     <rect width="96" height="96" rx="26" fill={colors.background}/>
