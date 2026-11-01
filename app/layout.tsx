@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Nunito_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import "leaflet/dist/leaflet.css";
 import "@/components/geography/coverage.css";
 import "./globals.css";
@@ -10,11 +10,16 @@ import "./media-strategy.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://admavericks.one";
 
-const nunito = Nunito_Sans({
-  subsets: ["latin"],
-  weight: ["400", "600", "800", "900"],
+const nunito = localFont({
+  src: [
+    { path: "./fonts/nunito-sans-latin.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/nunito-sans-latin.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/nunito-sans-latin.woff2", weight: "800", style: "normal" },
+    { path: "./fonts/nunito-sans-latin.woff2", weight: "900", style: "normal" },
+  ],
   variable: "--font-nunito",
   display: "swap",
+  fallback: ["Arial", "sans-serif"],
 });
 
 export const metadata: Metadata = {
