@@ -4,8 +4,15 @@ import { InfomediaCategoryPicker } from "@/components/InfomediaCategoryPicker";
 import type { CategoryCatalog } from "@/lib/infomedia-server";
 import { resolveCategory } from "@/lib/infomedia";
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
-import { DIGITAL_PLATFORMS, PRESS_OUTLETS, type InfluencerProfile } from "@/lib/media-catalog";
+import Image from "next/image";
+import { MediaSelectionIcon } from "@/components/MediaSelectionIcon";
+import { FALLBACK_OOH } from "@/lib/diy-zones";
+import { diySelectionSummary, influencerRateFor } from "@/lib/diy-workspace";
+import { pressEntriesForRegion, pressRegions, validatePressPicks, type PressCatalog, type PressPlanPick } from "@/lib/press-catalog";
+import { oohProvinceGroups, oohRateUnit, oohMatches, type OohCatalog } from "@/lib/ooh-catalog";
+import styles from "./DiyPlanner.module.css";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { DIGITAL_PLATFORMS, OOH_PROVIDERS, type InfluencerProfile } from "@/lib/media-catalog";
 import type { MediaGroup } from "@/lib/media-groups";
 import type { OohLocationOption, SavedMediaPlan } from "@/lib/media-workspace";
 import { buildPlanningScenarios, mediaGroupLabel, type PlanningScenario } from "@/lib/plan-optimizer";
@@ -16,10 +23,10 @@ import { CampaignTwin } from "./CampaignTwin";
 
 type TvPick = { sourceId?: string; context?: string; id: string; channel: string; title: string; schedule: string; market: string; unitPrice: number | null; quantity: number };
 type RadioPick = { id?: string; sourceId?: string; context?: string; name: string; spotsPerDay: number; days: number };
-type OohPick = { id: string; name: string; city: string; status: string; rate: number | null; months: number };
-type PressPick = { slug: string; name: string; format: string; quantity: number };
+type OohPick = { id: string; name: string; city: string; status: string; rate: number | null; months: number; units?: number; rateIndex?: number; unitLabel?: string; reference?: string };
+type PressPick = PressPlanPick;
 type DigitalPick = { slug: string; name: string; pct: number };
-type InfluencerPick = { id: string; name: string; deliverable: string; rate: number | null; quantity: number };
+type InfluencerPick = { profileId?: string; id: string; name: string; deliverable: string; rate: number | null; quantity: number };
 
 const MEDIA: Array<{ id: MediaGroup; mark: string; detail: string }> = [
   { id: "television", mark: "TV", detail: "Canales, programas y spots" },
@@ -32,24 +39,20 @@ const MEDIA: Array<{ id: MediaGroup; mark: string; detail: string }> = [
 
 const CITY_OPTIONS = ["Guayaquil", "Quito", "Cuenca", "Manta", "Samborondón", "Daule", "Durán", "Machala", "Loja", "Ambato", "Todo Ecuador"];
 
-const FALLBACK_OOH: OohLocationOption[] = [
-  zone("mall-del-sol", "Entorno Mall del Sol", "Guayaquil", -2.155041, -79.892686),
-  zone("san-marino", "Entorno San Marino Shopping", "Guayaquil", -2.169141, -79.898269),
-  zone("carlos-julio", "Av. Carlos Julio Arosemena · Albán Borja", "Guayaquil", -2.168693, -79.916651),
-  zone("orellana", "Av. Francisco de Orellana · WTC", "Guayaquil", -2.163501, -79.897987),
-  zone("25-julio", "Av. 25 de Julio · Mall del Sur", "Guayaquil", -2.227227, -79.897963),
-  zone("urdesa", "Urdesa · Víctor Emilio Estrada", "Guayaquil", -2.176354, -79.905004),
-  zone("plaza-lagos", "Plaza Lagos · Av. Samborondón", "Samborondón", -2.098392, -79.875193),
-];
+
 
 export function DiyPlanner({
   broadcast,
+  pressCatalog,
+  oohCatalog,
   influencers,
   oohLocations,
   initialPlan,
   categoryCatalog,
 }: {
   broadcast: BroadcastCatalog;
+  pressCatalog: PressCatalog;
+  oohCatalog: OohCatalog;
   categoryCatalog: CategoryCatalog;
   influencers: InfluencerProfile[];
   oohLocations: OohLocationOption[];
@@ -80,7 +83,7 @@ export function DiyPlanner({
   const [geoDraft, setGeoDraft] = useState("");
   const [selectedMedia, setSelectedMedia] = useState<MediaGroup[]>(mediaArray(initialBrief.selectedMedia).length
     ? mediaArray(initialBrief.selectedMedia)
-    : ["television", "radio", "ooh", "digital", "press", "influencers"]);
+    : ["television"]);
   const [scenarioId, setScenarioId] = useState<PlanningScenario["id"]>(scenarioValue(initialPlan?.analysis?.scenario));
   const [digitalReady, setDigitalReady] = useState(Boolean(initialPlan?.analysis?.digitalReady));
   const [tv, setTv] = useState<TvPick[]>(arrayValue<TvPick>(initialSelection.tv));
@@ -89,6 +92,10 @@ export function DiyPlanner({
   const [press, setPress] = useState<PressPick[]>(arrayValue<PressPick>(initialSelection.press));
   const [digital, setDigital] = useState<DigitalPick[]>(arrayValue<DigitalPick>(initialSelection.digital));
   const [creatorPicks, setCreatorPicks] = useState<InfluencerPick[]>(arrayValue<InfluencerPick>(initialSelection.influencers));
+  const [activeMedium, setActiveMedium] = useState<MediaGroup>(mediaArray([initialPlan?.analysis?.activeMedium])[0] ?? selectedMedia[0] ?? "television");
+  const [review, setReview] = useState(false);
+  const [briefOpen, setBriefOpen] = useState(!initialPlan);
+  const builder = useRef<HTMLDivElement>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const locations = oohLocations.length ? oohLocations : FALLBACK_OOH;
@@ -102,6 +109,17 @@ export function DiyPlanner({
     digitalReady,
   }), [audienceType, budget, digitalReady, geographies.length, objective, priority, selectedMedia]);
   const scenario = scenarios.find((item) => item.id === scenarioId) ?? scenarios[0];
+  const brief: BroadcastBrief = { startDate, endDate, geography: geographies.join(","), ageRange, sex, socioeconomic: "Todos los NSE", audienceType };
+  const displayTv = tv.map(pick => { const result = validateBroadcastSelections(broadcast, brief, { tv: [pick] }); return result.ok ? (result.selections.tv as TvPick[])[0] : { ...pick, unitPrice: null }; });
+  const displayPress = press.map(pick => { const result = validatePressPicks(pressCatalog, [pick], { startDate, endDate, geographies }); return result.ok ? result.picks[0] : { ...pick, unitPrice: null, referencePriceUsd: null }; });
+  const summary = diySelectionSummary(selectedMedia, { tv: displayTv, radio: radioPicks, ooh, press: displayPress, digital, influencers: creatorPicks }, scenario?.allocations.find(item => item.kind === "digital")?.amountUsd ?? 0);
+  const signature = JSON.stringify({ name, brand, categoryId, objective, priority, audienceType, audience, targetPeople, interests, budget, geographies, startDate, endDate, ageRange, sex, selectedMedia, scenarioId, digitalReady, tv, radioPicks, ooh, press, digital, creatorPicks });
+  const savedSignature = useRef(signature);
+  const dirty = savedSignature.current !== signature;
+  useEffect(() => { if (!dirty) return; const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); }; window.addEventListener("beforeunload", warn); return () => window.removeEventListener("beforeunload", warn); }, [dirty]);
+  function openMedium(kind: MediaGroup) { setActiveMedium(kind); setReview(false); }
+  function openReview() { setReview(true); builder.current?.scrollIntoView({ block: "start", behavior: "instant" }); builder.current?.focus({ preventScroll: true }); }
+
 
   function toggleMedium(kind: MediaGroup) {
     setSelectedMedia((current) => current.includes(kind) ? current.filter((item) => item !== kind) : [...current, kind]);
@@ -133,6 +151,7 @@ export function DiyPlanner({
       selectedMedia,
       scenarioId: scenario?.id ?? "recommended",
       digitalReady,
+      activeMedium,
       submitForReview,
       selections: { tv, radio: radioPicks, ooh, press, digital, influencers: creatorPicks },
     };
@@ -140,68 +159,40 @@ export function DiyPlanner({
       const result = await guardarPlanManual(input);
       if (!result.ok) setMessage({ ok: false, text: result.error });
       else {
+        savedSignature.current = signature;
         setPlanId(result.id);
         setMessage({ ok: true, text: result.message });
       }
     });
   }
 
-  return (
-    <div className="space-y-6">
-      <section className="rounded-panel border border-border bg-white p-6 shadow-panel sm:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div><p className="text-xs font-black uppercase tracking-[.18em] text-signal-dark">DIY · constructor operativo</p><h1 className="mt-2 text-3xl font-black">Crea el plan a tu manera</h1><p className="mt-2 max-w-3xl text-sm text-muted">Selecciona medios, productos, plazas y cantidades. Mavi arma escenarios sin inventar alcance, disponibilidad ni tarifas faltantes.</p></div>
-          <Link href="/planificador?view=planner" className="btn btn-secondary">Usar planificador guiado</Link>
-        </div>
-        {initialPlan && <p className="mt-4 rounded-xl border border-signal/30 bg-signal/10 px-4 py-3 text-sm font-bold text-forest">Continuando “{initialPlan.name}” · versión {initialPlan.version}.</p>}
-        <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Field label="Nombre del plan" value={name} onChange={setName} />
-          <Field label="Marca" value={brand} onChange={setBrand} />
-          <InfomediaCategoryPicker categories={categoryCatalog.categories} error={categoryCatalog.error} initialId={stringValue(initialBrief.categoryId)} initialLabel={stringValue(initialBrief.keyword)} onSelect={(category) => { setKeyword(category?.label ?? ""); setCategoryId(category?.id ?? ""); }} />
-          <Select label="Objetivo" value={objective} onChange={setObjective} options={["Reconocimiento", "Alcance", "Tráfico", "Interacción", "Mensajes", "Leads", "Ventas", "Visitas al local"].map((item) => [item, item])} />
-          <Select label="Prioridad" value={priority} onChange={setPriority} options={["Cobertura", "Frecuencia", "Eficiencia", "Conversión", "Afinidad", "Presencia local", "Balance"].map((item) => [item, item])} />
-          <Select label="Tipo de audiencia" value={audienceType} onChange={setAudienceType} options={["B2C", "B2B", "Mixta"].map((item) => [item, item])} />
-          <NumberField label="Presupuesto total (USD)" value={budget} onChange={setBudget} min={1} />
-          <NumberField label="Personas a impactar (referencia)" value={targetPeople} onChange={setTargetPeople} min={0} />
-        </div>
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
-          <TextArea label="Audiencia" value={audience} onChange={setAudience} placeholder="Personas, necesidades y comportamientos prioritarios" />
-          <TextArea label="Intereses, comportamientos o cargos" value={interests} onChange={setInterests} placeholder="Intereses, cargos B2B, hábitos de compra o contextos" />
-        </div>
-      </section>
-
-      <section className="rounded-panel border border-border bg-white p-6 shadow-panel">
-        <SectionTitle number="01" title="Coberturas múltiples" description="Combina ciudades, provincias y cobertura nacional. Las órdenes conservarán cada plaza por separado." />
-        <div className="mt-5 flex flex-wrap gap-2">{geographies.map((item) => <button key={item} type="button" onClick={() => setGeographies((current) => current.filter((value) => value !== item))} className="rounded-full border border-signal/30 bg-signal/10 px-3 py-2 text-xs font-black text-forest">{item} ×</button>)}</div>
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row"><select value={geoDraft} onChange={(event) => setGeoDraft(event.target.value)} className="min-h-11 flex-1 rounded-xl border border-border bg-fog px-4 text-sm"><option value="">Agregar ciudad o provincia</option>{CITY_OPTIONS.map((item) => <option key={item}>{item}</option>)}{ECUADOR_PROVINCE_OPTIONS.map((item) => <option key={item.value} value={`Provincia de ${item.label}`}>{item.label}</option>)}</select><button type="button" onClick={addGeography} className="btn btn-secondary">Agregar cobertura</button></div>
-      </section>
-
-      <section className="rounded-panel border border-border bg-white p-6 shadow-panel">
-        <SectionTitle number="02" title="Medios del plan" description="Activa sólo los medios que deben participar. Cada uno conserva sus propias unidades y validaciones." />
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{MEDIA.map((item) => <button key={item.id} type="button" onClick={() => toggleMedium(item.id)} className={`rounded-card border p-4 text-left ${selectedMedia.includes(item.id) ? "border-signal bg-forest text-white" : "border-border bg-fog text-forest"}`}><span className="text-xs font-black text-signal">{item.mark}</span><strong className="mt-1 block">{mediaGroupLabel(item.id)}</strong><small className={selectedMedia.includes(item.id) ? "text-white/65" : "text-muted"}>{item.detail}</small></button>)}</div>
-      </section>
-
-      <section className="rounded-panel border border-border bg-white p-6 shadow-panel">
-        <SectionTitle number="03" title="Escenarios de inversión" description="Tres distribuciones comparables. Los montos son presupuesto de trabajo, no promesas de resultados." />
-        <div className="mt-5 grid gap-4 lg:grid-cols-3">{scenarios.map((item) => <button key={item.id} type="button" onClick={() => setScenarioId(item.id)} className={`rounded-card border p-5 text-left ${scenario?.id === item.id ? "border-signal bg-forest text-white shadow-panel" : "border-border bg-fog"}`}><div className="flex items-center justify-between gap-2"><strong>{item.label}</strong><span className="rounded-full bg-white/15 px-2 py-1 text-[10px] font-black uppercase">Confianza {item.confidence}</span></div><p className={`mt-2 text-xs ${scenario?.id === item.id ? "text-white/70" : "text-muted"}`}>{item.description}</p><dl className="mt-4 space-y-1 text-xs">{item.allocations.map((allocation) => <div key={allocation.kind} className="flex justify-between"><dt>{mediaGroupLabel(allocation.kind)}</dt><dd className="font-black">{percent(allocation.pct)} · {money(allocation.amountUsd)}</dd></div>)}</dl></button>)}</div>
-      </section>
-
-      {scenario && <CampaignTwin scenario={scenario} budgetUsd={budget} geographies={geographies} digitalReady={digitalReady} onApplyBudget={setBudget} />}
-
-      <section className="rounded-panel border border-border bg-white p-5"><h2 className="font-black">Fechas y público para contrastar las fuentes</h2><div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><label className="text-sm font-bold">Inicio<input type="date" className="block w-full rounded-xl border p-3" value={startDate} onChange={e=>setStartDate(e.target.value)}/></label><label className="text-sm font-bold">Fin<input type="date" className="block w-full rounded-xl border p-3" value={endDate} onChange={e=>setEndDate(e.target.value)}/></label><Select label="Edad" value={ageRange} onChange={setAgeRange} options={["Personas 18+","18-34","35+","25-54"].map(x=>[x,x])}/><Select label="Sexo" value={sex} onChange={setSex} options={["Todas las personas","Mujeres","Hombres"].map(x=>[x,x])}/></div></section>
-      {selectedMedia.includes("television") && <TvConfigurator catalog={broadcast} brief={{startDate,endDate,geography:geographies.join(","),ageRange,sex,socioeconomic:"Todos los NSE",audienceType}} picks={tv} onChange={setTv} />}
-      {selectedMedia.includes("radio") && <RadioConfigurator catalog={broadcast} brief={{startDate,endDate,geography:geographies.join(","),ageRange,sex,socioeconomic:"Todos los NSE",audienceType}} picks={radioPicks} onChange={setRadioPicks} />}
-      {selectedMedia.includes("ooh") && <OohConfigurator locations={locations} picks={ooh} onChange={setOoh} />}
-      {selectedMedia.includes("digital") && <DigitalConfigurator picks={digital} onChange={setDigital} ready={digitalReady} onReadyChange={setDigitalReady} />}
-      {selectedMedia.includes("press") && <PressConfigurator picks={press} onChange={setPress} />}
-      {selectedMedia.includes("influencers") && <InfluencerConfigurator profiles={influencers} picks={creatorPicks} onChange={setCreatorPicks} />}
-
-      <section className="sticky bottom-4 z-20 rounded-panel border border-forest/20 bg-white/95 p-4 shadow-panel backdrop-blur">
-        <div className="flex flex-wrap items-center justify-between gap-4"><div><small className="font-black uppercase tracking-wide text-muted">Resumen</small><strong className="block text-lg text-forest">{selectedMedia.length} medios · {geographies.length} coberturas · {money(budget)}</strong><span className="text-xs text-muted">{scenario?.label ?? "Selecciona un escenario"}</span></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => save(false)} disabled={pending} className="btn btn-secondary">{pending ? "Guardando…" : "Guardar avance"}</button><button type="button" onClick={() => save(true)} disabled={pending} className="btn btn-primary">Enviar a revisión →</button></div></div>
-        {message && <p className={`mt-3 rounded-xl px-4 py-2 text-sm font-bold ${message.ok ? "bg-signal/10 text-forest" : "bg-coral/10 text-[#a13b31]"}`}>{message.text}{message.ok && <> <Link href="/planificador?view=plans" className="underline">Ver historial</Link></>}</p>}
-      </section>
+  return <div className={styles.root}>
+    <header className={styles.hero}><div><p className={styles.kicker}>Modo autogestionado</p><h1>DIY · Crea tu plan de medios</h1><p>Elige medios, productos, plazas y cantidades. Revisa tu selección en un solo lugar.</p><div className={styles.heroActions}><button type="button" className="btn btn-primary" onClick={() => { setBriefOpen(false); setReview(false); builder.current?.scrollIntoView({ block: "start", behavior: "instant" }); }}>Empezar a configurar →</button><Link href="/planificador?view=planner" className={styles.secondaryLink}>Planificador guiado ↗</Link></div></div><div className={styles.heroSignal}><span>1</span><div><small>TÚ CONFIGURAS</small><strong>Tu selección. Tu plan.</strong><p>Guarda el avance y retómalo desde tu cuenta.</p></div></div></header>
+    <div className={styles.selectionDock}><div><span>Mi selección</span><strong>{summary.count} {summary.count === 1 ? "producto seleccionado" : "productos seleccionados"}</strong><small>{dirty ? "Cambios sin guardar" : planId ? "Avance guardado en tu cuenta" : "Guarda para continuar después"}</small></div><div><button type="button" className="btn btn-primary" onClick={openReview}>Revisar y finalizar</button><Link href="/planificador?view=plans" className="btn btn-secondary">Planes guardados</Link></div></div>
+    {initialPlan && <p className={styles.resume}>Continuando “{initialPlan.name}” · versión {initialPlan.version}.</p>}
+    <details open={briefOpen} onToggle={event => setBriefOpen(event.currentTarget.open)} className={styles.brief}><summary><span>Brief, fechas y público</span><small>{brand || "Define tu marca"} · {geographies.join(" · ")} · {money(budget)}</small></summary><div className={styles.briefBody}>
+      <div className={styles.formGrid}><Field label="Nombre del plan" value={name} onChange={setName} /><Field label="Marca" value={brand} onChange={setBrand} /><InfomediaCategoryPicker categories={categoryCatalog.categories} error={categoryCatalog.error} initialId={stringValue(initialBrief.categoryId)} initialLabel={stringValue(initialBrief.keyword)} onSelect={category => { setKeyword(category?.label ?? ""); setCategoryId(category?.id ?? ""); }} /><NumberField label="Presupuesto total (USD)" value={budget} onChange={setBudget} min={1} /><Select label="Objetivo" value={objective} onChange={setObjective} options={["Reconocimiento", "Alcance", "Tráfico", "Interacción", "Mensajes", "Leads", "Ventas", "Visitas al local"].map(item => [item, item])} /><Select label="Prioridad" value={priority} onChange={setPriority} options={["Cobertura", "Frecuencia", "Eficiencia", "Conversión", "Afinidad", "Presencia local", "Balance"].map(item => [item, item])} /><Select label="Tipo de audiencia" value={audienceType} onChange={setAudienceType} options={["B2C", "B2B", "Mixta"].map(item => [item, item])} /><NumberField label="Personas a impactar (referencia)" value={targetPeople} onChange={setTargetPeople} min={0} /></div>
+      <div className={styles.formGridTwo}><TextArea label="Audiencia" value={audience} onChange={setAudience} placeholder="Personas, necesidades y comportamientos prioritarios" /><TextArea label="Intereses, comportamientos o cargos" value={interests} onChange={setInterests} placeholder="Intereses, cargos y contextos relevantes" /></div>
+      <div className={styles.formGrid}><label className="text-xs font-black">Inicio<input type="date" className={styles.dateField} value={startDate} onChange={event => setStartDate(event.target.value)} /></label><label className="text-xs font-black">Fin<input type="date" className={styles.dateField} value={endDate} onChange={event => setEndDate(event.target.value)} /></label><Select label="Edad" value={ageRange} onChange={setAgeRange} options={["Personas 18+", "18-34", "35+", "25-54"].map(item => [item, item])} /><Select label="Sexo" value={sex} onChange={setSex} options={["Todas las personas", "Mujeres", "Hombres"].map(item => [item, item])} /></div>
+      <div className={styles.geography}><strong>Coberturas del plan</strong><div className={styles.geoChips}>{geographies.map(item => <button key={item} type="button" aria-label={`Quitar cobertura ${item}`} onClick={() => setGeographies(current => current.filter(value => value !== item))}>{item} ×</button>)}</div><div className={styles.geoAdd}><label><span className="sr-only">Agregar ciudad o provincia</span><select value={geoDraft} onChange={event => setGeoDraft(event.target.value)}><option value="">Agregar ciudad o provincia</option>{CITY_OPTIONS.map(item => <option key={item}>{item}</option>)}{ECUADOR_PROVINCE_OPTIONS.map(item => <option key={item.value} value={`Provincia de ${item.label}`}>{item.label}</option>)}</select></label><button type="button" onClick={addGeography} className="btn btn-secondary">Agregar cobertura</button></div></div>
+    </div></details>
+    <nav className={styles.mediumRail} aria-label="Configurar medios del plan">{MEDIA.map(item => { const included = selectedMedia.includes(item.id), active = !review && activeMedium === item.id; return <div key={item.id} className={`${styles.mediumItem} ${active ? styles.mediumActive : ""}`}><button type="button" className={styles.mediumOpen} aria-pressed={active} aria-controls="diy-configurator" onClick={() => openMedium(item.id)}><span className={styles.mediumIcon}><MediaSelectionIcon medium={item.id} /></span><span><strong>{mediaGroupLabel(item.id)}</strong><small>{item.detail}</small></span></button><button type="button" className={styles.includeButton} aria-label={`${included ? "Quitar" : "Añadir"} ${mediaGroupLabel(item.id)} del plan`} aria-pressed={included} onClick={() => toggleMedium(item.id)}>{included ? "✓" : "+"}</button></div>; })}</nav>
+    <div className={styles.workspace}><div ref={builder} id="diy-configurator" tabIndex={-1} className={styles.builder}>
+      {!review && !selectedMedia.includes(activeMedium) && <div className={styles.includeNotice}><p>{mediaGroupLabel(activeMedium)} está fuera del plan.</p><button type="button" className="btn btn-primary" onClick={() => toggleMedium(activeMedium)}>Añadir {mediaGroupLabel(activeMedium)}</button></div>}
+      {review && <section className={styles.review}><p className={styles.kicker}>Mi selección</p><h2>Revisa y finaliza tu plan</h2><p>{name} · {brand || "Marca por definir"}</p>{!summary.count && <p className={styles.empty}>Todavía no hay productos seleccionados.</p>}{selectedMedia.map(kind => { const rows = summary.rows.filter(row => row.medium === kind); return <section key={kind} className={styles.reviewGroup}><header><h3>{mediaGroupLabel(kind)}</h3><button type="button" onClick={() => openMedium(kind)}>Editar →</button></header>{rows.length ? rows.map(row => <div key={row.key} className={styles.reviewRow}><div><strong>{row.label}</strong><small>{row.detail}</small></div><b>{row.cost == null ? "Tarifa pendiente" : money(row.cost)}</b></div>) : <p className={styles.empty}>Sin productos seleccionados en este medio.</p>}</section>; })}</section>}
+      <fieldset disabled={!selectedMedia.includes(activeMedium)} hidden={review} className={styles.configuratorFieldset} aria-label="Configuración del medio activo">
+        <div hidden={activeMedium !== "television"}><TvConfigurator catalog={broadcast} brief={brief} picks={tv} onChange={setTv} /></div>
+        <div hidden={activeMedium !== "radio"}><RadioConfigurator catalog={broadcast} brief={brief} picks={radioPicks} onChange={setRadioPicks} /></div>
+        <div hidden={activeMedium !== "ooh"}><OohConfigurator catalog={oohCatalog} locations={locations} picks={ooh} onChange={setOoh} /></div>
+        <div hidden={activeMedium !== "digital"}><DigitalConfigurator picks={digital} onChange={setDigital} ready={digitalReady} onReadyChange={setDigitalReady} /></div>
+        <div hidden={activeMedium !== "press"}><PressConfigurator catalog={pressCatalog} brief={{ startDate, endDate, geographies }} picks={press} onChange={setPress} /></div>
+        <div hidden={activeMedium !== "influencers"}><InfluencerConfigurator profiles={influencers} picks={creatorPicks} onChange={setCreatorPicks} /></div>
+      </fieldset>
+      {!review && <div className={styles.continueRow}><button type="button" onClick={openReview} className="btn btn-secondary">Revisar mi selección</button><button type="button" onClick={() => openMedium(MEDIA[(MEDIA.findIndex(item => item.id === activeMedium) + 1) % MEDIA.length].id)} className="btn btn-primary">Siguiente medio →</button></div>}
     </div>
-  );
+    <aside className={styles.summary} aria-label="Resumen del plan"><div className={styles.summarySticky}><p className={styles.kicker}>Mi selección</p><h2>{name}</h2><p>{selectedMedia.length} {selectedMedia.length === 1 ? "medio" : "medios"} · {geographies.length} {geographies.length === 1 ? "cobertura" : "coberturas"}</p><div className={styles.summaryBudget}><small>Inversión de referencia</small><strong>{money(summary.referenceUsd)}</strong><span>{summary.pending ? `${summary.pending} ${summary.pending === 1 ? "producto con tarifa pendiente" : "productos con tarifa pendiente"}` : `${summary.count} ${summary.count === 1 ? "producto seleccionado" : "productos seleccionados"}`}</span></div><dl className={styles.summaryLines}>{selectedMedia.map(kind => <div key={kind}><dt>{mediaGroupLabel(kind)}</dt><dd>{summary.rows.filter(row => row.medium === kind).length} {summary.rows.filter(row => row.medium === kind).length === 1 ? "producto" : "productos"}</dd></div>)}</dl><p className={styles.budgetLine}>Presupuesto del brief <b>{money(budget)}</b></p>{summary.referenceUsd > budget && <p role="status" className={styles.overBudget}>La selección de referencia supera el presupuesto del brief.</p>}<div className={styles.summaryActions}><button type="button" onClick={() => save(false)} disabled={pending} className="btn btn-secondary">{pending ? "Guardando…" : "Guardar avance"}</button><button type="button" onClick={() => review ? save(true) : openReview()} disabled={pending} className="btn btn-primary">{review ? "Enviar a revisión →" : "Revisar y finalizar →"}</button></div><small className={styles.saveState}>{dirty ? "Cambios sin guardar" : planId ? "Guardado en tu cuenta" : "Borrador nuevo"}</small>{message && <p role={message.ok ? "status" : "alert"} className={message.ok ? styles.success : styles.error}>{message.text}{message.ok && <> <Link href="/planificador?view=plans">Ver historial</Link></>}</p>}</div></aside></div>
+    <details className={styles.analysis}><summary>Escenarios de inversión y simulador</summary><div><p className={styles.analysisIntro}>Compara distribuciones del presupuesto conservando las mismas fechas, público y coberturas del brief.</p><div className={styles.scenarios}>{scenarios.map(item => <button key={item.id} type="button" aria-pressed={scenario?.id === item.id} onClick={() => setScenarioId(item.id)}><strong>{item.label}</strong><p>{item.description}</p><dl>{item.allocations.map(allocation => <div key={allocation.kind}><dt>{mediaGroupLabel(allocation.kind)}</dt><dd>{percent(allocation.pct)} · {money(allocation.amountUsd)}</dd></div>)}</dl></button>)}</div>{scenario && <CampaignTwin scenario={scenario} budgetUsd={budget} geographies={geographies} digitalReady={digitalReady} onApplyBudget={setBudget} />}</div></details>
+  </div>;
 }
 
 function TvConfigurator({catalog,brief,picks,onChange}:{catalog:BroadcastCatalog;brief:BroadcastBrief;picks:TvPick[];onChange:(v:TvPick[])=>void}) {
@@ -209,19 +200,32 @@ function TvConfigurator({catalog,brief,picks,onChange}:{catalog:BroadcastCatalog
  const offers=catalog.tv.filter(o=>o.sourceId===sourceId); const [offerId,setOfferId]=useState(''); const offer=offers.find(o=>o.id===offerId)??offers[0];
  const valid=!!source&&tvValidity(source,brief.startDate,brief.endDate); const scoped=!!source&&sameMarket(source,brief)&&!source.annualContract;
  function add(){if(!offer||!source||!valid||picks.some(p=>p.id===offer.id))return;onChange([...picks,{id:offer.id,sourceId:source.id,context:sourceDescription(source),channel:source.label,title:offer.title,schedule:`${offer.day} · ${offer.schedule}`,market:source.market,unitPrice:scoped?offer.priceUsd:null,quantity:1}]);}
- return <Configurator number="04" eyebrow="Televisión" title="Tarifas por edición y fechas"><div className="grid gap-3 lg:grid-cols-2"><Select label="Canal y vigencia" value={sourceId} onChange={v=>{setSourceId(v);setOfferId('');}} options={sources.map(s=>[s.id,`${s.label} · ${s.periodStart} – ${s.periodEnd}`])}/><Select label="Programa" value={offer?.id??''} onChange={setOfferId} options={offers.map(o=>[o.id,`${o.title} · ${o.day} · ${money(o.priceUsd)}`])}/></div>{source&&<p className="mt-3 text-xs">{sourceDescription(source)} · {source.conditions}</p>}{!valid&&<p className="mt-3 font-bold">Define fechas dentro de la vigencia de este tarifario.</p>}{valid&&!scoped&&<p className="mt-3 text-sm">La plaza o condición contractual requiere validación. Se agregará el programa sin aplicar un costo al plan.</p>}<button type="button" disabled={!valid||!offer} onClick={add} className="btn btn-primary mt-4 disabled:opacity-50">Agregar programa</button><PickList items={picks} empty="Selecciona una edición compatible con las fechas de campaña." render={item=><><div><strong>{item.channel} · {item.title}</strong><small>{item.context??item.market} · {(() => { const v=validateBroadcastSelections(catalog,brief,{tv:[item]}); return !v.ok?v.error:((v.selections.tv as TvPick[])[0].unitPrice==null?'Costo pendiente de validación':money((v.selections.tv as TvPick[])[0].unitPrice!)); })()}</small></div><NumberCompact value={item.quantity} onChange={quantity=>onChange(picks.map(p=>p.id===item.id?{...p,quantity}:p))}/><Remove onClick={()=>onChange(picks.filter(p=>p.id!==item.id))}/></>}/></Configurator>;
+ return <Configurator number="01" eyebrow="Televisión" title="Tarifas por edición y fechas"><div className="grid gap-3 lg:grid-cols-2"><Select label="Canal y vigencia" value={sourceId} onChange={v=>{setSourceId(v);setOfferId('');}} options={sources.map(s=>[s.id,`${s.label} · ${s.periodStart} – ${s.periodEnd}`])}/><Select label="Programa" value={offer?.id??''} onChange={setOfferId} options={offers.map(o=>[o.id,`${o.title} · ${o.day} · ${money(o.priceUsd)}`])}/></div>{source&&<p className="mt-3 text-xs">{sourceDescription(source)} · {source.conditions}</p>}{!valid&&<p className="mt-3 font-bold">Define fechas dentro de la vigencia de este tarifario.</p>}{valid&&!scoped&&<p className="mt-3 text-sm">La plaza o condición contractual requiere validación. Se agregará el programa sin aplicar un costo al plan.</p>}<button type="button" disabled={!valid||!offer} onClick={add} className="btn btn-primary mt-4 disabled:opacity-50">Agregar programa</button><PickList items={picks} empty="Selecciona una edición compatible con las fechas de campaña." render={item=><><div><strong>{item.channel} · {item.title}</strong><small>{item.context??item.market} · {(() => { const v=validateBroadcastSelections(catalog,brief,{tv:[item]}); return !v.ok?v.error:((v.selections.tv as TvPick[])[0].unitPrice==null?'Costo pendiente de validación':money((v.selections.tv as TvPick[])[0].unitPrice!)); })()}</small></div><NumberCompact value={item.quantity} onChange={quantity=>onChange(picks.map(p=>p.id===item.id?{...p,quantity}:p))}/><Remove onClick={()=>onChange(picks.filter(p=>p.id!==item.id))}/></>}/></Configurator>;
 }
 function RadioConfigurator({catalog,brief,picks,onChange}:{catalog:BroadcastCatalog;brief:BroadcastBrief;picks:RadioPick[];onChange:(v:RadioPick[])=>void}) {
  const sources=catalog.sources.filter(s=>s.kind==='radio');const [sourceId,setSourceId]=useState(sources[0]?.id??'');const source=sources.find(s=>s.id===sourceId);const rows=catalog.radio.filter(r=>r.sourceId===sourceId).sort((a,b)=>(b.rating??-1)-(a.rating??-1));const [rowId,setRowId]=useState('');const row=rows.find(r=>r.id===rowId)??rows[0];const mismatch=source?radioCompatibility(source,brief):'No hay estudio disponible';
  function add(){if(!row||!source||mismatch||picks.some(p=>p.id===row.id))return;onChange([...picks,{id:row.id,sourceId,context:sourceDescription(source),name:row.name,spotsPerDay:6,days:20}]);}
- return <Configurator number="05" eyebrow="Radio" title="Selecciona un estudio compatible"><Select label="Estudio de radio" value={sourceId} onChange={v=>{setSourceId(v);setRowId('');}} options={sources.map(s=>[s.id,sourceDescription(s)])}/><Select label="Emisora del estudio" value={row?.id??''} onChange={setRowId} options={rows.map(r=>[r.id,`${r.name} · rating ${r.rating??'—'}`])}/>{mismatch&&<p className="mt-3 text-sm font-bold">{mismatch}. Puedes consultar el estudio en el catálogo sin aplicarlo al plan.</p>}<button type="button" disabled={!!mismatch||!row} onClick={add} className="btn btn-primary mt-3 disabled:opacity-50">Agregar emisora</button><PickList items={picks} empty="Cada selección conserva la fuente y el público del ranking." render={item=><><div><strong>{item.name}</strong><small>{item.context??'Selección histórica sin estudio asociado'} · {item.spotsPerDay*item.days} cuñas{(() => {const s=catalog.sources.find(s=>s.id===item.sourceId);const m=s?radioCompatibility(s,brief):'Selecciona nuevamente un estudio';return m?` · ${m}`:'';})()}</small></div><NumberCompact value={item.spotsPerDay} onChange={spotsPerDay=>onChange(picks.map(p=>p===item?{...p,spotsPerDay}:p))}/><Remove onClick={()=>onChange(picks.filter(p=>p!==item))}/></>}/></Configurator>;
+ return <Configurator number="02" eyebrow="Radio" title="Selecciona un estudio compatible"><Select label="Estudio de radio" value={sourceId} onChange={v=>{setSourceId(v);setRowId('');}} options={sources.map(s=>[s.id,sourceDescription(s)])}/><Select label="Emisora del estudio" value={row?.id??''} onChange={setRowId} options={rows.map(r=>[r.id,`${r.name} · rating ${r.rating??'—'}`])}/>{mismatch&&<p className="mt-3 text-sm font-bold">{mismatch}. Puedes consultar el estudio en el catálogo sin aplicarlo al plan.</p>}<button type="button" disabled={!!mismatch||!row} onClick={add} className="btn btn-primary mt-3 disabled:opacity-50">Agregar emisora</button><PickList items={picks} empty="Cada selección conserva la fuente y el público del ranking." render={item=><><div><strong>{item.name}</strong><small>{item.context??'Selección histórica sin estudio asociado'} · {item.spotsPerDay*item.days} cuñas{(() => {const s=catalog.sources.find(s=>s.id===item.sourceId);const m=s?radioCompatibility(s,brief):'Selecciona nuevamente un estudio';return m?` · ${m}`:'';})()}</small></div><NumberCompact value={item.spotsPerDay} onChange={spotsPerDay=>onChange(picks.map(p=>p===item?{...p,spotsPerDay}:p))}/><Remove onClick={()=>onChange(picks.filter(p=>p!==item))}/></>}/></Configurator>;
 }
 
-function OohConfigurator({ locations, picks, onChange }: { locations: OohLocationOption[]; picks: OohPick[]; onChange: (value: OohPick[]) => void }) {
-  const [id, setId] = useState(locations[0]?.id ?? "");
-  const selected = locations.find((item) => item.id === id);
-  function add() { if (selected && !picks.some((item) => item.id === selected.id)) onChange([...picks, { id: selected.id, name: selected.name, city: selected.city, status: selected.status, rate: selected.monthlyRateUsd, months: 1 }]); }
-  return <Configurator number="06" eyebrow="Vía pública" title="Elige ubicaciones verificables y zonas candidatas"><div className="grid gap-3 lg:grid-cols-[1fr_auto]"><Select label="Ubicación o corredor" value={id} onChange={setId} options={locations.map((item) => [item.id, `${item.city} · ${item.name} · ${item.status === "inventory" ? "inventario" : "zona candidata"}`])} /><button type="button" onClick={add} className="btn btn-primary self-end">Agregar</button></div><PickList items={picks} empty="Una zona candidata no se muestra como valla disponible ni recibe una tarifa inventada." render={(item) => <><div><strong>{item.name}</strong><small>{item.city} · {item.status === "inventory" ? "Inventario comercial" : "Prospección, disponibilidad pendiente"} · {item.rate == null ? "Tarifa pendiente" : `${money(item.rate)}/mes`}</small></div><label className="text-xs font-bold">Meses<NumberCompact value={item.months} onChange={(months) => onChange(picks.map((pick) => pick.id === item.id ? { ...pick, months } : pick))} /></label><Remove onClick={() => onChange(picks.filter((pick) => pick.id !== item.id))} /></>} /></Configurator>;
+function OohConfigurator({ catalog, locations, picks, onChange }: { catalog: OohCatalog; locations: OohLocationOption[]; picks: OohPick[]; onChange: (value: OohPick[]) => void }) {
+  const [provider, setProvider] = useState(""), [province, setProvince] = useState(""), [query, setQuery] = useState(""), [id, setId] = useState(""), [rateIndex, setRateIndex] = useState(0);
+  const groups = oohProvinceGroups(catalog.assets);
+  const assets = catalog.assets.filter(asset => (!provider || asset.providerSlug === provider) && (!province || groups.find(group => group.key === province)?.assets.some(item => item.id === asset.id)) && oohMatches(asset, query));
+  const asset = assets.find(asset => asset.id === id) ?? assets[0];
+  const selectedRate = asset?.rates[rateIndex] ?? asset?.rates[0];
+  const effectiveRateIndex = selectedRate ? asset.rates.indexOf(selectedRate) : -1;
+  const legacy = locations.find(item => item.id === id) ?? locations[0];
+  function add() {
+    const next: OohPick | undefined = asset ? { id: asset.id, name: asset.name, city: asset.city, status: "inventory", rate: selectedRate?.amount ?? null, months: 1, units: 1, rateIndex: effectiveRateIndex, unitLabel: selectedRate ? oohRateUnit(selectedRate) : "Unidad por definir", reference: asset.reference } : !catalog.assets.length && !catalog.error && legacy ? { id: legacy.id, name: legacy.name, city: legacy.city, status: legacy.status, rate: legacy.status === "inventory" ? legacy.monthlyRateUsd : null, months: 1, units: 1, unitLabel: "mes" } : undefined;
+    if (next && !picks.some(pick => pick.id === next.id)) onChange([...picks, next]);
+  }
+  return <Configurator number="03" eyebrow="Vía pública" title="Proveedor, provincia y ubicación">
+    {catalog.error && <p role="alert" className={styles.error}>{catalog.error}</p>}
+    {catalog.assets.length ? <><div className={styles.formGridTwo}><Select label="Proveedor" value={provider} onChange={value => { setProvider(value); setId(""); setRateIndex(0); }} options={[["", "Todos los proveedores"], ...[...new Set(catalog.assets.map(asset => asset.providerSlug))].map(slug => [slug, OOH_PROVIDERS.find(provider => provider.slug === slug)?.name ?? slug] as [string, string])]} /><Select label="Provincia" value={province} onChange={value => { setProvince(value); setId(""); setRateIndex(0); }} options={[["", "Todas las provincias"], ...groups.map(group => [group.key, group.name] as [string, string])]} /><Field label="Buscar ubicación o formato" value={query} onChange={setQuery} /><Select label="Elemento del catálogo" value={asset?.id ?? ""} onChange={value => { setId(value); setRateIndex(0); }} options={assets.map(asset => [asset.id, [asset.city, asset.name, asset.code].filter(Boolean).join(" · ")])} /></div>{asset && <div className={styles.assetPreview}>{asset.photo && <div className={styles.assetPhoto}><Image src={`/api/ooh/images/${encodeURIComponent(asset.id)}`} alt={asset.photoKind === "format" ? `Referencia del formato ${asset.format}` : asset.name} fill unoptimized sizes="300px" className="object-contain" /></div>}<div><strong>{asset.name}</strong><p>{[asset.city, asset.address].filter(Boolean).join(" · ")}</p><p>{asset.format} · {asset.dimensions}</p><Select label="Tarifa y unidad de referencia" value={String(effectiveRateIndex)} onChange={value => setRateIndex(Number(value))} options={asset.rates.length ? asset.rates.map((rate, index) => [String(index), `${money(rate.amount)} · ${oohRateUnit(rate)} · ${rate.component}`]) : [["-1", "Tarifa no incorporada"]]} /><small>{asset.reference}</small></div></div>}{!assets.length && <p className={styles.empty}>No hay elementos para estos filtros.</p>}</> : <Select label="Ubicación o corredor" value={legacy?.id ?? ""} onChange={setId} options={locations.map(item => [item.id, `${item.city} · ${item.name} · ${item.status === "inventory" ? "inventario" : "zona candidata"}`])} />}
+    <button type="button" onClick={add} disabled={!!catalog.error || (catalog.assets.length > 0 && !asset)} className="btn btn-primary mt-4">Agregar ubicación</button>
+    <PickList items={picks} empty="Elige una ubicación para incorporarla a tu plan." render={item => <><div><strong>{item.name}</strong><small>{item.city} · {item.rate == null ? "Tarifa pendiente" : `${money(item.rate)} · ${item.unitLabel ?? "mes"}`} · {item.status === "inventory" ? "Referencia del catálogo" : "Zona candidata"}</small></div><label className="text-xs font-bold">Unidades<NumberCompact value={item.units ?? item.months} onChange={units => onChange(picks.map(pick => pick.id === item.id ? { ...pick, units, months: units } : pick))} /></label><Remove onClick={() => onChange(picks.filter(pick => pick.id !== item.id))} /></>} />
+  </Configurator>;
 }
 
 function DigitalConfigurator({ picks, onChange, ready, onReadyChange }: { picks: DigitalPick[]; onChange: (value: DigitalPick[]) => void; ready: boolean; onReadyChange: (value: boolean) => void }) {
@@ -231,14 +235,32 @@ function DigitalConfigurator({ picks, onChange, ready, onReadyChange }: { picks:
     const pct = next.length ? 1 / next.length : 0;
     onChange(next.map((item) => ({ ...item, pct })));
   }
-  return <Configurator number="07" eyebrow="Digital" title="Une objetivo, plataformas y medición"><label className="mb-4 flex items-start gap-3 rounded-xl bg-fog p-4 text-sm"><input type="checkbox" checked={ready} onChange={(event) => onReadyChange(event.target.checked)} className="mt-1" /><span><strong className="block text-forest">Destino, tracking y cuentas preparados</strong><small className="text-muted">Si no está marcado, el escenario conserva la inversión pero exige preparación antes del forecast.</small></span></label><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{DIGITAL_PLATFORMS.map((item) => { const active = picks.some((pick) => pick.slug === item.slug); return <button key={item.slug} type="button" onClick={() => toggle(item.slug, item.name)} className={`rounded-card border p-4 text-left ${active ? "border-signal bg-forest text-white" : "border-border bg-fog"}`}><strong>{item.name}</strong><small className={`mt-1 block ${active ? "text-white/65" : "text-muted"}`}>{item.objective}</small>{active && <b className="mt-3 block text-signal">{percent(picks.find((pick) => pick.slug === item.slug)?.pct ?? 0)} del bloque digital</b>}</button>; })}</div></Configurator>;
+  return <Configurator number="04" eyebrow="Digital" title="Une objetivo, plataformas y medición"><label className="mb-4 flex items-start gap-3 rounded-xl bg-fog p-4 text-sm"><input type="checkbox" checked={ready} onChange={(event) => onReadyChange(event.target.checked)} className="mt-1" /><span><strong className="block text-forest">Destino, tracking y cuentas preparados</strong><small className="text-muted">Si no está marcado, el escenario conserva la inversión pero exige preparación antes del forecast.</small></span></label><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{DIGITAL_PLATFORMS.map((item) => { const active = picks.some((pick) => pick.slug === item.slug); return <button key={item.slug} type="button" onClick={() => toggle(item.slug, item.name)} className={`rounded-card border p-4 text-left ${active ? "border-signal bg-forest text-white" : "border-border bg-fog"}`}><strong>{item.name}</strong><small className={`mt-1 block ${active ? "text-white/65" : "text-muted"}`}>{item.objective}</small>{active && <b className="mt-3 block text-signal">{percent(picks.find((pick) => pick.slug === item.slug)?.pct ?? 0)} del bloque digital</b>}</button>; })}</div></Configurator>;
 }
 
-function PressConfigurator({ picks, onChange }: { picks: PressPick[]; onChange: (value: PressPick[]) => void }) {
-  const [slug, setSlug] = useState(PRESS_OUTLETS[0]?.slug ?? "");
-  const [format, setFormat] = useState("Página completa");
-  function add() { const outlet = PRESS_OUTLETS.find((item) => item.slug === slug); if (outlet) onChange([...picks, { slug: `${slug}-${format}-${picks.length}`, name: outlet.name, format, quantity: 1 }]); }
-  return <Configurator number="08" eyebrow="Prensa" title="Elige cobertura, cabeceras y formatos"><div className="grid gap-3 lg:grid-cols-[1fr_1fr_auto]"><Select label="Medio" value={slug} onChange={setSlug} options={PRESS_OUTLETS.map((item) => [item.slug, `${item.name} · ${item.statusNote}`])} /><Select label="Formato" value={format} onChange={setFormat} options={["Página completa", "Media página", "Publirreportaje", "Portada o contraportada", "Display digital", "Contenido patrocinado"].map((item) => [item, item])} /><button type="button" onClick={add} className="btn btn-primary self-end">Agregar</button></div><PickList items={picks} empty="Las tarifas y fechas de cierre se reconfirman antes de ordenar." render={(item) => <><div><strong>{item.name} · {item.format}</strong><small>Edición, tarifa, circulación/lectura e IVA por confirmar</small></div><NumberCompact value={item.quantity} onChange={(quantity) => onChange(picks.map((pick) => pick.slug === item.slug ? { ...pick, quantity } : pick))} /><Remove onClick={() => onChange(picks.filter((pick) => pick.slug !== item.slug))} /></>} /></Configurator>;
+function PressConfigurator({ catalog, brief, picks, onChange }: { catalog: PressCatalog; brief: { startDate?: string; endDate?: string; geographies: string[] }; picks: PressPick[]; onChange: (value: PressPick[]) => void }) {
+  const [region, setRegion] = useState("national"), [entryId, setEntryId] = useState(""), [editionId, setEditionId] = useState(""), [group, setGroup] = useState(""), [offerId, setOfferId] = useState(""), [market, setMarket] = useState(""), [format, setFormat] = useState("Página completa"), [error, setError] = useState("");
+  const entries = pressEntriesForRegion(catalog, region), entry = entries.find(entry => entry.id === entryId) ?? entries[0];
+  const edition = entry?.editions.find(edition => edition.id === editionId) ?? entry?.editions[0];
+  const groups = [...new Set(edition?.offers.map(offer => offer.group) ?? [])], family = groups.includes(group) ? group : groups[0] ?? "";
+  const markets = [...new Set(edition?.offers.filter(offer => offer.group === family).map(offer => offer.market) ?? [])], currentMarket = markets.includes(market) ? market : markets[0] ?? "";
+  const offers = edition?.offers.filter(offer => offer.group === family && offer.market === currentMarket) ?? [], offer = offers.find(offer => offer.id === offerId) ?? offers[0];
+  function add() {
+    if (!entry) return;
+    const pick: PressPick = { slug: `${entry.id}-request-${picks.length}`, outletId: entry.id, name: entry.name, format, quantity: 1, ...(edition && offer ? { editionId: edition.id, offerId: offer.id } : {}) };
+    const checked = validatePressPicks(catalog, [pick], brief);
+    if (!checked.ok) { setError(checked.error); return; }
+    const next = checked.picks[0], previous = picks.find(pick => pick.slug === next.slug);
+    onChange(previous ? picks.map(pick => pick.slug === next.slug ? { ...pick, quantity: Math.min(10000, pick.quantity + 1) } : pick) : [...picks, next]); setError("");
+  }
+  return <Configurator number="05" eyebrow="Prensa" title="Provincia, cabecera y formato">
+    {catalog.error && <p role="alert" className={styles.error}>{catalog.error}</p>}
+    <div className={styles.formGridTwo}><Select label="Cobertura de prensa" value={region} onChange={value => { setRegion(value); setEntryId(""); setEditionId(""); setGroup(""); setMarket(""); setOfferId(""); }} options={pressRegions.map(region => [region.key, region.label])} /><Select label="Cabecera" value={entry?.id ?? ""} onChange={value => { setEntryId(value); setEditionId(""); setGroup(""); setMarket(""); setOfferId(""); }} options={entries.map(entry => [entry.id, entry.name])} /></div>
+    {entry && <p className={styles.sourceContext}>{entry.coverage}</p>}
+    {edition ? <><div className={styles.formGridTwo}><Select label="Edición" value={edition.id} onChange={value => { setEditionId(value); setGroup(""); setMarket(""); setOfferId(""); }} options={entry!.editions.map(edition => [edition.id, `${edition.label} · ${edition.period}`])} /><Select label="Familia de formatos" value={family} onChange={value => { setGroup(value); setMarket(""); setOfferId(""); }} options={groups.map(group => [group, group])} /><Select label="Plaza del formato" value={currentMarket} onChange={value => { setMarket(value); setOfferId(""); }} options={markets.map(market => [market, market])} /><Select label="Formato del tarifario" value={offer?.id ?? ""} onChange={setOfferId} options={offers.map(offer => [offer.id, `${offer.name} · ${offer.priceUsd == null ? "Sin precio declarado" : money(offer.priceUsd)} · ${offer.unit}`])} /></div>{offer && <p className={styles.sourceContext}>{offer.specs}{offer.duration ? ` · ${offer.duration}` : ""}</p>}</> : entry ? <Select label="Formato solicitado" value={format} onChange={setFormat} options={["Página completa", "Media página", "Publirreportaje", "Portada o contraportada", "Display digital", "Contenido patrocinado"].map(format => [format, format])} /> : <p className={styles.empty}>Todavía no hay cabeceras incorporadas en esta provincia.</p>}
+    <button type="button" onClick={add} disabled={!entry || !!catalog.error} className="btn btn-primary mt-4">Agregar formato</button>{error && <p role="alert" className={styles.error}>{error}</p>}
+    <PickList items={picks} empty="Selecciona una cabecera y un formato para armar tu pauta." render={item => <><div><strong>{item.name} · {item.format}</strong><small>{item.context || "Solicitud de formato"} · {item.unitPrice != null ? money(item.unitPrice) : item.referencePriceUsd != null ? `${money(item.referencePriceUsd)} de referencia` : "Tarifa pendiente"}</small></div><label className="text-xs font-bold">{item.unit === "CPM" ? "Miles de impresiones" : "Unidades"}<NumberCompact value={item.quantity} onChange={quantity => onChange(picks.map(pick => pick.slug === item.slug ? { ...pick, quantity } : pick))} /></label><Remove onClick={() => onChange(picks.filter(pick => pick.slug !== item.slug))} /></>} />
+  </Configurator>;
 }
 
 function InfluencerConfigurator({ profiles, picks, onChange }: { profiles: InfluencerProfile[]; picks: InfluencerPick[]; onChange: (value: InfluencerPick[]) => void }) {
@@ -246,12 +268,11 @@ function InfluencerConfigurator({ profiles, picks, onChange }: { profiles: Influ
   const available = profiles.filter((item) => item.category === category);
   const [profileId, setProfileId] = useState("");
   const [deliverable, setDeliverable] = useState("Reel colaborativo");
-  function add() { const profile = available.find((item) => item.id === profileId) ?? available[0]; if (!profile) return; const rate = profile.rates.find((item) => normalize(item.format).includes(normalize(deliverable)))?.amountUsd ?? profile.rates[0]?.amountUsd ?? null; onChange([...picks, { id: `${profile.id}-${deliverable}-${picks.length}`, name: profile.name, deliverable, rate, quantity: 1 }]); }
-  return <Configurator number="09" eyebrow="Influenciadores" title="Arma el roster y sus entregables"><div className="grid gap-3 xl:grid-cols-[.8fr_1.2fr_1fr_auto]"><Select label="Categoría" value={category} onChange={(value) => { setCategory(value as InfluencerProfile["category"]); setProfileId(""); }} options={[["deportes", "Deportes"], ["foodie", "Foodie"], ["beauty", "Beauty"]]} /><Select label="Perfil" value={profileId || available[0]?.id || ""} onChange={setProfileId} options={available.map((item) => [item.id, `${item.name}${item.handle ? ` · @${item.handle.replace(/^@/, "")}` : ""}`])} /><Select label="Entregable" value={deliverable} onChange={setDeliverable} options={["Reel colaborativo", "TikTok", "Historia", "Derecho de pauta"].map((item) => [item, item])} /><button type="button" onClick={add} className="btn btn-primary self-end">Agregar</button></div><PickList items={picks} empty="Selecciona una categoría antes de mezclar perfiles sin relación con la campaña." render={(item) => <><div><strong>{item.name} · {item.deliverable}</strong><small>{item.rate == null ? "Tarifa pendiente" : `${money(item.rate)} referencial sin IVA`} · derechos y disponibilidad por reconfirmar</small></div><NumberCompact value={item.quantity} onChange={(quantity) => onChange(picks.map((pick) => pick.id === item.id ? { ...pick, quantity } : pick))} /><Remove onClick={() => onChange(picks.filter((pick) => pick.id !== item.id))} /></>} /></Configurator>;
+  function add() { const profile = available.find((item) => item.id === profileId) ?? available[0]; if (!profile) return; const rate = influencerRateFor(profile, deliverable); onChange([...picks, { id: `${profile.id}-${deliverable}-${picks.length}`, profileId: profile.id, name: profile.name, deliverable, rate, quantity: 1 }]); }
+  return <Configurator number="06" eyebrow="Influenciadores" title="Arma el roster y sus entregables"><div className="grid gap-3 xl:grid-cols-[.8fr_1.2fr_1fr_auto]"><Select label="Categoría" value={category} onChange={(value) => { setCategory(value as InfluencerProfile["category"]); setProfileId(""); }} options={[["deportes", "Deportes"], ["foodie", "Foodie"], ["beauty", "Beauty"]]} /><Select label="Perfil" value={profileId || available[0]?.id || ""} onChange={setProfileId} options={available.map((item) => [item.id, `${item.name}${item.handle ? ` · @${item.handle.replace(/^@/, "")}` : ""}`])} /><Select label="Entregable" value={deliverable} onChange={setDeliverable} options={["Reel colaborativo", "TikTok", "Historia", "Derecho de pauta"].map((item) => [item, item])} /><button type="button" onClick={add} className="btn btn-primary self-end">Agregar</button></div><PickList items={picks} empty="Selecciona una categoría antes de mezclar perfiles sin relación con la campaña." render={(item) => <><div><strong>{item.name} · {item.deliverable}</strong><small>{item.rate == null ? "Tarifa pendiente" : `${money(item.rate)} referencial sin IVA`} · derechos y disponibilidad por reconfirmar</small></div><NumberCompact value={item.quantity} onChange={(quantity) => onChange(picks.map((pick) => pick.id === item.id ? { ...pick, quantity } : pick))} /><Remove onClick={() => onChange(picks.filter((pick) => pick.id !== item.id))} /></>} /></Configurator>;
 }
 
 function Configurator({ number, eyebrow, title, children }: { number: string; eyebrow: string; title: string; children: React.ReactNode }) { return <section className="rounded-panel border border-border bg-white p-6 shadow-panel"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-forest text-sm font-black text-signal">{number}</span><div><p className="text-xs font-black uppercase tracking-wide text-signal-dark">{eyebrow}</p><h2 className="text-xl font-black">{title}</h2></div></div><div className="mt-6">{children}</div></section>; }
-function SectionTitle({ number, title, description }: { number: string; title: string; description: string }) { return <div className="flex gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-forest text-xs font-black text-signal">{number}</span><div><h2 className="text-xl font-black">{title}</h2><p className="mt-1 text-sm text-muted">{description}</p></div></div>; }
 function Field({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) { return <label className="text-xs font-black text-forest">{label}<input value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-border bg-fog px-4 text-sm font-normal" /></label>; }
 function NumberField({ label, value, onChange, min }: { label: string; value: number; onChange: (value: number) => void; min: number }) { return <label className="text-xs font-black text-forest">{label}<input type="number" min={min} value={value || ""} onChange={(event) => onChange(Number(event.target.value))} className="mt-1 min-h-11 w-full rounded-xl border border-border bg-fog px-4 text-sm font-normal" /></label>; }
 function TextArea({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder: string }) { return <label className="text-xs font-black text-forest">{label}<textarea value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} rows={3} className="mt-1 w-full rounded-xl border border-border bg-fog px-4 py-3 text-sm font-normal" /></label>; }
@@ -267,5 +288,3 @@ function arrayOfStrings(value: unknown) { return Array.isArray(value) ? value.ma
 function arrayValue<T>(value: unknown): T[] { return Array.isArray(value) ? value as T[] : []; }
 function mediaArray(value: unknown): MediaGroup[] { return arrayOfStrings(value).filter((item): item is MediaGroup => MEDIA.some((medium) => medium.id === item)); }
 function scenarioValue(value: unknown): PlanningScenario["id"] { const id = value && typeof value === "object" ? (value as { id?: unknown }).id : null; return id === "efficiency" || id === "presence" ? id : "recommended"; }
-function normalize(value: string) { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); }
-function zone(id: string, name: string, city: string, latitude: number, longitude: number): OohLocationOption { return { id, assetCode: id, status: "zone_candidate", providerName: null, name, city, province: "Guayas", address: name, latitude, longitude, format: "Zona para búsqueda de inventario", monthlyRateUsd: null, productionRateUsd: null, audienceTags: ["adultos 25-45 · hipótesis"], contextTags: ["movilidad urbana"], affluenceIndex: null, sourceNote: "Zona candidata; requiere proveedor, flujo, tarifa y disponibilidad.", verifiedAt: "2026-08-27" }; }

@@ -1,6 +1,7 @@
 import { getBroadcastCatalog } from "@/lib/broadcast-server";
 import { getOohCatalog } from "@/lib/ooh-server";
 import { getRadioDirectory } from "@/lib/radio-directory-server";
+import { getPressCatalog } from "@/lib/press-server";
 import { getInfomediaCatalog } from "@/lib/infomedia-server";
 import { getMyCompanies } from "@/lib/company";
 import { canCompanyRole } from "@/lib/permissions";
@@ -51,17 +52,18 @@ export default async function PlanificadorPage({
   const categoryCatalog = view === "planner" || view === "diy" ? await getInfomediaCatalog() : { categories: [] };
   const catalogNeeded = view === "media" || view === "diy";
   const selectedPlanNeeded = (view === "planner" || view === "diy" || view === "versions") && Boolean(params.plan);
-  const [influencers, plans, selectedPlan, versions, oohLocations, collaboration, catalogHealth, broadcast, ooh, radioDirectory] = await Promise.all([
+  const [influencers, plans, selectedPlan, versions, oohLocations, collaboration, catalogHealth, broadcast, ooh, radioDirectory, press] = await Promise.all([
     catalogNeeded ? getInfluencerCatalog() : Promise.resolve([]),
     view === "plans" ? getMySavedPlans(profile.id) : Promise.resolve([]),
     selectedPlanNeeded ? getMySavedPlan(profile.id, params.plan!) : Promise.resolve(null),
     view === "versions" && params.plan ? getMyPlanVersions(profile.id, params.plan) : Promise.resolve([]),
     view === "diy" ? getOohLocationCatalog() : Promise.resolve([]),
     view === "versions" && params.plan ? getPlanCollaboration(profile.id, params.plan) : Promise.resolve({ comments: [], approvals: [] }),
-    view === "media" && section !== "tv" && section !== "radio" ? getCatalogHealth() : Promise.resolve(null),
+    view === "media" && section !== "tv" && section !== "radio" && section !== "press" ? getCatalogHealth() : Promise.resolve(null),
     catalogNeeded ? getBroadcastCatalog() : Promise.resolve({ sources: [], tv: [], radio: [] }),
-    view === "media" && section === "ooh" ? getOohCatalog() : Promise.resolve({ assets: [] }),
+    view === "diy" || (view === "media" && section === "ooh") ? getOohCatalog() : Promise.resolve({ assets: [] }),
     view === "media" && section === "radio" ? getRadioDirectory() : Promise.resolve({ stations: [] }),
+    view === "diy" || (view === "media" && section === "press") ? getPressCatalog() : Promise.resolve({ entries: [] }),
   ]);
 
   return (
@@ -80,11 +82,11 @@ export default async function PlanificadorPage({
       />
       <main id="workspace-content" className={`portal-page ${view === "media" ? "portal-page-wide" : "portal-page-planner"}`}>
         {view === "media" ? (
-          <MediaCatalog broadcast={broadcast} ooh={ooh} radioDirectory={radioDirectory} section={section} influencers={influencers} health={catalogHealth} />
+          <MediaCatalog broadcast={broadcast} ooh={ooh} radioDirectory={radioDirectory} press={press} section={section} influencers={influencers} health={catalogHealth} />
         ) : view === "plans" ? (
           <SavedPlans plans={plans} />
         ) : view === "diy" ? (
-          <DiyPlanner broadcast={broadcast} categoryCatalog={categoryCatalog} influencers={influencers} oohLocations={oohLocations} initialPlan={selectedPlan} />
+          <DiyPlanner broadcast={broadcast} pressCatalog={press} oohCatalog={ooh} categoryCatalog={categoryCatalog} influencers={influencers} oohLocations={oohLocations} initialPlan={selectedPlan} />
         ) : view === "versions" ? (
           <PlanVersions canApprove={profile.is_platform_admin || companies.some(c => c.id === selectedPlan?.companyId && c.status === "activa" && canCompanyRole(c.role, "campaign:approve"))} plan={selectedPlan} versions={versions} comments={collaboration.comments} approvals={collaboration.approvals} />
         ) : (
