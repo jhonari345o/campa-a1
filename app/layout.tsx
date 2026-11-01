@@ -5,6 +5,7 @@ import "@/components/geography/coverage.css";
 import "./globals.css";
 import "./workspace-theme.css";
 import "./campaign-library.css";
+import "./account-settings.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://admavericks.one";
 

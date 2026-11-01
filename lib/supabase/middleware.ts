@@ -5,6 +5,7 @@ import { LEGAL_VERSIONS } from "@/lib/legal";
 const CONSENT_PROTECTED_ROUTES = [
   "/panel", "/consola", "/mercado", "/planificador", "/asistente",
   "/campanas", "/pautar", "/reportes", "/laboratorio", "/clientes", "/creditos", "/proveedores",
+  "/cuenta/configuracion",
 ];
 
 /**

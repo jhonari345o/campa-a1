@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Wordmark } from "@/components/Wordmark";
+import { AccountMenu } from "@/components/AccountMenu";
 import { getSessionProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { CrearUsuarioClienteForm } from "./CrearUsuarioClienteForm";
@@ -175,19 +176,12 @@ function ConsolaHeader({ name }: { name: string }) {
     <header className="border-b border-border bg-white/80 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
         <div className="flex items-center gap-3">
-          <Wordmark one className="text-lg" />
+          <Link href="/" aria-label="Ad Mavericks One, página principal"><Wordmark one className="text-lg" /></Link>
           <span className="rounded-full bg-forest/10 px-3 py-1 text-xs font-black uppercase tracking-wide text-forest">
             Consola de Alta
           </span>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="hidden text-sm font-bold text-muted sm:block">{name}</span>
-          <form action={cerrarSesion}>
-            <button type="submit" className="text-sm font-black text-forest hover:text-signal-dark">
-              Salir
-            </button>
-          </form>
-        </div>
+        <AccountMenu name={name} isAdmin/>
       </div>
     </header>
   );
@@ -296,7 +290,7 @@ function CenteredPanel({ title, children }: { title: string; children: React.Rea
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
       <div className="rounded-panel border border-border bg-white p-8 shadow-panel">
-        <Wordmark one className="text-base" />
+        <Link href="/" aria-label="Ad Mavericks One, página principal"><Wordmark one className="text-base" /></Link>
         <h1 className="mt-6 text-2xl font-black tracking-tight">{title}</h1>
         <div className="mt-3">{children}</div>
       </div>
