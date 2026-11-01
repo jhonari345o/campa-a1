@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
+import { startTransition, useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
 import { InfomediaCategoryPicker } from "@/components/InfomediaCategoryPicker";
 import { TgiResearchPanel } from "@/components/TgiResearchPanel";
 import { InfomediaResearchPanel } from "@/components/InfomediaResearchPanel";
@@ -106,7 +106,13 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
       </header>
 
       {stage === "brief" && savedResearch && <details className="planner-details"><summary>Consultar investigación guardada</summary><InfomediaResearchPanel research={savedResearch} /><TgiResearchPanel research={savedResearch.tgi} selectedMedia={initialSelectedMedia} /></details>}
-      <form ref={formRef} action={formAction} className={`planner-form ${stage === "brief" ? "" : "hidden"}`} aria-hidden={stage !== "brief"}>
+      <form ref={formRef} onSubmit={(event) => {
+        event.preventDefault();
+        if (pending) return;
+        // Keep the brief available for comparison and retries instead of resetting native fields.
+        const data = new FormData(event.currentTarget);
+        startTransition(() => formAction(data));
+      }} className={`planner-form ${stage === "brief" ? "" : "hidden"}`} aria-hidden={stage !== "brief"}>
         <section className="planner-form-section">
           <SectionNumber number="01" title="Objetivo de la campaña" description="Define la marca, su categoría y el resultado que debe priorizar el plan." />
           <div className="planner-fields planner-fields-two">
