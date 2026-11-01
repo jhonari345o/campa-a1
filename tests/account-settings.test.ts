@@ -6,7 +6,7 @@ import { changeOwnPassword } from "../lib/account-security";
 const sample = { currentPassword: "synthetic-current-phrase", password: "synthetic-new-phrase", confirm: "synthetic-new-phrase", closeOthers: true };
 test("preferences accept only the five local avatars and known palettes; never retain a supplied target or privilege", () => {
   const form = new FormData(); form.set("displayName", "  María José  "); form.set("avatarKey", "iguana"); form.set("avatarTone", "forest"); form.set("user_id", "other-person"); form.set("is_platform_admin", "true");
-  assert.deepEqual(parsePreferences(form), { displayName: "María José", avatarKey: "iguana", avatarTone: "forest", reducedMotion: false });
+  assert.deepEqual(parsePreferences(form), { displayName: "María José", avatarKey: "iguana", avatarTone: "forest", reducedMotion: false, useCustomAvatar: false });
   for (const avatar of ["https://example.test/tracker.svg", "<svg onload=alert(1)>", "../admin", ""]) { form.set("avatarKey", avatar); assert.equal(parsePreferences(form), null); }
   form.set("avatarKey", "crab"); form.set("avatarTone", "custom-url"); assert.equal(parsePreferences(form), null);
   form.set("avatarTone", "mangrove"); form.set("displayName", "bad\nname"); assert.equal(parsePreferences(form), null);
