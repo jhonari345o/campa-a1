@@ -1,16 +1,16 @@
 "use client";
 
-import Image from "next/image";
 import { workspacePreviewHref } from "@/lib/workspace-preview";
 import type { WorkspaceIdentity } from "@/lib/workspace-brand";
 import { portalCapabilities, PORTAL_LABELS } from "@/lib/portal-access";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Wordmark } from "./Wordmark";
-import { cerrarSesion } from "@/app/consola/actions";
 import { MaviFloatingAssistant } from "./MaviFloatingAssistant";
+import { AccountMenu } from "./AccountMenu";
+import { WorkspaceClientBrand } from "./WorkspaceClientBrand";
 
-type ActivePage = "mercado" | "consola" | "panel" | "asistente" | "planificador" | "campanas" | "pautar" | "reportes" | "laboratorio" | "clientes";
+type ActivePage = "mercado" | "consola" | "panel" | "asistente" | "planificador" | "campanas" | "pautar" | "reportes" | "laboratorio" | "clientes" | "configuracion";
 
 type AppHeaderProps = {
   workspace?: WorkspaceIdentity | null;
@@ -50,6 +50,7 @@ const PAGE_TITLES: Record<ActivePage, string> = {
   reportes: "Reportes",
   laboratorio: "Laboratorio creativo",
   clientes: "Clientes y campañas",
+  configuracion: "Mi configuración",
 };
 
 export function AppHeader({ name, isAdmin, active = "panel", title, catalogSection, workspace, previewCompanyId,previewClientId }: AppHeaderProps) {
@@ -57,7 +58,6 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
   const close = () => setMenuOpen(false);
   const link=(href:string)=>previewCompanyId?workspacePreviewHref(previewCompanyId,href,previewClientId):href;
   const displayTitle = title ?? PAGE_TITLES[active];
-  const initial = (name.trim()[0] || "A").toUpperCase();
   const kind = workspace?.kind ?? "agency";
   const capabilities = portalCapabilities(kind, workspace?.role ?? "", isAdmin, workspace?.clientPlanning);
 
@@ -66,10 +66,8 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
       <a href="#workspace-content" className="portal-skip-link">Saltar al contenido principal</a>
       <aside data-workspace-brand={workspace?.brand ?? "one"} data-portal-kind={kind} data-catalog-selection={capabilities.request ? "enabled" : "disabled"} className={`portal-sidebar ${menuOpen ? "is-open" : ""}`} aria-label="Navegación principal">
         <button type="button" className="portal-sidebar-close" onClick={close} aria-label="Cerrar menú">×</button>
-        <Link href={link("/panel")} onClick={close} className="portal-sidebar-brand" aria-label={`Ir al inicio de ${workspace?.name ?? "Ad Mavericks One"}`}>
-          {workspace?.brand === "lettera"
-            ? <Image src="/partners/lettera/lettera-logo.png" width={2048} height={493} alt="Léttera" className="workspace-lettera-logo" priority />
-            : workspace?.brand === "ucsg" ? <Image src="/partners/ucsg/ucsg-logo.png" width={534} height={132} alt="UCSG · Universidad Católica de Santiago de Guayaquil" className="workspace-ucsg-logo" priority /> : workspace?.brand === "mobil" ? <Image src="/partners/mobil/mobil-logo.png" width={2000} height={610} alt="Mobil" className="workspace-mobil-logo" priority/> : <Wordmark one invert className="text-[18px]" />}
+        <Link href="/" onClick={close} className="portal-sidebar-brand" aria-label="Ad Mavericks One, página principal">
+          <Wordmark one invert className="text-[22px]" />
         </Link>
         <span className="portal-private-badge">{workspace ? PORTAL_LABELS[kind] : "Administración"}</span>
 
@@ -132,18 +130,12 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
         <button type="button" className="portal-menu-button" onClick={() => setMenuOpen(true)} aria-label="Abrir menú" aria-expanded={menuOpen}>
           <span /><span /><span />
         </button>
-        <div className="portal-topbar-copy"><p>{workspace?.name ?? "Ad Mavericks One"}</p><strong>{displayTitle}</strong></div>
+        <Link href="/" className="portal-mobile-brand" aria-label="Ad Mavericks One, página principal"><Wordmark one/></Link>
+        <div className="portal-topbar-copy"><p>Ad Mavericks One</p><strong>{displayTitle}</strong></div>
         <div className="portal-topbar-account">
+          <WorkspaceClientBrand workspace={workspace}/>
           <span className="portal-license-pill"><i />Licencia activa</span>
-          <details className="portal-account-menu">
-            <summary aria-label={`Abrir menú de cuenta de ${name}`}><span>{initial}</span><b>{name}</b><i>⌄</i></summary>
-            <div>
-              <strong>{name}</strong>
-              <small>{isAdmin ? "Administrador de plataforma" : workspace?.role === "planner" ? "Planificador" : "Usuario autorizado"}</small>
-              <p>{workspace?.name ?? "Ad Mavericks One"} · espacio privado</p>
-              {previewCompanyId?<Link href="/consola">Volver a administración</Link>:<form action={cerrarSesion}><button type="submit">Cerrar sesión</button></form>}
-            </div>
-          </details>
+          <AccountMenu name={name} isAdmin={isAdmin} workspaceName={workspace?.name} role={workspace?.role} preview={Boolean(previewCompanyId)}/>
         </div>
       </header>
       {!previewCompanyId && <MaviFloatingAssistant />}
