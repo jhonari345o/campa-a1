@@ -7,6 +7,6 @@ export function WorkspaceClientBrand({ workspace }: { workspace?: WorkspaceIdent
     : workspace.brand === "lettera" ? { src: "/partners/lettera/lettera-logo.png", width: 2048, height: 493, alt: "Léttera" }
     : workspace.brand === "mobil" ? { src: "/partners/mobil/mobil-logo.png", width: 2000, height: 610, alt: "Mobil" } : null;
   return <div className="workspace-client-brand" aria-label={`Espacio de ${workspace.name}`}>
-    <span>Tu espacio</span>{asset ? <Image {...asset} alt={asset.alt} className="workspace-client-brand-image" priority/> : <strong>{workspace.name}</strong>}
+    <span>Tu espacio</span>{asset ? <Image {...asset} alt={asset.alt} className={`workspace-client-brand-image${workspace.brand === "lettera" ? " is-lettera" : ""}`} priority/> : <strong>{workspace.name}</strong>}
   </div>;
 }
