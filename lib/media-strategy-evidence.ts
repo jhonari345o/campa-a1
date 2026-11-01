@@ -1,3 +1,5 @@
+import type {CatalogProduct} from "./catalog-shopping";
+import {productMedium} from "./diy-catalog";
 import { briefMarketKeys, normalized, radioCompatibility, sameMarket, tvValidity, validDate, type BroadcastCatalog, type BroadcastSource } from "./broadcast-catalog";
 import { pressMarketMatches, pressValidity, type PressCatalog } from "./press-catalog";
 import { radioStationRankings, type RadioTariff } from "./radio-station";
@@ -39,7 +41,7 @@ export type StrategyEvidenceBundle = {
   gaps: string[]; researchPeriod: string; competitionAvailable: boolean;
   audienceReferences: { sourceId: string; medium: MediaGroup; provider: string; product: string; rating: number | null }[];
 };
-export type StrategyCatalogs = { broadcast: BroadcastCatalog; press: PressCatalog; radio: RadioDirectoryCatalog; ooh: OohCatalog; influencers: InfluencerProfile[]; tvAudience: TvAudienceObservation[] };
+export type StrategyCatalogs = { workspaceProducts?:CatalogProduct[]; broadcast: BroadcastCatalog; press: PressCatalog; radio: RadioDirectoryCatalog; ooh: OohCatalog; influencers: InfluencerProfile[]; tvAudience: TvAudienceObservation[] };
 export function scopePlanningResearch(research:CategoryResearch,bundle:StrategyEvidenceBundle):CategoryResearch {
   return {...research,tgi:bundle.consumption.some(c=>c.comparable)?research.tgi:undefined,periods:research.periods.map(p=>bundle.competitionAvailable?p:{...p,mediaMix:[]})};
 }
@@ -165,6 +167,19 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
   if(selected(brief,"digital") && (brief.trackingStatus!=="Implementado y validado" || brief.adAccountsStatus!=="Existen y tenemos acceso")) gaps.push("Digital: completar destino, tracking y acceso a cuentas antes de emitir un forecast de resultados.");
   if(selected(brief,"digital")) gaps.push("Digital: la distribución propuesta no sustituye un forecast de plataforma ni predice conversiones.");
   void competitionSource;
+  for(const p of catalogs.workspaceProducts??[]){
+    const medium=productMedium(p);if(!selected(brief,medium)||!p.source.workspaceProductId)continue;
+    // National commercial packages can be bought for a local brief at their original
+    // national price; this does not make a national audience study locally comparable.
+    const marketFit=p.marketKeys?.length?(p.marketKeys.some(k=>normalized(k)==="nacional")||sameMarket({marketKeys:p.marketKeys} as BroadcastSource,brief)):tariffMarket(p.location,brief);
+    if(!marketFit)continue;
+    const valid=datesCover(p.validFrom??null,p.validTo??null,brief),referencePrice=p.priceCents??p.referencePriceCents??null;
+    const quoted=valid&&referencePrice!=null&&referencePrice>0;
+    const sid=addSource({id:`workspace-tariff:${p.source.workspaceProductId}`,kind:"tariff",label:`${p.provider} · ${p.name}`,period:`${p.validFrom??""} – ${p.validTo??""}`,market:p.location,target:"Sin audiencia homologada en el acuerdo",use:quoted?"comparable":"context",note:p.conditions});
+    candidates.push({id:`workspace:${p.key}`,medium,provider:p.provider,product:p.name,market:p.location,target:"Sin audiencia homologada en el acuerdo",period:`${p.validFrom??""} – ${p.validTo??""}`,sourceIds:[sid],sourceUse:quoted?"comparable":"context",unit:p.unit,unitPriceUsd:quoted?referencePrice!/100:null,referencePriceUsd:referencePrice==null?null:referencePrice/100,minimumUnits:1,minimumSpendUsd:quoted?referencePrice!/100:null,metrics:[],note:[p.format,p.conditions].filter(Boolean).join(" · ")});
+  }
+  const resolvedTariffGaps:Partial<Record<MediaGroup,string>>={television:"TV: no hay tarifas compatibles con todas las fechas, plaza y condiciones del brief.",radio:"Radio: no hay una tarifa vigente y compatible para cuantificar la pauta.",press:"Prensa: faltan tarifas con vigencia y plaza compatibles con la campaña."};
+  for(const [medium,gap] of Object.entries(resolvedTariffGaps))if(candidates.some(c=>c.medium===medium&&c.id.startsWith("workspace:")&&c.unitPriceUsd!=null)){const i=gaps.indexOf(gap);if(i>=0)gaps.splice(i,1);}
   const boundedSources=[...sources.values()].slice(0,500), sourceIds=new Set(boundedSources.map(s=>s.id));
   return {asOf,sources:boundedSources,candidates:candidates.filter(c=>c.sourceIds.every(id=>sourceIds.has(id))).slice(0,800),competition,categoryMix,consumption,gaps:[...new Set(gaps)].slice(0,30),researchPeriod:period?.periodLabel??"Sin período",competitionAvailable,audienceReferences};
 }

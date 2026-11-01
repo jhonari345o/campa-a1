@@ -11,8 +11,10 @@ export type CatalogProduct = {
   key: string; kind: "influencer" | "ooh" | "tv" | "radio" | "press" | "digital"; provider: string; name: string;
   format: string; unit: string; priceCents: number | null; taxIncluded: boolean | null;
   location: string; reference: string; image: string | null; conditions: string;
-  source: { rateId?: string; profileId?: string; assetId?: string; rate?: OohRate; rateIndex?: number; sourceId?: string; offerId?: string; stationId?: string; tariffId?: string; seconds?: number; publicationId?: string; editionId?: string; platformSlug?: string; agreementId?: string };
-  validFrom?: string | null; validTo?: string | null;
+  source: { rateId?: string; profileId?: string; assetId?: string; rate?: OohRate; rateIndex?: number; sourceId?: string; offerId?: string; stationId?: string; tariffId?: string; seconds?: number; publicationId?: string; editionId?: string; platformSlug?: string; workspaceProductId?: string; agreementId?: string };
+  marketKeys?: string[];
+  formatGroup?: "other" | "totem_standard" | "totem_special";
+  validFrom?: string | null; validTo?: string | null; referencePriceCents?: number | null;
 };
 export type CatalogCartLine = { pick: CatalogPick; product: CatalogProduct | null; subtotalCents: number | null };
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -106,7 +108,7 @@ export function catalogCartSummary(items: CatalogPick[], products: CatalogProduc
     totalLabel: pendingPrice ? "Subtotal con precio" : taxes.size === 1 && taxes.has(false) ? "Subtotal sin IVA" : taxes.size === 1 && taxes.has(true) ? "Subtotal con IVA" : "Subtotal de catálogo" };
 }
 export function catalogQuoteSignature(items: CatalogPick[], products: CatalogProduct[]) {
-  return JSON.stringify(catalogCartSummary(items, products).lines.map(l => [l.pick.productKey, l.pick.quantity, l.product?.priceCents ?? null, l.product?.taxIncluded ?? null, l.product?.provider ?? null, l.product?.name ?? null, l.product?.format ?? null, l.product?.unit ?? null, l.product?.location ?? null, l.product?.reference ?? null]));
+  return JSON.stringify(catalogCartSummary(items, products).lines.map(l => [l.pick.productKey, l.pick.quantity, l.product?.priceCents ?? null, l.product?.taxIncluded ?? null, l.product?.provider ?? null, l.product?.name ?? null, l.product?.format ?? null, l.product?.unit ?? null, l.product?.location ?? null, l.product?.reference ?? null, l.product?.conditions ?? null, l.product?.source.agreementId ?? null, l.product?.validFrom ?? null, l.product?.validTo ?? null]));
 }
 export function canonicalCatalogOrder(items: CatalogPick[], products: CatalogProduct[]) {
   const summary = catalogCartSummary(items, products);
@@ -115,6 +117,6 @@ export function canonicalCatalogOrder(items: CatalogPick[], products: CatalogPro
     productKey: pick.productKey, quantity: pick.quantity, kind: product!.kind, provider: product!.provider,
     name: product!.name, format: product!.format, unit: product!.unit,
     unitPriceCents: product!.priceCents, taxIncluded: product!.taxIncluded,
-    location: product!.location, reference: product!.reference, source: product!.source,
+    location: product!.location, reference: product!.reference, conditions: product!.conditions, validFrom: product!.validFrom ?? null, validTo: product!.validTo ?? null, source: product!.source,
   })) };
 }

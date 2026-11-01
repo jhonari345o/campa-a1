@@ -1,4 +1,8 @@
 "use client";
+import {WorkspaceDiyCatalog} from "./WorkspaceDiyCatalog";
+import {resolveDiyCatalog} from "@/lib/diy-catalog";
+import type {CatalogProduct,CatalogPick} from "@/lib/catalog-shopping";
+
 
 import { InfomediaCategoryPicker } from "@/components/InfomediaCategoryPicker";
 import type { CategoryCatalog } from "@/lib/infomedia-server";
@@ -49,7 +53,9 @@ export function DiyPlanner({
   oohLocations,
   initialPlan,
   categoryCatalog,
+  workspaceProducts=[],
 }: {
+  workspaceProducts?: CatalogProduct[];
   broadcast: BroadcastCatalog;
   pressCatalog: PressCatalog;
   oohCatalog: OohCatalog;
@@ -91,6 +97,7 @@ export function DiyPlanner({
   const [ooh, setOoh] = useState<OohPick[]>(arrayValue<OohPick>(initialSelection.ooh));
   const [press, setPress] = useState<PressPick[]>(arrayValue<PressPick>(initialSelection.press));
   const [digital, setDigital] = useState<DigitalPick[]>(arrayValue<DigitalPick>(initialSelection.digital));
+  const [catalogPicks,setCatalogPicks]=useState<CatalogPick[]>(arrayValue<CatalogPick>(initialSelection.catalog).map(p=>({productKey:p.productKey,quantity:p.quantity})));
   const [creatorPicks, setCreatorPicks] = useState<InfluencerPick[]>(arrayValue<InfluencerPick>(initialSelection.influencers));
   const [activeMedium, setActiveMedium] = useState<MediaGroup>(mediaArray([initialPlan?.analysis?.activeMedium])[0] ?? selectedMedia[0] ?? "television");
   const [review, setReview] = useState(false);
@@ -112,8 +119,10 @@ export function DiyPlanner({
   const brief: BroadcastBrief = { startDate, endDate, geography: geographies.join(","), ageRange, sex, socioeconomic: "Todos los NSE", audienceType };
   const displayTv = tv.map(pick => { const result = validateBroadcastSelections(broadcast, brief, { tv: [pick] }); return result.ok ? (result.selections.tv as TvPick[])[0] : { ...pick, unitPrice: null }; });
   const displayPress = press.map(pick => { const result = validatePressPicks(pressCatalog, [pick], { startDate, endDate, geographies }); return result.ok ? result.picks[0] : { ...pick, unitPrice: null, referencePriceUsd: null }; });
-  const summary = diySelectionSummary(selectedMedia, { tv: displayTv, radio: radioPicks, ooh, press: displayPress, digital, influencers: creatorPicks }, scenario?.allocations.find(item => item.kind === "digital")?.amountUsd ?? 0);
-  const signature = JSON.stringify({ name, brand, categoryId, objective, priority, audienceType, audience, targetPeople, interests, budget, geographies, startDate, endDate, ageRange, sex, selectedMedia, scenarioId, digitalReady, tv, radioPicks, ooh, press, digital, creatorPicks });
+  let catalogSelection:ReturnType<typeof resolveDiyCatalog>=[],catalogError="";
+  try {catalogSelection=resolveDiyCatalog(catalogPicks,workspaceProducts,selectedMedia,startDate,endDate)}catch{catalogError="Hay productos que ya no están disponibles. Retíralos de la selección para continuar.";}
+  const summary = diySelectionSummary(selectedMedia, { tv: displayTv, radio: radioPicks, ooh, press: displayPress, digital, influencers: creatorPicks, catalog:catalogSelection }, scenario?.allocations.find(item => item.kind === "digital")?.amountUsd ?? 0);
+  const signature = JSON.stringify({ name, brand, categoryId, objective, priority, audienceType, audience, targetPeople, interests, budget, geographies, startDate, endDate, ageRange, sex, selectedMedia, scenarioId, digitalReady, tv, radioPicks, ooh, press, digital, creatorPicks, catalogPicks });
   const savedSignature = useRef(signature);
   const dirty = savedSignature.current !== signature;
   useEffect(() => { if (!dirty) return; const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); }; window.addEventListener("beforeunload", warn); return () => window.removeEventListener("beforeunload", warn); }, [dirty]);
@@ -134,6 +143,7 @@ export function DiyPlanner({
 
   function save(submitForReview: boolean) {
     setMessage(null);
+    if(catalogError){setMessage({ok:false,text:catalogError});return;}
     const input: ManualPlanDraft = {
       planId: planId || null,
       name,
@@ -153,7 +163,7 @@ export function DiyPlanner({
       digitalReady,
       activeMedium,
       submitForReview,
-      selections: { tv, radio: radioPicks, ooh, press, digital, influencers: creatorPicks },
+      selections: { tv, radio: radioPicks, ooh, press, digital, influencers: creatorPicks, catalog:catalogPicks },
     };
     startTransition(async () => {
       const result = await guardarPlanManual(input);
@@ -181,6 +191,8 @@ export function DiyPlanner({
       {!review && !selectedMedia.includes(activeMedium) && <div className={styles.includeNotice}><p>{mediaGroupLabel(activeMedium)} está fuera del plan.</p><button type="button" className="btn btn-primary" onClick={() => toggleMedium(activeMedium)}>Añadir {mediaGroupLabel(activeMedium)}</button></div>}
       {review && <section className={styles.review}><p className={styles.kicker}>Mi selección</p><h2>Revisa y finaliza tu plan</h2><p>{name} · {brand || "Marca por definir"}</p>{!summary.count && <p className={styles.empty}>Todavía no hay productos seleccionados.</p>}{selectedMedia.map(kind => { const rows = summary.rows.filter(row => row.medium === kind); return <section key={kind} className={styles.reviewGroup}><header><h3>{mediaGroupLabel(kind)}</h3><button type="button" onClick={() => openMedium(kind)}>Editar →</button></header>{rows.length ? rows.map(row => <div key={row.key} className={styles.reviewRow}><div><strong>{row.label}</strong><small>{row.detail}</small></div><b>{row.cost == null ? "Tarifa pendiente" : money(row.cost)}</b></div>) : <p className={styles.empty}>Sin productos seleccionados en este medio.</p>}</section>; })}</section>}
       <fieldset disabled={!selectedMedia.includes(activeMedium)} hidden={review} className={styles.configuratorFieldset} aria-label="Configuración del medio activo">
+        {catalogError&&<div role="alert" className="mb-4 rounded-xl border border-border bg-white p-4"><p>{catalogError}</p><button type="button" className="btn btn-secondary mt-3" onClick={()=>setCatalogPicks(picks=>picks.filter(p=>workspaceProducts.some(product=>product.key===p.productKey)))}>Retirar productos no disponibles</button></div>}
+        <WorkspaceDiyCatalog products={workspaceProducts} picks={catalogPicks} onChange={setCatalogPicks} medium={activeMedium}/>
         <div hidden={activeMedium !== "television"}><TvConfigurator catalog={broadcast} brief={brief} picks={tv} onChange={setTv} /></div>
         <div hidden={activeMedium !== "radio"}><RadioConfigurator catalog={broadcast} brief={brief} picks={radioPicks} onChange={setRadioPicks} /></div>
         <div hidden={activeMedium !== "ooh"}><OohConfigurator catalog={oohCatalog} locations={locations} picks={ooh} onChange={setOoh} /></div>

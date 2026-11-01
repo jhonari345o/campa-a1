@@ -212,7 +212,7 @@ function RecentClients({ companies }: { companies: Company[] }) {
                   <span className="font-black text-forest">{c.name}</span>
                   <span className="text-xs font-black uppercase text-signal-dark">{c.status}</span>
                 </div>
-                <p className="mt-1 text-xs text-muted">{c.seats} usuarios · altas desde consola administrativa</p>
+                <p className="mt-1 text-xs text-muted">{c.seats} usuarios · altas desde consola administrativa</p><Link href={`/consola/espacios/${c.id}`} className="mt-2 inline-block text-xs font-black text-signal-dark">Revisar portal →</Link>
               </li>
             );
           })}

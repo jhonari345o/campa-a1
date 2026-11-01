@@ -20,10 +20,10 @@ export async function crearUsuarioCliente(_previous: CustomerResult | null, form
   const { data: ready, error: readinessError } = await admin.rpc("portal_access_ready");
   if (readinessError || ready !== "0029") return { ok: false, error: "El alta de clientes está bloqueada hasta aplicar y validar la migración de seguridad 0029 en Supabase." };
   const { data: company, error: companyError } = await admin.from("companies")
-    .select("id,name,status,portal_kind,allowed_email_domains").eq("id", input.companyId).single();
+    .select("id,name,status,portal_kind,client_planning_enabled,allowed_email_domains").eq("id", input.companyId).single();
   if (companyError || company?.status !== "activa") return { ok: false, error: "Selecciona una empresa activa." };
   if (company.allowed_email_domains?.length && !domainAllows(input.email, company.allowed_email_domains)) return { ok: false, error: "Ese dominio no está autorizado para este espacio." };
-  if (company.portal_kind === "client" && input.role !== "viewer") return { ok: false, error: "Los accesos de cliente son de consulta." };
+  if (company.portal_kind === "client" && input.role !== "viewer" && !company.client_planning_enabled) return { ok: false, error: "Los accesos de cliente son de consulta." };
   const temporaryPassword = `${randomBytes(24).toString("base64url")}Aa1!`;
   const { data, error } = await admin.auth.admin.createUser({
     email: input.email, password: temporaryPassword, email_confirm: true,

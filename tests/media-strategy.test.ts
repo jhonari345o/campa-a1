@@ -104,3 +104,11 @@ test("radio candidates from separate dayparts remain separate cohorts",()=>{
   bundle.candidates.push({...c,id:"one",medium:"radio",sourceIds:["radio-study:one"],metrics:[{label:"Rating",value:1,unit:"puntos",sourceId:"radio-study:one"}]},{...c,id:"two",medium:"radio",sourceIds:["radio-study:two"],metrics:[{label:"Rating",value:99,unit:"puntos",sourceId:"radio-study:two"}]});
   const pool=strategyCandidatePool(bundle,"radio");assert.equal(pool.length,1);assert.equal(pool[0].id,"one");
 });
+
+test('workspace rates enter recommendations with their own package unit, geography and validity without inventing audiences',()=>{
+ const catalogs=strategyCatalogs();catalogs.workspaceProducts=[{key:'ooh:workspace:synthetic',kind:'ooh',provider:'Synthetic provider',name:'Special package',format:'Five totems',formatGroup:'totem_special',unit:'package of five',priceCents:173245,taxIncluded:null,location:'Ecuador',marketKeys:['nacional'],reference:'',conditions:'',image:null,validFrom:'2026-10-01',validTo:'2026-12-31',source:{workspaceProductId:'synthetic'}}];
+ const b=strategyBrief({selectedMedia:['ooh']});
+ const bundle=buildStrategyEvidence(b,strategyResearch,catalogs,date),candidate=bundle.candidates.find(c=>c.id.startsWith('workspace:'));
+ assert.equal(candidate?.unit,'package of five');assert.equal(candidate?.referencePriceUsd,1732.45);assert.deepEqual(candidate?.metrics,[]);
+ const outside=buildStrategyEvidence({...b,startDate:'2027-01-01',endDate:'2027-01-31'},strategyResearch,catalogs,date).candidates.find(c=>c.id.startsWith('workspace:'));assert.equal(outside?.unitPriceUsd,null);
+});

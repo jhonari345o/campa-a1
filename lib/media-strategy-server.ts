@@ -1,3 +1,4 @@
+import {priceCatalogProducts} from "./catalog-access-server";
 import "server-only";
 import { createHash } from "node:crypto";
 import { getSessionProfile } from "./auth";
@@ -60,7 +61,8 @@ async function loadCatalogs(brief:StrategyBrief):Promise<StrategyCatalogs> {
     wanted.has("television")?readTvAudience().catch(()=>[]):Promise.resolve([]),
     wanted.has("influencers")?getInfluencerCatalog():Promise.resolve([]),
   ]);
-  return {broadcast,radio,press,ooh,tvAudience,influencers};
+  const workspaceProducts=(await priceCatalogProducts([])).filter(p=>p.source.workspaceProductId);
+  return {broadcast,radio,press,ooh,tvAudience,influencers,workspaceProducts};
 }
 /** Always regenerates evidence from the authenticated session; callers cannot submit their own facts. */
 export async function buildResearchRecommendation(brief:StrategyBrief,research:CategoryResearch,options:{allowAi?:boolean;timeoutMs?:number}={}):Promise<MediaPlan> {

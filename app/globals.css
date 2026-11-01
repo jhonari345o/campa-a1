@@ -2,6 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Authenticated UCSG workspace: identity never comes from an email or query parameter. */
+:root:has([data-workspace-brand="ucsg"]) {
+  --color-forest: 94 20 49;
+  --color-forest-deep: 60 17 33;
+  --color-forest-ink: 78 18 40;
+  --color-signal: 143 29 71;
+  --color-signal-dark: 113 21 54;
+  --color-fog: 249 245 247;
+  --color-concrete: 233 219 225;
+  --color-border: 229 215 222;
+  --color-muted: 115 96 105;
+  --forest: #5e1431;
+  --forest-deep: #3c1121;
+  --signal: #8f1d47;
+  --signal-dark: #711536;
+  --fog: #f9f5f7;
+  --shadow-press: #56122b;
+  --workspace-hero-start: #4a1028;
+  --workspace-hero-end: #7d2145;
+  --workspace-hero-kicker: #f4c8d7;
+  --workspace-hero-copy: #f3dfe7;
+  --workspace-soft: #fbf0f4;
+  --workspace-soft-border: #e9cdd8;
+  --workspace-ink: #5e1431;
+  --workspace-accent: #8f1d47;
+  --workspace-bg: #fbf8fa;
+  --workspace-border: #e5d7dd;
+  --workspace-on-dark: #f3c6d7;
+}
+.workspace-ucsg-logo { width:100%; height:auto; border-radius:14px; background:#fff; padding:14px 12px; object-fit:contain; }
+body:has(.portal-sidebar[data-workspace-brand="ucsg"]) { background:#faf7f8; }
+body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .portal-topbar ~ main { background:radial-gradient(circle at 4% 2%,#ead3dc66,transparent 42%),#faf8f9; }
+body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .portal-catalog-title strong,
+body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .portal-catalog-link > span { color:#f1bfd0; }
+body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .portal-nav-item.is-active { border-color:#cf8ca7; box-shadow:inset 3px 0 0 #f0b7cd; }
+body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .portal-catalog-link:hover,
+body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .portal-catalog-link.is-active { border-color:#cb89a1; background:#ffffff14; }
+body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .portal-license-pill { background:#f7e9ef; border-color:#e9ced9; }
+body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .portal-license-pill i { box-shadow:0 0 0 4px #8f1d4714; }
+body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .library-hero,
+body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .media-portal-header { background:linear-gradient(125deg,#451025,#681737 62%,#8b2b50); }
+body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .media-portal-header::before { border-color:#f4bfd342; }
+body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .media-portal-header-copy > p:first-child { color:#f0bfd1; }
+body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .media-portal-tab.is-active { background:#f9eaf0; border-color:#ae5174; color:#6f1939; }
+body:has(.portal-sidebar[data-portal-kind="client"][data-catalog-selection="disabled"]) .catalog-buy-column { display:none; }
+
 :root {
   --color-forest: 34 57 47;
   --color-forest-deep: 23 40 31;
@@ -951,3 +997,6 @@ body {
 
 .infomedia-picker .infomedia-period-field { margin-top: .7rem; font-size: .75rem; }
 .infomedia-period-field select { display: block; width: 100%; padding: .65rem; border-radius: .65rem; margin-top: .4rem; border: 1px solid #cad8ce; background: #f4f6f3; }
+
+.workspace-preview-banner{margin-left:252px}
+@media(max-width:1050px){.workspace-preview-banner{margin-left:0}}

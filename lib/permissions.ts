@@ -11,6 +11,8 @@ export function canCompanyRole(role: string | null | undefined, action: CompanyA
   return Boolean(role && ACTION_ROLES[action].has(role));
 }
 
-export function canWorkspaceRole(company: {role:string;portal_kind?:string}, action: CompanyAction): boolean {
- return (action === "read" || (company.portal_kind ?? "agency") === "agency") && canCompanyRole(company.role,action);
+export function canWorkspaceRole(company: {role:string;portal_kind?:string;client_planning_enabled?:boolean}, action: CompanyAction): boolean {
+ if(action==="read")return canCompanyRole(company.role,action);
+ if(company.portal_kind==="client")return company.client_planning_enabled===true&&["planner","analyst"].includes(company.role)&&action!=="campaign:approve"&&canCompanyRole(company.role,action);
+ return (company.portal_kind??"agency")==="agency"&&canCompanyRole(company.role,action);
 }

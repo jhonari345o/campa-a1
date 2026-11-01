@@ -134,8 +134,12 @@ export async function crearCliente(
   const portalKind = String(formData.get("portal_kind") ?? "agency");
   const allowedDomains = [...new Set(String(formData.get("allowed_domains") ?? "").toLowerCase().split(/[\s,;]+/).filter(Boolean))];
   if (!["agency", "client", "provider"].includes(portalKind) || allowedDomains.length > 20 || allowedDomains.some(d => !/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}$/.test(d))) return { ok: false, error: "Revisa el tipo de portal y los dominios autorizados." };
-  if (!["one", "lettera"].includes(brandKey)) return { ok: false, error: "La identidad seleccionada no es válida." };
-  if (brandKey !== "one") {
+  if (!["one", "lettera", "ucsg"].includes(brandKey)) return { ok: false, error: "La identidad seleccionada no es válida." };
+  if (brandKey === "ucsg") {
+    const { data: ready } = await admin.rpc("workspace_brand_ready");
+    if (ready !== "0032") return { ok: false, error: "Aplica primero la identidad UCSG en Supabase." };
+  }
+  if (brandKey === "lettera") {
     const { data: ready } = await admin.rpc("customer_access_ready");
     if (ready !== "0017") return { ok: false, error: "Aplica primero la migración de clientes en Supabase." };
   }

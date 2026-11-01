@@ -1,5 +1,16 @@
-"use client";
-import {useActionState,useEffect} from "react";import {activarCuenta} from "./actions";
-export default function ActivatePage(){const [state,action,pending]=useActionState(activarCuenta,null);
-useEffect(()=>{if(state&&state.error==="")window.location.assign("/panel")},[state]);
-return <main className="grid min-h-screen place-items-center bg-fog p-6"><section className="w-full max-w-md rounded-panel border border-border bg-white p-8 shadow-panel"><p className="text-xs font-black uppercase tracking-widest text-signal-dark">Tu primer ingreso</p><h1 className="mt-3 text-3xl font-black">Haz tuya esta cuenta.</h1><p className="mt-3 text-sm leading-relaxed text-muted">Crea tu contraseña personal para continuar a tu espacio.</p><form action={action} className="mt-6 grid gap-4"><label className="grid gap-2 text-sm font-bold">Nueva contraseña<input type="password" name="password" minLength={12} maxLength={128} required autoComplete="new-password" className="rounded-xl border border-border p-3"/></label><label className="grid gap-2 text-sm font-bold">Confirma tu contraseña<input type="password" name="confirm" minLength={12} maxLength={128} required autoComplete="new-password" className="rounded-xl border border-border p-3"/></label><button disabled={pending} className="btn btn-primary">{pending?"Guardando…":"Continuar a mi espacio →"}</button></form>{state?.error&&<p role="alert" className="mt-4 text-sm text-coral">{state.error}</p>}</section></main>}
+import Image from "next/image";
+import {redirect} from "next/navigation";
+import {createClient} from "@/lib/supabase/server";
+import {getMyCompanies} from "@/lib/company";
+import {workspaceIdentity} from "@/lib/workspace-brand";
+import {ActivationForm} from "./ActivationForm";
+export const metadata={title:"Activa tu acceso"};
+export default async function ActivatePage(){
+ const db=await createClient(),{data:{user}}=await db.auth.getUser();
+ if(!user)redirect("/ingresar");
+ if(user.app_metadata?.must_change_password!==true)redirect("/panel");
+ const workspace=workspaceIdentity(await getMyCompanies(user.id),false);
+ return <main data-workspace-brand={workspace?.brand??"one"} className="workspace-activation grid min-h-screen place-items-center bg-fog p-6"><section className="w-full max-w-md rounded-panel border border-border bg-white p-8 shadow-panel">
+ {workspace?.brand==="ucsg"?<Image src="/partners/ucsg/ucsg-logo.png" width={534} height={132} alt="UCSG" className="mb-8 h-auto w-44" priority/>:workspace?.brand==="lettera"?<Image src="/partners/lettera/lettera-logo.png" width={2048} height={493} alt="Léttera" className="mb-8 h-auto w-44" priority/>:null}
+ <p className="text-xs font-black uppercase tracking-widest text-signal-dark">{workspace?.name??"Tu primer ingreso"}</p><h1 className="mt-3 text-3xl font-black">Haz tuya esta cuenta.</h1><p className="mt-3 text-sm leading-relaxed text-muted">Crea tu contraseña personal para continuar a tu espacio.</p><ActivationForm/></section></main>;
+}
