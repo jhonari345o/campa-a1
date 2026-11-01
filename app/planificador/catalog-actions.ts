@@ -26,7 +26,7 @@ export async function submitCatalogSelection(input: { requestId: string; version
   if (!profile) return { ok: false, error: "Inicia sesión para enviar la solicitud." };
   if (!input || !uuid.test(input.requestId) || !Number.isSafeInteger(input.version) || input.version < 0 || typeof input.quote !== "string" || input.quote.length > 200_000 || typeof input.title !== "string" || !input.title.trim() || input.title.length > 120 || typeof input.notes !== "string" || input.notes.length > 2000 || typeof input.desiredStart !== "string" || (input.desiredStart && !validDate(input.desiredStart)) || (input.companyId != null && !uuid.test(input.companyId))) return { ok: false, error: "Revisa los datos de la solicitud." };
   const companies = await getMyCompanies(profile.id);
-  if (!profile.is_platform_admin && !companies.some(c => c.id === input.companyId && c.status === "activa" && (c.portal_kind ?? "agency") === "agency" && canWorkspaceRole(c, "campaign:create"))) return { ok: false, error: "Tu rol no permite solicitar productos en este espacio." };
+  if (!profile.is_platform_admin && !companies.some(c => c.id === input.companyId && c.status === "activa" && canWorkspaceRole(c, "campaign:create"))) return { ok: false, error: "Tu rol no permite solicitar productos en este espacio." };
   // Idempotent retries remain valid after the cart has been cleared by a successful request.
   const db = await createClient();
   const { data: previous } = await db.from("catalog_orders").select("id").eq("owner_id", profile.id).eq("request_id", input.requestId).maybeSingle();

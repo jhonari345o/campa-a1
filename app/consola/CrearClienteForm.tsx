@@ -70,7 +70,7 @@ export function CrearClienteForm({ brandingReady = false }: { brandingReady?: bo
         </div>
         <label className="grid gap-1 text-sm font-black sm:col-span-2">Identidad del espacio
           <select name="brand_key" defaultValue="one" className="rounded-xl border border-border bg-fog px-4 py-3">
-            <option value="one">Ad Mavericks One</option><option value="lettera" disabled={!brandingReady}>Léttera</option>
+            <option value="one">Ad Mavericks One</option><option value="lettera" disabled={!brandingReady}>Léttera</option><option value="ucsg" disabled={!brandingReady}>UCSG</option>
           </select>
         </label>
         <label className="grid gap-1 text-sm font-black">Tipo de portal<select name="portal_kind" className="rounded-xl border border-border bg-fog p-3"><option value="agency">Agencia · planificación y coordinación</option><option value="client">Cliente · catálogo y reportes</option><option value="provider">Proveedor · medios y actualizaciones</option></select></label>

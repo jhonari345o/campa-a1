@@ -11,7 +11,7 @@ const VIEWS: { id: View; label: string }[] = [{ id: "overview", label: "Resumen"
 const countLabel = (n: number, singular: string, plural: string) => `${n} ${n === 1 ? singular : plural}`;
 const STATUS = { planning: "Con plan", running: "En campaña", reported: "Con reportes" };
 
-export function ClientCampaignLibrary({ library, workspaceName, brand = "one", available = true }: { library: CampaignLibrary; workspaceName: string; brand?: "one" | "lettera"; available?: boolean }) {
+export function ClientCampaignLibrary({ library, workspaceName, brand = "one", available = true }: { library: CampaignLibrary; workspaceName: string; brand?: "one" | "lettera" | "ucsg"; available?: boolean }) {
   const [selection, setSelection] = useState<Selection>(INITIAL);
   const [query, setQuery] = useState("");
   const [catalog, setCatalog] = useState<"reported" | "planning">("reported");

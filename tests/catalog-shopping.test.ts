@@ -39,7 +39,7 @@ test("draft inputs cannot supply prices, duplicate lines, invalid quantities or 
 test("price, tax, quantity and product changes invalidate the displayed quote",()=>{
  const items=[{productKey:products[0].key,quantity:1}],signature=catalogQuoteSignature(items,products);
  assert.equal(catalogQuoteSignature([...items].reverse(),[...products].reverse()),signature);
- for(const patch of [{priceCents:12},{taxIncluded:true},{name:"Updated"},{unit:"paquete"},{reference:"New source"}])assert.notEqual(catalogQuoteSignature(items,products.map((p,i)=>i===0?{...p,...patch}:p)),signature);
+ for(const patch of [{priceCents:12},{taxIncluded:true},{name:"Updated"},{unit:"paquete"},{reference:"New source"},{conditions:"New term"},{validTo:"2026-12-31"},{source:{agreementId:"another-agreement"}}])assert.notEqual(catalogQuoteSignature(items,products.map((p,i)=>i===0?{...p,...patch}:p)),signature);
  assert.notEqual(catalogQuoteSignature([{...items[0],quantity:2}],products),signature);
 });
 test("withdrawn or changed OOH rates cannot silently become another product",()=>{

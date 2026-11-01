@@ -1,3 +1,5 @@
+import {productMedium} from "./diy-catalog";
+import type {CatalogProduct} from "./catalog-shopping";
 import type { MediaGroup } from "./media-groups";
 import { DIGITAL_PLATFORMS, type InfluencerProfile } from "./media-catalog";
 import { oohRateUnit, type OohCatalog } from "./ooh-catalog";
@@ -68,5 +70,10 @@ export function diySelectionSummary(selectedMedia: MediaGroup[], selection: Reco
   for (const [i, row] of rows("press").entries()) { const price = amount(row.unitPrice) ?? amount(row.referencePriceUsd); add("press", `press-${i}`, text(row.name), `${text(row.format)} · ${row.quantity} ${row.unit === "CPM" ? "miles de impresiones" : "unidades"}`, price != null && positive(row.quantity) ? price * Number(row.quantity) : null); }
   for (const [i, row] of rows("digital").entries()) add("digital", `digital-${i}`, text(row.name), "Distribución del presupuesto digital", typeof row.pct === "number" && row.pct >= 0 && row.pct <= 1 && Number.isFinite(digitalBudget) && digitalBudget >= 0 ? row.pct * digitalBudget : null);
   for (const [i, row] of rows("influencers").entries()) add("influencers", `creator-${i}`, text(row.name), `${text(row.deliverable)} · ${row.quantity} unidades`, amount(row.rate) != null && positive(row.quantity) ? amount(row.rate)! * Number(row.quantity) : null);
+  for(const [i,row] of rows("catalog").entries()){
+    if(!["tv","radio","ooh","press","digital","influencer"].includes(String(row.kind)))continue;
+    const medium=productMedium({kind:row.kind as CatalogProduct["kind"]});
+    add(medium,`catalog-${i}`,`${text(row.provider)} · ${text(row.name)}`,`${row.quantity} × ${text(row.unit)}`,amount(row.unitPriceCents)!=null&&positive(row.quantity)?Number(row.unitPriceCents)*Number(row.quantity)/100:null);
+  }
   return { rows: result, count: result.length, referenceUsd: result.reduce((sum, row) => sum + (row.cost ?? 0), 0), pending: result.filter(row => row.cost == null).length };
 }

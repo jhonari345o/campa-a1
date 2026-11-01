@@ -24,7 +24,7 @@ import { RadioDirectoryPanel } from "./RadioDirectory";
 import { PressDirectoryPanel } from "./PressDirectory";
 import type { PressCatalog } from "@/lib/press-catalog";
 import type { RadioDirectoryCatalog } from "@/lib/radio-directory";
-import { CatalogDigitalBudget, CatalogProfileProducts, CatalogShoppingLayout, CatalogShoppingProvider, type ShoppingCompany } from "./CatalogShopping";
+import { CatalogInlineProduct, CatalogDigitalBudget, CatalogProfileProducts, CatalogShoppingLayout, CatalogShoppingProvider, type ShoppingCompany } from "./CatalogShopping";
 import type { CatalogCart, CatalogProduct } from "@/lib/catalog-shopping";
 import type { OohPurchaseReference } from "@/lib/catalog-shopping-server";
 
@@ -99,7 +99,8 @@ export function MediaCatalog({
         ))}
       </nav>
 
-      <CatalogShoppingLayout active={true}><div className="media-portal-panel" role="tabpanel">
+      <WorkspaceRateCards products={shoppingProducts} section={section}/>
+      <CatalogShoppingLayout active={canRequest || isAdmin}><div className="media-portal-panel" role="tabpanel">
         {section === "digital" && <DigitalSection />}
         {section === "influencers" && <InfluencerSection profiles={influencers} />}
         {section === "radio" && <RadioDirectoryPanel directory={radioDirectory} broadcast={broadcast} />}
@@ -293,3 +294,13 @@ function initials(name: string) { return name.split(/\s+/).filter(Boolean).slice
 
 function compact(value: number | null) { return value == null ? "Por confirmar" : new Intl.NumberFormat("es-EC", { notation: "compact", maximumFractionDigits: 1 }).format(value); }
 function percent(value: number | null) { return value == null ? "Por confirmar" : `${new Intl.NumberFormat("es-EC", { maximumFractionDigits: 2 }).format(value)}%`; }
+
+function WorkspaceRateCards({products,section}:{products:CatalogProduct[];section:CatalogSection}){
+ const [query,setQuery]=useState(""),[limit,setLimit]=useState(6),[formatGroup,setFormatGroup]=useState("all");
+ const medium=section==="influencers"?"influencer":section,rows=products.filter(p=>p.source.workspaceProductId&&p.kind===medium);
+ const normalize=(s:string)=>s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+ const filtered=rows.filter(p=>(formatGroup==="all"||p.formatGroup===formatGroup)&&normalize(`${p.provider} ${p.name} ${p.format} ${p.location}`).includes(normalize(query)));
+ const money=(cents:number)=>new Intl.NumberFormat("es-EC",{style:"currency",currency:"USD"}).format(cents/100);
+ if(!rows.length)return null;
+ return <section className="mt-6 rounded-panel border border-border bg-white p-6 sm:p-8" aria-label="Condiciones comerciales de tu cuenta"><p className="text-xs font-black uppercase tracking-widest text-signal-dark">Catálogo de tu espacio</p><div className="mt-2 flex flex-wrap items-end justify-between gap-4"><h2 className="text-2xl font-black">Tarifas de tu cuenta</h2><span className="text-sm text-muted">{filtered.length} formatos</span></div><label className="mt-5 block text-sm font-bold">Buscar medio, formato o plaza<input type="search" value={query} onChange={e=>{setQuery(e.target.value);setLimit(6)}} className="mt-2 w-full rounded-xl border border-border bg-fog p-3 font-normal" placeholder="Ej. Guayaquil, cuña, media página"/></label>{section==="ooh"&&<div className="mt-4 flex flex-wrap gap-2">{[["all","Todos los formatos"],["totem_special","Tótems especiales"],["totem_standard","Tótems normales / LED"]].map(([value,label])=><button key={value} aria-pressed={formatGroup===value} onClick={()=>{setFormatGroup(value);setLimit(6)}} className={`rounded-xl border border-border px-4 py-2 text-sm font-bold ${formatGroup===value?"bg-forest text-white":"bg-white text-forest"}`}>{label}</button>)}</div>}<div className="mt-5 grid gap-4 lg:grid-cols-3">{filtered.slice(0,limit).map(p=><article key={p.key} className="rounded-2xl border border-border bg-fog p-5"><p className="text-xs font-bold text-muted">{p.provider}</p><h3 className="mt-2 text-lg font-black">{p.name}</h3><p className="mt-2 text-sm">{p.format}</p><strong className="mt-5 block text-2xl">{p.priceCents!=null?money(p.priceCents):p.referencePriceCents!=null?money(p.referencePriceCents):"Consultar"}</strong><p className="mt-1 text-sm text-muted">{p.unit}</p>{p.priceCents==null&&p.referencePriceCents!=null&&<span className="mt-3 inline-block rounded-full border border-border bg-white px-3 py-1 text-xs font-bold">Referencia del período</span>}<p className="mt-4 text-xs text-muted">{p.validFrom&&p.validTo?`${p.validFrom} – ${p.validTo}`:p.reference}</p>{p.location&&<p className="mt-2 text-sm">{p.location}</p>}{p.conditions&&<p className="mt-3 text-xs leading-relaxed text-muted">{p.conditions}</p>}<div className="mt-4"><CatalogInlineProduct productKey={p.key}/></div></article>)}</div>{!filtered.length&&<p className="mt-6 text-sm text-muted">No hay formatos para esta búsqueda.</p>}{filtered.length>limit&&<button className="btn btn-secondary mt-5" onClick={()=>setLimit(n=>n+6)}>Ver más tarifas →</button>}</section>;
+}

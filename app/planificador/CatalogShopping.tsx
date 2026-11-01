@@ -93,6 +93,7 @@ export function CatalogShoppingLayout({ active, children }: { active: boolean; c
 }
 export function CatalogProductPicker({ product }: { product: CatalogProduct }) {
   const cart = useShopping(), quantity = cart.items.find(p => p.productKey === product.key)?.quantity ?? 0;
+  if (!cart.canRequest && !cart.isAdmin) return <div className={styles.product}><div className={styles.add}><span className={styles.productTitle}>{product.format}<small>{product.unit}</small></span><strong>{catalogMoney(product.priceCents)}</strong><small>{catalogTax(product.taxIncluded)}</small></div></div>;
   return <div className={`${styles.product} ${quantity ? styles.selected : ""}`}>
     <button type="button" className={styles.add} disabled={cart.busy || quantity >= CART_LIMITS.quantity} aria-label={`Agregar ${product.name} · ${product.format} · ${product.provider} · ${product.unit}`} onClick={() => cart.change(product.key, 1)}>
       <span className={styles.productTitle}>{product.format}{product.kind === "ooh" && <small>{product.unit}</small>}</span>
@@ -118,7 +119,7 @@ export function CatalogPrice({ productKey }: { productKey: string }) {
 export function CatalogInlineProduct({ productKey, label = "Cantidad" }: { productKey: string; label?: string }) {
   const cart = useShopping(), product = cart.products.find(p => p.key === productKey);
   const [amount, setAmount] = useState("1");
-  if (!product) return null;
+  if (!product || (!cart.canRequest && !cart.isAdmin)) return null;
   const quantity = Number(amount), selected = cart.items.find(p => p.productKey === productKey)?.quantity ?? 0;
   return <div className={styles.inlineProduct}><label>{label}<input type="number" min={1} max={CART_LIMITS.quantity} step={1} value={amount} onChange={e => setAmount(e.target.value)} aria-label={`${label} de ${product.provider} · ${product.name} · ${product.unit}`} /></label><button type="button" disabled={cart.busy || !Number.isInteger(quantity) || quantity < 1 || quantity > CART_LIMITS.quantity} onClick={() => cart.change(productKey, quantity)}>Agregar +</button>{selected > 0 && <span role="status">{selected} en el carrito</span>}</div>;
 }
