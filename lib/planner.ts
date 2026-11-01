@@ -27,6 +27,7 @@ export type PlanRow = {
 };
 
 export type MediaPlan = {
+  strategy?: import("./media-strategy").StrategyReport;
   matched: number;
   totalRef: number;
   basis: "giro" | "sector" | "mercado" | "infomedia";

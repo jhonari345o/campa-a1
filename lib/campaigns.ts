@@ -80,6 +80,8 @@ const PLATFORM_META: Record<CampaignKey, Pick<Campaign, "platform" | "icon" | "l
  * señales actuales y pide a la IA una campaña diferente para cada canal.
  */
 export async function buildCurrentCampaigns(input: CampaignInput, plan: MediaPlan, timeoutMs = 18_000): Promise<Campaign[]> {
+  // The research planner uses AWS exclusively. Creative templates do not trigger another provider.
+  if (plan.strategy) return onlyFundedPlatforms(buildFallbackCampaigns(input, plan, [], "datos"));
   return optionalWithinBudget(
     (signal) => buildCampaignsWithSignal(input, plan, signal),
     () => onlyFundedPlatforms(buildFallbackCampaigns(input, plan, [], "datos")),

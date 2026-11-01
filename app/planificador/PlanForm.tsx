@@ -4,6 +4,7 @@ import { useActionState, useEffect, useId, useRef, useState, useTransition } fro
 import { InfomediaCategoryPicker } from "@/components/InfomediaCategoryPicker";
 import { TgiResearchPanel } from "@/components/TgiResearchPanel";
 import { InfomediaResearchPanel } from "@/components/InfomediaResearchPanel";
+import { MediaStrategyPanel } from "@/components/MediaStrategyPanel";
 import { restoreResearch } from "@/lib/infomedia";
 import type { CategoryCatalog } from "@/lib/infomedia-server";
 import type { ReactNode } from "react";
@@ -281,6 +282,7 @@ function AnalysisStage({ result, onBack, onContinue }: { result: Extract<PlanRes
 
     <InfomediaResearchPanel research={result.research} brand={result.brief.brand} objective={result.objective} />
     <TgiResearchPanel research={result.research.tgi} selectedMedia={result.brief.selectedMedia} />
+    {result.plan.strategy && <MediaStrategyPanel report={result.plan.strategy} />}
 
     <div className="planner-analysis-context">
       <article><span>Grupo objetivo</span><strong>{analysis.targetLabel}</strong><small>Compatibilidad indicada en cada fuente</small></article>
@@ -771,7 +773,7 @@ function OohLocationPreview({ title, geo }: { title: string; geo: NonNullable<im
   return <section className="planner-ooh-map-card">
     <div className="planner-ooh-map-frame"><iframe src={embedUrl} title={`Mapa de ${title}`} loading="lazy" allowFullScreen referrerPolicy="no-referrer-when-downgrade" /></div>
     <div className="planner-ooh-map-copy">
-      <header><span>{geo.locationStatus === "inventory" ? "ACTIVO EN INVENTARIO" : "ZONA CANDIDATA"}</span><strong>{geo.fitScore}/100</strong></header>
+      <header><span>{geo.locationStatus === "inventory" ? "ACTIVO EN INVENTARIO" : "ZONA CANDIDATA"}</span>{geo.fitScore!=null&&<strong>{geo.fitScore}/100</strong>}</header>
       <p><b>Afinidad:</b> {geo.audienceFit}</p>
       <p><b>Movilidad:</b> {geo.trafficEvidence}</p>
       <p><b>Presupuesto:</b> {geo.priceFit}</p>

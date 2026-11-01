@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSessionProfile } from "@/lib/auth";
-import { buildMediaPlan, type MediaPlan, type PlanRow } from "@/lib/planner";
+import { type MediaPlan, type PlanRow } from "@/lib/planner";
 import { buildCurrentCampaigns, type Campaign } from "@/lib/campaigns";
 import { getMyCompanies } from "@/lib/company";
 import { canCompanyRole } from "@/lib/permissions";
@@ -15,6 +15,8 @@ import {
 import { getCategoryResearch } from "@/lib/infomedia-server";
 import { withReferenceYear, type CategoryResearch } from "@/lib/infomedia";
 import { normalizeCoverageBrief, type CoverageSelection } from "@/lib/geographic-coverage";
+import { buildResearchRecommendation } from "@/lib/media-strategy-server";
+import { customizeStrategyPlan } from "@/lib/media-strategy";
 
 export type PlanBrief = {
   categoryId?: string;
@@ -110,7 +112,7 @@ export async function generarPlan(
 
   let research: CategoryResearch;
   try {
-    research = withReferenceYear(await getCategoryResearch(String(formData.get("categoryId") ?? ""), String(formData.get("brand") ?? ""), { ageRange: String(formData.get("ageRange") ?? ""), sex: String(formData.get("sex") ?? ""), socioeconomic: String(formData.get("socioeconomic") ?? ""), audienceType: String(formData.get("audienceType") ?? ""), geography: String(formData.get("geography") ?? "") }), Number(formData.get("referenceYear") ?? 0));
+    research = withReferenceYear(await getCategoryResearch(String(formData.get("categoryId") ?? ""), String(formData.get("brand") ?? ""), { ageRange: String(formData.get("ageRange") ?? ""), sex: String(formData.get("sex") ?? ""), socioeconomic: String(formData.get("socioeconomic") ?? ""), audienceType: String(formData.get("audienceType") ?? ""), geography: String(formData.get("geography") ?? "") }, String(formData.get("competitors") ?? "")), Number(formData.get("referenceYear") ?? 0));
   } catch {
     return { ok: false, error: "Selecciona una categoría de Infomedia con investigación disponible. Si el catálogo no carga, solicita su habilitación al administrador." };
   }
@@ -182,19 +184,7 @@ export async function generarPlan(
   };
 
   try {
-    const plan = await buildMediaPlan({
-      research,
-      keyword,
-      budgetUsd,
-      selectedMedia,
-      objective: brief.objective,
-      priority: brief.priority,
-      audienceType: brief.audienceType,
-      geography: brief.geography,
-      businessModel: brief.businessModel,
-      conversionModel: brief.conversionModel,
-      trackingStatus: brief.trackingStatus,
-    });
+    const plan = await buildResearchRecommendation(brief, research, { allowAi: true, timeoutMs: Math.max(1, 20_000 - (Date.now() - startedAt)) });
     const remainingMs = Math.max(1, 20_000 - (Date.now() - startedAt));
     const [campaigns, detail] = await Promise.all([selectedMedia.includes("digital")
       ? buildCurrentCampaigns({
@@ -218,6 +208,7 @@ export async function generarPlan(
       : { ...plan, matched: 0, totalRef: 0 };
     return { ok: true, research, plan: safePlan, campaigns, analysis, detail, keyword, objective, audience, brief };
   } catch (err) {
+    if (err instanceof Error && err.message === "INVALID_STRATEGY_BRIEF") return { ok: false, error: "Revisa las fechas, el presupuesto y la extensión del brief antes de generar la recomendación." };
     if (err instanceof Error && err.message === "NO_CATEGORY_MEDIA_EVIDENCE") return { ok: false, error: "No hay inversión de categoría ni consumo TGI disponibles para los medios seleccionados. Revisa otros medios o utiliza el constructor manual." };
     if (err instanceof Error && err.message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
       return { ok: false, error: "El planificador aun no esta habilitado (falta la clave de servicio)." };
@@ -241,10 +232,16 @@ export async function guardarPlan(input: Extract<PlanResult, { ok: true }>): Pro
   }
 
   try {
-    const research = withReferenceYear(await getCategoryResearch(input.brief.categoryId || "", input.brief.brand, input.brief), input.brief.referenceYear || 0);
+    const research = withReferenceYear(await getCategoryResearch(input.brief.categoryId || "", input.brief.brand, input.brief, input.brief.competitors), input.brief.referenceYear || 0);
     input = { ...input, research, keyword: research.category.label, brief: { ...input.brief, keyword: research.category.label } };
   } catch { return { ok: false, error: "No se pudo validar la investigación antes de guardar." }; }
   input = { ...input, brief: { ...input.brief, ...normalizeCoverageBrief(input.brief) } };
+  try {
+    const plan = await buildResearchRecommendation(input.brief, input.research, { allowAi: false });
+    if (["validated","cached"].includes(input.plan.strategy?.aiState??"") && !["validated","cached"].includes(plan.strategy?.aiState??"")) return { ok: false, error: "La interpretación guardada venció o no está disponible. Genera nuevamente el análisis antes de guardar." };
+    if (input.plan.strategy?.fingerprint && input.plan.strategy.fingerprint !== plan.strategy?.fingerprint) return { ok: false, error: "Las fuentes o el brief cambiaron. Genera nuevamente el análisis antes de guardar." };
+    input = { ...input, plan, analysis: buildPlanAnalysis(input.brief, plan), detail: await buildDetailedMediaRecommendation(input.brief, plan), campaigns: input.brief.selectedMedia.includes("digital") ? await buildCurrentCampaigns({ ...input.brief }, plan) : [] };
+  } catch { return { ok: false, error: "No se pudo validar la recomendación antes de guardar." }; }
   const db = await createClient();
   const name = (input.brief.brand || input.keyword || "Plan sin marca").slice(0, 120);
   const snapshot = {
@@ -310,21 +307,11 @@ async function registrarDistribucion(
   input = { ...input, brief: { ...input.brief, ...normalizeCoverageBrief(input.brief) } };
   let canonicalPlan: MediaPlan;
   try {
-    const research = withReferenceYear(await getCategoryResearch(input.brief.categoryId || "", input.brief.brand, input.brief), input.brief.referenceYear || 0);
+    const research = withReferenceYear(await getCategoryResearch(input.brief.categoryId || "", input.brief.brand, input.brief, input.brief.competitors), input.brief.referenceYear || 0);
     input = { ...input, research, keyword: research.category.label, brief: { ...input.brief, keyword: research.category.label } };
-    canonicalPlan = await buildMediaPlan({
-      research,
-      keyword: research.category.label,
-      budgetUsd: input.brief.budgetUsd,
-      selectedMedia: input.brief.selectedMedia,
-      objective: input.brief.objective,
-      priority: input.brief.priority,
-      audienceType: input.brief.audienceType,
-      geography: input.brief.geography,
-      businessModel: input.brief.businessModel,
-      conversionModel: input.brief.conversionModel,
-      trackingStatus: input.brief.trackingStatus,
-    });
+    canonicalPlan = await buildResearchRecommendation(input.brief, research, { allowAi: false });
+    if (["validated","cached"].includes(input.plan.strategy?.aiState??"") && !["validated","cached"].includes(canonicalPlan.strategy?.aiState??"")) return { ok: false, error: "La interpretación guardada venció o no está disponible. Genera nuevamente el análisis antes de registrar la distribución." };
+    if (input.plan.strategy?.fingerprint && input.plan.strategy.fingerprint !== canonicalPlan.strategy?.fingerprint) return { ok: false, error: "Las fuentes o el brief cambiaron. Genera nuevamente el análisis antes de registrar la distribución." };
   } catch {
     return { ok: false, error: "No se pudo volver a validar la propuesta antes de aprobarla." };
   }
@@ -345,7 +332,8 @@ async function registrarDistribucion(
     return { ok: false, error: "La personalización debe distribuir exactamente el 100% entre los medios propuestos." };
   }
   const budget = input.brief.budgetUsd && input.brief.budgetUsd > 0 ? input.brief.budgetUsd : null;
-  const rows = clean.map((row) => ({ ...row, amount: budget ? row.pct * budget : null }));
+  const personalizedPlan = customizeStrategyPlan(canonicalPlan, clean, budget);
+  const rows = personalizedPlan.plan;
   const campaigns = input.brief.selectedMedia.includes("digital")
     ? await buildCurrentCampaigns({
         keyword: input.brief.keyword,
@@ -358,13 +346,13 @@ async function registrarDistribucion(
         socioeconomic: input.brief.socioeconomic,
         businessModel: input.brief.businessModel,
         conversionModel: input.brief.conversionModel,
-      }, { ...canonicalPlan, plan: rows })
+      }, personalizedPlan)
     : [];
-  const analysis = buildPlanAnalysis(input.brief, { ...canonicalPlan, plan: rows });
-  const detail = await buildDetailedMediaRecommendation(input.brief, { ...canonicalPlan, plan: rows });
+  const analysis = buildPlanAnalysis(input.brief, personalizedPlan);
+  const detail = await buildDetailedMediaRecommendation(input.brief, personalizedPlan);
   const db = await createClient();
   const name = (input.brief.brand || input.keyword || "Plan sin marca").slice(0, 120);
-  const snapshot = { brief: input.brief, research: input.research, analysis, proposal: { ...canonicalPlan, plan: rows, detail }, campaigns };
+  const snapshot = { brief: input.brief, research: input.research, analysis, proposal: { ...personalizedPlan, detail }, campaigns };
   const { data, error } = await db.from("media_plans").insert({
     owner_id: profile.id,
     company_id: company?.id ?? null,
