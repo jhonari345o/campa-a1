@@ -6,13 +6,14 @@ import { oohRateUnit, type OohCatalog, type OohRate } from "./ooh-catalog";
 
 export const CART_LIMITS = { lines: 100, quantity: 10_000, totalCents: 1_000_000_000 } as const;
 export type CatalogPick = { productKey: string; quantity: number };
-export type CatalogCart = { version: number; items: CatalogPick[]; error?: string; expiresAt?: string };
+export type CatalogCart = { version: number; items: CatalogPick[]; error?: string; expiresAt?: string;clientId?:string|null };
 export type CatalogProduct = {
   key: string; kind: "influencer" | "ooh" | "tv" | "radio" | "press" | "digital"; provider: string; name: string;
   format: string; unit: string; priceCents: number | null; taxIncluded: boolean | null;
   location: string; reference: string; image: string | null; conditions: string;
   source: { rateId?: string; profileId?: string; assetId?: string; rate?: OohRate; rateIndex?: number; sourceId?: string; offerId?: string; stationId?: string; tariffId?: string; seconds?: number; publicationId?: string; editionId?: string; platformSlug?: string; workspaceProductId?: string; agreementId?: string };
   marketKeys?: string[];
+  referenceOnly?:boolean;referenceLabel?:string;
   formatGroup?: "other" | "totem_standard" | "totem_special";
   validFrom?: string | null; validTo?: string | null; referencePriceCents?: number | null;
 };

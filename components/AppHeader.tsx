@@ -14,7 +14,7 @@ type ActivePage = "mercado" | "consola" | "panel" | "asistente" | "planificador"
 
 type AppHeaderProps = {
   workspace?: WorkspaceIdentity | null;
-  previewCompanyId?: string;
+  previewCompanyId?: string;previewClientId?:string;
   name: string;
   isAdmin: boolean;
   active?: ActivePage;
@@ -52,10 +52,10 @@ const PAGE_TITLES: Record<ActivePage, string> = {
   clientes: "Clientes y campañas",
 };
 
-export function AppHeader({ name, isAdmin, active = "panel", title, catalogSection, workspace, previewCompanyId }: AppHeaderProps) {
+export function AppHeader({ name, isAdmin, active = "panel", title, catalogSection, workspace, previewCompanyId,previewClientId }: AppHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const close = () => setMenuOpen(false);
-  const link=(href:string)=>previewCompanyId?workspacePreviewHref(previewCompanyId,href):href;
+  const link=(href:string)=>previewCompanyId?workspacePreviewHref(previewCompanyId,href,previewClientId):href;
   const displayTitle = title ?? PAGE_TITLES[active];
   const initial = (name.trim()[0] || "A").toUpperCase();
   const kind = workspace?.kind ?? "agency";
@@ -69,7 +69,7 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
         <Link href={link("/panel")} onClick={close} className="portal-sidebar-brand" aria-label={`Ir al inicio de ${workspace?.name ?? "Ad Mavericks One"}`}>
           {workspace?.brand === "lettera"
             ? <Image src="/partners/lettera/lettera-logo.png" width={2048} height={493} alt="Léttera" className="workspace-lettera-logo" priority />
-            : workspace?.brand === "ucsg" ? <Image src="/partners/ucsg/ucsg-logo.png" width={534} height={132} alt="UCSG · Universidad Católica de Santiago de Guayaquil" className="workspace-ucsg-logo" priority /> : <Wordmark one invert className="text-[18px]" />}
+            : workspace?.brand === "ucsg" ? <Image src="/partners/ucsg/ucsg-logo.png" width={534} height={132} alt="UCSG · Universidad Católica de Santiago de Guayaquil" className="workspace-ucsg-logo" priority /> : workspace?.brand === "mobil" ? <Image src="/partners/mobil/mobil-logo.png" width={2000} height={610} alt="Mobil" className="workspace-mobil-logo" priority/> : <Wordmark one invert className="text-[18px]" />}
         </Link>
         <span className="portal-private-badge">{workspace ? PORTAL_LABELS[kind] : "Administración"}</span>
 

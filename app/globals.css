@@ -31,6 +31,28 @@
   --workspace-border: #e5d7dd;
   --workspace-on-dark: #f3c6d7;
 }
+:root:has([data-workspace-brand="mobil"]) {
+ --color-forest:14 51 94; --color-forest-deep:9 31 58; --color-forest-ink:14 51 94;
+ --color-signal:0 99 170; --color-signal-dark:0 72 128; --color-fog:244 247 251;
+ --color-concrete:223 231 241; --color-border:214 224 237; --color-muted:96 111 131;
+ --forest:#0e335e; --forest-deep:#091f3a; --signal:#0063aa; --signal-dark:#004880; --fog:#f4f7fb; --shadow-press:#082c50;
+ --workspace-hero-start:#0b294d; --workspace-hero-end:#075c9a; --workspace-hero-kicker:#e4f3ff; --workspace-hero-copy:#dcebf7;
+ --workspace-soft:#eef5fb; --workspace-soft-border:#d4e2f1; --workspace-ink:#0e335e; --workspace-accent:#0063aa; --workspace-bg:#f6f9fc; --workspace-border:#d6e0ed; --workspace-on-dark:#d5e9f9;
+}
+.workspace-mobil-logo {width:100%;height:auto;object-fit:contain;background:#fff;border-radius:14px;padding:24px 28px;}
+body:has(.portal-sidebar[data-workspace-brand="mobil"]) {background:#f5f8fc;}
+body:has(.portal-sidebar[data-workspace-brand="mobil"]) .portal-catalog-title strong,
+body:has(.portal-sidebar[data-workspace-brand="mobil"]) .portal-catalog-link > span {color:#b6d9f3;}
+body:has(.portal-sidebar[data-workspace-brand="mobil"]) .portal-nav-item.is-active {border-color:#8fbadf;box-shadow:inset 3px 0 0 #ed1b2f;}
+body:has(.portal-sidebar[data-workspace-brand="mobil"]) .portal-catalog-link.is-active {background:#ffffff12;border-color:#709ac1;}
+body:has(.portal-sidebar[data-workspace-brand="mobil"]) .portal-license-pill {background:#eaf3fb;border-color:#d1e2f1;}
+body:has(.portal-sidebar[data-workspace-brand="mobil"]) .library-hero,
+body:has(.portal-sidebar[data-workspace-brand="mobil"]) .media-portal-header {background:linear-gradient(125deg,#0b2749,#0e477b 64%,#096baa);}
+body:has(.portal-sidebar[data-workspace-brand="mobil"]) .media-portal-header-copy > p:first-child {color:#c9e4f8;}
+body:has(.portal-sidebar[data-workspace-brand="mobil"]) .media-portal-tab.is-active {background:#edf5fc;border-color:#477ead;color:#0e477b;box-shadow:0 7px 0 #103b63,0 12px 25px #103b6320;}
+body:has(.portal-sidebar[data-workspace-brand="mobil"]) .media-portal-tab.is-active span {color:#4b7091;}
+body:has(.portal-sidebar[data-workspace-brand="mobil"]) .media-portal-tab::after {background:#ed1b2f;}
+body:has(.portal-sidebar[data-workspace-brand="mobil"]) .media-portal-header-legend > span {color:#f0f8ff;background:#ffffff14;border:1px solid #c7e6ff40;}
 .workspace-ucsg-logo { width:100%; height:auto; border-radius:14px; background:#fff; padding:14px 12px; object-fit:contain; }
 body:has(.portal-sidebar[data-workspace-brand="ucsg"]) { background:#faf7f8; }
 body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .portal-topbar ~ main { background:radial-gradient(circle at 4% 2%,#ead3dc66,transparent 42%),#faf8f9; }
@@ -46,6 +68,10 @@ body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .media-portal-header { ba
 body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .media-portal-header::before { border-color:#f4bfd342; }
 body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .media-portal-header-copy > p:first-child { color:#f0bfd1; }
 body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .media-portal-tab.is-active { background:#f9eaf0; border-color:#ae5174; color:#6f1939; }
+body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .media-portal-tab.is-active span { color:#855c6c; }
+body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .media-portal-tab.is-active { box-shadow:0 7px 0 #552038,0 12px 25px #55203820; }
+body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .media-portal-tab::after { background:#8f1d47; }
+body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .media-portal-header-legend > span { color:#fff5f9; border:1px solid #e3afc450; background:#ffffff14; }
 body:has(.portal-sidebar[data-portal-kind="client"][data-catalog-selection="disabled"]) .catalog-buy-column { display:none; }
 
 :root {

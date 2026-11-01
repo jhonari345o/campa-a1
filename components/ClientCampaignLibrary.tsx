@@ -11,7 +11,7 @@ const VIEWS: { id: View; label: string }[] = [{ id: "overview", label: "Resumen"
 const countLabel = (n: number, singular: string, plural: string) => `${n} ${n === 1 ? singular : plural}`;
 const STATUS = { planning: "Con plan", running: "En campaña", reported: "Con reportes" };
 
-export function ClientCampaignLibrary({ library, workspaceName, brand = "one", available = true }: { library: CampaignLibrary; workspaceName: string; brand?: "one" | "lettera" | "ucsg"; available?: boolean }) {
+export function ClientCampaignLibrary({ library, workspaceName, brand = "one", available = true }: { library: CampaignLibrary; workspaceName: string; brand?: "one" | "lettera" | "ucsg" | "mobil"; available?: boolean }) {
   const [selection, setSelection] = useState<Selection>(INITIAL);
   const [query, setQuery] = useState("");
   const [catalog, setCatalog] = useState<"reported" | "planning">("reported");
@@ -60,7 +60,7 @@ export function ClientCampaignLibrary({ library, workspaceName, brand = "one", a
         </div>
       </div>
       {campaign?.poster && /^\/postbuy\/warner\/posters\/[a-z0-9-]+\.jpg$/.test(campaign.poster) && <img src={campaign.poster} alt="" className="library-hero-poster" />}
-      {!campaign && <div className="library-brand-art" aria-hidden>{brand === "lettera" ? <><img src="/partners/lettera/lettera-logo.png" alt="" /><i>Write your story.</i></> : <strong>Ad Mavericks One</strong>}</div>}
+      {!campaign && <div className="library-brand-art" aria-hidden>{brand === "lettera" ? <><img src="/partners/lettera/lettera-logo.png" alt="" /><i>Write your story.</i></> : brand === "mobil" ? <img src="/partners/mobil/mobil-logo.png" alt="Mobil"/> : brand === "ucsg" ? <img src="/partners/ucsg/ucsg-logo.png" alt="UCSG"/> : <strong>Ad Mavericks One</strong>}</div>}
     </header>
 
     {!available ? <div className="library-empty"><h2>No pudimos cargar tus clientes.</h2><p>Vuelve a intentarlo en unos momentos.</p><button className="btn btn-secondary" onClick={() => window.location.reload()}>Volver a cargar</button></div> :

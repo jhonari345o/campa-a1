@@ -10,18 +10,20 @@ import { readCatalogCart, readShoppingProducts } from "@/lib/catalog-shopping-se
 import { validDate } from "@/lib/broadcast-catalog";
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export async function loadCatalogSelection() { return readCatalogCart(); }
-export async function saveCatalogSelection(items: unknown, expectedVersion: number): Promise<{ ok: true; cart: CatalogCart } | { ok: false; error: string; cart?: CatalogCart }> {
+export async function saveCatalogSelection(items: unknown, expectedVersion: number, expectedClientId:string|null=null): Promise<{ ok: true; cart: CatalogCart } | { ok: false; error: string; cart?: CatalogCart }> {
   try {
     if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 0) throw new Error("INVALID_CART");
+    const current=await readCatalogCart();
+    if(current.error||current.clientId!==expectedClientId)return {ok:false,error:"El cliente del carrito cambió. Recarga la página antes de continuar."};
     const clean = normalizeCatalogPicks(items), db = await createClient();
     const { data, error } = await db.rpc("save_catalog_cart", { p_expected_version: expectedVersion, p_items: clean });
     if (error || !data) return { ok: false, error: "No se pudo guardar el carrito. Tu selección sigue aquí; vuelve a intentar." };
-    const cart = { version: Number(data.version), items: normalizeCatalogPicks(data.items), expiresAt: data.expiresAt };
+    const cart = { version: Number(data.version), items: normalizeCatalogPicks(data.items), expiresAt: data.expiresAt,clientId:data.clientId??null };
     return data.ok ? { ok: true, cart } : { ok: false, cart, error: data.code === "expired" ? "El carrito venció tras dos horas sin cambios. Recupera la selección actual para continuar." : "El carrito cambió en otra pestaña. Recupera la versión guardada antes de continuar." };
   } catch { return { ok: false, error: "Revisa los productos y las cantidades del carrito." }; }
 }
 export type CatalogRequestResult = { ok: true; id: string; cart: CatalogCart } | { ok: false; error: string; products?: CatalogProduct[]; refreshCart?: boolean };
-export async function submitCatalogSelection(input: { requestId: string; version: number; quote: string; companyId: string | null; title: string; desiredStart: string; notes: string }): Promise<CatalogRequestResult> {
+export async function submitCatalogSelection(input: { requestId: string; version: number; quote: string; companyId: string | null; title: string; desiredStart: string; notes: string;clientId?:string|null }): Promise<CatalogRequestResult> {
   const profile = await getSessionProfile();
   if (!profile) return { ok: false, error: "Inicia sesión para enviar la solicitud." };
   if (!input || !uuid.test(input.requestId) || !Number.isSafeInteger(input.version) || input.version < 0 || typeof input.quote !== "string" || input.quote.length > 200_000 || typeof input.title !== "string" || !input.title.trim() || input.title.length > 120 || typeof input.notes !== "string" || input.notes.length > 2000 || typeof input.desiredStart !== "string" || (input.desiredStart && !validDate(input.desiredStart)) || (input.companyId != null && !uuid.test(input.companyId))) return { ok: false, error: "Revisa los datos de la solicitud." };
@@ -33,7 +35,7 @@ export async function submitCatalogSelection(input: { requestId: string; version
   if (previous) return { ok: true, id: previous.id, cart: await readCatalogCart() };
   try {
     const cart = await readCatalogCart();
-    if (cart.error || cart.version !== input.version) return { ok: false, refreshCart: true, error: "El carrito cambió. Recupera la selección actual antes de enviarla." };
+    if (cart.error || cart.version !== input.version || (cart.clientId??null)!==(input.clientId??null)) return { ok: false, refreshCart: true, error: "El carrito cambió. Recupera la selección actual antes de enviarla." };
     const products = await readShoppingProducts(cart.items);
     if (catalogQuoteSignature(cart.items, products) !== input.quote) return { ok: false, products, error: "El catálogo cambió. Revisa los productos y precios actualizados antes de volver a enviar." };
     const order = canonicalCatalogOrder(cart.items, products);

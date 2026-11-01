@@ -34,7 +34,7 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
     try {
       while (JSON.stringify(desired.current) !== persisted.current) {
         const snapshot = desired.current;
-        const result = await saveCatalogSelection(snapshot, version.current);
+        const result = await saveCatalogSelection(snapshot, version.current,cart.clientId??null);
         if (!result.ok) { if (mounted.current) setError(result.error); return; }
         version.current = result.cart.version;
         persisted.current = JSON.stringify(result.cart.items);
@@ -61,6 +61,7 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
     try {
       const result = await loadCatalogSelection();
       if (result.error) { setError(result.error); return; }
+      if((result.clientId??null)!==(cart.clientId??null)){setError("El cliente cambió. Recarga la página para usar su catálogo.");return;}
       version.current = result.version; desired.current = result.items;
       persisted.current = JSON.stringify(result.items); setItems(result.items); setError(""); submission.current = null;
     } catch { setError("No se pudo recuperar el carrito. Tu selección sigue aquí."); }
@@ -73,7 +74,7 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
     submission.current ??= crypto.randomUUID();
     try {
       const result = await submitCatalogSelection({
-        requestId: submission.current, version: version.current, quote: catalogQuoteSignature(items, products),
+        clientId:cart.clientId??null,requestId: submission.current, version: version.current, quote: catalogQuoteSignature(items, products),
         companyId: String(data.get("companyId") ?? "") || null, title: String(data.get("title") ?? ""),
         desiredStart: String(data.get("desiredStart") ?? ""), notes: String(data.get("notes") ?? ""),
       });
@@ -125,10 +126,15 @@ export function CatalogInlineProduct({ productKey, label = "Cantidad" }: { produ
 }
 export function CatalogRadioProducts({ stationId, tariffId, rateIndex }: { stationId: string; tariffId?: string; rateIndex?: number }) {
   const { products } = useShopping();
-  const rows = products.filter(p => p.kind === "radio" && p.source.stationId === stationId && p.source.tariffId === tariffId && (rateIndex == null || p.source.rateIndex === rateIndex));
+  const rows = products.filter(p => p.kind === "radio" && !p.source.workspaceProductId && p.source.stationId === stationId && p.source.tariffId === tariffId && (rateIndex == null || p.source.rateIndex === rateIndex));
   const [seconds, setSeconds] = useState(30);
   const product = rows.find(p => p.source.seconds === seconds) ?? rows[0];
   return product ? <div className={styles.radioProduct}>{rows.length > 1 && <label>Duración de la cuña<select value={product.source.seconds} onChange={e => setSeconds(Number(e.target.value))}>{rows.map(p => <option key={p.key} value={p.source.seconds}>{p.source.seconds} segundos</option>)}</select></label>}<p>{product.unit}</p><CatalogPrice productKey={product.key}/><CatalogInlineProduct productKey={product.key} label="Cuñas"/></div> : null;
+}
+export function CatalogWorkspaceFormats({stationId,publicationId}:{stationId?:string;publicationId?:string}){
+ const {products}=useShopping(),rows=products.filter(p=>p.source.workspaceProductId&&((stationId&&p.source.stationId===stationId)||(publicationId&&p.source.publicationId===publicationId)));
+ if(!rows.length)return null;
+ return <section className="my-5 grid gap-4"><h5 className="text-lg font-black">Formatos de tu cuenta</h5>{rows.map(p=><article key={p.key} className="rounded-xl border border-border bg-fog p-4"><h6 className="font-black">{p.name}</h6><p className="mt-2 text-sm">{p.format} · {p.location}</p><p className="mt-3 text-xl font-black">{catalogMoney(p.priceCents??p.referencePriceCents??null)}</p><p className="text-sm text-muted">{p.unit}{p.priceCents==null&&p.referencePriceCents!=null?' · Referencia':''}</p><p className="mt-2 text-xs text-muted">{p.referenceLabel||(p.validFrom&&p.validTo?`${p.validFrom} – ${p.validTo}`:p.reference)}</p>{p.conditions&&<p className="mt-2 text-sm">{p.conditions}</p>}<CatalogInlineProduct productKey={p.key}/></article>)}</section>;
 }
 export function CatalogPressQuote({ id }: { id: string }) { return <CatalogInlineProduct productKey={`press:${id}:quote`} label="Inserciones"/>; }
 export function CatalogDigitalBudget({ slug }: { slug: string }) { return <div className={styles.radioProduct}><p className="text-sm font-bold">Presupuesto para tu campaña</p><CatalogInlineProduct productKey={`digital:${slug}`} label="Inversión USD"/></div>; }

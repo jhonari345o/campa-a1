@@ -1,4 +1,5 @@
 "use server";
+import {catalogClientContext} from "@/lib/catalog-client-server";
 import {normalizeCatalogPicks} from "@/lib/catalog-shopping";
 import {readShoppingProducts} from "@/lib/catalog-shopping-server";
 import {resolveDiyCatalog} from "@/lib/diy-catalog";
@@ -108,6 +109,7 @@ export async function guardarPlanManual(input: ManualPlanDraft): Promise<SaveRes
   if (!selectedScenario) return { ok: false, error: "No se pudo construir un escenario de inversión." };
 
   const brief = {
+    clientId:access.clientId,clientName:access.clientName,
     brand: cleanText(input.brand, 120),
     keyword: category.label,
     categoryId: category.id,
@@ -271,17 +273,19 @@ async function savePlanRecord(input: {
   proposal: Record<string, unknown>;
   selection: Record<string, unknown>;
 }): Promise<SaveResult> {
+  input={...input,brief:{...input.brief,clientId:(await catalogClientContext())?.selected?.id??null,clientName:(await catalogClientContext())?.selected?.name??""}};
   const db = await createClient();
   let planId = input.planId && isUuid(input.planId) ? input.planId : null;
   let version = 1;
   if (planId) {
     const { data: current, error: currentError } = await db
       .from("media_plans")
-      .select("id, owner_id, version")
+      .select("id, owner_id, version,brief")
       .eq("id", planId)
       .eq("owner_id", input.ownerId)
       .maybeSingle();
     if (currentError || !current) return { ok: false, error: "No se encontró el borrador que quieres actualizar." };
+    if(current.brief?.clientId&&current.brief.clientId!==input.brief.clientId)return {ok:false,error:"Este plan pertenece a otro cliente. Selecciónalo antes de editarlo."};
     version = Number(current.version) + 1;
     const { error } = await db.from("media_plans").update({
       name: input.name,
@@ -342,14 +346,16 @@ async function savePlanRecord(input: {
 }
 
 async function planAccess(): Promise<
-  { ok: true; profileId: string; companyId: string | null } | { ok: false; error: string }
+  { ok: true; profileId: string; companyId: string | null;clientId:string|null;clientName:string } | { ok: false; error: string }
 > {
   const profile = await getSessionProfile();
   if (!profile) return { ok: false, error: "Debes iniciar sesión." };
   const companies = await getMyCompanies(profile.id);
   const company = companies.find((item) => item.status === "activa" && canWorkspaceRole(item, "plan"));
   if (!profile.is_platform_admin && !company) return { ok: false, error: "Tu rol no permite guardar planes." };
-  return { ok: true, profileId: profile.id, companyId: company?.id ?? null };
+  const context=await catalogClientContext();
+  if(context?.clients.length&&!context.selected)return {ok:false,error:"Selecciona el cliente del plan para usar sus tarifas."};
+  return { ok: true, profileId: profile.id, companyId: company?.id ?? null,clientId:context?.selected?.id??null,clientName:context?.selected?.name??"" };
 }
 
 function isMediaGroup(value: string): value is MediaGroup {

@@ -11,7 +11,7 @@ import type { PlanAnalysisInput } from "./plan-analysis";
 import { mediaGroupForLabel, type MediaGroup } from "./media-groups";
 import { tgiUsage } from "./tgi";
 
-export type StrategyBrief = PlanAnalysisInput & { brand?: string; categoryId?: string; referenceYear?: number };
+export type StrategyBrief = PlanAnalysisInput & { brand?: string; categoryId?: string; referenceYear?: number; clientId?:string|null };
 export type EvidenceUse = "comparable" | "context" | "unavailable";
 export type StrategySource = {
   id: string; kind: "competition" | "consumption" | "rating" | "ranking" | "tariff" | "inventory";
@@ -174,7 +174,7 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
     const marketFit=p.marketKeys?.length?(p.marketKeys.some(k=>normalized(k)==="nacional")||sameMarket({marketKeys:p.marketKeys} as BroadcastSource,brief)):tariffMarket(p.location,brief);
     if(!marketFit)continue;
     const valid=datesCover(p.validFrom??null,p.validTo??null,brief),referencePrice=p.priceCents??p.referencePriceCents??null;
-    const quoted=valid&&referencePrice!=null&&referencePrice>0;
+    const quoted=!p.referenceOnly&&valid&&referencePrice!=null&&referencePrice>0;
     const sid=addSource({id:`workspace-tariff:${p.source.workspaceProductId}`,kind:"tariff",label:`${p.provider} · ${p.name}`,period:`${p.validFrom??""} – ${p.validTo??""}`,market:p.location,target:"Sin audiencia homologada en el acuerdo",use:quoted?"comparable":"context",note:p.conditions});
     candidates.push({id:`workspace:${p.key}`,medium,provider:p.provider,product:p.name,market:p.location,target:"Sin audiencia homologada en el acuerdo",period:`${p.validFrom??""} – ${p.validTo??""}`,sourceIds:[sid],sourceUse:quoted?"comparable":"context",unit:p.unit,unitPriceUsd:quoted?referencePrice!/100:null,referencePriceUsd:referencePrice==null?null:referencePrice/100,minimumUnits:1,minimumSpendUsd:quoted?referencePrice!/100:null,metrics:[],note:[p.format,p.conditions].filter(Boolean).join(" · ")});
   }
