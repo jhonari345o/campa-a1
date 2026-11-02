@@ -1,67 +1,42 @@
 import { BedrockRuntimeClient, ConverseCommand } from "@aws-sdk/client-bedrock-runtime";
+import { getLlmConfiguration } from "./llm-config";
 
 export type LlmMessage = { role: "system" | "user" | "assistant"; content: string };
+type CompletionOptions = { maxTokens?: number; temperature?: number; signal?: AbortSignal; json?: boolean };
 
 /**
  * Cerebro de Mavi. Soporta proveedores intercambiables:
- *  1) Amazon Bedrock (recomendado): modelos abiertos (Llama/Mistral/Nova) en TU
+ *  1) Amazon Bedrock (opcional): modelos abiertos (Llama/Mistral/Nova) en TU
  *     cuenta AWS, sin servidor. Se activa con BEDROCK_MODEL_ID.
- *  2) OpenRouter Free Router: OPENROUTER_API_KEY, con openrouter/free por defecto.
+ *  2) OpenRouter: configuración compartida con el planificador y sus fallbacks.
  *  3) DeepSeek directo: compatible, pero su API comercial no se trata como gratuita.
  *  4) Endpoint compatible con OpenAI (vLLM/Ollama/TGI): LLM_BASE_URL.
  */
 export async function chatCompletion(
   messages: LlmMessage[],
-  opts?: { maxTokens?: number; temperature?: number; signal?: AbortSignal },
+  opts?: CompletionOptions,
 ): Promise<string> {
-  const preferred = process.env.AI_PROVIDER?.trim().toLowerCase();
-  const openRouterFallbacks = (process.env.OPENROUTER_FALLBACK_MODELS
-    || "google/gemma-4-26b-a4b-it:free,openrouter/free")
-    .split(",")
-    .map((model) => model.trim())
-    .filter(Boolean);
-  const openRouter = () => openaiChat(messages, opts, {
+  const config = getLlmConfiguration();
+  if (!config) throw new Error("MODELO_NO_CONFIGURADO");
+  if (config.provider === "bedrock") return bedrockChat(messages, { ...opts, maxAttempts: 1 });
+  if (config.provider === "openrouter") return openaiChat(messages, opts, {
     baseUrl: "https://openrouter.ai/api/v1",
-    model: process.env.OPENROUTER_MODEL || "minimax/minimax-m3:free",
-    fallbackModels: openRouterFallbacks,
+    model: config.model,
+    fallbackModels: config.fallbackModels,
+    freeOnly: config.freeOnly,
     apiKey: process.env.OPENROUTER_API_KEY,
     headers: {
       "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://one.ad-mavericks.com",
       "X-OpenRouter-Title": "Ad Mavericks One · Mavi",
     },
   });
-  const deepSeek = () => openaiChat(messages, opts, {
+  if (config.provider === "deepseek") return openaiChat(messages, opts, {
     baseUrl: "https://api.deepseek.com",
-    model: process.env.DEEPSEEK_MODEL || "deepseek-chat",
+    model: config.model,
     apiKey: process.env.DEEPSEEK_API_KEY,
   });
 
-  if (preferred === "openrouter" && process.env.OPENROUTER_API_KEY) return openRouter();
-  if (preferred === "deepseek" && process.env.DEEPSEEK_API_KEY) return deepSeek();
-  if (preferred === "bedrock" && process.env.BEDROCK_MODEL_ID) return bedrockChat(messages, opts);
-  if (preferred && !["openrouter", "deepseek", "bedrock", "compatible"].includes(preferred)) {
-    throw new Error("MODELO_NO_CONFIGURADO");
-  }
-  if (preferred === "compatible" && process.env.LLM_BASE_URL && process.env.LLM_MODEL) {
-    return openaiChat(messages, opts, {
-      baseUrl: process.env.LLM_BASE_URL,
-      model: process.env.LLM_MODEL,
-      apiKey: process.env.LLM_API_KEY,
-    });
-  }
-  if (preferred) throw new Error("MODELO_NO_CONFIGURADO");
-
-  if (process.env.BEDROCK_MODEL_ID) return bedrockChat(messages, opts);
-  if (process.env.OPENROUTER_API_KEY) return openRouter();
-  if (process.env.DEEPSEEK_API_KEY) return deepSeek();
-  if (process.env.LLM_BASE_URL && process.env.LLM_MODEL) {
-    return openaiChat(messages, opts, {
-      baseUrl: process.env.LLM_BASE_URL,
-      model: process.env.LLM_MODEL,
-      apiKey: process.env.LLM_API_KEY,
-    });
-  }
-  throw new Error("MODELO_NO_CONFIGURADO");
+  return openaiChat(messages, opts, { baseUrl: config.endpoint!, model: config.model, apiKey: process.env.LLM_API_KEY });
 }
 
 // ---- Amazon Bedrock (Converse API: unificada para Llama/Mistral/Nova) ----
@@ -119,11 +94,12 @@ export async function bedrockChat(messages: LlmMessage[], opts?: { maxTokens?: n
 // ---- Endpoint compatible con OpenAI (vLLM / Ollama / TGI) ----
 async function openaiChat(
   messages: LlmMessage[],
-  opts: { maxTokens?: number; temperature?: number; signal?: AbortSignal } | undefined,
+  opts: CompletionOptions | undefined,
   provider: {
     baseUrl: string;
     model: string;
     fallbackModels?: string[];
+    freeOnly?: boolean;
     apiKey?: string;
     headers?: Record<string, string>;
   },
@@ -146,6 +122,8 @@ async function openaiChat(
       body: JSON.stringify({
         model: provider.model,
         ...(fallbackModels.length ? { models: [provider.model, ...fallbackModels] } : {}),
+        ...(provider.freeOnly ? { provider: { max_price: { prompt: 0, completion: 0 } } } : {}),
+        ...(opts?.json ? { response_format: { type: "json_object" } } : {}),
         messages,
         max_tokens: opts?.maxTokens ?? 1024,
         temperature: opts?.temperature ?? 0.4,
@@ -164,7 +142,8 @@ async function openaiChat(
     // únicamente el estado HTTP para diagnosticar sin filtrar credenciales.
     throw new Error(`PROVIDER_HTTP_${res.status}`);
   }
-  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  const data = (await res.json()) as { choices?: { finish_reason?: string; message?: { content?: string } }[] };
+  if (data.choices?.[0]?.finish_reason === "length") throw new Error("PROVIDER_OUTPUT_TRUNCATED");
   const reply = data.choices?.[0]?.message?.content;
   if (typeof reply !== "string") throw new Error("Respuesta inesperada del modelo.");
   return reply.trim();

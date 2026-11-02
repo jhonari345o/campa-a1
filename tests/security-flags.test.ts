@@ -353,7 +353,7 @@ test("Laboratorio y el centro de procesos Mavi permanecen visibles en la navegac
   assert.match(route, /maxTokens: 512/);
   assert.match(llm, /LLM_REQUEST_TIMEOUT_MS/);
   assert.match(llm, /PROVIDER_TIMEOUT/);
-  assert.match(llm, /minimax\/minimax-m3:free/);
+  assert.match(readFileSync(resolve("lib/assistant/llm-config.ts"), "utf8"), /minimax\/minimax-m3:free/);
 });
 
 test("el consentimiento y checkout conservan versiones legales auditables", () => {
