@@ -2,6 +2,7 @@
 import {catalogClientContext} from "@/lib/catalog-client-server";
 import {normalizeCatalogPicks} from "@/lib/catalog-shopping";
 import {readShoppingProducts} from "@/lib/catalog-shopping-server";
+import {applyDiyTvPrices} from "@/lib/diy-tv-pricing";
 import {resolveDiyCatalog} from "@/lib/diy-catalog";
 
 
@@ -137,6 +138,12 @@ export async function guardarPlanManual(input: ManualPlanDraft): Promise<SaveRes
     radio: selectedMedia.includes("radio") ? rawSelections.radio : [],
   });
   if (!checked.ok) return checked;
+  try {
+    const tv=checked.selections.tv as {id:string;sourceId:string;quantity:number}[];
+    const products=tv.length?await readShoppingProducts(tv.map(p=>({productKey:`tv:${p.sourceId}:${p.id}`,quantity:p.quantity}))):[];
+    checked.selections.tv=applyDiyTvPrices(tv,{...brief,socioeconomic:"Todos los NSE"},products);
+  }catch{return {ok:false,error:"No se pudieron consultar las tarifas de televisión de tu cuenta."};}
+
   const checkedPress = validatePressPicks(press, selectedMedia.includes("press") ? rawSelections.press ?? [] : [], brief);
   if (!checkedPress.ok) return checkedPress;
   const checkedExtras = validateManualExtras({ selectedMedia, selections: { ...checked.selections, press: checkedPress.picks, ooh: rawSelections.ooh, digital: rawSelections.digital, influencers: rawSelections.influencers }, ooh, legacyOoh: legacyOoh.length ? legacyOoh : FALLBACK_OOH, influencers });
