@@ -60,7 +60,7 @@ test("structured planning requests pass fallback, zero-price cap and cancellatio
     assert.equal(result, '{"summary":"Análisis"}');
     assert.equal(requests.length, 1);
     assert.equal(requests[0].url, "https://openrouter.ai/api/v1/chat/completions");
-    assert.deepEqual(requests[0].body.models, ["test/primary:free", "test/backup:free"]);
+    assert.deepEqual(requests[0].body.models, ["test/primary:free", "test/backup:free", "openrouter/free"]);
     assert.deepEqual(requests[0].body.response_format, { type: "json_object" });
     assert.deepEqual(requests[0].body.provider, { max_price: { prompt: 0, completion: 0 } });
     controller.abort(); assert.equal(requests[0].signal?.aborted, true);
