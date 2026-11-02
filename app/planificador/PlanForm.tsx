@@ -291,7 +291,7 @@ function AnalysisStage({ result, onBack, onContinue }: { result: Extract<PlanRes
     </div>
 
     {result.plan.strategy
-      ? <MediaStrategyPanel key={result.plan.strategy.fingerprint} report={result.plan.strategy} research={result.research} brand={result.brief.brand} objective={result.objective} selectedMedia={result.brief.selectedMedia}/>
+      ? <MediaStrategyPanel key={result.plan.strategy.fingerprint} report={result.plan.strategy} brief={result.brief} research={result.research} brand={result.brief.brand} objective={result.objective} selectedMedia={result.brief.selectedMedia}/>
       : <><InfomediaResearchPanel research={result.research} brand={result.brief.brand} objective={result.objective}/><TgiResearchPanel research={result.research.tgi} selectedMedia={result.brief.selectedMedia}/></>}
 
     <details className="planner-analysis-detail"><summary>Tu brief y la estrategia</summary>

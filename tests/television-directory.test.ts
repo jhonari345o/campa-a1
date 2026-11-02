@@ -16,7 +16,8 @@ test("unknown and national commercial coverage never becomes a city-specific tar
   assert.deepEqual(televisionMarkets(product({ location: "Nacional" })), ["Nacional"]);
   assert.deepEqual(televisionMarkets(product({ location: "Guayaquil + Quito" })), ["Guayaquil", "Quito"]);
   assert.deepEqual(televisionMarkets(product({ location: "" })), ["Otras plazas"]);
-  assert.deepEqual(televisionMarkets(product({ location: "Guayas" })), ["Otras plazas"]);
+  assert.deepEqual(televisionMarkets(product({ location: "Guayas" })), ["Guayaquil"]);
+  assert.deepEqual(televisionMarkets(product({ marketKeys:["pichincha"] })), ["Quito"]);
   assert.deepEqual(televisionMarkets(product({ location: "GYE", marketKeys: ["quito"] })), ["Quito"]);
   assert.equal(televisionEdition(product({ source: { workspaceProductId: "synthetic-private" } }), { sources: [], tv: [], radio: [] }).key, "account");
 });

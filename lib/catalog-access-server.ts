@@ -6,6 +6,7 @@ import { createAdminClient } from "./supabase/admin";
 import { getSessionProfile } from "./auth";
 import type { CatalogProduct } from "./catalog-shopping";
 import { scopeCatalogProducts, type AgreedCatalogRate } from "./catalog-pricing";
+import { mergeTvDefaults, preferNegotiatedTelevision } from "./tv-default-pricing";
 import { radioRatePreference } from "./account-radio-tariffs";
 
 /** Per-request authorization precedes every privileged catalog read. Never cache across users. */
@@ -30,6 +31,10 @@ export async function priceCatalogProducts(products: CatalogProduct[], previewCo
     const {data,error}=await caller.from("workspace_clients").select("id").eq("id",previewClientId).eq("company_id",previewCompanyId).maybeSingle();
     if(error||!data)throw new Error("CLIENT_SCOPE_REQUIRED");
   }
+  // Only authenticated catalog users reach this privileged read. Project public sale fields only.
+  const { data: defaultRows, error: defaultError } = await scope.db.from("catalog_tv_defaults").select("product").eq("active", true).order("product_key").limit(1000);
+  if (defaultError) throw new Error("TV_DEFAULT_PRICING_UNAVAILABLE");
+  products = mergeTvDefaults(products, (defaultRows ?? []).map(row => row.product as CatalogProduct));
   const rates:AgreedCatalogRate[]=[];
   if((!scope.isAdmin||previewCompanyId)&&companyId){
     for(let from=0;from<20000;from+=500){
@@ -56,5 +61,5 @@ export async function priceCatalogProducts(products: CatalogProduct[], previewCo
     }
     for(const rate of rates)if(rate.productKey.startsWith("radio:"))rate.radioPreference=radioRatePreference(evidence.get(rate.agreementId),Boolean(rate.clientSpecific));
   }
-  return scopeCatalogProducts(products,rates,day,scope.isAdmin&&!previewCompanyId);
+  return preferNegotiatedTelevision(scopeCatalogProducts(products,rates,day,scope.isAdmin&&!previewCompanyId));
 }
