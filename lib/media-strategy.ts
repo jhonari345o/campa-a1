@@ -3,7 +3,7 @@ import { mediaGroupLabel } from "./plan-optimizer";
 import type { MediaPlan, PlanRow } from "./planner";
 import type { StrategyBrief, StrategyCandidate, StrategyEvidenceBundle } from "./media-strategy-evidence";
 
-export const STRATEGY_VERSION = "2026-11-02.10";
+export const STRATEGY_VERSION = "2026-11-02.11";
 export type StrategyAiState = "validated" | "cached" | "not_configured" | "quota" | "unavailable" | "rejected";
 export type StrategyAdvice = {
   summary: string;
@@ -171,9 +171,10 @@ export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:Strate
     if(!Number.isInteger(r.weight)||Number(r.weight)<0||Number(r.weight)>10_000)return reject("WEIGHT");
     if(!text(r.rationale,700))return reject("RATIONALE");
     if(!Array.isArray(r.evidenceIds)||!r.evidenceIds.length||r.evidenceIds.length>6||!r.evidenceIds.every(id=>typeof id==="string"&&sourceIds.has(id)))return reject("EVIDENCE_IDS");
-    if(!Array.isArray(r.candidateIds)||r.candidateIds.length>3)return reject("CANDIDATE_IDS");
+    if(!Array.isArray(r.candidateIds))return reject("CANDIDATE_SHAPE");
+    if(r.candidateIds.length>3)return reject("CANDIDATE_COUNT");
     const pool=strategyCandidatePool(bundle,medium,brief).slice(0,8);
-    if(!r.candidateIds.every(id=>typeof id==="string"&&pool.some(c=>c.id===id)))return reject("CANDIDATE_IDS");
+    if(!r.candidateIds.every(id=>typeof id==="string"&&pool.some(c=>c.id===id)))return reject("CANDIDATE_UNKNOWN");
     const relevantSources=new Set(["category-investment",...(bundle.consumption.some(c=>c.medium===medium)?["audience-consumption"]:[]),...pool.flatMap(c=>c.sourceIds),...bundle.audienceReferences.filter(r=>r.medium===medium).map(r=>r.sourceId)]);
     if(!r.evidenceIds.every(id=>relevantSources.has(String(id))))return reject("EVIDENCE_MEDIUM");
     used.add(medium);allocations.push({medium,weight:Number(r.weight),rationale:String(r.rationale).trim(),evidenceIds:r.evidenceIds as string[],candidateIds:[...new Set(r.candidateIds as string[])]});

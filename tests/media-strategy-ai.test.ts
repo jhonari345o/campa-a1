@@ -23,6 +23,20 @@ test("a valid inference is applied only after persistence succeeds",async()=>{
   const {deps,count}=dependencies();assert.equal((await resolveStrategyAi(brief,bundle,"{}",2000,deps)).state,"validated");assert.deepEqual(count,{claim:1,invoke:1,persist:1});
   const failed=dependencies({persist:async()=>false});const result=await resolveStrategyAi(brief,bundle,"{}",2000,failed.deps);assert.equal(result.state,"unavailable");assert.equal(result.advice,null);
 });
+test("free structured-output repair revalidates every field and persists only the final answer",async()=>{
+  let calls=0;const corrections:(string|undefined)[]=[],persisted:unknown[]=[];
+  const malformed={...advice,allocations:[{...advice.allocations[0],candidateIds:["invented"]}]};
+  const {deps}=dependencies({allowRepair:true,invoke:async(_payload,_signal,correction)=>{corrections.push(correction);return JSON.stringify(++calls===1?malformed:advice);},persist:async(value,info)=>{persisted.push([value,info]);return true;}});
+  const result=await resolveStrategyAi(brief,bundle,"{}",19000,deps);
+  assert.equal(result.state,"validated");assert.equal(calls,2);assert.deepEqual(corrections,[undefined,"CANDIDATE_UNKNOWN"]);
+  assert.equal(persisted.length,1);assert.equal((persisted[0] as [unknown,{attempts:number}])[1].attempts,2);
+});
+test("repair never accepts invented candidates and stays inside the original inference deadline",async()=>{
+  let calls=0;const signals:AbortSignal[]=[];
+  const {deps}=dependencies({allowRepair:true,invoke:async(_payload,signal)=>{calls++;signals.push(signal);return JSON.stringify({...advice,allocations:[{...advice.allocations[0],candidateIds:["invented"]}]});}});
+  assert.equal((await resolveStrategyAi(brief,bundle,"{}",19000,deps)).state,"rejected");assert.equal(calls,2);assert.equal(signals[0],signals[1]);
+  calls=0;assert.equal((await resolveStrategyAi(brief,bundle,"{}",7000,deps)).state,"rejected");assert.equal(calls,1);
+});
 test("optional follow-up text cannot discard a valid allocation or bypass source checks",async()=>{
   for(const questions of [undefined,null,"",{},["Consulta breve sin cifras", "El alcance es 99%", "https://example.com"]]){
     const {deps}=dependencies({invoke:async()=>JSON.stringify({...advice,questions})});
