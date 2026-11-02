@@ -1,0 +1,40 @@
+import Link from "next/link";
+import {redirect,notFound} from "next/navigation";
+import {getSessionProfile} from "@/lib/auth";
+import {createClient} from "@/lib/supabase/server";
+import {workspaceIdentity} from "@/lib/workspace-brand";
+import {AppHeader} from "@/components/AppHeader";
+import {WorkspaceHome} from "@/components/WorkspaceHome";
+import {ClientReports} from "@/components/ClientReports";
+import {getBroadcastCatalog} from "@/lib/broadcast-server";
+import {getRadioDirectory} from "@/lib/radio-directory-server";
+import {getPressCatalog} from "@/lib/press-server";
+import {getOohCatalog} from "@/lib/ooh-server";
+import {getInfluencerCatalog} from "@/lib/media-workspace";
+import {catalogProducts} from "@/lib/catalog-shopping";
+import {priceCatalogProducts} from "@/lib/catalog-access-server";
+import {MediaCatalog} from "@/app/planificador/MediaCatalog";
+import type {CatalogSection} from "@/lib/media-catalog";
+export const metadata={title:"Revisión de portal"};
+export default async function WorkspacePreview({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{view?:string;section?:string;client?:string}>}){
+ const actor=await getSessionProfile();if(!actor)redirect("/ingresar");if(!actor.is_platform_admin)redirect("/panel");
+ const {id}=await params;if(!/^[a-f0-9-]{36}$/i.test(id))notFound();
+ const db=await createClient(),{data:c,error}=await db.from("companies").select("id,name,status,brand_key,portal_kind,client_planning_enabled").eq("id",id).eq("status","activa").maybeSingle();
+ if(error||!c)notFound();
+ const workspace=workspaceIdentity([{...c,role:"viewer"}],false)!;
+ const p=await searchParams,sections=new Set(["tv","radio","ooh","press","digital","influencers"]),section=(sections.has(p.section??"")?p.section:"tv") as CatalogSection;
+ const {data:clients}=await db.from("workspace_clients").select("id,name").eq("company_id",id).order("name");
+ const selectedClient=(clients??[]).find(c=>c.id===p.client);
+ const banner=<aside className="workspace-preview-banner border-b border-border bg-white px-6 py-3 text-sm text-muted">Vista previa de consulta · {c.name}. <Link href="/consola" className="font-bold text-signal-dark">Volver a administración →</Link>{(clients??[]).length>0&&<nav className="mt-3 flex flex-wrap gap-2" aria-label="Cliente de la vista previa">{clients!.map(client=><Link className={`rounded-lg border border-border px-3 py-2 ${selectedClient?.id===client.id?"bg-forest text-white":""}`} key={client.id} href={`/consola/espacios/${id}?view=media&section=${section}&client=${client.id}`}>{client.name}</Link>)}</nav>}</aside>;
+ if(p.view==="reports")return <>{banner}<ClientReports previewCompanyId={id} profile={{...actor,is_platform_admin:false,full_name:"Vista previa",workspace}}/></>;
+ if(p.view!=="media")return <><AppHeader name="Vista previa" isAdmin={false} workspace={workspace} previewCompanyId={id}/>{banner}<WorkspaceHome workspace={workspace} name={actor.full_name??""} previewCompanyId={id}/></>;
+ const [rawBroadcast,rawRadio,rawPress,rawOoh,rawInfluencers]=await Promise.all([getBroadcastCatalog(),getRadioDirectory(),getPressCatalog(),getOohCatalog(),getInfluencerCatalog()]);
+ // The preview uses the same customer projection. No supplier acquisition price is displayed.
+ const broadcast={...rawBroadcast,sources:rawBroadcast.sources.map(s=>({...s,conditions:""})),tv:rawBroadcast.tv.map(o=>({...o,priceUsd:null,note:""}))};
+ const radio={...rawRadio,stations:rawRadio.stations.map(s=>({...s,profile:{...s.profile,tariffs:s.profile.tariffs.map(t=>({...t,conditions:"",rates:t.rates.map(r=>({...r,amountUsd:null}))}))}}))};
+ const press={...rawPress,entries:rawPress.entries.map(e=>({...e,editions:e.editions.map(d=>({...d,conditions:[],offers:d.offers.map(o=>({...o,priceUsd:null,notes:""}))}))}))};
+ const ooh={...rawOoh,assets:rawOoh.assets.map(a=>({...a,reference:"",taxLabel:"",rates:a.rates.map(r=>({...r,amount:null}))}))};
+ const influencers=rawInfluencers.map(i=>({...i,rates:i.rates.map(r=>({...r,amountUsd:null,conditions:""}))}));
+ const products=await priceCatalogProducts(catalogProducts(influencers,ooh,{broadcast,radio,press}),id,selectedClient?.id);
+ return <><AppHeader name="Vista previa" isAdmin={false} workspace={workspace} previewCompanyId={id} previewClientId={selectedClient?.id} active="planificador" title="Catálogo del cliente" catalogSection={section}/>{banner}<main id="workspace-content" className="portal-page portal-page-wide"><MediaCatalog previewCompanyId={id} previewClientId={selectedClient?.id} section={section} broadcast={broadcast} radioDirectory={radio} press={press} ooh={ooh} influencers={influencers} health={null} shoppingProducts={products} shoppingCart={{version:0,items:[]}} shoppingCompanies={[]} canRequest={false} canPlan={false} isAdmin={false} purchaseReferences={[]}/></main></>;
+}

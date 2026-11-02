@@ -1,0 +1,194 @@
+{
+  "azuay": {
+    "path": "/geography/provinces/azuay.webp",
+    "label": "Parque Nacional Cajas",
+    "source": "https://commons.wikimedia.org/wiki/File:El_Cajas_visto_desde_el_restaurante_%22Mestizo%22.jpg",
+    "author": "Martin.vascovinueza",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "bolivar": {
+    "path": "/geography/provinces/bolivar.webp",
+    "label": "Guaranda",
+    "source": "https://commons.wikimedia.org/wiki/File:Guaranda_Ecuador.jpg",
+    "author": "Eduardo Tamayo G",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "canar": {
+    "path": "/geography/provinces/canar.webp",
+    "label": "Ingapirca",
+    "source": "https://commons.wikimedia.org/wiki/File:Ingapirca_03.jpg",
+    "author": "Bernard Gagnon",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0"
+  },
+  "carchi": {
+    "path": "/geography/provinces/carchi.webp",
+    "label": "Cementerio de Tulcán",
+    "source": "https://commons.wikimedia.org/wiki/File:Tulc%C3%A1n_vista_aerea_-_cementerio.png",
+    "author": "Jhalvico",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "chimborazo": {
+    "path": "/geography/provinces/chimborazo.webp",
+    "label": "Volcán Chimborazo",
+    "source": "https://commons.wikimedia.org/wiki/File:Chimborazo_05.jpg",
+    "author": "Bernard Gagnon",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0"
+  },
+  "cotopaxi": {
+    "path": "/geography/provinces/cotopaxi.webp",
+    "label": "Volcán Cotopaxi",
+    "source": "https://commons.wikimedia.org/wiki/File:V%C3%B3lcan_Cotopaxi.jpg",
+    "author": "camilogaleano.com",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "el-oro": {
+    "path": "/geography/provinces/el-oro.webp",
+    "label": "Zaruma",
+    "source": "https://commons.wikimedia.org/wiki/File:Zaruma_Ecuador616.jpg",
+    "author": "Arabsalam",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "esmeraldas": {
+    "path": "/geography/provinces/esmeraldas.webp",
+    "label": "Atacames",
+    "source": "https://commons.wikimedia.org/wiki/File:Atacames_beach_restaurants.jpg",
+    "author": "Uwebart",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "galapagos": {
+    "path": "/geography/provinces/galapagos.webp",
+    "label": "Isla Bartolomé",
+    "source": "https://commons.wikimedia.org/wiki/File:Bartolome_Island_-_panorama_2.jpg",
+    "author": "putneymark",
+    "license": "CC BY-SA 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0"
+  },
+  "guayas": {
+    "path": "/geography/provinces/guayas.webp",
+    "label": "Malecón 2000",
+    "source": "https://commons.wikimedia.org/wiki/File:Vista_del_Malec%C3%B3n_2000.jpg",
+    "author": "Freddy eduardo",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "imbabura": {
+    "path": "/geography/provinces/imbabura.webp",
+    "label": "Laguna de Cuicocha",
+    "source": "https://commons.wikimedia.org/wiki/File:Laguna_de_Cuicocha_01.jpg",
+    "author": "Bernard Gagnon",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0"
+  },
+  "loja": {
+    "path": "/geography/provinces/loja.webp",
+    "label": "Valle de Vilcabamba",
+    "source": "https://commons.wikimedia.org/wiki/File:Las_Vegas_Vilcabamba_Ecuador_1704.jpg",
+    "author": "Arabsalam",
+    "license": "CC BY 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0"
+  },
+  "los-rios": {
+    "path": "/geography/provinces/los-rios.webp",
+    "label": "Río Babahoyo",
+    "source": "https://commons.wikimedia.org/wiki/File:BABAHOYO_(34910311652).jpg",
+    "author": "Agencia de Noticias ANDES",
+    "license": "CC BY-SA 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0"
+  },
+  "manabi": {
+    "path": "/geography/provinces/manabi.webp",
+    "label": "Puerto López",
+    "source": "https://commons.wikimedia.org/wiki/File:Panorama_puerto_lopez_beach.jpg",
+    "author": "Annom",
+    "license": "Public domain",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  "morona-santiago": {
+    "path": "/geography/provinces/morona-santiago.webp",
+    "label": "Volcán Sangay",
+    "source": "https://commons.wikimedia.org/wiki/File:Volcan-Sangay-Ecuador.jpg",
+    "author": "Dabit100",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "napo": {
+    "path": "/geography/provinces/napo.webp",
+    "label": "Río Misahuallí",
+    "source": "https://commons.wikimedia.org/wiki/File:Misahuall%C3%AD_Ecuador_1054.jpg",
+    "author": "Arabsalam",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "orellana": {
+    "path": "/geography/provinces/orellana.webp",
+    "label": "El Coca",
+    "source": "https://commons.wikimedia.org/wiki/File:Puerto_Francisco_de_Orellana_01.jpg",
+    "author": "Agencia de Noticias ANDES",
+    "license": "CC BY-SA 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0"
+  },
+  "pastaza": {
+    "path": "/geography/provinces/pastaza.webp",
+    "label": "Río Puyo",
+    "source": "https://commons.wikimedia.org/wiki/File:R%C3%ADo_Puyo,_Pastaza.jpg",
+    "author": "David C. S.",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "pichincha": {
+    "path": "/geography/provinces/pichincha.webp",
+    "label": "Quito desde el Panecillo",
+    "source": "https://commons.wikimedia.org/wiki/File:Vista_de_Quito_desde_El_Panecillo,_Ecuador,_2015-07-22,_DD_25-29_PAN.JPG",
+    "author": "Diego Delso",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "santa-elena": {
+    "path": "/geography/provinces/santa-elena.webp",
+    "label": "Salinas",
+    "source": "https://commons.wikimedia.org/wiki/File:The_beach_at_salinas.jpg",
+    "author": "Bonsairolex",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0"
+  },
+  "santo-domingo-de-los-tsachilas": {
+    "path": "/geography/provinces/santo-domingo-de-los-tsachilas.webp",
+    "label": "Santo Domingo",
+    "source": "https://commons.wikimedia.org/wiki/File:Santo_Domingo,_Ecuador_montage.png",
+    "author": "Berposen",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "sucumbios": {
+    "path": "/geography/provinces/sucumbios.webp",
+    "label": "Cuyabeno",
+    "source": "https://commons.wikimedia.org/wiki/File:K_Cuyabeno_1312(252)_(17288328806).jpg",
+    "author": "Diego Tirira from Quito, Ecuador",
+    "license": "CC BY-SA 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0"
+  },
+  "tungurahua": {
+    "path": "/geography/provinces/tungurahua.webp",
+    "label": "Pailón del Diablo",
+    "source": "https://commons.wikimedia.org/wiki/File:R%C3%ADo_Verde_Pail%C3%B3n_del_Diablo_waterfall_seen_from_below_1.jpg",
+    "author": "Ymblanter",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  "zamora-chinchipe": {
+    "path": "/geography/provinces/zamora-chinchipe.webp",
+    "label": "Río Bombuscaro",
+    "source": "https://commons.wikimedia.org/wiki/File:R%C3%ADo_Bombuscaro_-_Zamora.jpg",
+    "author": "Carlosmedinav77",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
+  }
+}

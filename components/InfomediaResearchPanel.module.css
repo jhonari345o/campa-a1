@@ -1,0 +1,105 @@
+/* Restores the original category-radar treatment from the September handoff. */
+.radar:global(.infomedia-research) {
+  --radar-ink: #f5f4eb;
+  --radar-muted: #c0cfc6;
+  --radar-accent: #70ec74;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 26px;
+  background: linear-gradient(145deg, #152a20 0%, #183328 58%, #18434b 100%);
+  color: var(--radar-ink);
+  box-shadow: 0 24px 54px rgb(20 46 34 / 23%);
+}
+.radar::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: -190px;
+  right: -110px;
+  width: 330px;
+  height: 330px;
+  border: 1px solid rgb(255 255 255 / 7%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.radar > header { align-items: flex-start; gap: 24px; }
+.radar > header > div:first-child { min-width: 0; flex: 1 1 240px; }
+.radar > header p { color: var(--radar-accent); }
+.radar h2 { margin: 10px 0; font-size: clamp(28px, 3.5vw, 46px); line-height: 1.08; overflow-wrap: anywhere; }
+.radar h3 { font-size: 1.1rem; font-weight: 900; }
+.radar > header span,
+.radar small,
+.radar :global(.infomedia-note),
+.radar :global(.text-muted) { color: var(--radar-muted); }
+.radar .periodControls { display: flex; flex: 0 1 auto; flex-wrap: wrap; align-items: flex-start; gap: 14px; max-width: 100%; }
+.radar .year { border-radius: 999px; background: var(--radar-accent); padding: 8px 13px; color: #10251a; font-size: .8rem; font-weight: 900; }
+.radar .periodControls label { max-width: 100%; color: var(--radar-muted); }
+.radar select,
+.radar input[type="search"] {
+  min-height: 46px;
+  border: 1px solid rgb(255 255 255 / 28%);
+  border-radius: 12px;
+  background: #122b23;
+  color: var(--radar-ink);
+  color-scheme: dark;
+}
+.radar input[type="search"] { flex-basis: 12rem; }
+.radar input::placeholder { color: var(--radar-muted); opacity: .85; }
+.radar select:focus-visible,
+.radar input:focus-visible,
+.radar button:focus-visible,
+.radar summary:focus-visible { outline: 3px solid var(--radar-accent); outline-offset: 4px; }
+.radar :global(.infomedia-metrics) { gap: 1px; overflow: hidden; border-radius: 16px; }
+.radar :global(.infomedia-metrics) article { min-width: 0; border-radius: 0; background: rgb(255 255 255 / 7%); padding: 20px; }
+.radar :global(.infomedia-metrics) strong { color: var(--radar-ink); font-size: clamp(24px, 2.5vw, 36px); overflow-wrap: anywhere; }
+.radar :global(.infomedia-columns) { gap: 16px; align-items: start; }
+.radar :global(.infomedia-columns) > article {
+  min-width: 0;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 18px;
+  background: rgb(255 255 255 / 6.5%);
+  padding: clamp(14px, 2vw, 22px);
+}
+.radar :global(.infomedia-columns) > article > small { display: block; line-height: 1.65; }
+.radar :global(.infomedia-bar-row) { margin-bottom: 18px; }
+.radar :global(.infomedia-bar-row) > div { align-items: baseline; }
+.radar :global(.infomedia-bar-row) strong { color: var(--radar-accent); font-variant-numeric: tabular-nums; }
+.radar meter { display: block; width: 100%; height: 8px; margin: 8px 0; border: 0; border-radius: 99px; background: rgb(255 255 255 / 10%); accent-color: var(--radar-accent); appearance: none; }
+.radar meter::-webkit-meter-bar { height: 8px; border: 0; border-radius: 99px; background: rgb(255 255 255 / 10%); }
+.radar meter::-webkit-meter-optimum-value { border-radius: 99px; background: linear-gradient(90deg, #00a100, #40c6bd, #4b9eff, #ff735c); }
+.radar meter::-moz-meter-bar { border-radius: 99px; background: linear-gradient(90deg, #00a100, #40c6bd, #4b9eff, #ff735c); }
+.radar table { font-variant-numeric: tabular-nums; }
+.radar th,
+.radar td { border-color: rgb(255 255 255 / 13%); }
+.radar thead th { color: var(--radar-muted); }
+.radar tbody th { color: var(--radar-ink); overflow-wrap: anywhere; }
+.radar td,
+.radar thead th:not(:first-child) { text-align: right; white-space: nowrap; }
+.radar tbody tr:hover { background: rgb(255 255 255 / 4%); }
+.radar button:global(.btn-secondary) {
+  min-height: 44px;
+  border: 1px solid rgb(255 255 255 / 34%);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 7%);
+  color: var(--radar-ink);
+  box-shadow: 0 3px 0 rgb(8 24 17 / 30%);
+}
+.radar button:global(.btn-secondary):hover:enabled { border-color: var(--radar-accent); background: rgb(112 236 116 / 12%); }
+.radar button:disabled { opacity: .45; cursor: not-allowed; }
+.radar :global(.infomedia-table-wrap) { margin-bottom: 14px; }
+.radar [role="alert"] { border: 1px solid rgb(255 180 168 / 35%); border-radius: 12px; background: rgb(88 32 28 / 35%); padding: 12px; color: #ffd8d0; }
+.radar > details { margin-top: 16px; border: 1px solid rgb(255 255 255 / 10%); border-radius: 18px; background: rgb(255 255 255 / 5.5%); padding: 0 18px 12px; }
+.radar :global(.infomedia-ai) { border-color: rgb(255 255 255 / 16%); }
+.radar :global(.infomedia-ai) p,
+.radar :global(.infomedia-ai) li { color: var(--radar-muted); }
+.radar :global(.infomedia-ai) aside { border: 1px solid rgb(255 255 255 / 10%); background: rgb(255 255 255 / 6.5%); }
+@media (max-width: 700px) {
+  .radar:global(.infomedia-research) { padding: 18px; border-radius: 22px; }
+  .radar .periodControls { width: 100%; }
+  .radar .periodControls label { flex: 1 1 12rem; }
+  .radar select { width: 100%; }
+  .radar :global(.infomedia-metrics) { grid-template-columns: 1fr; }
+  .radar :global(.infomedia-metrics) article { padding: 16px; }
+}
