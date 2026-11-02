@@ -31,6 +31,7 @@ const SYSTEM = [
   "No trates precios históricos, sin vigencia o sin plaza compatible como cotizaciones actuales. Los presupuestos y cantidades los calcula el servidor, conservando el total.",
   "Evalúa necesidades, intereses, modelo de conversión, margen y capacidad solo como criterios del brief, nunca como mediciones del mercado. Si una restricción es ambigua, pregunta.",
   "Devuelve solo JSON: summary (máximo tres frases), allocations (medium, weight entero de cero a diez mil, rationale breve, evidenceIds, candidateIds), questions (hasta cinco preguntas relevantes). Los pesos deben sumar exactamente diez mil.",
+  "Sigue outputContract. Copia los medium, evidenceIds y candidateIds exactamente de las opciones canónicas de cada medio. candidateIds puede ser un arreglo vacío. questions puede ser un arreglo vacío. No añadas campos ni texto fuera del JSON. Mantén la respuesta concisa.",
   "Usa los identificadores canónicos. No incluyas importes, porcentajes, cantidades, resultados numéricos, enlaces, HTML ni Markdown en summary, rationale o questions: los datos exactos se muestran desde las fuentes. No garantices resultados ni una mezcla óptima universal.",
 ].join(" ");
 
@@ -98,7 +99,7 @@ export async function buildResearchRecommendation(brief:StrategyBrief,research:C
     allowRequest:Boolean(options.allowAi),cacheAvailable:!cacheError,cached:cached?.result,
     claim:async()=>{const {data,error}=await db.rpc("claim_media_strategy_ai_request",{p_fingerprint:fingerprint});return !error&&Boolean(data);},
     invoke:(content,signal)=>chatCompletion([{role:"system",content:SYSTEM},{role:"user",content}],{maxTokens:2400,temperature:.1,json:true,signal}),
-    persist:async advice=>{const {data,error}=await createAdminClient().from("media_strategy_cache").update({status:advice?"ready":"failed",model_id:model,result:advice??{},updated_at:new Date().toISOString()}).eq("owner_id",profile.id).eq("fingerprint",fingerprint).eq("status","pending").select("fingerprint").maybeSingle();return !error&&Boolean(data);},
+    persist:async (advice,diagnostic)=>{const {data,error}=await createAdminClient().from("media_strategy_cache").update({status:advice?"ready":"failed",model_id:model,result:{...advice,_diagnostic:diagnostic},updated_at:new Date().toISOString()}).eq("owner_id",profile.id).eq("fingerprint",fingerprint).eq("status","pending").select("fingerprint").maybeSingle();return !error&&Boolean(data);},
   });
   if(options.allowAi)console.info("media_strategy_ai",{state:ai.state,provider:aiConfig?.provider??null,durationMs:Date.now()-started});
   const report=buildStrategyReport(brief,bundle,baseline,{advice:ai.advice,aiState:ai.state,model:ai.advice?model:null,fingerprint,generatedAt});

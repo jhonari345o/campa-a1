@@ -35,3 +35,17 @@ test("oversized prompts, insufficient time and forged cached sources are rejecte
   const cached=structuredClone(advice);cached.allocations[0].evidenceIds=["forged-source"];
   const forged=dependencies({cached,allowRequest:false});assert.equal((await resolveStrategyAi(brief,bundle,"{}",2000,forged.deps)).advice,null);
 });
+test("failed inference persists only bounded diagnostic metadata, never provider detail or raw output",async()=>{
+  for(const [message,expected] of [["PROVIDER_HTTP_429","PROVIDER_HTTP_429"],["account-private-secret","PROVIDER_UNAVAILABLE"]]){
+    let diagnostic:unknown;
+    const {deps}=dependencies({invoke:async()=>{throw new Error(message);},persist:async(value,info)=>{assert.equal(value,null);diagnostic=info;return true;}});
+    const result=await resolveStrategyAi(brief,bundle,"{}",2000,deps);
+    assert.equal(result.state,"unavailable");
+    assert.equal((diagnostic as {code:string}).code,expected);
+    assert.equal(JSON.stringify(diagnostic).includes("account-private-secret"),false);
+  }
+  let code="";
+  const invalid=dependencies({invoke:async()=>JSON.stringify({...advice,allocations:[{...advice.allocations[0],weight:100}]}),persist:async(value,info)=>{assert.equal(value,null);code=info.code;return true;}});
+  assert.equal((await resolveStrategyAi(brief,bundle,"{}",2000,invalid.deps)).state,"rejected");
+  assert.equal(code,"OUTPUT_WEIGHT_TOTAL");
+});

@@ -3,7 +3,7 @@ import { mediaGroupLabel } from "./plan-optimizer";
 import type { MediaPlan, PlanRow } from "./planner";
 import type { StrategyBrief, StrategyCandidate, StrategyEvidenceBundle } from "./media-strategy-evidence";
 
-export const STRATEGY_VERSION = "2026-11-02.2";
+export const STRATEGY_VERSION = "2026-11-02.3";
 export type StrategyAiState = "validated" | "cached" | "not_configured" | "quota" | "unavailable" | "rejected";
 export type StrategyAdvice = {
   summary: string;
@@ -128,29 +128,44 @@ function affordableWeights(weights:{medium:MediaGroup;weight:number}[],bundle:St
   return result;
 }
 /** JSON is an instruction proposal. Server-owned sources, metrics, rates and arithmetic are immutable. */
-export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:StrategyEvidenceBundle):StrategyAdvice|null {
-  if(typeof raw!=="string"||raw.length>24_000)return null;
-  let v:Record<string,unknown>;try{v=obj(JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/g,"").trim()));}catch{return null;}
+export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:StrategyEvidenceBundle,onReject?:(code:string)=>void):StrategyAdvice|null {
+  const reject=(code:string)=>{onReject?.(code);return null;};
+  if(typeof raw!=="string"||raw.length>24_000)return reject("SIZE");
+  let v:Record<string,unknown>;try{v=obj(JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/g,"").trim()));}catch{return reject("JSON");}
   const text=(s:unknown,max:number)=>typeof s==="string"&&s.trim().length>0&&s.length<=max&&!/[<>]|https?:|www\.|garantiz/i.test(s)&&!/[\d%$€]/.test(s.replace(/\bB2[BC]\b/gi,""));
-  if(!text(v.summary,1400)||!Array.isArray(v.allocations)||!v.allocations.length||v.allocations.length>6||!Array.isArray(v.questions)||v.questions.length>5||!v.questions.every(q=>text(q,400)))return null;
+  if(!text(v.summary,1400))return reject("SUMMARY");
+  if(!Array.isArray(v.allocations)||!v.allocations.length||v.allocations.length>6)return reject("ALLOCATIONS");
+  if(!Array.isArray(v.questions)||v.questions.length>5||!v.questions.every(q=>text(q,400)))return reject("QUESTIONS");
   const allowed=new Set(allowedStrategyMedia(brief,bundle)),sourceIds=new Set(bundle.sources.filter(s=>s.use!=="unavailable").map(s=>s.id)),used=new Set<string>();
   const allocations:StrategyAdvice["allocations"]=[];
   for(const value of v.allocations){const r=obj(value),medium=r.medium as MediaGroup;
-    if(!allowed.has(medium)||used.has(medium)||!Number.isInteger(r.weight)||Number(r.weight)<0||Number(r.weight)>10_000||!text(r.rationale,700)||!Array.isArray(r.evidenceIds)||!r.evidenceIds.length||r.evidenceIds.length>6||!r.evidenceIds.every(id=>typeof id==="string"&&sourceIds.has(id))||!Array.isArray(r.candidateIds)||r.candidateIds.length>3)return null;
+    if(!allowed.has(medium)||used.has(medium))return reject("MEDIUM");
+    if(!Number.isInteger(r.weight)||Number(r.weight)<0||Number(r.weight)>10_000)return reject("WEIGHT");
+    if(!text(r.rationale,700))return reject("RATIONALE");
+    if(!Array.isArray(r.evidenceIds)||!r.evidenceIds.length||r.evidenceIds.length>6||!r.evidenceIds.every(id=>typeof id==="string"&&sourceIds.has(id)))return reject("EVIDENCE_IDS");
+    if(!Array.isArray(r.candidateIds)||r.candidateIds.length>3)return reject("CANDIDATE_IDS");
     const pool=strategyCandidatePool(bundle,medium,brief).slice(0,8);
-    if(!r.candidateIds.every(id=>typeof id==="string"&&pool.some(c=>c.id===id)))return null;
+    if(!r.candidateIds.every(id=>typeof id==="string"&&pool.some(c=>c.id===id)))return reject("CANDIDATE_IDS");
     const relevantSources=new Set(["category-investment",...(bundle.consumption.some(c=>c.medium===medium)?["audience-consumption"]:[]),...pool.flatMap(c=>c.sourceIds),...bundle.audienceReferences.filter(r=>r.medium===medium).map(r=>r.sourceId)]);
-    if(!r.evidenceIds.every(id=>relevantSources.has(String(id))))return null;
+    if(!r.evidenceIds.every(id=>relevantSources.has(String(id))))return reject("EVIDENCE_MEDIUM");
     used.add(medium);allocations.push({medium,weight:Number(r.weight),rationale:String(r.rationale).trim(),evidenceIds:r.evidenceIds as string[],candidateIds:[...new Set(r.candidateIds as string[])]});
   }
-  if(allocations.reduce((n,r)=>n+r.weight,0)!==10_000)return null;
+  if(allocations.reduce((n,r)=>n+r.weight,0)!==10_000)return reject("WEIGHT_TOTAL");
   return {summary:String(v.summary).trim(),allocations,questions:v.questions as string[]};
 }
 export function strategyAiPayload(brief:StrategyBrief,bundle:StrategyEvidenceBundle,plan:MediaPlan) {
   const allowed=allowedStrategyMedia(brief,bundle);
   const candidates=allowed.flatMap(m=>strategyCandidatePool(bundle,m,brief).slice(0,8));
   const wanted=new Set(["category-investment","audience-consumption",...candidates.flatMap(c=>c.sourceIds),...bundle.audienceReferences.map(r=>r.sourceId)]);
-  return {version:STRATEGY_VERSION,brief,allowedMedia:allowed,evidence:{sources:bundle.sources.filter(s=>wanted.has(s.id)),competition:bundle.competition,categoryMix:bundle.categoryMix,consumption:bundle.consumption,candidates,audienceReferences:bundle.audienceReferences,gaps:bundle.gaps},baseline:baseWeights(brief,bundle,plan),rules:["Las cifras y el presupuesto se calculan en el servidor.","La inversión de competidores no mide efectividad.","Las fuentes contextuales no son mediciones del target.","Un tarifario no es un rating y un ranking no es alcance de campaña.","No declares una mezcla óptima universal; compara solo alternativas respaldadas."]};
+  const availableSourceIds=new Set(bundle.sources.filter(s=>s.use!=="unavailable").map(s=>s.id));
+  const allocationOptions=allowed.map(medium=>({medium,
+    evidenceIds:[...new Set(["category-investment",...(bundle.consumption.some(c=>c.medium===medium)?["audience-consumption"]:[]),...candidates.filter(c=>c.medium===medium).flatMap(c=>c.sourceIds),...bundle.audienceReferences.filter(r=>r.medium===medium).map(r=>r.sourceId)])].filter(id=>availableSourceIds.has(id)),
+    candidateIds:candidates.filter(c=>c.medium===medium).map(c=>c.id),
+  }));
+  // Use the same integer scale as the response contract, instead of fractional baseline shares.
+  const baseline=allocateStrategyBudget(baseWeights(brief,bundle,plan),100).map(r=>({medium:r.medium,weight:Math.round(r.amountUsd!*100)}));
+  const outputContract={summary:"Texto breve sin cifras",allocations:[{medium:"Copiar de allocationOptions",weight:"Entero; la suma de todos los pesos debe ser 10000",rationale:"Texto breve sin cifras",evidenceIds:"Entre uno y seis identificadores de evidenceIds del mismo medio",candidateIds:"Entre cero y tres identificadores de candidateIds del mismo medio"}],questions:"Arreglo de cero a cinco textos sin cifras"};
+  return {version:STRATEGY_VERSION,brief,allowedMedia:allowed,allocationOptions,outputContract,evidence:{sources:bundle.sources.filter(s=>wanted.has(s.id)),competition:bundle.competition,categoryMix:bundle.categoryMix,consumption:bundle.consumption,candidates,audienceReferences:bundle.audienceReferences,gaps:bundle.gaps},baseline,rules:["Las cifras y el presupuesto se calculan en el servidor.","La inversión de competidores no mide efectividad.","Las fuentes contextuales no son mediciones del target.","Un tarifario no es un rating y un ranking no es alcance de campaña.","No declares una mezcla óptima universal; compara solo alternativas respaldadas."]};
 }
 export function buildStrategyReport(brief:StrategyBrief,bundle:StrategyEvidenceBundle,baseline:MediaPlan,options:{advice?:StrategyAdvice|null;aiState:StrategyAiState;model?:string|null;fingerprint:string;generatedAt:string}):StrategyReport {
   const weights=options.advice?.allocations.map(r=>({medium:r.medium,weight:r.weight}))??baseWeights(brief,bundle,baseline);

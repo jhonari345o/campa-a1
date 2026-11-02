@@ -104,6 +104,12 @@ test("the complete brief and only canonical source fields are sent to the strate
   const p=strategyAiPayload(b,bundle,base);
   assert.equal(p.brief.audience,b.audience);assert.equal(p.brief.learnings,b.learnings);assert.equal(p.brief.restrictions,b.restrictions);assert.equal(p.brief.competitors,b.competitors);
   assert.ok(p.evidence.candidates.every(c=>bundle.candidates.some(s=>s.id===c.id)));
+  assert.equal(p.baseline.reduce((n,r)=>n+r.weight,0),10000);
+  assert.ok(p.baseline.every(r=>Number.isInteger(r.weight)));
+  for(const option of p.allocationOptions){
+    assert.ok(option.evidenceIds.every(id=>bundle.sources.some(s=>s.id===id&&s.use!=="unavailable")));
+    assert.ok(option.candidateIds.every(id=>p.evidence.candidates.some(c=>c.id===id&&c.medium===option.medium)));
+  }
 });
 test("digital budget honors explicit platform choices and is never assigned to WhatsApp as media",async()=>{
   const b=strategyBrief({selectedMedia:["digital"],digitalPlatforms:["Programmatic / DV360","Retail Media"]}),bundle=buildStrategyEvidence(b,strategyResearch,strategyCatalogs(),date),base=await buildMediaPlan({...b,research:scopePlanningResearch(strategyResearch,bundle)});
