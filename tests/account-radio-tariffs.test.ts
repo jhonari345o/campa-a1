@@ -54,6 +54,16 @@ test("a directory frequency does not split the account tariff from the station d
   assert.equal(rows.length,1);assert.equal(rows[0].key,negotiated.key);assert.equal(rows[0].source.stationId,"station-a");assert.equal(rows[0].priceCents,3800);
   assert.equal(radioProviderKey("i99 98.9 FM"),"i99");assert.notEqual(radioProviderKey("104.5 FM"),radioProviderKey("105.7 FM"));
 });
+test("Spanish and English stereo spelling do not create two customer tariffs for the same station", () => {
+  const own={...product("radio:workspace:own"),provider:"Example Stereo"}, history={...product("radio:workspace:history"),provider:"Radio Example Estéreo"};
+  const rows=scopeCatalogProducts([own,history],[rate(own.key,"client","2026-11-01",3800),rate(history.key,"client","2026-10-01",4200)],"2026-11-01",false);
+  assert.equal(accountRadioGroups(rows).length,1);assert.equal(rows.length,1);assert.equal(rows[0].key,own.key);assert.equal(rows[0].priceCents,3800);
+});
+test("the verified Radio Rey and Stereo Rey names resolve to the selected account negotiation", () => {
+  const own={...product("radio:workspace:own"),provider:"Radio Rey"}, fallback={...product("radio:workspace:fallback",30),provider:"Stereo Rey 96.7 FM",source:{workspaceProductId:"fallback",stationId:"station-rey"}};
+  const rows=scopeCatalogProducts([own,fallback],[rate(own.key,"client","2026-11-01",3800),rate(fallback.key,"fallback","2026-10-01",4500)],"2026-11-01",false);
+  assert.equal(rows.length,1);assert.equal(rows[0].key,own.key);assert.equal(rows[0].source.stationId,"station-rey");assert.equal(rows[0].unit,"cuña de 20 s");
+});
 
 test("private evidence becomes bounded selection hints and cannot appear in the customer projection", () => {
   const p = product("radio:workspace:a");
@@ -67,4 +77,25 @@ test("different programs in the same selected tariff edition stay in one station
   const rows = scopeCatalogProducts([morning, evening], [rate(morning.key, "fallback", "2026-10-01", 3500), rate(evening.key, "fallback", "2026-10-01", 4600)], "2026-11-01", false);
   const groups = accountRadioGroups(rows); assert.equal(groups.length, 1); assert.equal(groups[0].length, 2);
   assert.deepEqual(rows.map(p => p.priceCents), [3500, 4600]);
+});
+
+test("different programs received on different dates remain available while each format has one latest rate", () => {
+  const old = { ...product("radio:workspace:old"), name: "Example Station · Horario rotativo", format: "Horario rotativo · 20 s" };
+  const rotativo = { ...product("radio:workspace:rotativo"), name: "Example Station · Rotativa · Escenario final", format: "Rotativa · 20 s" };
+  const news = { ...product("radio:workspace:news"), name: "Example Station · Noticiero", format: "Noticiero · 20 s" };
+  const rates = [rate(old.key,"client","2026-03-01",2700),rate(rotativo.key,"client","2026-10-01",3500),rate(news.key,"client","2026-06-01",4600)];
+  for (const input of [[old,rotativo,news],[news,rotativo,old]]) {
+    const rows = scopeCatalogProducts(input,rates,"2026-11-01",false);
+    assert.equal(accountRadioGroups(rows).length,1);assert.equal(rows.length,2);
+    assert.equal(rows.find(p=>p.key===rotativo.key)?.priceCents,3500);assert.equal(rows.find(p=>p.key===news.key)?.priceCents,4600);
+    assert.ok(!rows.some(p=>p.key===old.key));
+    assert.equal(catalogCartSummary([{productKey:rotativo.key,quantity:2},{productKey:news.key,quantity:3}],rows).totalCents,20800);
+  }
+});
+
+test("distinct duration and plaza are separate formats rather than conflicting duplicates", () => {
+  const short=product("radio:workspace:short"), long=product("radio:workspace:long",30), other={...product("radio:workspace:other"),location:"Other city"};
+  const rows=scopeCatalogProducts([short,long,other],[rate(short.key,"client","2026-10-01",3100),rate(long.key,"client","2026-09-01",4200),rate(other.key,"client","2026-08-01",3900)],"2026-11-01",false);
+  assert.equal(accountRadioGroups(rows).length,1);assert.equal(rows.length,3);
+  assert.deepEqual(rows.map(p=>p.priceCents),[3100,4200,3900]);
 });
