@@ -94,7 +94,7 @@ function MetaConnectionCenter() {
   return <section className="mt-8 overflow-hidden rounded-panel border border-forest/20 bg-white shadow-panel">
     <div className="grid gap-7 bg-forest p-7 text-white lg:grid-cols-[1.25fr_.75fr]">
       <div>
-        <p className="text-xs font-black uppercase tracking-[.16em] text-signal">Conexión financiera y publicitaria</p>
+        <p className="text-xs font-black uppercase tracking-[.16em] text-[#edceab]">Conexión financiera y publicitaria</p>
         <h2 className="mt-2 text-2xl font-black">Meta Ads y línea de crédito</h2>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/65">
           La línea de crédito pertenece a la cuenta publicitaria de Meta, no al token. El asistente seguro permite elegir la cuenta correcta, validar la página e Instagram y desplegarla sin guardar secretos en Supabase.
@@ -103,7 +103,7 @@ function MetaConnectionCenter() {
           <a href="http://127.0.0.1:4177" target="_blank" rel="noreferrer" className="btn btn-primary">Abrir asistente seguro →</a>
           <a href="https://business.facebook.com/settings/ad-accounts" target="_blank" rel="noreferrer" className="btn border-white/20 bg-white/10 text-white hover:bg-white/15">Revisar crédito en Meta ↗</a>
         </div>
-        <p className="mt-3 text-[10px] text-white/40">Disponible únicamente cuando la consola local está ejecutándose con <b className="text-white/60">npm run admin:dev</b>.</p>
+        <p className="mt-3 text-[10px] text-white/75">Disponible únicamente cuando la consola local está ejecutándose con <b className="text-white">npm run admin:dev</b>.</p>
       </div>
       <div className="grid gap-2 self-start">
         <MetaStatus label="Conexión base" ready={configured} value={configured ? "Token y activos presentes" : "Faltan credenciales"} />
@@ -120,7 +120,7 @@ function MetaConnectionCenter() {
 }
 
 function MetaStatus({ label, ready, value }: { label: string; ready: boolean; value: string }) {
-  return <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3"><div><span className="block text-[9px] font-black uppercase tracking-wide text-white/40">{label}</span><strong className="mt-1 block text-xs text-white">{value}</strong></div><span className={`size-3 shrink-0 rounded-full ${ready ? "bg-signal shadow-[0_0_0_4px_rgba(0,161,0,.18)]" : "bg-coral shadow-[0_0_0_4px_rgba(255,111,97,.12)]"}`} /></div>;
+  return <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-fog px-4 py-3"><div><span className="block text-[9px] font-black uppercase tracking-wide text-muted">{label}</span><strong className="mt-1 block text-xs text-forest">{value}</strong></div><span className={`size-3 shrink-0 rounded-full ${ready ? "bg-signal shadow-[0_0_0_4px_rgba(0,161,0,.18)]" : "bg-coral shadow-[0_0_0_4px_rgba(255,111,97,.12)]"}`} /></div>;
 }
 
 function LaunchChecklist() {

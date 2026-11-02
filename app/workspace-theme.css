@@ -1,44 +1,74 @@
-/* Léttera: logo existente y paleta observada en lettera.ec. La marca se deriva
-   de la membresía autenticada; esta capa visual nunca concede permisos. */
-body:has([data-workspace-brand="lettera"]) {
-  --color-forest:50 45 42; --color-forest-deep:33 30 27; --color-forest-ink:50 45 42;
-  --color-signal:237 206 171; --color-signal-dark:105 76 49;
-  --color-fog:247 244 239; --color-concrete:227 220 210; --color-border:218 209 198; --color-muted:114 103 94;
-  --forest:#322d2a; --forest-deep:#211e1b; --signal:#edceab; --signal-dark:#694c31;
-  --fog:#f7f4ef; --shadow-press:#b99d7e;
-  background:var(--fog); color:var(--forest-deep);
+/* One keeps the same navigation and controls for every account.
+   Tenant colors belong to its banner; membership and capabilities remain independent. */
+.portal-topbar ~ main {background:var(--fog);padding-top:26px;}
+.portal-nav-item.is-active,.portal-catalog-link.is-active,.portal-custom-plan-link {border-color:#b99d7e;background:#edceab17;}
+.portal-nav-item.is-active {box-shadow:inset 3px 0 0 #00a100;}
+.portal-catalog-title strong,.portal-catalog-link > span {color:#edceab;}
+.portal-custom-plan-link strong {color:#a8e49b;}
+.portal-catalog-link:hover {border-color:#b99d7e;background:#edceab17;}
+.portal-catalog-link small,.portal-sidebar-foot p,.portal-sidebar-foot span,.portal-utility-nav a,.portal-custom-plan-link span {color:#c5bdb4;}
+.portal-private-badge,.portal-nav-item > span,.portal-catalog-title {color:#d5ccc2;}
+.portal-license-pill {border-color:#d8cebf;background:#f5eee4;color:#47613c;}
+.portal-license-pill i {background:#50754c;box-shadow:0 0 0 4px #50754c1a;}
+.portal-account-menu summary > span {color:#fff;}
+.media-portal-header,.planner-hero,.planner-submit-bar,.planner-approved-heading,.mavi-floating-panel > header,.mavi-mini-message.is-user p {background:#322d2a;color:#fffaf3;}
+.media-portal-header-copy > p:first-child,.planner-hero p,.planner-hero aside small,.planner-submit-bar small,.planner-approved-heading p {color:#edceab;}
+.media-portal-header-description,.planner-hero > div > span,.planner-hero aside span {color:#ded6ce;}
+.media-portal-plan-button {color:#fffaf3;}
+.media-portal-plan-button span {background:#00a100;color:#142510;}
+.media-portal-tab {color:#322d2a;}
+.media-portal-tab span {color:#6c625a;}
+.media-portal-tab.is-active {background:#322d2a;color:#fffaf3;box-shadow:0 7px 0 #211e1b,0 12px 25px #211e1b20;}
+.media-portal-tab.is-active span {color:#ded6ce;}
+.media-portal-tab::after {background:#00a100;}
+.planner-section-heading > span {background:#322d2a;color:#edceab;}
+.planner-progress .is-active,.planner-progress .is-complete,.planner-personalize-grid output,.planner-personalize-grid header > strong,.planner-personalize-grid article > a {color:#007d00;}
+.planner-progress .is-active span,.planner-media-selector label > i,.planner-approved-heading > span,.mavi-floating-form > div button {background:#00a100;color:#142510;}
+.planner-media-selector label:has(input:checked) {border-color:#50754c;background:#edf4e8;box-shadow:inset 0 0 0 1px #a8c59c;}
+.planner-map-card,.planner-details,.planner-personalize-grid label {background:#f5f0e9;border-color:#dad1c6;}
+.mavi-floating-trigger {border-color:#edceab;background:#322d2a;}
+.mavi-floating-trigger > b {background:#00a100;color:#142510;}
+.planner-submit-bar {bottom:94px;}
+/* Opaque status surfaces keep the same contrast on dark heroes and white cards. */
+.catalog-status {display:inline-flex;align-items:center;border:1px solid;border-radius:999px;padding:4px 12px;font-size:10px;font-weight:900;line-height:1.4;letter-spacing:.025em;text-transform:uppercase;}
+.catalog-status--cotizable {background:#e4f2df;color:#235c2f;border-color:#b8d0af;}
+.catalog-status--validacion {background:#fff0ca;color:#6c4700;border-color:#dbc087;}
+.catalog-status--directorio {background:#e9e1d7;color:#4f473f;border-color:#c4b7a7;}
+/* Client identity is a separate, non-interactive banner below the One toolbar. */
+.workspace-banner-slot {margin-left:252px;padding:24px 42px 0;}
+.workspace-banner {position:relative;isolation:isolate;display:flex;align-items:center;justify-content:space-between;gap:24px;max-width:1480px;min-height:120px;margin:0 auto;overflow:hidden;border:1px solid #64564a;border-radius:22px;padding:22px 30px;background:linear-gradient(110deg,#322d2a,#443930);color:#fffaf3;}
+.workspace-banner::before {content:"";position:absolute;z-index:-1;right:70px;top:-155px;width:360px;height:360px;border:1px solid #edceab40;border-radius:50%;box-shadow:0 0 0 32px #ffffff05,0 0 0 66px #ffffff04;}
+.workspace-banner-copy {min-width:0;}
+.workspace-banner-copy p {margin:0;color:#edceab;font-size:10px;font-weight:900;letter-spacing:.13em;text-transform:uppercase;}
+.workspace-banner-copy h2 {margin:5px 0 0;color:#fffaf3;font-size:25px;font-weight:900;line-height:1.15;letter-spacing:-.025em;overflow-wrap:anywhere;}
+.workspace-banner-copy > span {display:block;margin-top:6px;font-size:12px;color:#e0d5c9;}
+.workspace-banner .workspace-client-brand {position:relative;flex:none;max-width:210px;}
+.workspace-banner .workspace-client-brand > span {display:none;}
+.workspace-banner .workspace-client-brand > strong {color:#fffaf3;}
+.workspace-banner .workspace-client-brand-image {height:42px;max-width:190px;}
+.workspace-banner .workspace-client-brand-image.is-lettera {background:transparent;padding:0;border-radius:0;}
+.workspace-banner--ucsg {border-color:#8c4660;background:linear-gradient(110deg,#50112b,#7d2145);}
+.workspace-banner--ucsg .workspace-banner-copy p,.workspace-banner--ucsg .workspace-banner-copy > span {color:#f4d9e3;}
+.workspace-banner--mobil {border-color:#3b658b;background:linear-gradient(110deg,#0b294d,#0b578e);}
+.workspace-banner--mobil .workspace-banner-copy p,.workspace-banner--mobil .workspace-banner-copy > span {color:#dfedf9;}
+.workspace-banner--ucsg .workspace-client-brand,.workspace-banner--mobil .workspace-client-brand {padding:11px 14px;border-radius:13px;background:#fff;}
+.workspace-banner--ucsg .workspace-client-brand-image,.workspace-banner--mobil .workspace-client-brand-image {height:34px;max-width:165px;}
+.workspace-lettera-logo {width:190px;height:auto;max-width:100%;object-fit:contain;}
+.workspace-welcome {display:flex;flex-direction:column;align-items:flex-start;gap:12px;margin:28px 0 32px;border-radius:24px;padding:clamp(26px,4vw,48px);background:var(--forest);color:#fffaf3;}
+.workspace-welcome > p {color:#edceab;font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;}
+.workspace-welcome > h1 {font-size:clamp(38px,5vw,64px);font-weight:900;line-height:1.05;letter-spacing:-.04em;}
+.workspace-welcome > span {color:#ded6ce;font-size:15px;line-height:1.6;}
+.workspace-welcome .btn {margin-top:10px;}
+@media(max-width:1050px){.workspace-banner-slot{margin-left:0;padding-right:24px;padding-left:24px;}}
+@media(max-width:640px){
+ .workspace-banner-slot{padding:16px 16px 0;}
+ .workspace-banner{min-height:106px;padding:18px;gap:14px;border-radius:18px;}
+ .workspace-banner-copy p{font-size:8px;letter-spacing:.06em;}
+ .workspace-banner-copy h2{font-size:21px;}
+ .workspace-banner-copy > span{font-size:10px;}
+ .workspace-banner .workspace-client-brand{max-width:135px;}
+ .workspace-banner .workspace-client-brand-image{height:29px;max-width:124px;}
+ .workspace-banner--ucsg .workspace-client-brand,.workspace-banner--mobil .workspace-client-brand{padding:9px;}
+ .workspace-banner--ucsg .workspace-client-brand-image,.workspace-banner--mobil .workspace-client-brand-image{height:24px;max-width:108px;}
+ .workspace-welcome{margin-top:0;}.workspace-welcome .btn{width:100%;}
 }
-.workspace-lettera-logo { width:190px; height:auto; max-width:100%; object-fit:contain; }
-.workspace-welcome { display:flex; flex-direction:column; align-items:flex-start; gap:12px; margin:28px 0 32px; border-radius:24px; padding:clamp(26px,4vw,48px); background:var(--forest); color:#f7f4ef; }
-.workspace-welcome > p { color:var(--signal); font-size:11px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; }
-.workspace-welcome > h1 { font-size:clamp(38px,5vw,64px); font-weight:900; line-height:1.05; letter-spacing:-.04em; }
-.workspace-welcome > span { color:#e3dcd2; font-size:15px; line-height:1.6; }
-.workspace-welcome .btn { margin-top:10px; }
-body:has([data-workspace-brand="lettera"]) .portal-topbar ~ main { background:var(--fog); padding-top:26px; }
-body:has([data-workspace-brand="lettera"]) .portal-nav-item.is-active,
-body:has([data-workspace-brand="lettera"]) .portal-catalog-link.is-active,
-body:has([data-workspace-brand="lettera"]) .portal-custom-plan-link { border-color:#b99d7e; background:rgb(237 206 171 / 9%); }
-body:has([data-workspace-brand="lettera"]) :is(.portal-catalog-title strong,.portal-catalog-link > span,.portal-custom-plan-link strong) { color:#edceab; }
-body:has([data-workspace-brand="lettera"]) .portal-license-pill { border-color:#d8cebf; background:#f5eee4; }
-body:has([data-workspace-brand="lettera"]) .portal-license-pill i { background:#50754c; box-shadow:0 0 0 4px rgb(80 117 76 / 10%); }
-body:has([data-workspace-brand="lettera"]) :is(.btn-primary,.planner-submit-bar .btn-primary) { color:#211e1b; }
-body:has([data-workspace-brand="lettera"]) :is(.media-portal-header,.planner-submit-bar) { background:#322d2a; }
-body:has([data-workspace-brand="lettera"]) .media-portal-header-copy > p:first-child { color:#edceab; }
-body:has([data-workspace-brand="lettera"]) .media-portal-plan-button span { background:#edceab; color:#211e1b; }
-body:has([data-workspace-brand="lettera"]) .media-portal-tabs a.is-active { background:#322d2a; color:#f7f4ef; }
-body:has([data-workspace-brand="lettera"]) .mavi-floating-trigger { border-color:#edceab; background:#322d2a; }
-body:has([data-workspace-brand="lettera"]) .mavi-floating-trigger > b { background:#edceab; color:#211e1b; }
-@media (max-width:640px) { .workspace-welcome { margin-top:0; } .workspace-welcome .btn { width:100%; } }
-body:has([data-workspace-brand="lettera"]) :is(.planner-hero,.planner-approved-heading,.mavi-floating-panel > header,.mavi-mini-message.is-user p) { background:#322d2a; }
-body:has([data-workspace-brand="lettera"]) :is(.planner-hero p,.planner-hero aside small,.planner-submit-bar small,.planner-approved-heading p) { color:#edceab; }
-body:has([data-workspace-brand="lettera"]) :is(.planner-progress .is-active,.planner-progress .is-complete,.planner-media-selector label > span,.planner-wow-card > span,.planner-personalize-grid output,.planner-personalize-grid header > strong,.planner-personalize-grid article > a,.mavi-mini-message a,.mavi-floating-panel > nav button.is-active) { color:#694c31; }
-body:has([data-workspace-brand="lettera"]) :is(.planner-progress .is-active span,.planner-media-selector label > i,.planner-approved-heading > span,.mavi-floating-form > div button) { background:#edceab; color:#211e1b; box-shadow:none; }
-body:has([data-workspace-brand="lettera"]) :is(.planner-progress .is-complete span,.planner-progress button,.planner-wow-card,.planner-map-card,.planner-details,.planner-personalize-grid label,.mavi-floating-panel > nav,.mavi-floating-form > div input,.mavi-mini-message.is-assistant p) { background:#f5eee4; color:#322d2a; border-color:#dacfc1; }
-body:has([data-workspace-brand="lettera"]) .planner-section-heading > span { background:#322d2a; color:#edceab; }
-body:has([data-workspace-brand="lettera"]) .planner-media-selector label:has(input:checked) { border-color:#b99d7e; background:#f5eee4; box-shadow:inset 0 0 0 1px #edceab; }
-body:has([data-workspace-brand="lettera"]) .planner-media-selector label > span { --media-icon-accent:#a47a4e; --media-icon-soft:#eddfcf; --media-icon-paper:#fffaf2; background:linear-gradient(145deg,#fffaf2,#f1e8db); }
-body:has([data-workspace-brand="lettera"]) :is(input[type="checkbox"],input[type="range"]) { accent-color:#694c31; }
-body:has([data-workspace-brand="lettera"]) .mavi-floating-form > div input:focus { border-color:#694c31; }
-body:has([data-workspace-brand="lettera"]) .portal-catalog-link:hover { border-color:#b99d7e; background:rgb(237 206 171 / 9%); }
-/* Keep the primary planner action above the persistent Mavi launcher. */
-body:has([data-workspace-brand="lettera"]) .planner-submit-bar { bottom:94px; }

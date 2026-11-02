@@ -2,97 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Authenticated UCSG workspace: identity never comes from an email or query parameter. */
-:root:has([data-workspace-brand="ucsg"]) {
-  --color-forest: 94 20 49;
-  --color-forest-deep: 60 17 33;
-  --color-forest-ink: 78 18 40;
-  --color-signal: 143 29 71;
-  --color-signal-dark: 113 21 54;
-  --color-fog: 249 245 247;
-  --color-concrete: 233 219 225;
-  --color-border: 229 215 222;
-  --color-muted: 115 96 105;
-  --forest: #5e1431;
-  --forest-deep: #3c1121;
-  --signal: #8f1d47;
-  --signal-dark: #711536;
-  --fog: #f9f5f7;
-  --shadow-press: #56122b;
-  --button-primary-ink: #fff7fa;
-  --workspace-hero-start: #4a1028;
-  --workspace-hero-end: #7d2145;
-  --workspace-hero-kicker: #f4c8d7;
-  --workspace-hero-copy: #f3dfe7;
-  --workspace-soft: #fbf0f4;
-  --workspace-soft-border: #e9cdd8;
-  --workspace-ink: #5e1431;
-  --workspace-accent: #8f1d47;
-  --workspace-bg: #fbf8fa;
-  --workspace-border: #e5d7dd;
-  --workspace-on-dark: #f3c6d7;
-}
-:root:has([data-workspace-brand="mobil"]) {
- --color-forest:14 51 94; --color-forest-deep:9 31 58; --color-forest-ink:14 51 94;
- --color-signal:0 99 170; --color-signal-dark:0 72 128; --color-fog:244 247 251;
- --color-concrete:223 231 241; --color-border:214 224 237; --color-muted:96 111 131;
- --forest:#0e335e; --forest-deep:#091f3a; --signal:#0063aa; --signal-dark:#004880; --fog:#f4f7fb; --shadow-press:#082c50;
- --button-primary-ink:#fff;
- --workspace-hero-start:#0b294d; --workspace-hero-end:#075c9a; --workspace-hero-kicker:#e4f3ff; --workspace-hero-copy:#dcebf7;
- --workspace-soft:#eef5fb; --workspace-soft-border:#d4e2f1; --workspace-ink:#0e335e; --workspace-accent:#0063aa; --workspace-bg:#f6f9fc; --workspace-border:#d6e0ed; --workspace-on-dark:#d5e9f9;
-}
-.workspace-mobil-logo {width:100%;height:auto;object-fit:contain;background:#fff;border-radius:14px;padding:24px 28px;}
-body:has(.portal-sidebar[data-workspace-brand="mobil"]) {background:#f5f8fc;}
-body:has(.portal-sidebar[data-workspace-brand="mobil"]) .portal-catalog-title strong,
-body:has(.portal-sidebar[data-workspace-brand="mobil"]) .portal-catalog-link > span {color:#b6d9f3;}
-body:has(.portal-sidebar[data-workspace-brand="mobil"]) .portal-nav-item.is-active {border-color:#8fbadf;box-shadow:inset 3px 0 0 #ed1b2f;}
-body:has(.portal-sidebar[data-workspace-brand="mobil"]) .portal-catalog-link.is-active {background:#ffffff12;border-color:#709ac1;}
-body:has(.portal-sidebar[data-workspace-brand="mobil"]) .portal-license-pill {background:#eaf3fb;border-color:#d1e2f1;}
-body:has(.portal-sidebar[data-workspace-brand="mobil"]) .library-hero,
-body:has(.portal-sidebar[data-workspace-brand="mobil"]) .media-portal-header {background:linear-gradient(125deg,#0b2749,#0e477b 64%,#096baa);}
-body:has(.portal-sidebar[data-workspace-brand="mobil"]) .media-portal-header-copy > p:first-child {color:#c9e4f8;}
-body:has(.portal-sidebar[data-workspace-brand="mobil"]) .media-portal-tab.is-active {background:#edf5fc;border-color:#477ead;color:#0e477b;box-shadow:0 7px 0 #103b63,0 12px 25px #103b6320;}
-body:has(.portal-sidebar[data-workspace-brand="mobil"]) .media-portal-tab.is-active span {color:#4b7091;}
-body:has(.portal-sidebar[data-workspace-brand="mobil"]) .media-portal-tab::after {background:#ed1b2f;}
-body:has(.portal-sidebar[data-workspace-brand="mobil"]) .media-portal-header-legend > span {color:#f0f8ff;background:#ffffff14;border:1px solid #c7e6ff40;}
-.workspace-ucsg-logo { width:100%; height:auto; border-radius:14px; background:#fff; padding:14px 12px; object-fit:contain; }
-body:has(.portal-sidebar[data-workspace-brand="ucsg"]) { background:#faf7f8; }
-body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .portal-topbar ~ main { background:radial-gradient(circle at 4% 2%,#ead3dc66,transparent 42%),#faf8f9; }
-body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .portal-catalog-title strong,
-body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .portal-catalog-link > span { color:#f1bfd0; }
-body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .portal-nav-item.is-active { border-color:#cf8ca7; box-shadow:inset 3px 0 0 #f0b7cd; }
-body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .portal-catalog-link:hover,
-body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .portal-catalog-link.is-active { border-color:#cb89a1; background:#ffffff14; }
-body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .portal-license-pill { background:#f7e9ef; border-color:#e9ced9; }
-body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .portal-license-pill i { box-shadow:0 0 0 4px #8f1d4714; }
-body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .library-hero,
-body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .media-portal-header { background:linear-gradient(125deg,#451025,#681737 62%,#8b2b50); }
-body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .media-portal-header::before { border-color:#f4bfd342; }
-body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .media-portal-header-copy > p:first-child { color:#f0bfd1; }
-body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .media-portal-tab.is-active { background:#f9eaf0; border-color:#ae5174; color:#6f1939; }
-body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .media-portal-tab.is-active span { color:#855c6c; }
-body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .media-portal-tab.is-active { box-shadow:0 7px 0 #552038,0 12px 25px #55203820; }
-body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .media-portal-tab::after { background:#8f1d47; }
-body:has(.portal-sidebar[data-workspace-brand="ucsg"]) .media-portal-header-legend > span { color:#fff5f9; border:1px solid #e3afc450; background:#ffffff14; }
+/* Buying controls remain capability-driven, independently of the shared visual theme. */
 body:has(.portal-sidebar[data-portal-kind="client"][data-catalog-selection="disabled"]) .catalog-buy-column { display:none; }
 
 :root {
-  --color-forest: 34 57 47;
-  --color-forest-deep: 23 40 31;
-  --color-forest-ink: 23 54 42;
+  --color-forest: 50 45 42;
+  --color-forest-deep: 33 30 27;
+  --color-forest-ink: 50 45 42;
   --color-signal: 0 161 0;
   --color-signal-dark: 0 125 0;
-  --color-fog: 244 245 242;
-  --color-concrete: 223 227 221;
-  --color-border: 215 221 216;
-  --color-muted: 105 113 109;
+  --color-fog: 247 244 239;
+  --color-concrete: 227 220 210;
+  --color-border: 218 209 198;
+  --color-muted: 108 98 90;
 
-  --forest: #22392f;
-  --forest-deep: #17281f;
+  --forest: #322d2a;
+  --forest-deep: #211e1b;
   --signal: #00a100;
   --signal-dark: #007d00;
-  --fog: #f4f5f2;
-  --shadow-press: #007d00;
+  --fog: #f7f4ef;
+  --shadow-press: #006700;
+  --button-primary-ink: #142510;
+  --concrete: #e3dcd2;
+  --border: #dad1c6;
+  --muted: #6c625a;
+  --workspace-hero-start: #322d2a;
+  --workspace-hero-end: #211e1b;
+  --workspace-hero-kicker: #edceab;
+  --workspace-hero-copy: #ded6ce;
+  --workspace-soft: #f3ede5;
+  --workspace-soft-border: #dad1c6;
+  --workspace-ink: #322d2a;
+  --workspace-accent: #007d00;
+  --workspace-bg: #f7f4ef;
+  --workspace-border: #dad1c6;
+  --workspace-on-dark: #edceab;
 }
 
 html {
@@ -102,10 +46,7 @@ html {
 body {
   overflow-x: hidden;
   color: var(--forest-deep);
-  background:
-    linear-gradient(135deg, rgba(0, 161, 0, 0.05), transparent 32%),
-    linear-gradient(315deg, rgba(75, 158, 255, 0.1), transparent 34%),
-    var(--fog);
+  background: radial-gradient(circle at 4% 0%, rgb(237 206 171 / 20%), transparent 42%), var(--fog);
   -webkit-font-smoothing: antialiased;
 }
 
