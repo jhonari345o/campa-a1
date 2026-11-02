@@ -109,7 +109,7 @@ export async function completeResearchRecommendation(brief:StrategyBrief,prepare
     enabled:planningAiEnabled("strategy",aiConfig),
     allowRequest:Boolean(options.allowAi),cacheAvailable:!cacheError,cached:cached?.result,
     claim:async()=>{const {data,error}=await db.rpc("claim_media_strategy_ai_request",{p_fingerprint:fingerprint});return !error&&Boolean(data);},
-    invoke:(content,signal)=>chatCompletion([{role:"system",content:SYSTEM},{role:"user",content}],{maxTokens:2400,temperature:.1,json:true,signal,timeoutMs:24_000}),
+    invoke:(content,signal)=>chatCompletion([{role:"system",content:SYSTEM},{role:"user",content}],{maxTokens:6000,reasoningEffort:"low",temperature:.1,json:true,signal,timeoutMs:24_000}),
     persist:async (advice,diagnostic)=>{const {data,error}=await createAdminClient().from("media_strategy_cache").update({status:advice?"ready":"failed",model_id:model,result:{...advice,_diagnostic:diagnostic},updated_at:new Date().toISOString()}).eq("owner_id",profile.id).eq("fingerprint",fingerprint).eq("status","pending").select("fingerprint").maybeSingle();return !error&&Boolean(data);},
   });
   if(options.allowAi)console.info("media_strategy_ai",{state:ai.state,provider:aiConfig?.provider??null,durationMs:Date.now()-started});
