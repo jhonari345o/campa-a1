@@ -13,8 +13,9 @@ export type CatalogProduct = {
   key: string; kind: "influencer" | "ooh" | "tv" | "radio" | "press" | "digital"; provider: string; name: string;
   format: string; unit: string; priceCents: number | null; taxIncluded: boolean | null;
   location: string; reference: string; image: string | null; conditions: string;
-  source: { rateId?: string; profileId?: string; assetId?: string; rate?: OohRate; rateIndex?: number; sourceId?: string; offerId?: string; stationId?: string; tariffId?: string; seconds?: number; publicationId?: string; editionId?: string; publishedTariff?: boolean; platformSlug?: string; digitalGoal?: string; workspaceProductId?: string; agreementId?: string };
+  source: { standingPrice?: boolean; rateId?: string; profileId?: string; assetId?: string; rate?: OohRate; rateIndex?: number; sourceId?: string; offerId?: string; stationId?: string; tariffId?: string; seconds?: number; publicationId?: string; editionId?: string; publishedTariff?: boolean; platformSlug?: string; digitalGoal?: string; workspaceProductId?: string; agreementId?: string };
   marketKeys?: string[];
+  billingPeriod?: string;
   referenceOnly?:boolean;referenceLabel?:string;
   formatGroup?: "other" | "totem_standard" | "totem_special";
   validFrom?: string | null; validTo?: string | null; referencePriceCents?: number | null;
@@ -52,9 +53,11 @@ export function catalogProducts(profiles: InfluencerProfile[], ooh: OohCatalog, 
         taxIncluded: /sin iva|no incluy/.test(normalizedTax) ? false : /iva incluid|incluye iva/.test(normalizedTax) ? true : null,
         location: [asset.city, asset.address, asset.code].filter(Boolean).join(" · "),
         reference: asset.reference, image: asset.photo ? `/api/ooh/images/${encodeURIComponent(asset.id)}` : null,
-        conditions: "Disponibilidad y período de contratación requieren revisión comercial.",
+        conditions: "",
+        marketKeys: asset.provinces, billingPeriod: rate?.period,
+        ...(rate?.authorizedFrom ? {validFrom: rate.authorizedFrom, validTo: null} : {}),
         formatGroup: /t[oó]tem/i.test(asset.name) ? /vip|especial/i.test(asset.name) ? "totem_special" : "totem_standard" : "other",
-        source: { assetId: asset.id, ...(rate ? { rate, rateIndex } : {}) },
+        source: { assetId: asset.id, ...(rate?.authorizedFrom ? {standingPrice: true} : {}), ...(rate ? { rate, rateIndex } : {}) },
       });
     }
   }

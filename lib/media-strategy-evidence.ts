@@ -1,4 +1,5 @@
 import type {CatalogProduct} from "./catalog-shopping";
+import {planningProductPrice} from "./catalog-planning";
 import {productMedium} from "./diy-catalog";
 import { briefMarketKeys, normalized, radioCompatibility, sameMarket, tvValidity, validDate, type BroadcastCatalog, type BroadcastSource } from "./broadcast-catalog";
 import { pressMarketMatches, pressValidity, type PressCatalog } from "./press-catalog";
@@ -27,7 +28,7 @@ export type StrategyCandidate = {
   id: string; medium: MediaGroup; provider: string; product: string; market: string; target: string;
   period: string; sourceIds: string[]; sourceUse: EvidenceUse;
   unit: string; unitPriceUsd: number | null; referencePriceUsd: number | null;
-  minimumUnits: number; minimumSpendUsd: number | null;
+  minimumUnits: number; maximumUnits?: number; minimumSpendUsd: number | null;
   metrics: { label: string; value: number; unit: string; sourceId: string }[];
   cohort?: string;
   geo?: { latitude: number; longitude: number };
@@ -169,19 +170,20 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
   if(selected(brief,"digital")) gaps.push("Digital: la distribución propuesta no sustituye un forecast de plataforma ni predice conversiones.");
   void competitionSource;
   for(const p of catalogs.workspaceProducts??[]){
-    const medium=productMedium(p);if(!selected(brief,medium)||!p.source.workspaceProductId)continue;
-    // National commercial packages can be bought for a local brief at their original
-    // national price; this does not make a national audience study locally comparable.
-    const marketFit=p.marketKeys?.length?(p.marketKeys.some(k=>normalized(k)==="nacional")||sameMarket({marketKeys:p.marketKeys} as BroadcastSource,brief)):tariffMarket(p.location,brief);
-    if(!marketFit)continue;
-    const valid=datesCover(p.validFrom??null,p.validTo??null,brief),referencePrice=p.priceCents??p.referencePriceCents??null;
-    const quoted=!p.referenceOnly&&valid&&referencePrice!=null&&referencePrice>0;
-    const sid=addSource({id:`workspace-tariff:${p.source.workspaceProductId}`,kind:"tariff",label:`${p.provider} · ${p.name}`,period:`${p.validFrom??""} – ${p.validTo??""}`,market:p.location,target:"Sin audiencia homologada en el acuerdo",use:quoted?"comparable":"context",note:p.conditions});
+    const medium=productMedium(p);if(!selected(brief,medium)||!(p.source.workspaceProductId||p.source.agreementId||p.source.standingPrice))continue;
     const asset = medium === "ooh" && p.source.assetId ? catalogs.ooh.assets.find(asset => asset.id === p.source.assetId) : undefined;
-    candidates.push({id:`workspace:${p.key}`,medium,provider:p.provider,product:p.name,market:p.location,target:"Sin audiencia homologada en el acuerdo",period:`${p.validFrom??""} – ${p.validTo??""}`,sourceIds:[sid],sourceUse:quoted?"comparable":"context",unit:p.unit,unitPriceUsd:quoted?referencePrice!/100:null,referencePriceUsd:referencePrice==null?null:referencePrice/100,minimumUnits:1,minimumSpendUsd:quoted?referencePrice!/100:null,metrics:[],...(asset?.photo?{oohPhoto:{assetId:asset.id,kind:asset.photoKind}}:{}),...(asset?.latitude!=null&&asset.longitude!=null?{geo:{latitude:asset.latitude,longitude:asset.longitude}}:{}),note:[p.format,p.conditions].filter(Boolean).join(" · ")});
+    const marketFit=asset?territorialFit(asset.city,asset.provinces,brief):p.marketKeys?.length?(p.marketKeys.some(k=>normalized(k)==="nacional")||sameMarket({marketKeys:p.marketKeys} as BroadcastSource,brief)):tariffMarket(p.location,brief);
+    if(!marketFit)continue;
+    const priced=planningProductPrice(p,brief.startDate,brief.endDate),referencePrice=p.priceCents??p.referencePriceCents??null;
+    const quoted=Boolean(priced),period=p.validTo?`${p.validFrom??""} – ${p.validTo}`:p.validFrom?`Desde ${p.validFrom}`:p.reference;
+    const sid=addSource({id:`workspace-tariff:${p.key}`,kind:"tariff",label:`${p.provider} · ${p.name}`,period,market:p.location,target:"Tarifa comercial",use:quoted?"comparable":"context",note:p.conditions});
+    candidates.push({id:`workspace:${p.key}`,medium,provider:p.provider,product:p.name,market:p.location,target:"Tarifa comercial",period,sourceIds:[sid],sourceUse:quoted?"comparable":"context",unit:priced?.unit??p.unit,unitPriceUsd:priced?.priceUsd??null,referencePriceUsd:referencePrice==null?null:referencePrice/100,minimumUnits:1,...(asset?.recordType==="asset"?{maximumUnits:1}:{}),minimumSpendUsd:priced?.priceUsd??null,metrics:[],...(asset?.photo?{oohPhoto:{assetId:asset.id,kind:asset.photoKind}}:{}),...(asset?.latitude!=null&&asset.longitude!=null?{geo:{latitude:asset.latitude,longitude:asset.longitude}}:{}),note:[p.format,p.conditions].filter(Boolean).join(" · ")});
   }
   const resolvedTariffGaps:Partial<Record<MediaGroup,string>>={television:"TV: no hay tarifas compatibles con todas las fechas, plaza y condiciones del brief.",radio:"Radio: no hay una tarifa vigente y compatible para cuantificar la pauta.",press:"Prensa: faltan tarifas con vigencia y plaza compatibles con la campaña."};
   for(const [medium,gap] of Object.entries(resolvedTariffGaps))if(candidates.some(c=>c.medium===medium&&c.id.startsWith("workspace:")&&c.unitPriceUsd!=null)){const i=gaps.indexOf(gap);if(i>=0)gaps.splice(i,1);}
-  const boundedSources=[...sources.values()].slice(0,500), sourceIds=new Set(boundedSources.map(s=>s.id));
-  return {asOf,sources:boundedSources,candidates:candidates.filter(c=>c.sourceIds.every(id=>sourceIds.has(id))).slice(0,800),competition,categoryMix,consumption,gaps:[...new Set(gaps)].slice(0,30),researchPeriod:period?.periodLabel??"Sin período",competitionAvailable,audienceReferences};
+  // Preserve account-priced options even when a large source catalog is loaded first.
+  const boundedCandidates=groups.flatMap(m=>candidates.filter(c=>c.medium===m).sort((a,b)=>Number(b.unitPriceUsd!=null)-Number(a.unitPriceUsd!=null)||Number(Boolean(b.oohPhoto))-Number(Boolean(a.oohPhoto))).slice(0,100));
+  const needed=new Set(["category-investment","audience-consumption",...audienceReferences.map(r=>r.sourceId),...boundedCandidates.flatMap(c=>c.sourceIds)]);
+  const boundedSources=[...sources.values()].filter(s=>needed.has(s.id)).slice(0,800), sourceIds=new Set(boundedSources.map(s=>s.id));
+  return {asOf,sources:boundedSources,candidates:boundedCandidates.filter(c=>c.sourceIds.every(id=>sourceIds.has(id))),competition,categoryMix,consumption,gaps:[...new Set(gaps)].slice(0,30),researchPeriod:period?.periodLabel??"Sin período",competitionAvailable,audienceReferences};
 }
