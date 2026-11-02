@@ -11,6 +11,17 @@ import { buildCurrentCampaigns } from "../lib/campaigns";
 import type { OohAsset } from "../lib/ooh-catalog";
 
 const date="2026-10-31";
+test("a large TV tariff cannot remove all programmes in another requested city",()=>{
+  const catalogs=strategyCatalogs();
+  catalogs.broadcast.sources=[{...tvSource,id:"large-gye",market:"Guayaquil",marketKeys:["guayaquil"]},tvSource];
+  catalogs.broadcast.tv.unshift(...Array.from({length:110},(_,i)=>({...catalogs.broadcast.tv[0],id:`gye-${i}`,sourceId:"large-gye"})));
+  catalogs.tvAudience=[];
+  const brief=strategyBrief({selectedMedia:["television"],coverage:undefined,geography:"Guayaquil, Quito"});
+  const bundle=buildStrategyEvidence(brief,strategyResearch,catalogs,date);
+  assert.equal(bundle.candidates.length,100);
+  assert.ok(bundle.candidates.some(c=>c.market==="Guayaquil"));
+  assert.ok(bundle.candidates.some(c=>c.market==="Quito"));
+});
 test("TV recommendations retain each applicable plaza and study in the bounded AI selection",async()=>{
   const brief=strategyBrief({selectedMedia:["television"],priority:"Eficiencia"}),bundle=buildStrategyEvidence(brief,strategyResearch,strategyCatalogs(),date);
   const sample=bundle.candidates[0];

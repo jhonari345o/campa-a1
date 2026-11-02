@@ -209,7 +209,16 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
     if(i>=0)gaps.splice(i,1);
   }
   // Preserve account-priced options even when a large source catalog is loaded first.
-  const boundedCandidates=groups.flatMap(m=>candidates.filter(c=>c.medium===m).sort((a,b)=>Number(b.unitPriceUsd!=null)-Number(a.unitPriceUsd!=null)||Number(Boolean(b.metrics.length))-Number(Boolean(a.metrics.length))||Number(Boolean(b.oohPhoto))-Number(Boolean(a.oohPhoto))).slice(0,100));
+  const boundedCandidates=groups.flatMap(m=>{
+    const sorted=candidates.filter(c=>c.medium===m).sort((a,b)=>Number(b.unitPriceUsd!=null)-Number(a.unitPriceUsd!=null)||Number(Boolean(b.metrics.length))-Number(Boolean(a.metrics.length))||Number(Boolean(b.oohPhoto))-Number(Boolean(a.oohPhoto)));
+    if(sorted.length<=100||!["television","radio"].includes(m))return sorted.slice(0,100);
+    // A large tariff from one city must not crowd out every other requested city.
+    const markets=new Map<string,StrategyCandidate[]>();
+    for(const candidate of sorted){const key=normalized(candidate.market);markets.set(key,[...(markets.get(key)??[]),candidate]);}
+    const balanced:StrategyCandidate[]=[];
+    for(let i=0;balanced.length<100;i++)for(const market of markets.values())if(market[i]&&balanced.length<100)balanced.push(market[i]);
+    return balanced;
+  });
   const needed=new Set(["category-investment","audience-consumption",...audienceReferences.map(r=>r.sourceId),...boundedCandidates.flatMap(c=>c.sourceIds)]);
   const boundedSources=[...sources.values()].filter(s=>needed.has(s.id)).slice(0,800), sourceIds=new Set(boundedSources.map(s=>s.id));
   return {asOf,sources:boundedSources,candidates:boundedCandidates.filter(c=>c.sourceIds.every(id=>sourceIds.has(id))),competition,categoryMix,consumption,gaps:[...new Set(gaps)].slice(0,30),researchPeriod:period?.periodLabel??"Sin período",competitionAvailable,audienceReferences,channelShares};
