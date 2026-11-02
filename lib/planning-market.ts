@@ -8,6 +8,11 @@ export function planningStudyBrief(marketKeys:string[],brief:BroadcastBrief):Bro
   const requested=briefMarketKeys(brief);
   const national=requested.includes("nacional");
   const provinces=new Set((brief.coverage??[]).filter(c=>c.kind==="province").map(c=>normalized(c.label)));
+  // DIY stores labels rather than coverage objects. Recognize only known provinces.
+  for(const label of requested){
+    const province=label.replace(/^provincia de /, "");
+    if(directory.some(place=>place.kind==="province"&&normalized(place.label)===province))provinces.add(province);
+  }
   const contains=(market:string)=>national||requested.includes(market)||directory.some(place=>place.kind==="city"&&normalized(place.label)===market&&"context" in place&&provinces.has(normalized(place.context??"")));
   if(!observed.every(contains))return null;
   return {...brief,coverage:undefined,geography:observed.join(", ")};

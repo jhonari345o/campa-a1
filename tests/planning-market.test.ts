@@ -27,6 +27,12 @@ test("territorial containment never changes the study's audience requirements",(
   assert.notEqual(radioCompatibility(source,local),null);
   assert.equal(radioCompatibility(source,{...local,sex:"Mujeres"}),null);
 });
+test("DIY province labels resolve only their own measured cities",()=>{
+  const diy={...brief,coverage:undefined,geography:"Provincia de Guayas, Pichincha"};
+  assert.ok(planningStudyBrief(["guayaquil","quito"],diy));
+  assert.equal(planningStudyBrief(["cuenca"],diy),null);
+  assert.equal(planningStudyBrief(["quito"],{...diy,geography:"Guayas"}),null);
+});
 test("curated radio coverage and account prices join only the same station and study plaza",()=>{
   const catalogs=strategyCatalogs();
   const source={...catalogs.broadcast.sources[0],id:"synthetic-radio-study",kind:"radio" as const,market:"Guayaquil",marketKeys:["guayaquil"],ageMin:18,ageMax:99,nse:"all",sex:"all",periodStart:"2026-10-01",periodEnd:"2026-10-31",frequency:"FM",target:"Personas adultas"};

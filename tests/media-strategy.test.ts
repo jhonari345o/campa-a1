@@ -11,6 +11,28 @@ import { buildCurrentCampaigns } from "../lib/campaigns";
 import type { OohAsset } from "../lib/ooh-catalog";
 
 const date="2026-10-31";
+test("account TV prices retain current programme ratings without an undiscounted duplicate",()=>{
+  const catalogs=strategyCatalogs();
+  const key=`tv:${tvSource.id}:synthetic-program`;
+  catalogs.workspaceProducts=[{key,kind:"tv",provider:"Canal sintético",name:"Programa sintético",format:"Lunes a viernes · 12:00",unit:"cuña de 30 s",priceCents:32123,taxIncluded:false,location:"Quito",marketKeys:["quito"],conditions:"",reference:"",image:null,validFrom:"2026-11-01",validTo:null,source:{defaultPrice:true,standingPrice:true,offerId:"synthetic-program"}}];
+  const bundle=buildStrategyEvidence(strategyBrief({selectedMedia:["television"]}),strategyResearch,catalogs,date);
+  const candidates=bundle.candidates.filter(c=>c.medium==="television");
+  assert.equal(candidates.length,1);
+  assert.equal(candidates[0].catalogKey,key);
+  assert.equal(candidates[0].unitPriceUsd,321.23);
+  assert.equal(candidates[0].metrics.find(m=>m.label==="Rating")?.value,2.5);
+  assert.equal(bundle.gaps.some(g=>g.startsWith("TV:")),false);
+  catalogs.workspaceProducts[0].source={agreementId:"client-agreement",offerId:"synthetic-program"};
+  catalogs.workspaceProducts[0].priceCents=28000;
+  assert.equal(buildStrategyEvidence(strategyBrief(),strategyResearch,catalogs,date).candidates.find(c=>c.catalogKey===key)?.unitPriceUsd,280);
+});
+test("channel share keeps the original study total and population instead of normalizing selected channels",()=>{
+  const catalogs=strategyCatalogs();
+  catalogs.tvShares=[{channel:"Canal A",sharePct:16.2,periodStart:"2026-09-01",periodEnd:"2026-09-30"},{channel:"Canal B",sharePct:10.4,periodStart:"2026-09-01",periodEnd:"2026-09-30"}];
+  const brief=strategyBrief({coverage:undefined,geography:"Guayaquil, Quito"});
+  assert.deepEqual(buildStrategyEvidence(brief,strategyResearch,catalogs,date).channelShares?.map(c=>c.sharePct),[16.2,10.4]);
+  for(const patch of [{sex:"Mujeres"},{geography:"Quito"},{startDate:"2026-08-01"}])assert.deepEqual(buildStrategyEvidence({...brief,...patch},strategyResearch,catalogs,date).channelShares,[]);
+});
 const photographedAsset = (patch: Partial<OohAsset> = {}): OohAsset => ({
   id:"synthetic-ooh",providerSlug:"synthetic",provinces:["Pichincha"],name:"Circuito sintético",code:"S-01",city:"Quito",address:"Ubicación sintética",format:"Circuito",dimensions:"Medidas sintéticas",brand:"Proveedor sintético",latitude:null,longitude:null,recordType:"inventory",rates:[{amount:1000,period:"mes",basis:"circuito de cinco",component:"Pauta"}],rateLabel:"",reference:"Catálogo sintético",taxLabel:"",photo:true,photoKind:"format",dailySpots:null,spotSeconds:null,...patch,
 });
@@ -62,7 +84,7 @@ test("expired, unlocated and unmeasured sources never become applicable quotes o
   const catalogs=strategyCatalogs();catalogs.broadcast.sources=[{...tvSource,marketKeys:[]}];catalogs.tvAudience=[{...tvStudy,target:"Público especial",ageMin:null,basis:"premiere"}];
   const bundle=buildStrategyEvidence(strategyBrief(),strategyResearch,catalogs,date);
   assert.equal(bundle.candidates.filter(c=>c.medium==="television").length,0);
-  assert.equal(bundle.audienceReferences.length,1);assert.equal(bundle.sources.find(s=>s.kind==="rating")?.use,"context");
+  assert.equal(bundle.audienceReferences.length,0);assert.equal(bundle.sources.find(s=>s.kind==="rating"),undefined);
   assert.ok(bundle.gaps.some(g=>g.includes("ratings")));
 });
 test("integer cent allocation conserves budgets for every permitted combination",()=>{

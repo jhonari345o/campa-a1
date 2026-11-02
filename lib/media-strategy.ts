@@ -3,7 +3,7 @@ import { mediaGroupLabel } from "./plan-optimizer";
 import type { MediaPlan, PlanRow } from "./planner";
 import type { StrategyBrief, StrategyCandidate, StrategyEvidenceBundle } from "./media-strategy-evidence";
 
-export const STRATEGY_VERSION = "2026-11-02.5";
+export const STRATEGY_VERSION = "2026-11-02.6";
 export type StrategyAiState = "validated" | "cached" | "not_configured" | "quota" | "unavailable" | "rejected";
 export type StrategyAdvice = {
   summary: string;
@@ -23,6 +23,7 @@ export type StrategyReport = {
   summary: string; allocations: StrategyAllocation[]; sources: StrategyEvidenceBundle["sources"];
   competition: StrategyEvidenceBundle["competition"]; gaps: string[]; questions: string[];
   audienceReferences: StrategyEvidenceBundle["audienceReferences"];
+  channelShares?: StrategyEvidenceBundle["channelShares"];
   candidateCount: number; budgetUsd: number | null; reserveUsd: number | null;
   alternatives: { id: string; label: string; allocations: { medium: MediaGroup; pct: number; amountUsd: number | null }[] }[];
   evaluation: { budgetConserved: boolean; permittedMediaOnly: boolean; measuredReachAvailable: false; comparableConsumption: boolean };
@@ -187,7 +188,7 @@ export function strategyAiPayload(brief:StrategyBrief,bundle:StrategyEvidenceBun
   // Use the same integer scale as the response contract, instead of fractional baseline shares.
   const baseline=allocateStrategyBudget(baseWeights(brief,bundle,plan),100).map(r=>({medium:r.medium,weight:Math.round(r.amountUsd!*100)}));
   const outputContract={summary:"Texto breve sin cifras",allocations:[{medium:"Copiar de allocationOptions",weight:"Entero; la suma de todos los pesos debe ser 10000",rationale:"Texto breve sin cifras",evidenceIds:"Entre uno y seis identificadores de evidenceIds del mismo medio",candidateIds:"Entre cero y tres identificadores de candidateIds del mismo medio"}],questions:[]};
-  return {version:STRATEGY_VERSION,brief,allowedMedia:allowed,allocationOptions,outputContract,evidence:{sources:bundle.sources.filter(s=>wanted.has(s.id)),competition:bundle.competition,categoryMix:bundle.categoryMix,consumption:bundle.consumption,candidates,audienceReferences:bundle.audienceReferences,gaps:bundle.gaps},baseline,rules:["Las cifras y el presupuesto se calculan en el servidor.","La inversión de competidores no mide efectividad.","Las fuentes contextuales no son mediciones del target.","Un tarifario no es un rating y un ranking no es alcance de campaña.","No declares una mezcla óptima universal; compara solo alternativas respaldadas."]};
+  return {version:STRATEGY_VERSION,brief,allowedMedia:allowed,allocationOptions,outputContract,evidence:{sources:bundle.sources.filter(s=>wanted.has(s.id)),competition:bundle.competition,categoryMix:bundle.categoryMix,consumption:bundle.consumption,candidates,audienceReferences:bundle.audienceReferences,channelShares:bundle.channelShares,gaps:bundle.gaps},baseline,rules:["Las cifras y el presupuesto se calculan en el servidor.","La inversión de competidores no mide efectividad.","Las fuentes contextuales no son mediciones del target.","Un tarifario no es un rating y un ranking no es alcance de campaña.","No declares una mezcla óptima universal; compara solo alternativas respaldadas."]};
 }
 export function buildStrategyReport(brief:StrategyBrief,bundle:StrategyEvidenceBundle,baseline:MediaPlan,options:{advice?:StrategyAdvice|null;aiState:StrategyAiState;model?:string|null;fingerprint:string;generatedAt:string}):StrategyReport {
   const weights=options.advice?.allocations.map(r=>({medium:r.medium,weight:r.weight}))??baseWeights(brief,bundle,baseline);
@@ -209,7 +210,7 @@ export function buildStrategyReport(brief:StrategyBrief,bundle:StrategyEvidenceB
   const assigned=allocations.reduce((n,a)=>n+(a.amountUsd??0),0),budget=brief.budgetUsd;
   const alternatives=[{id:"evidence",label:"Referencia de categoría y público",weights:baseWeights(brief,bundle,baseline)},{id:"concentrated",label:"Concentración en medios con tarifa compatible",weights:weights.map(w=>({...w,weight:w.weight*(bundle.candidates.some(c=>c.medium===w.medium&&c.unitPriceUsd!=null)?1.5:.65)}))}].map(a=>({id:a.id,label:a.label,allocations:allocateStrategyBudget(affordableWeights(a.weights,bundle,budget),budget)}));
   const reserveUsd=budget==null?null:Math.max(0,Math.round((budget-assigned)*100)/100);
-  return {version:STRATEGY_VERSION,generatedAt:options.generatedAt,fingerprint:options.fingerprint,model:options.model??null,aiState:options.aiState,summary:options.advice?.summary??"La propuesta cruza la inversión observada de la categoría, el consumo comparable del público y las opciones de medios documentadas. Las referencias que no reproducen el brief se muestran por separado.",allocations,sources:bundle.sources,competition:bundle.competition,audienceReferences:bundle.audienceReferences,gaps:[...new Set(gaps)].slice(0,35),questions:options.advice?.questions??[],candidateCount:bundle.candidates.length,budgetUsd:budget,reserveUsd,alternatives,evaluation:{budgetConserved:budget==null||assigned<=budget+.005&&Math.abs(assigned+(reserveUsd??0)-budget)<.005&&allocations.every(a=>Number.isFinite(a.amountUsd)&&a.amountUsd!>=0),permittedMediaOnly:allocations.every(a=>brief.selectedMedia.includes(a.medium)&&!excludedMedia(brief).includes(a.medium)),measuredReachAvailable:false,comparableConsumption:bundle.consumption.some(c=>c.comparable)}};
+  return {version:STRATEGY_VERSION,generatedAt:options.generatedAt,fingerprint:options.fingerprint,model:options.model??null,aiState:options.aiState,summary:options.advice?.summary??"La propuesta cruza la inversión observada de la categoría, el consumo comparable del público y las opciones de medios documentadas. Las referencias que no reproducen el brief se muestran por separado.",allocations,sources:bundle.sources,competition:bundle.competition,audienceReferences:bundle.audienceReferences,channelShares:bundle.channelShares,gaps:[...new Set(gaps)].slice(0,35),questions:options.advice?.questions??[],candidateCount:bundle.candidates.length,budgetUsd:budget,reserveUsd,alternatives,evaluation:{budgetConserved:budget==null||assigned<=budget+.005&&Math.abs(assigned+(reserveUsd??0)-budget)<.005&&allocations.every(a=>Number.isFinite(a.amountUsd)&&a.amountUsd!>=0),permittedMediaOnly:allocations.every(a=>brief.selectedMedia.includes(a.medium)&&!excludedMedia(brief).includes(a.medium)),measuredReachAvailable:false,comparableConsumption:bundle.consumption.some(c=>c.comparable)}};
 }
 /** Digital tools such as WhatsApp are destinations, never automatic paid-media budget lines. */
 export function applyStrategyPlan(base:MediaPlan,report:StrategyReport,brief:StrategyBrief):MediaPlan {

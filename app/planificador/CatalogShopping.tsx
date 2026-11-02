@@ -1,4 +1,5 @@
 "use client";
+import { PlanDeliveryPreview } from "@/components/PlanDeliveryPreview";
 import Image from "next/image";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CART_LIMITS, catalogCartSummary, catalogQuoteSignature, changeCatalogQuantity, type CatalogCart, type CatalogPick, type CatalogProduct } from "@/lib/catalog-shopping";
@@ -13,7 +14,7 @@ import styles from "./CatalogShopping.module.css";
 export type ShoppingCompany = { id: string; name: string };
 type ShoppingState = {
   products: CatalogProduct[]; items: CatalogPick[]; saving: boolean; busy: boolean; error: string;
-  canRequest: boolean; companies: ShoppingCompany[]; isAdmin: boolean;
+  clientId:string|null; canRequest: boolean; companies: ShoppingCompany[]; isAdmin: boolean;
   change: (key: string, delta: number) => void; remove: (key: string) => void;
   open: (review?: boolean) => void; restore: () => void; retry: () => void;
   setBudget: (slug: string, goal: string, cents: number) => void;
@@ -104,7 +105,7 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
     } catch { setError("La conexión se interrumpió. Vuelve a enviar para recuperar la misma solicitud."); }
     finally { setBusy(false); }
   }
-  const value: ShoppingState = { products, items, saving, busy, error, companies, canRequest, isAdmin, change, setBudget, remove: key => replace(desired.current.filter(p => p.productKey !== key)), open: review => { setOrderId(""); setMode(review ? "review" : "cart"); }, restore, retry: () => void drain() };
+  const value: ShoppingState = { clientId:cart.clientId??null,products, items, saving, busy, error, companies, canRequest, isAdmin, change, setBudget, remove: key => replace(desired.current.filter(p => p.productKey !== key)), open: review => { setOrderId(""); setMode(review ? "review" : "cart"); }, restore, retry: () => void drain() };
   return <Shopping.Provider value={value}>{children}<span className="sr-only" role="status">{notice}</span>
     <ShoppingDialog mode={mode} orderId={orderId} onClose={() => { if (!busy) setMode(null); }} onReview={() => setMode("review")} onSend={send} />
   </Shopping.Provider>;
@@ -230,7 +231,7 @@ function ShoppingDialog({ mode, orderId, onClose, onReview, onSend }: { mode: "c
   useEffect(() => { if (mode && !ref.current?.open) ref.current?.showModal(); if (!mode && ref.current?.open) ref.current.close(); }, [mode]);
   return <dialog ref={ref} className={styles.dialog} onClose={onClose} onCancel={event => { if (cart.busy) event.preventDefault(); }}>
     <header className={styles.dialogHeader}><div><p>Catálogo de medios</p><h2>{orderId ? "Solicitud registrada" : mode === "review" ? "Revisa tu selección" : "Tu carrito"}</h2></div><button type="button" aria-label="Cerrar carrito" onClick={onClose} disabled={cart.busy}>×</button></header>
-    {orderId ? <div className={styles.success}><span aria-hidden="true">✓</span><h3>Tu solicitud está en revisión</h3><p>Consulta sus productos y estado en Órdenes.</p><a className={styles.primary} href={`/campanas?catalog=${encodeURIComponent(orderId)}`}>Ver solicitud →</a><button type="button" className={styles.secondary} onClick={onClose}>Seguir explorando</button></div> : <><CartContents compact />
+    {orderId ? <div className={styles.success}><span aria-hidden="true">✓</span><h3>Tu solicitud está en revisión</h3><p>Consulta sus productos y estado en Órdenes.</p><a className={styles.primary} href={`/campanas?catalog=${encodeURIComponent(orderId)}`}>Ver solicitud →</a><button type="button" className={styles.secondary} onClick={onClose}>Seguir explorando</button></div> : <><CartContents compact />{mode && <CartDeliveryProjection/>}
       {mode === "cart" ? <button type="button" className={styles.primary} onClick={onReview} disabled={!summary.lines.length || !!summary.unavailable || cart.saving || !!cart.error || !cart.canRequest}>Revisar selección →</button> : <form className={styles.requestForm} onSubmit={event => { event.preventDefault(); void onSend(event.currentTarget); }}>
         <label>Nombre de la solicitud<input name="title" required maxLength={120} defaultValue="Selección del catálogo" placeholder="Marca o referencia de la compra" /></label>
         {cart.companies.length > 1 || cart.isAdmin ? <label>Espacio de la solicitud<select name="companyId" defaultValue={cart.companies.length === 1 ? cart.companies[0].id : ""}>{cart.isAdmin && <option value="">Ad Mavericks · cuenta propia</option>}{!cart.isAdmin && <option value="" disabled>Selecciona un espacio</option>}{cart.companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label> : <input type="hidden" name="companyId" value={cart.companies[0]?.id ?? ""} />}
@@ -239,6 +240,17 @@ function ShoppingDialog({ mode, orderId, onClose, onReview, onSend }: { mode: "c
         <button className={styles.primary} type="submit" disabled={cart.busy || cart.saving || !!cart.error || !!summary.unavailable || !summary.lines.length || !cart.canRequest}>{cart.busy ? "Registrando solicitud…" : "Enviar solicitud →"}</button>
       </form>}</>}
   </dialog>;
+}
+function CartDeliveryProjection() {
+  const cart=useShopping();
+  const [startDate,setStartDate]=useState(""),[endDate,setEndDate]=useState(""),[geography,setGeography]=useState("Guayaquil, Quito");
+  if(!cart.items.length)return null;
+  return <details className={styles.delivery}><summary>Proyectar alcance del carrito</summary><div className={styles.deliveryFields}>
+    <CalendarDateField name="reachStart" label="Inicio de campaña" value={startDate} onChange={setStartDate} max={endDate||undefined} required={false}/>
+    <CalendarDateField name="reachEnd" label="Fin de campaña" value={endDate} onChange={setEndDate} min={startDate||undefined} required={false}/>
+    <label>Cobertura<select value={geography} onChange={e=>setGeography(e.target.value)}>{["Guayaquil, Quito","Guayaquil","Quito"].map(city=><option key={city}>{city}</option>)}</select></label>
+    <p>Público: personas de 18 años o más.</p>
+  </div>{startDate&&endDate&&<PlanDeliveryPreview request={{brief:{startDate,endDate,geography,ageRange:"Personas 18+",sex:"Todas las personas",socioeconomic:"Todos los NSE",audienceType:"B2C"},picks:cart.items,clientId:cart.clientId}}/>}</details>;
 }
 function DesiredStartField() {
   const [date, setDate] = useState("");

@@ -28,12 +28,12 @@ export function televisionMarkets(product: CatalogProduct): TelevisionMarket[] {
   const location = normalized((product.marketKeys?.length ? product.marketKeys.join(" ") : product.location));
   if (/\b(nacional|ecuador|todo el pais|todo el ecuador)\b/.test(location)) return ["Nacional"];
   const markets: TelevisionMarket[] = [];
-  if (/\b(guayaquil|gye)\b/.test(location)) markets.push("Guayaquil");
-  if (/\b(quito|uio)\b/.test(location)) markets.push("Quito");
+  if (/\b(guayaquil|gye|guayas)\b/.test(location)) markets.push("Guayaquil");
+  if (/\b(quito|uio|pichincha)\b/.test(location)) markets.push("Quito");
   return markets.length ? markets : ["Otras plazas"];
 }
 export function televisionEdition(product: CatalogProduct, catalog: BroadcastCatalog) {
-  if (product.source.workspaceProductId) return { key: "account", label: "Tarifas de tu cuenta" };
+  if (product.source.workspaceProductId || product.source.defaultPrice) return { key: "account", label: "Tarifas de tu cuenta" };
   const source = catalog.sources.find(source => source.id === product.source.sourceId);
   return source ? { key: source.id, label: `${source.periodStart} – ${source.periodEnd}` } : { key: "catalog", label: "Tarifas del catálogo" };
 }

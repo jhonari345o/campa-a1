@@ -1,3 +1,5 @@
+import {readPlanningDeliveryModel} from "./planning-delivery-server";
+import {readTvAudience} from "./tv-audience-server";
 import {catalogClientContext} from "./catalog-client-server";
 import {catalogProducts} from "./catalog-shopping";
 import {priceCatalogProducts} from "./catalog-access-server";
@@ -12,7 +14,7 @@ import { getPressCatalog } from "./press-server";
 import { getOohCatalog } from "./ooh-server";
 import { getInfluencerCatalog } from "./media-workspace";
 import { buildMediaPlan, type MediaPlan } from "./planner";
-import { buildStrategyEvidence, scopePlanningResearch, type StrategyBrief, type StrategyCatalogs, type StrategyEvidenceBundle, type TvAudienceObservation } from "./media-strategy-evidence";
+import { buildStrategyEvidence, scopePlanningResearch, type StrategyBrief, type StrategyCatalogs, type StrategyEvidenceBundle } from "./media-strategy-evidence";
 import { STRATEGY_VERSION, applyStrategyPlan, buildStrategyReport, strategyAiPayload } from "./media-strategy";
 import { resolveStrategyAi } from "./media-strategy-ai";
 import { chatCompletion } from "./assistant/llm";
@@ -47,27 +49,19 @@ export function assertStrategyBrief(brief:StrategyBrief) {
   if(JSON.stringify(brief).length>24_000||Object.values(brief).some(v=>typeof v==="string"&&v.length>4000)||!Array.isArray(brief.digitalPlatforms)||brief.digitalPlatforms.length>12||!Array.isArray(brief.products)||brief.products.length>30)throw new Error("INVALID_STRATEGY_BRIEF");
   if((brief.startDate&&!validDate(brief.startDate))||(brief.endDate&&!validDate(brief.endDate))||(brief.startDate&&brief.endDate&&brief.endDate<brief.startDate))throw new Error("INVALID_STRATEGY_BRIEF");
 }
-async function readTvAudience():Promise<TvAudienceObservation[]> {
-  const db=await createClient();
-  const {data,error}=await db.from("tv_audience_observations").select("id,study,period_start,period_end,market,market_keys,target,age_min,age_max,sex,nse,channel,program,basis,offer_ids,rating_pct,reach_pct").eq("active",true).order("period_end",{ascending:false}).limit(1000);
-  if(error)return [];
-  return (data??[]).flatMap(r=>{
-    if(!Array.isArray(r.market_keys)||!Array.isArray(r.offer_ids)||(r.age_min!=null&&!Number.isInteger(r.age_min))||(r.age_max!=null&&!Number.isInteger(r.age_max)))return [];
-    return [{id:r.id,study:r.study,periodStart:r.period_start,periodEnd:r.period_end,market:r.market,marketKeys:r.market_keys,target:r.target,ageMin:r.age_min,ageMax:r.age_max,sex:r.sex,nse:r.nse,channel:r.channel,program:r.program,basis:r.basis,offerIds:r.offer_ids,ratingPct:r.rating_pct==null?null:Number(r.rating_pct),reachPct:r.reach_pct==null?null:Number(r.reach_pct)}];
-  });
-}
 async function loadCatalogs(brief:StrategyBrief):Promise<StrategyCatalogs> {
   const wanted=new Set(brief.selectedMedia);
-  const [broadcast,radio,press,ooh,tvAudience,influencers]=await Promise.all([
+  const [broadcast,radio,press,ooh,tvAudience,influencers,deliveryModel]=await Promise.all([
     wanted.has("television")||wanted.has("radio")?getBroadcastCatalog():Promise.resolve(EMPTY.broadcast),
     wanted.has("radio")?getRadioDirectory():Promise.resolve(EMPTY.radio),
     wanted.has("press")?getPressCatalog():Promise.resolve(EMPTY.press),
     wanted.has("ooh")?getOohCatalog():Promise.resolve(EMPTY.ooh),
     wanted.has("television")?readTvAudience().catch(()=>[]):Promise.resolve([]),
     wanted.has("influencers")?getInfluencerCatalog():Promise.resolve([]),
+    wanted.has("television")?readPlanningDeliveryModel():Promise.resolve(null),
   ]);
   const workspaceProducts=(await priceCatalogProducts(catalogProducts(influencers,ooh,{broadcast,radio,press}))).filter(p=>p.source.workspaceProductId||p.source.agreementId||p.source.standingPrice);
-  return {broadcast,radio,press,ooh,tvAudience,influencers,workspaceProducts};
+  return {broadcast,radio,press,ooh,tvAudience,influencers,workspaceProducts,tvShares:deliveryModel?.channelShares};
 }
 export type PreparedRecommendation={version:string;ownerScope:string;bundle:StrategyEvidenceBundle;baseline:MediaPlan;fingerprint:string;generatedAt:string;model:string|null};
 type RecommendationOptions={allowAi?:boolean;timeoutMs?:number;profile?:Profile};
