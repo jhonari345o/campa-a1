@@ -5,11 +5,12 @@ import type { StrategyBrief, StrategyEvidenceBundle } from "./media-strategy-evi
 type AiDependencies = {
   enabled: boolean; allowRequest: boolean; cacheAvailable: boolean; cached: unknown;
   claim: () => Promise<boolean>;
-  invoke: (payload: string, signal: AbortSignal) => Promise<string>;
+  invoke: (payload: string, signal: AbortSignal, correction?: string) => Promise<string>;
+  allowRepair?: boolean;
   persist: (advice: StrategyAdvice | null, diagnostic: StrategyAiDiagnostic) => Promise<boolean>;
 };
 export type StrategyAiDiagnostic = {
-  code: string; durationMs: number; budgetMs: number; inputBytes: number; outputChars: number;
+  code: string; durationMs: number; budgetMs: number; inputBytes: number; outputChars: number; attempts?: number;
 };
 /** Codes only: never persist prompts, raw output, account details or error messages. */
 function providerFailureCode(error: unknown): string {
@@ -34,13 +35,21 @@ export async function resolveStrategyAi(brief:StrategyBrief,bundle:StrategyEvide
   const started=Date.now(), budgetMs=Math.max(1,Math.min(19_000,deadline-started-1500));
   const diagnostic:StrategyAiDiagnostic={code:"TIME_BUDGET_EXHAUSTED",durationMs:0,budgetMs,inputBytes:new TextEncoder().encode(payload).length,outputChars:0};
   const advice=await optionalWithinBudget(async signal=>{
-    let raw:string;
-    try { raw=await deps.invoke(payload,signal); }
-    catch(error) { if(!signal.aborted)diagnostic.code=providerFailureCode(error);return null; }
-    if(signal.aborted)return null;
-    diagnostic.outputChars=raw.length;
-    const parsed=parseStrategyAdvice(raw,brief,bundle,code=>{diagnostic.code=`OUTPUT_${code}`;});
-    invalid=!parsed;if(parsed)diagnostic.code="VALIDATED";return parsed;
+    let correction:string|undefined;
+    for(let attempt=0;attempt<(deps.allowRepair?2:1);attempt++){
+      let raw:string;diagnostic.attempts=attempt+1;
+      try { raw=await deps.invoke(payload,signal,correction); }
+      catch(error) { if(!signal.aborted)diagnostic.code=providerFailureCode(error);return null; }
+      if(signal.aborted)return null;
+      diagnostic.outputChars=raw.length;
+      const parsed=parseStrategyAdvice(raw,brief,bundle,code=>{correction=code;diagnostic.code=`OUTPUT_${code}`;});
+      invalid=!parsed;
+      if(parsed){diagnostic.code="VALIDATED";return parsed;}
+      // Repair a malformed selection once without weakening validation, changing
+      // evidence, adding paid inference, or extending this request's deadline.
+      if(!deps.allowRepair||attempt>0||budgetMs-(Date.now()-started)<6000)break;
+    }
+    return null;
   },()=>null,budgetMs);
   diagnostic.durationMs=Date.now()-started;
   let persisted=false;try{persisted=await optionalWithinBudget(()=>deps.persist(advice,{...diagnostic}),()=>false,Math.max(1,deadline-Date.now()));}catch{ /* No uncached AI recommendation is applied. */ }
