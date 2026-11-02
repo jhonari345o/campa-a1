@@ -14,7 +14,7 @@ export function PlanScheduleFields({ initialStart = "", initialEnd = "", initial
   return <>
     <CalendarDateField name="startDate" label="Inicio" value={start} onChange={setStart} max={end || undefined}/>
     <CalendarDateField name="endDate" label="Fin" value={end} onChange={setEnd} min={start || undefined}/>
-    {showBudget && <BudgetField initialValue={initialBudget}/>}
+    {showBudget && <BudgetField initialValue={initialBudget} required/>}
   </>;
 }
 
@@ -23,11 +23,18 @@ export function CalendarDateField({ name, label, value, onChange, min, max, requ
 }) {
   const id = useId(), root = useRef<HTMLDivElement>(null), input = useRef<HTMLInputElement>(null);
   const [display, setDisplay] = useState(displayPlanDate(value)), [open, setOpen] = useState(false);
+  const reportedValue = useRef(value);
   const [month, setMonth] = useState(() => (value || min || new Date().toISOString().slice(0, 10)).slice(0, 7));
   const [focused, setFocused] = useState(value || "");
   const outOfRange = Boolean(value && (min && value < min || max && value > max));
   const validation = display && !parsePlanDate(display) ? "Escribe una fecha válida: día/mes/año." : outOfRange ? "La fecha de fin debe ser igual o posterior a la fecha de inicio." : "";
   useEffect(() => { input.current?.setCustomValidity(validation); }, [validation]);
+  useEffect(() => {
+    if (reportedValue.current === value) return;
+    reportedValue.current = value;
+    setDisplay(displayPlanDate(value));
+    if (validDate(value)) setMonth(value.slice(0, 7));
+  }, [value]);
   useEffect(() => {
     if (!open) return;
     const close = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node)) setOpen(false); };
@@ -41,7 +48,7 @@ export function CalendarDateField({ name, label, value, onChange, min, max, requ
     const next = new Date(first); next.setUTCMonth(next.getUTCMonth() + delta);
     setMonth(isoDay(next).slice(0, 7)); setFocused("");
   }
-  function pick(iso: string) { onChange(iso); setDisplay(displayPlanDate(iso)); setOpen(false); input.current?.focus(); }
+  function pick(iso: string) { reportedValue.current = iso; onChange(iso); setDisplay(displayPlanDate(iso)); setOpen(false); input.current?.focus(); }
   function keyMove(event: KeyboardEvent<HTMLButtonElement>, iso: string) {
     const delta = ({ ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 } as Record<string, number>)[event.key];
     if (delta == null) return;
@@ -55,7 +62,7 @@ export function CalendarDateField({ name, label, value, onChange, min, max, requ
     <label htmlFor={id}>{label}</label>
     <input type="hidden" name={name} value={value}/>
     <div className={styles.inputWrap}>
-      <input id={id} ref={input} type="text" inputMode="numeric" autoComplete="off" placeholder="dd/mm/aaaa" value={display} maxLength={10} required={required} aria-describedby={validation ? `${id}-error` : undefined} aria-invalid={validation ? true : undefined} onChange={event => { setDisplay(event.target.value); const iso = parsePlanDate(event.target.value); onChange(iso); if (iso) setMonth(iso.slice(0, 7)); }}/>
+      <input id={id} ref={input} type="text" inputMode="numeric" autoComplete="off" placeholder="dd/mm/aaaa" value={display} maxLength={10} required={required} aria-describedby={validation ? `${id}-error` : undefined} aria-invalid={validation ? true : undefined} onChange={event => { setDisplay(event.target.value); const iso = parsePlanDate(event.target.value); reportedValue.current = iso; onChange(iso); if (iso) setMonth(iso.slice(0, 7)); }}/>
       <button type="button" className={styles.calendarButton} aria-label={`Abrir calendario de ${label.toLowerCase()}`} aria-expanded={open} aria-controls={`${id}-calendar`} onClick={() => { if (!open) { setMonth((value || min || new Date().toISOString().slice(0, 10)).slice(0, 7)); setFocused(value); } setOpen(!open); }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 2v6m10-6v6M3 11h18"/></svg></button>
     </div>
     {validation && <small className={styles.error} id={`${id}-error`}>{validation}</small>}
@@ -72,10 +79,20 @@ export function CalendarDateField({ name, label, value, onChange, min, max, requ
   </div>;
 }
 
-export function BudgetField({ initialValue }: { initialValue?: number | null }) {
+export function BudgetField({ initialValue, value, onValueChange, name = "budget", label = "Presupuesto antes de impuestos (USD)", placeholder = "3.000,00", required = false }: {
+  initialValue?: number | null; value?: number | null; onValueChange?: (amount: number | null) => void;
+  name?: string; label?: string; placeholder?: string; required?: boolean;
+}) {
   const id = useId(), input = useRef<HTMLInputElement>(null);
-  const [display, setDisplay] = useState(initialValue != null ? formatBudgetInput(initialValue) : "");
+  const initial = value ?? initialValue;
+  const [display, setDisplay] = useState(initial != null && initial > 0 ? formatBudgetInput(initial) : "");
+  const reportedValue = useRef<number | null | undefined>(initial);
   const amount = parseBudgetInput(display), invalid = display.trim() !== "" && amount == null;
   useEffect(() => { input.current?.setCustomValidity(invalid ? "Escribe un importe válido. Ejemplo: 100.000,00" : ""); }, [invalid]);
-  return <div className={styles.field}><label htmlFor={id}>Presupuesto antes de impuestos (USD)</label><div className={`${styles.inputWrap} ${styles.budget}`}><span aria-hidden="true">$</span><input id={id} ref={input} type="text" inputMode="decimal" value={display} placeholder="3.000,00" maxLength={22} aria-invalid={invalid ? true : undefined} onChange={event => setDisplay(event.target.value)} onBlur={() => { if (amount != null) setDisplay(formatBudgetInput(amount)); }}/></div><input name="budget" type="hidden" value={amount == null ? "" : amount.toFixed(2)}/>{invalid && <small className={styles.error}>Usa punto para miles y coma para centavos.</small>}</div>;
+  useEffect(() => {
+    if (value === undefined || (reportedValue.current ?? 0) === (value ?? 0)) return;
+    reportedValue.current = value;
+    setDisplay(value != null && value > 0 ? formatBudgetInput(value) : "");
+  }, [value]);
+  return <div className={styles.field}><label htmlFor={id}>{label}</label><div className={`${styles.inputWrap} ${styles.budget}`}><span aria-hidden="true">$</span><input id={id} ref={input} type="text" inputMode="decimal" value={display} placeholder={placeholder} maxLength={22} required={required} aria-invalid={invalid ? true : undefined} onChange={event => { setDisplay(event.target.value); const next = parseBudgetInput(event.target.value); reportedValue.current = next; onValueChange?.(next); }} onBlur={() => { if (amount != null) setDisplay(formatBudgetInput(amount)); }}/></div><input name={name} type="hidden" value={amount == null ? "" : amount.toFixed(2)}/>{invalid && <small className={styles.error}>Usa punto para miles y coma para centavos.</small>}</div>;
 }

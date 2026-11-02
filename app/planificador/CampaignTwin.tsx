@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { buildCampaignTwin, DEFAULT_CPM_HYPOTHESES, type CpmHypothesis } from "@/lib/campaign-twin";
 import type { MediaGroup } from "@/lib/media-groups";
 import { mediaGroupLabel, type PlanningScenario } from "@/lib/plan-optimizer";
+import { formatBudgetInput } from "@/lib/brief-inputs";
 
 export function CampaignTwin({ scenario, budgetUsd, geographies, digitalReady, onApplyBudget }: { scenario: PlanningScenario; budgetUsd: number; geographies: string[]; digitalReady: boolean; onApplyBudget: (value: number) => void }) {
   const [simulationBudget, setSimulationBudget] = useState(budgetUsd);
@@ -30,6 +31,6 @@ export function CampaignTwin({ scenario, budgetUsd, geographies, digitalReady, o
 }
 
 function CpmInput({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) { return <label className="text-[10px] font-black uppercase text-white/45">{label}<input type="number" min="0.1" step="0.1" value={value} onChange={(event) => onChange(Math.max(.1, Number(event.target.value) || .1))} className="mt-1 h-9 w-full rounded-lg border border-white/10 bg-black/15 px-2 text-sm font-bold text-white" /></label>; }
-function money(value: number) { return new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value); }
+function money(value: number) { return `$ ${formatBudgetInput(value)}`; }
 function compact(value: number) { return new Intl.NumberFormat("es-EC", { notation: "compact", maximumFractionDigits: 1 }).format(value); }
 function percent(value: number) { return `${Math.round(value * 100)}%`; }

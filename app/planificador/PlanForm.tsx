@@ -7,7 +7,9 @@ import { InfomediaResearchPanel } from "@/components/InfomediaResearchPanel";
 import { MediaStrategyPanel } from "@/components/MediaStrategyPanel";
 import { MediaSelectionIcon } from "@/components/MediaSelectionIcon";
 import { MediaProviderMark } from "@/components/MediaProviderMark";
-import { PlanScheduleFields } from "@/components/PlanScheduleFields";
+import { OohPlanPhoto } from "@/components/OohPlanPhoto";
+import { BudgetField, PlanScheduleFields } from "@/components/PlanScheduleFields";
+import { formatBudgetInput } from "@/lib/brief-inputs";
 import { restoreResearch } from "@/lib/infomedia";
 import type { CategoryCatalog } from "@/lib/infomedia-server";
 import type { ReactNode } from "react";
@@ -32,7 +34,7 @@ import { guardarProgresoBrief } from "./workspace-actions";
 import { PlanOrderButton } from "./PlanOrderButton";
 
 const money = (n: number | null) =>
-  n == null ? "—" : new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+  n == null ? "—" : `$ ${formatBudgetInput(n)}`;
 const pct = (n: number) => `${(n * 100).toFixed(0)}%`;
 
 export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, workspaceName = "Ad Mavericks" }: { initialPlan?: SavedMediaPlan | null; categoryCatalog: CategoryCatalog; canApprove?: boolean; workspaceName?: string }) {
@@ -172,7 +174,7 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
           {wowEnabled && <div className="planner-optional-panel">
             <div className="planner-fields planner-fields-two">
               <TextArea name="wowIdea" label="Descripción de la idea" placeholder="Ej. mapping, corpóreo, intervención urbana o formato especial" />
-              <Field name="wowBudget" label="Presupuesto independiente (USD)" type="number" placeholder="No se descuenta del plan principal" />
+              <BudgetField name="wowBudget" label="Presupuesto independiente (USD)" placeholder="0,00" />
               <Field name="wowMunicipality" label="Municipio o ciudad" placeholder="Ej. Guayaquil" />
               <Field name="wowExactLocation" label="Ubicación exacta o coordenadas" placeholder="Dirección, edificio o punto propuesto" />
               <SelectField name="wowFormat" label="Tipo de formato" defaultValue=""><option value="">Seleccionar formato</option><CatalogOptions options={WOW_FORMAT_OPTIONS} /></SelectField>
@@ -197,7 +199,7 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
                 <SelectField name="commercialGoalType" label="Meta comercial" defaultValue=""><option value="">No declarada</option><option value="units">En unidades</option><option value="currency">En valor (USD)</option></SelectField>
                 <Field name="commercialGoalAmount" label="Cantidad o valor objetivo" placeholder="Ej. 250000" type="number" />
                 <SelectField name="commercialGoalUnit" label="Unidad de medida" defaultValue=""><option value="">Seleccionar unidad</option><CatalogOptions options={COMMERCIAL_GOAL_UNIT_OPTIONS} /></SelectField>
-                <Field name="averageTicket" label="Ticket promedio o valor por lead (USD)" placeholder="Ej. 85" type="number" />
+                <BudgetField name="averageTicket" label="Ticket promedio o valor por lead (USD)" placeholder="85,00" />
                 <Field name="grossMargin" label="Margen bruto o comisión (%)" placeholder="Ej. 32" type="number" />
                 <SelectField name="operationalCapacity" label="Capacidad operativa" defaultValue=""><option value="">Seleccionar</option><option>Alta</option><option>Media</option><option>Limitada</option><option>Por confirmar</option></SelectField>
                 <SelectField name="commercialKpi" label="KPI comercial prioritario" defaultValue=""><option value="">Seleccionar KPI</option><CatalogOptions options={COMMERCIAL_KPI_OPTIONS} /></SelectField>
@@ -223,7 +225,7 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
                   <div className="planner-product-row-head"><strong>Producto o servicio {index + 1}</strong><button type="button" disabled={productRows.length === 1} onClick={() => setProductRows((rows) => rows.filter((item) => item !== row))}>Quitar fila</button></div>
                   <div className="planner-fields planner-fields-three">
                     <Field name="productName" label="Nombre" placeholder="Ej. Detergente líquido 1 L" />
-                    <Field name="productPrice" label="Precio (USD)" placeholder="0,00" type="number" />
+                    <BudgetField name="productPrice" label="Precio (USD)" placeholder="0,00" />
                     <Field name="productMargin" label="Margen (%)" placeholder="0" type="number" />
                     <Field name="productCapacity" label="Stock o capacidad" placeholder="Ej. 5.000 unidades o 80 cupos" />
                     <SelectField name="productSeason" label="Temporada" defaultValue=""><option value="">Seleccionar temporada</option><CatalogOptions options={PRODUCT_SEASON_OPTIONS} /></SelectField>
@@ -587,6 +589,7 @@ function DetailedPlanView({ result }: { result: Extract<PlanResult, { ok: true }
                     <div><dt>Presupuesto</dt><dd>{money(execution.budgetUsd)}</dd></div>
                     <div><dt>Referencia</dt><dd>{execution.referenceUnitPriceUsd == null ? execution.unit : `${money(execution.referenceUnitPriceUsd)} · ${execution.unit}`}{execution.estimatedUnits != null ? ` · aprox. ${execution.estimatedUnits} unidad${execution.estimatedUnits === 1 ? "" : "es"}` : ""}</dd></div>
                   </dl>
+                  {execution.oohPhoto && <OohPlanPhoto photo={execution.oohPhoto} title={execution.product}/>}
                   {execution.geo && <OohLocationPreview title={execution.location} geo={execution.geo} />}
                   <p className="planner-execution-evidence"><b>Evidencia:</b> {execution.evidence}</p>
                   <p className="planner-execution-next"><b>Antes de ordenar:</b> {execution.nextStep}</p>

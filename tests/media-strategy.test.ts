@@ -8,8 +8,29 @@ import { mediaGroupForLabel } from "../lib/media-groups";
 import { projectResearch } from "../lib/infomedia";
 import { strategyBrief, strategyCatalogs, strategyResearch, tvSource, tvStudy } from "./media-strategy-fixture";
 import { buildCurrentCampaigns } from "../lib/campaigns";
+import type { OohAsset } from "../lib/ooh-catalog";
 
 const date="2026-10-31";
+const photographedAsset = (patch: Partial<OohAsset> = {}): OohAsset => ({
+  id:"synthetic-ooh",providerSlug:"synthetic",provinces:["Pichincha"],name:"Circuito sintético",code:"S-01",city:"Quito",address:"Ubicación sintética",format:"Circuito",dimensions:"Medidas sintéticas",brand:"Proveedor sintético",latitude:null,longitude:null,recordType:"inventory",rates:[{amount:1000,period:"mes",basis:"circuito de cinco",component:"Pauta"}],rateLabel:"",reference:"Catálogo sintético",taxLabel:"",photo:true,photoKind:"format",dailySpots:null,spotSeconds:null,...patch,
+});
+test("OOH recommendations link only a documented asset photo, including scoped agreement products",()=>{
+  const catalogs=strategyCatalogs();
+  catalogs.ooh.assets=[photographedAsset(),photographedAsset({id:"source-without-photo",photo:false})];
+  catalogs.workspaceProducts=[{key:"ooh:workspace:photo",kind:"ooh",provider:"Proveedor sintético",name:"Circuito contratado",format:"Circuito",unit:"mes",priceCents:100000,taxIncluded:false,location:"Quito",marketKeys:["quito"],reference:"",conditions:"",image:null,validFrom:"2026-11-01",validTo:"2026-11-30",source:{workspaceProductId:"synthetic-photo-agreement",assetId:"synthetic-ooh"}}];
+  const bundle=buildStrategyEvidence(strategyBrief({selectedMedia:["ooh"]}),strategyResearch,catalogs,date);
+  assert.deepEqual(bundle.candidates.find(c=>c.id==="ooh:synthetic-ooh")?.oohPhoto,{assetId:"synthetic-ooh",kind:"format"});
+  assert.equal(bundle.candidates.find(c=>c.id==="ooh:source-without-photo")?.oohPhoto,undefined);
+  assert.deepEqual(bundle.candidates.find(c=>c.id==="workspace:ooh:workspace:photo")?.oohPhoto,{assetId:"synthetic-ooh",kind:"format"});
+});
+test("OOH chooses a priced photographed circuit before an unpriced alphabetic placeholder without treating the reference as a quote",()=>{
+  const catalogs=strategyCatalogs();
+  catalogs.ooh.assets=[photographedAsset({id:"aaa-no-price",rates:[]}),photographedAsset({id:"zzz-priced"})];
+  const brief=strategyBrief({selectedMedia:["ooh"]}),bundle=buildStrategyEvidence(brief,strategyResearch,catalogs,date);
+  const first=strategyCandidatePool(bundle,"ooh",brief)[0];
+  assert.equal(first.id,"ooh:zzz-priced");assert.equal(first.referencePriceUsd,1000);assert.equal(first.unitPriceUsd,null);
+  assert.deepEqual(referenceQuantity(first,5000),{units:null,spend:null,remainder:null});
+});
 test("source-backed plans keep creative templates separate from measured analysis",async()=>{
   const b=strategyBrief({selectedMedia:["digital"]}),bundle=buildStrategyEvidence(b,strategyResearch,strategyCatalogs(),date),base=await buildMediaPlan({...b,research:scopePlanningResearch(strategyResearch,bundle)});
   const plan=applyStrategyPlan(base,buildStrategyReport(b,bundle,base,{aiState:"not_configured",fingerprint:"test",generatedAt:date}),b);

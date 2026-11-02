@@ -10,9 +10,11 @@ import { MediaSelectionIcon } from "./MediaSelectionIcon";
 import { MediaProviderMark } from "./MediaProviderMark";
 import { StrategyMixChart } from "./StrategyMixChart";
 import { InfomediaResearchPanel } from "./InfomediaResearchPanel";
+import { OohPlanPhoto } from "./OohPlanPhoto";
+import { formatBudgetInput } from "@/lib/brief-inputs";
 import styles from "./MediaStrategyPanel.module.css";
 
-const money = (value: number | null) => value == null ? "Por definir" : new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value);
+const money = (value: number | null) => value == null ? "Por definir" : `$ ${formatBudgetInput(value)}`;
 const share = (value: number) => new Intl.NumberFormat("es-EC", { style: "percent", maximumFractionDigits: 1 }).format(value);
 const number = (value: number) => new Intl.NumberFormat("es-EC", { maximumFractionDigits: 2 }).format(value);
 const stateText: Record<StrategyReport["aiState"], string> = {
@@ -57,6 +59,7 @@ export function MediaStrategyPanel({ report, research, brand = "", objective = "
         <p className={styles.rationale}>{active.rationale}</p>
         {active.candidate ? <div className={styles.candidate}>
           <div className={styles.provider}><MediaProviderMark provider={active.candidate.provider} medium={active.medium}/><div><span>Opción documentada</span><strong>{active.candidate.provider}</strong><p>{active.candidate.product}</p></div></div>
+          {active.candidate.oohPhoto && <OohPlanPhoto photo={active.candidate.oohPhoto} title={active.candidate.product}/>}
           <dl><div><dt>Plaza</dt><dd>{active.candidate.market || "No declarada"}</dd></div><div><dt>Público de la fuente</dt><dd>{active.candidate.target}</dd></div><div><dt>Período</dt><dd>{active.candidate.period}</dd></div><div><dt>Formato / unidad</dt><dd>{active.candidate.unit}</dd></div></dl>
           {active.units != null && active.units > 0 && <div className={styles.unitSummary}><strong>{number(active.units)} {active.candidate.unit}</strong><span>{money(active.referenceSpendUsd)}{active.remainderUsd ? ` · saldo ${money(active.remainderUsd)}` : ""}</span></div>}
           {active.candidate.metrics.length > 0 && <div className={styles.evidenceMetrics}>{active.candidate.metrics.map((metric, index) => { const source = sources.get(metric.sourceId); return <div key={`${metric.sourceId}-${index}`}><span>{metric.label}</span><strong>{number(metric.value)} {metric.unit}</strong>{source && <small>{source.period} · {source.market}<br/>{source.target}</small>}</div>; })}</div>}

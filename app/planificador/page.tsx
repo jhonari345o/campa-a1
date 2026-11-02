@@ -99,7 +99,7 @@ export default async function PlanificadorPage({
         ) : view === "plans" ? (
           <SavedPlans plans={plans} />
         ) : view === "diy" ? (
-          <DiyPlanner workspaceProducts={shoppingProducts} broadcast={broadcast} pressCatalog={press} oohCatalog={ooh} categoryCatalog={categoryCatalog} influencers={influencers} oohLocations={oohLocations} initialPlan={selectedPlan} />
+          <DiyPlanner key={selectedPlan?.id ?? "new"} workspaceProducts={shoppingProducts} broadcast={broadcast} pressCatalog={press} oohCatalog={ooh} categoryCatalog={categoryCatalog} influencers={influencers} oohLocations={oohLocations} initialPlan={selectedPlan} />
         ) : view === "versions" ? (
           <PlanVersions canApprove={profile.is_platform_admin || companies.some(c => c.id === selectedPlan?.companyId && c.status === "activa" && canWorkspaceRole(c, "campaign:approve"))} plan={selectedPlan} versions={versions} comments={collaboration.comments} approvals={collaboration.approvals} />
         ) : (
@@ -109,7 +109,7 @@ export default async function PlanificadorPage({
               Completa el brief, revisa la recomendación y guarda un borrador privado.
               La plataforma recomienda; tu equipo conserva el control.
             </p>
-            <div className="mt-8"><PlanForm categoryCatalog={categoryCatalog} workspaceName={profile.workspace?.name} canApprove={canApprove} initialPlan={selectedPlan} /></div>
+            <div className="mt-8"><PlanForm key={selectedPlan?.id ?? "new"} categoryCatalog={categoryCatalog} workspaceName={profile.workspace?.name} canApprove={canApprove} initialPlan={selectedPlan} /></div>
           </>
         )}
       </main>
