@@ -83,9 +83,42 @@ test("exhausted provider quota and truncated responses never become an AI recomm
 test("the bounded planning response can disable optional reasoning without changing the free fallback pool",async()=>{
   await mockProvider(Response.json({choices:[{finish_reason:"stop",message:{content:"{}"}}]}),async requests=>{
     await chatCompletion([{role:"user",content:"Return JSON"}],{json:true,reasoningEnabled:false,maxTokens:3200});
-    assert.deepEqual(requests[0].body.reasoning,{enabled:false,exclude:true});
+    assert.deepEqual(requests[0].body.reasoning,{enabled:false});
     assert.deepEqual(requests[0].body.models,["test/primary:free","test/backup:free","openrouter/free"]);
     assert.deepEqual(requests[0].body.provider,{max_price:{prompt:0,completion:0}});
+  });
+});
+
+test("a rejected model advances through only the configured free pool within one deadline", async () => {
+  await mockProvider([
+    Response.json({error:{message:"Unknown model test/primary:free"}},{status:400}),
+    Response.json({error:{message:"Reasoning option unsupported"}},{status:400}),
+    Response.json({choices:[{finish_reason:"stop",message:{content:'{"complete":true}'}}]}),
+  ],async requests=>{
+    assert.equal(await chatCompletion([{role:"user",content:"Return JSON"}],{json:true,reasoningEnabled:false}),'{"complete":true}');
+    assert.equal(requests.length,3);
+    assert.deepEqual(requests.map(r=>r.body.model),["test/primary:free","test/backup:free","openrouter/free"]);
+    for(const request of requests){
+      assert.deepEqual(request.body.provider,{max_price:{prompt:0,completion:0}});
+      assert.equal(request.signal,requests[0].signal);
+    }
+  });
+});
+
+test("provider rejection diagnoses never expose raw details or retry access denials",async()=>{
+  for(const [status,message,code] of [[400,"Reasoning disabled for private account abc","PROVIDER_HTTP_400_REASONING"],[401,"private account abc","PROVIDER_HTTP_401"],[403,"private account abc","PROVIDER_HTTP_403"]] as const){
+    await mockProvider(Response.json({error:{message}},{status}),async requests=>{
+      await assert.rejects(chatCompletion([{role:"user",content:"Return JSON"}],{json:true}),new RegExp(`^Error: ${code}$`));
+      assert.equal(requests.length,status===400?3:1);
+    });
+  }
+});
+
+test("bad-request fallback cannot add paid inference",async()=>{
+  await mockProvider(Response.json({error:{message:"Unknown model"}},{status:400}),async requests=>{
+    process.env.OPENROUTER_MODEL="paid/primary";
+    await assert.rejects(chatCompletion([{role:"user",content:"test"}]),/PROVIDER_HTTP_400_MODEL/);
+    assert.equal(requests.length,1);
   });
 });
 

@@ -4,6 +4,21 @@ import { getLlmConfiguration } from "./llm-config";
 export type LlmMessage = { role: "system" | "user" | "assistant"; content: string };
 type CompletionOptions = { maxTokens?: number; temperature?: number; signal?: AbortSignal; json?: boolean; timeoutMs?: number; reasoningEffort?: "low" | "medium" | "high"; reasoningEnabled?: boolean };
 
+/** Retain a bounded diagnosis, never the provider's raw account/prompt details. */
+async function providerErrorCode(res: Response): Promise<string> {
+  const base = `PROVIDER_HTTP_${res.status}`;
+  if (res.status !== 400) return base;
+  try {
+    const data = await res.json() as { error?: { message?: unknown; code?: unknown } };
+    const message = typeof data.error?.message === "string" ? data.error.message.toLowerCase() : "";
+    if (/reasoning|thinking/.test(message)) return `${base}_REASONING`;
+    if (/model/.test(message) && /invalid|not found|not available|unavailable|unknown|not a valid/.test(message)) return `${base}_MODEL`;
+    if (/response_format|json_object|structured output/.test(message)) return `${base}_FORMAT`;
+    if (/context|token limit|maximum.*tokens/.test(message)) return `${base}_CONTEXT`;
+  } catch { /* Unparseable provider bodies remain a status-only diagnosis. */ }
+  return base;
+}
+
 /**
  * Cerebro de Mavi. Soporta proveedores intercambiables:
  *  1) Amazon Bedrock (opcional): modelos abiertos (Llama/Mistral/Nova) en TU
@@ -116,7 +131,8 @@ async function openaiChat(
   const signal = opts?.signal ? AbortSignal.any([opts.signal, AbortSignal.timeout(requestTimeoutMs)]) : AbortSignal.timeout(requestTimeoutMs);
   let models = [provider.model, ...fallbackModels];
   const deadline = Date.now() + requestTimeoutMs;
-  for (let attempt = 0; attempt < 2; attempt++) {
+  let retriedTruncation = false;
+  for (let attempt = 0; attempt < Math.min(3, 1 + fallbackModels.length); attempt++) {
     let res: Response;
     try {
       signal.throwIfAborted();
@@ -132,7 +148,7 @@ async function openaiChat(
           ...(models.length > 1 ? { models } : {}),
           ...(provider.freeOnly ? { provider: { max_price: { prompt: 0, completion: 0 } } } : {}),
           ...(opts?.json ? { response_format: { type: "json_object" } } : {}),
-          ...(provider.openRouter && opts?.reasoningEnabled===false ? { reasoning: { enabled:false, exclude:true } } : provider.openRouter && opts?.reasoningEffort ? { reasoning: { effort: opts.reasoningEffort, exclude: true } } : {}),
+          ...(provider.openRouter && opts?.reasoningEnabled===false ? { reasoning: { enabled:false } } : provider.openRouter && opts?.reasoningEffort ? { reasoning: { effort: opts.reasoningEffort, exclude: true } } : {}),
           messages,
           max_tokens: opts?.maxTokens ?? 1024,
           temperature: opts?.temperature ?? 0.4,
@@ -147,16 +163,23 @@ async function openaiChat(
       throw error;
     }
     if (!res.ok) {
-      // El cuerpo del proveedor puede contener detalles de cuenta. Registramos
-      // únicamente el estado HTTP para diagnosticar sin filtrar credenciales.
-      throw new Error(`PROVIDER_HTTP_${res.status}`);
+      const code = await providerErrorCode(res);
+      // A retired model or an unsupported option can be rejected before the
+      // gateway applies its models fallback. Advance only within the configured
+      // free pool and original deadline. Never retry authentication/access denial.
+      if (res.status === 400 && provider.openRouter && provider.freeOnly && models.length > 1 && attempt < 2 && !signal.aborted && deadline - Date.now() >= 5000) {
+        models = models.slice(1);
+        continue;
+      }
+      throw new Error(code);
     }
     const data = (await res.json()) as { model?: string; choices?: { finish_reason?: string; message?: { content?: string } }[] };
     if (data.choices?.[0]?.finish_reason === "length") {
       // HTTP 200 with incomplete content does not trigger OpenRouter's normal
       // error fallback. Retry once within the same deadline, only in the free pool.
       const remaining = models.slice(1).filter(model => model !== data.model);
-      if (provider.openRouter && provider.freeOnly && attempt === 0 && remaining.length && !signal.aborted && deadline - Date.now() >= 5000) {
+      if (provider.openRouter && provider.freeOnly && !retriedTruncation && attempt < 2 && remaining.length && !signal.aborted && deadline - Date.now() >= 5000) {
+        retriedTruncation = true;
         models = remaining;
         continue;
       }
