@@ -162,10 +162,11 @@ export function CatalogRadioProducts({ stationId, tariffId, rateIndex }: { stati
 }
 export function CatalogRadioTariffs({ stationId, stationName, children }: { stationId: string; stationName: string; children: ReactNode }) {
   const cart = useShopping();
-  if (cart.isAdmin) return children;
   const products = cart.products.filter(p => p.kind === "radio" && (p.source.stationId === stationId || radioProviderKey(p.provider) === radioProviderKey(stationName)));
+  // Approved catalog defaults replace legacy tariff IDs in the admin detail too.
+  if (cart.isAdmin && !products.some(p => p.source.defaultPrice && p.source.standingPrice)) return children;
   if (!products.length) return <p className="text-sm text-muted">Solicita la tarifa de esta emisora para tu cuenta.</p>;
-  return <div className="my-5"><h5 className="mb-3 text-lg font-black">Tarifa de tu cuenta</h5><CatalogAccountRateCard products={products}/></div>;
+  return <div className="my-5"><h5 className="mb-3 text-lg font-black">{cart.isAdmin ? "Tarifas de la emisora" : "Tarifa de tu cuenta"}</h5><CatalogAccountRateCard products={products}/></div>;
 }
 export function CatalogAccountRateCard({ products }: { products: CatalogProduct[] }) {
   const [selected, setSelected] = useState(products[0].key);
