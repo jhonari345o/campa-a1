@@ -54,7 +54,7 @@ export function OohCatalogPanel({ catalog, purchaseReferences = [] }: { catalog:
       {!groups.length && <p className="mt-6 rounded-2xl border border-dashed border-border bg-fog p-6 text-sm text-muted">Este proveedor todavía no tiene fichas de ubicaciones incorporadas al catálogo.</p>}
     </> : <>
       <div className="mt-6 flex flex-wrap items-end gap-4"><label className="min-w-0 flex-1 text-sm font-black">Buscar en {province.name}<input value={query} onChange={event => setQuery(event.target.value)} placeholder="Ciudad, dirección, código o formato" className="mt-2 w-full rounded-xl border border-border bg-fog px-4 py-3 font-normal outline-none focus:border-signal focus:ring-2 focus:ring-signal/20" /></label><p role="status" className="pb-3 text-sm text-muted">{shown.length} de {province.assets.length} fichas</p></div>
-      <div className="mt-6 grid items-start gap-5" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,280px),1fr))" }}>{shown.map(asset => <OohAssetCard key={asset.id} asset={asset} references={purchaseReferences.filter(r => r.asset_id === asset.id)} />)}</div>
+      <div className="mt-6 grid items-start gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,280px),1fr))" }}>{shown.map(asset => <OohAssetCard key={asset.id} asset={asset} references={purchaseReferences.filter(r => r.asset_id === asset.id)} />)}</div>
       {!shown.length && <p className="py-10 text-center text-sm text-muted">No hay fichas que coincidan con esa búsqueda.</p>}
     </>}
   </section>;
