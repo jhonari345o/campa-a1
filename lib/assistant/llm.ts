@@ -2,7 +2,7 @@ import { BedrockRuntimeClient, ConverseCommand } from "@aws-sdk/client-bedrock-r
 import { getLlmConfiguration } from "./llm-config";
 
 export type LlmMessage = { role: "system" | "user" | "assistant"; content: string };
-type CompletionOptions = { maxTokens?: number; temperature?: number; signal?: AbortSignal; json?: boolean; timeoutMs?: number; reasoningEffort?: "low" | "medium" | "high" };
+type CompletionOptions = { maxTokens?: number; temperature?: number; signal?: AbortSignal; json?: boolean; timeoutMs?: number; reasoningEffort?: "low" | "medium" | "high"; reasoningEnabled?: boolean };
 
 /**
  * Cerebro de Mavi. Soporta proveedores intercambiables:
@@ -132,7 +132,7 @@ async function openaiChat(
           ...(models.length > 1 ? { models } : {}),
           ...(provider.freeOnly ? { provider: { max_price: { prompt: 0, completion: 0 } } } : {}),
           ...(opts?.json ? { response_format: { type: "json_object" } } : {}),
-          ...(provider.openRouter && opts?.reasoningEffort ? { reasoning: { effort: opts.reasoningEffort, exclude: true } } : {}),
+          ...(provider.openRouter && opts?.reasoningEnabled===false ? { reasoning: { enabled:false, exclude:true } } : provider.openRouter && opts?.reasoningEffort ? { reasoning: { effort: opts.reasoningEffort, exclude: true } } : {}),
           messages,
           max_tokens: opts?.maxTokens ?? 1024,
           temperature: opts?.temperature ?? 0.4,

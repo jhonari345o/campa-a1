@@ -80,6 +80,14 @@ test("exhausted provider quota and truncated responses never become an AI recomm
     assert.equal(requests.length, 2);
   });
 });
+test("the bounded planning response can disable optional reasoning without changing the free fallback pool",async()=>{
+  await mockProvider(Response.json({choices:[{finish_reason:"stop",message:{content:"{}"}}]}),async requests=>{
+    await chatCompletion([{role:"user",content:"Return JSON"}],{json:true,reasoningEnabled:false,maxTokens:3200});
+    assert.deepEqual(requests[0].body.reasoning,{enabled:false,exclude:true});
+    assert.deepEqual(requests[0].body.models,["test/primary:free","test/backup:free","openrouter/free"]);
+    assert.deepEqual(requests[0].body.provider,{max_price:{prompt:0,completion:0}});
+  });
+});
 
 test("a truncated free completion retries once on the remaining pool with the original deadline", async () => {
   await mockProvider([

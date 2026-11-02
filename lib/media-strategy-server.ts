@@ -17,6 +17,7 @@ import { buildMediaPlan, type MediaPlan } from "./planner";
 import { buildStrategyEvidence, scopePlanningResearch, type StrategyBrief, type StrategyCatalogs, type StrategyEvidenceBundle } from "./media-strategy-evidence";
 import { STRATEGY_VERSION, applyStrategyPlan, buildStrategyReport, strategyAiPayload } from "./media-strategy";
 import { resolveStrategyAi } from "./media-strategy-ai";
+import { strategyAiTransport } from "./strategy-ai-transport";
 import { chatCompletion } from "./assistant/llm";
 import { getLlmConfiguration, planningAiEnabled } from "./assistant/llm-config";
 import { optionalWithinBudget } from "./optional-task";
@@ -104,12 +105,12 @@ export async function completeResearchRecommendation(brief:StrategyBrief,prepare
   if(accessError||!allowed)throw new Error("RESEARCH_UNAVAILABLE");
   // No process-global cache: every result is scoped to its owner and source fingerprint.
   const {data:cached,error:cacheError}=await db.from("media_strategy_cache").select("result").eq("owner_id",profile.id).eq("fingerprint",fingerprint).eq("status","ready").gt("expires_at",new Date().toISOString()).maybeSingle();
-  const payload=JSON.stringify(strategyAiPayload(brief,bundle,baseline));
+  const transport=strategyAiTransport(strategyAiPayload(brief,bundle,baseline)),payload=transport.content;
   const ai=await resolveStrategyAi(brief,bundle,payload,Math.max(1,allowance-(Date.now()-started)),{
     enabled:planningAiEnabled("strategy",aiConfig),
     allowRequest:Boolean(options.allowAi),cacheAvailable:!cacheError,cached:cached?.result,
     claim:async()=>{const {data,error}=await db.rpc("claim_media_strategy_ai_request",{p_fingerprint:fingerprint});return !error&&Boolean(data);},
-    invoke:(content,signal)=>chatCompletion([{role:"system",content:SYSTEM},{role:"user",content}],{maxTokens:6000,reasoningEffort:"low",temperature:.1,json:true,signal,timeoutMs:24_000}),
+    invoke:async(content,signal)=>transport.restore(await chatCompletion([{role:"system",content:SYSTEM},{role:"user",content}],{maxTokens:3200,reasoningEnabled:false,temperature:.1,json:true,signal,timeoutMs:19_000})),
     persist:async (advice,diagnostic)=>{const {data,error}=await createAdminClient().from("media_strategy_cache").update({status:advice?"ready":"failed",model_id:model,result:{...advice,_diagnostic:diagnostic},updated_at:new Date().toISOString()}).eq("owner_id",profile.id).eq("fingerprint",fingerprint).eq("status","pending").select("fingerprint").maybeSingle();return !error&&Boolean(data);},
   });
   if(options.allowAi)console.info("media_strategy_ai",{state:ai.state,provider:aiConfig?.provider??null,durationMs:Date.now()-started});
