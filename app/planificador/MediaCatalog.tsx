@@ -8,16 +8,14 @@ import {
   CATALOG_SECTIONS,
   DIGITAL_PLATFORMS,
   INFLUENCER_IMAGE_SLUGS,
-  STATUS_LABELS,
   type CatalogItem,
   type CatalogSection,
-  type CatalogStatus,
   type DigitalPlatform,
   type InfluencerProfile,
 } from "@/lib/media-catalog";
 import type { CatalogHealth } from "@/lib/media-workspace";
 
-import { BroadcastCatalogPanel } from "./BroadcastCatalog";
+import { TelevisionDirectoryPanel } from "./TelevisionDirectory";
 import type { BroadcastCatalog } from "@/lib/broadcast-catalog";
 import type { OohCatalog } from "@/lib/ooh-catalog";
 import { OohCatalogPanel } from "./OohCatalog";
@@ -34,7 +32,6 @@ export function MediaCatalog({
   broadcast,
   section,
   influencers,
-  health,
   ooh,
   radioDirectory,
   press,
@@ -70,21 +67,10 @@ export function MediaCatalog({
           <p className="media-portal-header-description">
               {canRequest ? "Combina cuñas, espacios y formatos de distintos medios en una sola solicitud." : "Consulta formatos, coberturas y tarifas de tu espacio."}
           </p>
-          <div className="media-portal-header-legend" aria-label="Estados de la información del catálogo">
-            <Status status="cotizable" />
-            <Status status="validacion" />
-            <Status status="directorio" />
-          </div>
         </div>
         {canPlan && <Link href="/planificador?view=planner" className="media-portal-plan-button">Armar plan de medios <span>→</span></Link>}
       </header>
 
-      {health && section !== "tv" && section !== "radio" && section !== "ooh" && section !== "press" && (
-        <aside className="mx-4 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-white px-5 py-4 shadow-panel sm:mx-8">
-          <div><strong className="text-sm text-forest">Control de vigencia 2026</strong><p className="mt-1 text-xs text-muted">Solo “cotizable” representa una referencia comercial; tarifa, cupo y disponibilidad se confirman antes de ordenar.</p></div>
-          <div className="flex flex-wrap gap-2 text-[10px] font-black uppercase"><span className="rounded-full bg-signal/15 px-3 py-1 text-signal-dark">{health.cotizable} cotizables</span><span className="rounded-full bg-amber/15 px-3 py-1 text-[#805900]">{health.validation} por validar</span><span className="rounded-full bg-coral/10 px-3 py-1 text-[#a13b31]">{health.stale + health.withoutDate} sin vigencia actual</span></div>
-        </aside>
-      )}
 
       <nav className="media-portal-tabs" aria-label="Tipos de medios" role="tablist">
         {CATALOG_SECTIONS.map((item) => (
@@ -101,12 +87,12 @@ export function MediaCatalog({
         ))}
       </nav>
 
-      <WorkspaceRateCards products={shoppingProducts} section={section}/>
+      {section !== "tv" && <WorkspaceRateCards products={shoppingProducts} section={section}/>}
       <CatalogShoppingLayout active={canRequest || isAdmin}><div className="media-portal-panel" role="tabpanel">
         {section === "digital" && <DigitalSection />}
         {section === "influencers" && <InfluencerSection profiles={influencers} />}
         {section === "radio" && <RadioDirectoryPanel directory={radioDirectory} broadcast={broadcast} />}
-        {section === "tv" && <BroadcastCatalogPanel kind="tv" catalog={broadcast} />}
+        {section === "tv" && <TelevisionDirectoryPanel catalog={broadcast} products={shoppingProducts}/>}
         {section === "ooh" && (
           <OohCatalogPanel catalog={ooh} purchaseReferences={purchaseReferences} />
         )}
@@ -127,7 +113,7 @@ function DigitalSection() {
         description="La selección combina objetivo, audiencia, medición disponible, destino e inversión."
         count={`${DIGITAL_PLATFORMS.length} plataformas`}
       />
-      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-6 grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,340px),1fr))" }}>
         {DIGITAL_PLATFORMS.map((item) => <DigitalCard key={item.slug} item={item} />)}
       </div>
     </section>
@@ -140,7 +126,7 @@ function DigitalCard({ item }: { item: DigitalPlatform }) {
       <div className="flex items-start justify-between gap-3">
         <ProviderMark item={item} size="small" />
         <span className="rounded-full bg-signal/10 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-signal-dark">
-          {item.statusNote}
+          Elige tu objetivo
         </span>
       </div>
       <h3 className="mt-4 text-xl font-black tracking-tight">{item.name}</h3>
@@ -219,7 +205,6 @@ function InfluencerSection({ profiles }: { profiles: InfluencerProfile[] }) {
           )}
         </>
       )}
-      <CatalogConditions />
     </section>
   );
 }
@@ -242,9 +227,9 @@ function InfluencerCard({ profile }: { profile: InfluencerProfile }) {
         </div>
         <div className="min-w-0">
           <span className="text-[10px] font-black uppercase tracking-wide text-[#91f58d]">{profile.category}</span>
-          <h3 className="truncate text-lg font-black">{profile.name}</h3>
+          <h3 className="mt-1 text-lg font-black leading-tight [overflow-wrap:break-word]">{profile.name}</h3>
           {profile.profileUrl && profile.handle ? (
-            <a href={profile.profileUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-sky hover:underline">
+            <a href={profile.profileUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block break-all text-xs font-bold text-[#9bd6fa] hover:underline">
               @{profile.handle.replace(/^@/, "")} ↗
             </a>
           ) : <span className="text-xs text-white/60">Perfil por confirmar</span>}
@@ -257,13 +242,9 @@ function InfluencerCard({ profile }: { profile: InfluencerProfile }) {
         <Metric label="Follower quality" value={percent(profile.followerQualityPct)} />
       </dl>
       <div className="mt-5 border-t border-white/15 pt-4">
-        <div className="flex items-center justify-between gap-2">
-          <strong className="text-sm">Elige tus productos</strong>
-          <span className="rounded-full bg-[#c8ffc5] px-2 py-1 text-[9px] font-black uppercase text-forest">Agregar al carrito</span>
-        </div>
+        <strong className="text-sm">Elige tus productos</strong>
         <CatalogProfileProducts profileId={profile.id} />
       </div>
-      <p className="mt-4 text-[10px] text-white/55">Vigencia, disponibilidad y derecho de pauta por reconfirmar.</p>
     </article>
   );
 }
@@ -271,14 +252,6 @@ function InfluencerCard({ profile }: { profile: InfluencerProfile }) {
 
 function SectionHeading({ eyebrow, title, description, count }: { eyebrow: string; title: string; description: string; count: string }) {
   return <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.18em] text-signal-dark">{eyebrow}</p><h2 className="mt-1 text-2xl font-black tracking-tight">{title}</h2><p className="mt-1 max-w-3xl text-sm text-muted">{description}</p></div><span className="rounded-xl bg-forest px-4 py-2 text-sm font-black text-white">{count}</span></div>;
-}
-
-function Status({ status }: { status: CatalogStatus }) {
-  return <span className={`catalog-status catalog-status--${status}`}>{STATUS_LABELS[status]}</span>;
-}
-
-function CatalogConditions() {
-  return <aside className="mt-8 rounded-card border border-border bg-fog p-5"><h3 className="font-black">Lo que se confirma antes de pautar</h3><ul className="mt-3 grid gap-2 text-xs text-muted sm:grid-cols-2"><li>✓ Vigencia, disponibilidad y condiciones comerciales.</li><li>✓ Valores e impuestos aplicables.</li><li>✓ Métricas, target, plaza, período y metodología.</li><li>✓ Derechos, territorio, usos y aprobación humana.</li></ul></aside>;
 }
 
 function Metric({ label, value }: { label: string; value: string }) { return <div className="rounded-xl border border-white/15 bg-white/10 p-3"><dt className="text-[9px] font-black uppercase text-white/55">{label}</dt><dd className="mt-1 font-black">{value}</dd></div>; }

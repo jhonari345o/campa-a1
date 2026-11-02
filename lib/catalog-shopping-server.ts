@@ -7,6 +7,7 @@ import { createClient } from "./supabase/server";
 import { getInfluencerCatalog } from "./media-workspace";
 import { getOohCatalog } from "./ooh-server";
 import { catalogProducts, normalizeCatalogPicks, type CatalogCart } from "./catalog-shopping";
+import { digitalBudgetProduct } from "./digital-budget";
 
 export async function readCatalogCart(): Promise<CatalogCart> {
   const db = await createClient();
@@ -24,7 +25,8 @@ export async function readShoppingProducts(items: { productKey: string }[]) {
     items.some(i => i.productKey.startsWith("press:")) ? getPressCatalog() : Promise.resolve({ entries: [] }),
   ]);
   if ("error" in ooh && ooh.error) throw new Error("CATALOG_UNAVAILABLE");
-  return priceCatalogProducts(catalogProducts(profiles, ooh, { broadcast, radio, press }));
+  const budgets = items.flatMap(item => { const budget = digitalBudgetProduct(item.productKey); return budget ? [budget] : []; });
+  return priceCatalogProducts([...catalogProducts(profiles, ooh, { broadcast, radio, press }), ...budgets]);
 }
 export type OohPurchaseReference = {
   id: string; provider_slug: string; asset_id: string | null; location: string; format: string;

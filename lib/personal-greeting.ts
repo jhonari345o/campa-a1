@@ -6,6 +6,6 @@ export function personalGreeting(name?: string | null, workspaceName?: string): 
   const first = clean.split(" ")[0], key = nameKey(clean), firstKey = nameKey(first);
   const generic = new Set(["vista", "usuario", "usuaria", "equipo", "medios", "agencia", "cliente", "administrador", "administradora", "admin", "ad"]);
   const company = workspaceName ? nameKey(workspaceName) : "";
-  if (!clean || clean.includes("@") || generic.has(firstKey) || (company && (key === company || firstKey === company.split(" ")[0]))) return "Hola.";
-  return `Hola, ${first}.`;
+  if (!clean || clean.includes("@") || generic.has(firstKey) || (company && (key === company || firstKey === company.split(" ")[0]))) return "¡Hola!";
+  return `¡Hola, ${first}!`;
 }

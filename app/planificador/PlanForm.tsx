@@ -7,6 +7,7 @@ import { InfomediaResearchPanel } from "@/components/InfomediaResearchPanel";
 import { MediaStrategyPanel } from "@/components/MediaStrategyPanel";
 import { MediaSelectionIcon } from "@/components/MediaSelectionIcon";
 import { MediaProviderMark } from "@/components/MediaProviderMark";
+import { PlanScheduleFields } from "@/components/PlanScheduleFields";
 import { restoreResearch } from "@/lib/infomedia";
 import type { CategoryCatalog } from "@/lib/infomedia-server";
 import type { ReactNode } from "react";
@@ -153,9 +154,7 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
         <section className="planner-form-section">
           <SectionNumber number="03" title="Fechas, inversión y medios" description="Fija el marco de inversión y los canales que Mavi puede combinar." />
           <div className="planner-fields planner-fields-three">
-            <Field name="startDate" label="Inicio" type="date" defaultValue={stringValue(initialBrief.startDate)} />
-            <Field name="endDate" label="Fin" type="date" defaultValue={stringValue(initialBrief.endDate)} />
-            <Field name="budget" label="Presupuesto antes de impuestos (USD)" placeholder="3000" type="number" defaultValue={stringValue(initialBrief.budgetUsd)} />
+            <PlanScheduleFields initialStart={stringValue(initialBrief.startDate)} initialEnd={stringValue(initialBrief.endDate)} initialBudget={numberOrNull(initialBrief.budgetUsd)}/>
           </div>
           <fieldset className="planner-media-selector">
             <legend>Medios a considerar *</legend>

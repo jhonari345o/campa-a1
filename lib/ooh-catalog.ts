@@ -1,3 +1,4 @@
+import { oohPhotoPresentation } from "./ooh-photo";
 export type OohRate = { amount: number | null; period: string; basis: string; component: string };
 export type OohAsset = {
   id: string; providerSlug: string; provinces: string[]; name: string; code: string;
@@ -38,11 +39,12 @@ export function parseOohAsset(row: Record<string, unknown>): OohAsset | null {
   });
   const latitude = number(d.latitude), longitude = number(d.longitude);
   const coordinatesValid = latitude != null && longitude != null && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
+  const presentation = oohPhotoPresentation(d.photoPresentation);
   return { id: row.id, providerSlug: text(row.provider_slug), provinces: Array.isArray(row.provinces) ? [...new Set(row.provinces.filter(p => typeof p === "string" && p.trim()).map(p => text(p).trim()))] : [],
     name: text(d.name), code: text(d.code), city: text(d.city), address: text(d.address), format: text(d.format), dimensions: text(d.dimensions), brand: text(d.brand),
     latitude: coordinatesValid ? latitude : null, longitude: coordinatesValid ? longitude : null, recordType: text(d.recordType),
     rates, rateLabel: text(d.rateLabel), reference: text(d.reference), taxLabel: text(d.taxLabel),
-    photo: typeof row.photo_path === "string" && oohPhotoPathAllowed(row.photo_path), photoKind: d.photoKind === "asset" ? "asset" : "format", dailySpots: number(d.dailySpots), spotSeconds: number(d.spotSeconds) };
+    photo: (!presentation || presentation.kind === "photo") && typeof row.photo_path === "string" && oohPhotoPathAllowed(row.photo_path), photoKind: d.photoKind === "asset" ? "asset" : "format", dailySpots: number(d.dailySpots), spotSeconds: number(d.spotSeconds) };
 }
 export function oohRateUnit(rate: OohRate) {
   const periods: Record<string, string> = { month: "mes", day: "día", week: "semana", year: "año", quarter: "trimestre", "3_months": "3 meses", "6_months": "6 meses", "12_months": "12 meses", event: "evento", campaign: "campaña", one_time: "pago único" };

@@ -18,6 +18,7 @@ import { normalizeCoverageBrief, type CoverageSelection } from "@/lib/geographic
 import {catalogClientContext} from "@/lib/catalog-client-server";
 import { buildResearchRecommendation } from "@/lib/media-strategy-server";
 import { customizeStrategyPlan } from "@/lib/media-strategy";
+import { validPlanPeriod } from "@/lib/brief-inputs";
 
 export type PlanBrief = {
   clientId?:string|null;clientName?:string;
@@ -125,6 +126,9 @@ export async function generarPlan(
   const audience = String(formData.get("audience") ?? "").trim();
   const budgetRaw = String(formData.get("budget") ?? "").trim();
   const budgetUsd = budgetRaw ? Number(budgetRaw) : null;
+  const startDate = String(formData.get("startDate") ?? "");
+  const endDate = String(formData.get("endDate") ?? "");
+  if (!validPlanPeriod(startDate, endDate)) return { ok: false, error: "Selecciona fechas válidas. La fecha final debe ser igual o posterior a la fecha de inicio." };
 
   const selectedMedia = [...new Set(formData.getAll("selectedMedia").map(String))].filter((medium) => ["television", "radio", "ooh", "press", "digital", "influencers"].includes(medium));
   if (!selectedMedia.length) {
@@ -145,8 +149,8 @@ export async function generarPlan(
     sex: String(formData.get("sex") ?? "Todas las personas"),
     socioeconomic: String(formData.get("socioeconomic") ?? "Todos los NSE"),
     ...normalizeCoverageBrief({ geography: String(formData.get("geography") ?? "").trim(), coverage: formData.get("coverage") }),
-    startDate: String(formData.get("startDate") ?? ""),
-    endDate: String(formData.get("endDate") ?? ""),
+    startDate,
+    endDate,
     budgetUsd,
     selectedMedia,
     businessDescription: text(formData, "businessDescription"),

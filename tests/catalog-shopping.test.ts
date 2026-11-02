@@ -60,3 +60,14 @@ test("canonical orders use current server products and reject empty or excessive
  assert.throws(()=>canonicalCatalogOrder([],products));
  assert.throws(()=>canonicalCatalogOrder([{productKey:products[0].key,quantity:99}],[{...products[0],priceCents:1000000000}]));
 });
+test("reference prices produce an estimate without authorizing a firm order or losing their source value",()=>{
+ const reference={...products[0],priceCents:null,referencePriceCents:4321,referenceOnly:true};
+ const picks=[{productKey:reference.key,quantity:3}];
+ const summary=catalogCartSummary(picks,[reference]);
+ assert.equal(summary.estimatedSubtotalCents,12963);assert.equal(summary.knownSubtotalCents,0);assert.equal(summary.totalCents,null);
+ const order=canonicalCatalogOrder(picks,[reference]);
+ assert.equal(order.items[0].unitPriceCents,null);assert.equal(order.items[0].referenceUnitPriceCents,4321);assert.equal(order.totalCents,null);
+ assert.notEqual(catalogQuoteSignature(picks,[reference]),catalogQuoteSignature(picks,[{...reference,referencePriceCents:4322}]));
+ assert.equal(catalogCartSummary(picks,[{...reference,referencePriceCents:null}]).estimatedSubtotalCents,null);
+ assert.throws(()=>catalogCartSummary(picks,[{...reference,referencePriceCents:CART_LIMITS.totalCents}]));
+});
