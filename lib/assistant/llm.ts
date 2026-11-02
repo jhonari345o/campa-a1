@@ -2,7 +2,7 @@ import { BedrockRuntimeClient, ConverseCommand } from "@aws-sdk/client-bedrock-r
 import { getLlmConfiguration } from "./llm-config";
 
 export type LlmMessage = { role: "system" | "user" | "assistant"; content: string };
-type CompletionOptions = { maxTokens?: number; temperature?: number; signal?: AbortSignal; json?: boolean; timeoutMs?: number };
+type CompletionOptions = { maxTokens?: number; temperature?: number; signal?: AbortSignal; json?: boolean; timeoutMs?: number; reasoningEffort?: "low" | "medium" | "high" };
 
 /**
  * Cerebro de Mavi. Soporta proveedores intercambiables:
@@ -24,6 +24,7 @@ export async function chatCompletion(
     model: config.model,
     fallbackModels: config.fallbackModels,
     freeOnly: config.freeOnly,
+    openRouter: true,
     apiKey: process.env.OPENROUTER_API_KEY,
     headers: {
       "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://one.ad-mavericks.com",
@@ -100,6 +101,7 @@ async function openaiChat(
     model: string;
     fallbackModels?: string[];
     freeOnly?: boolean;
+    openRouter?: boolean;
     apiKey?: string;
     headers?: Record<string, string>;
   },
@@ -110,41 +112,59 @@ async function openaiChat(
   const requestTimeoutMs = Number.isFinite(configuredTimeout)
     ? Math.min(25_000, Math.max(5_000, configuredTimeout))
     : 17_000;
-  let res: Response;
-  try {
-    res = await fetch(`${provider.baseUrl.replace(/\/$/, "")}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(provider.apiKey ? { Authorization: `Bearer ${provider.apiKey}` } : {}),
-        ...provider.headers,
-      },
-      body: JSON.stringify({
-        model: provider.model,
-        ...(fallbackModels.length ? { models: [provider.model, ...fallbackModels] } : {}),
-        ...(provider.freeOnly ? { provider: { max_price: { prompt: 0, completion: 0 } } } : {}),
-        ...(opts?.json ? { response_format: { type: "json_object" } } : {}),
-        messages,
-        max_tokens: opts?.maxTokens ?? 1024,
-        temperature: opts?.temperature ?? 0.4,
-        stream: false,
-      }),
-      signal: opts?.signal ? AbortSignal.any([opts.signal, AbortSignal.timeout(requestTimeoutMs)]) : AbortSignal.timeout(requestTimeoutMs),
-    });
-  } catch (error) {
-    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
-      throw new Error("PROVIDER_TIMEOUT");
+  // One deadline covers inference, response reading and a possible free retry.
+  const signal = opts?.signal ? AbortSignal.any([opts.signal, AbortSignal.timeout(requestTimeoutMs)]) : AbortSignal.timeout(requestTimeoutMs);
+  let models = [provider.model, ...fallbackModels];
+  const deadline = Date.now() + requestTimeoutMs;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let res: Response;
+    try {
+      signal.throwIfAborted();
+      res = await fetch(`${provider.baseUrl.replace(/\/$/, "")}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(provider.apiKey ? { Authorization: `Bearer ${provider.apiKey}` } : {}),
+          ...provider.headers,
+        },
+        body: JSON.stringify({
+          model: models[0],
+          ...(models.length > 1 ? { models } : {}),
+          ...(provider.freeOnly ? { provider: { max_price: { prompt: 0, completion: 0 } } } : {}),
+          ...(opts?.json ? { response_format: { type: "json_object" } } : {}),
+          ...(provider.openRouter && opts?.reasoningEffort ? { reasoning: { effort: opts.reasoningEffort, exclude: true } } : {}),
+          messages,
+          max_tokens: opts?.maxTokens ?? 1024,
+          temperature: opts?.temperature ?? 0.4,
+          stream: false,
+        }),
+        signal,
+      });
+    } catch (error) {
+      if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+        throw new Error("PROVIDER_TIMEOUT");
+      }
+      throw error;
     }
-    throw error;
+    if (!res.ok) {
+      // El cuerpo del proveedor puede contener detalles de cuenta. Registramos
+      // únicamente el estado HTTP para diagnosticar sin filtrar credenciales.
+      throw new Error(`PROVIDER_HTTP_${res.status}`);
+    }
+    const data = (await res.json()) as { model?: string; choices?: { finish_reason?: string; message?: { content?: string } }[] };
+    if (data.choices?.[0]?.finish_reason === "length") {
+      // HTTP 200 with incomplete content does not trigger OpenRouter's normal
+      // error fallback. Retry once within the same deadline, only in the free pool.
+      const remaining = models.slice(1).filter(model => model !== data.model);
+      if (provider.openRouter && provider.freeOnly && attempt === 0 && remaining.length && !signal.aborted && deadline - Date.now() >= 5000) {
+        models = remaining;
+        continue;
+      }
+      throw new Error("PROVIDER_OUTPUT_TRUNCATED");
+    }
+    const reply = data.choices?.[0]?.message?.content;
+    if (typeof reply !== "string") throw new Error("Respuesta inesperada del modelo.");
+    return reply.trim();
   }
-  if (!res.ok) {
-    // El cuerpo del proveedor puede contener detalles de cuenta. Registramos
-    // únicamente el estado HTTP para diagnosticar sin filtrar credenciales.
-    throw new Error(`PROVIDER_HTTP_${res.status}`);
-  }
-  const data = (await res.json()) as { choices?: { finish_reason?: string; message?: { content?: string } }[] };
-  if (data.choices?.[0]?.finish_reason === "length") throw new Error("PROVIDER_OUTPUT_TRUNCATED");
-  const reply = data.choices?.[0]?.message?.content;
-  if (typeof reply !== "string") throw new Error("Respuesta inesperada del modelo.");
-  return reply.trim();
+  throw new Error("PROVIDER_OUTPUT_TRUNCATED");
 }
