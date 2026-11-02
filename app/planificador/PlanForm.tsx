@@ -13,7 +13,7 @@ import { formatBudgetInput } from "@/lib/brief-inputs";
 import { restoreResearch } from "@/lib/infomedia";
 import type { CategoryCatalog } from "@/lib/infomedia-server";
 import type { ReactNode } from "react";
-import { enviarPlanParaRevision, aprobarPlan, generarPlan, completarPlan, guardarPlan, type PlanResult } from "./actions";
+import { enviarPlanParaRevision, aprobarPlan, guardarPlan, type PlanResult } from "./actions";
 import type { PlanRow } from "@/lib/planner";
 import { mediaGroupForLabel } from "@/lib/media-groups";
 import type { Campaign } from "@/lib/campaigns";
@@ -40,10 +40,15 @@ const pct = (n: number) => `${(n * 100).toFixed(0)}%`;
 export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, workspaceName = "Ad Mavericks" }: { initialPlan?: SavedMediaPlan | null; categoryCatalog: CategoryCatalog; canApprove?: boolean; workspaceName?: string }) {
   const savedResearch = restoreResearch(initialPlan?.analysis?.research);
   const initialBrief = initialPlan?.brief ?? {};
-  const [state, formAction, pending] = useActionState<PlanResult | null, FormData>(async (previous, data) => {
+  const [state, formAction, pending] = useActionState<PlanResult | null, FormData>(async (_previous, data) => {
     try {
-      const prepared=await generarPlan(previous, data);
-      return prepared.ok?await completarPlan(prepared.preparation):prepared;
+      const send=async<T,>(body:unknown):Promise<T>=>{
+        const response=await fetch("/api/planning",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",cache:"no-store",body:JSON.stringify(body)});
+        if(!response.headers.get("content-type")?.includes("application/json"))throw new Error("PLANNING_TRANSPORT");
+        return response.json() as Promise<T>;
+      };
+      const prepared=await send<{ok:true;preparation:string}|{ok:false;error:string}>({phase:"prepare",fields:[...data.entries()]});
+      return prepared.ok?await send<PlanResult>({phase:"complete",preparation:prepared.preparation}):prepared;
     } catch {
       return { ok: false, error: "La conexión con el servidor se interrumpió. Tu brief sigue aquí; vuelve a intentarlo en unos momentos." };
     }
