@@ -54,6 +54,11 @@ test("a directory frequency does not split the account tariff from the station d
   assert.equal(rows.length,1);assert.equal(rows[0].key,negotiated.key);assert.equal(rows[0].source.stationId,"station-a");assert.equal(rows[0].priceCents,3800);
   assert.equal(radioProviderKey("i99 98.9 FM"),"i99");assert.notEqual(radioProviderKey("104.5 FM"),radioProviderKey("105.7 FM"));
 });
+test("Spanish and English stereo spelling do not create two customer tariffs for the same station", () => {
+  const own={...product("radio:workspace:own"),provider:"Example Stereo"}, history={...product("radio:workspace:history"),provider:"Radio Example Estéreo"};
+  const rows=scopeCatalogProducts([own,history],[rate(own.key,"client","2026-11-01",3800),rate(history.key,"client","2026-10-01",4200)],"2026-11-01",false);
+  assert.equal(accountRadioGroups(rows).length,1);assert.equal(rows.length,1);assert.equal(rows[0].key,own.key);assert.equal(rows[0].priceCents,3800);
+});
 
 test("private evidence becomes bounded selection hints and cannot appear in the customer projection", () => {
   const p = product("radio:workspace:a");
