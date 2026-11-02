@@ -151,3 +151,14 @@ test("an already cancelled request never reaches a provider", async () => {
     assert.equal(requests.length, 0);
   });
 });
+test("structured response contracts survive fallback and require compatible zero-priced endpoints",async()=>{
+  const responseSchema={name:"media_strategy",schema:{type:"object",additionalProperties:false,properties:{medium:{type:"string",enum:["television"]}},required:["medium"]}};
+  await mockProvider([Response.json({error:{message:"Unknown model"}},{status:400}),Response.json({choices:[{finish_reason:"stop",message:{content:'{"medium":"television"}'}}]})],async requests=>{
+    assert.equal(await chatCompletion([{role:"user",content:"Return JSON"}],{json:true,responseSchema}),'{"medium":"television"}');
+    assert.equal(requests.length,2);
+    for(const request of requests){
+      assert.deepEqual(request.body.response_format,{type:"json_schema",json_schema:{...responseSchema,strict:true}});
+      assert.deepEqual(request.body.provider,{max_price:{prompt:0,completion:0},require_parameters:true});
+    }
+  });
+});
