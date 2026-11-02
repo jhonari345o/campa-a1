@@ -3,7 +3,7 @@ import { mediaGroupLabel } from "./plan-optimizer";
 import type { MediaPlan, PlanRow } from "./planner";
 import type { StrategyBrief, StrategyCandidate, StrategyEvidenceBundle } from "./media-strategy-evidence";
 
-export const STRATEGY_VERSION = "2026-11-02.7";
+export const STRATEGY_VERSION = "2026-11-02.8";
 export type StrategyAiState = "validated" | "cached" | "not_configured" | "quota" | "unavailable" | "rejected";
 export type StrategyAdvice = {
   summary: string;
@@ -130,7 +130,12 @@ export function strategyCandidatePool(bundle:StrategyEvidenceBundle,medium:Media
       const period=(key:string)=>{const c=measured.find(c=>c.cohort===key);return bundle.sources.find(s=>c?.sourceIds.includes(s.id)&&s.kind==="rating")?.period.slice(-10)??"";};
       return period(b).localeCompare(period(a))||a.localeCompare(b);
     });
-    if(cohorts.length)return [...measured.filter(c=>c.cohort===cohorts[0]).sort((a,b)=>candidateSort(a,b,brief)),...all.filter(c=>!measured.includes(c)).sort((a,b)=>candidateSort(a,b,brief))];
+    // Preserve every applicable market/study. Taking only the newest cohort can
+    // silently remove a requested plaza before the AI sees any of its channels.
+    const groups=cohorts.map(cohort=>measured.filter(c=>c.cohort===cohort).sort((a,b)=>candidateSort(a,b,brief)));
+    const ranked:StrategyCandidate[]=[];
+    for(let i=0;i<Math.max(0,...groups.map(g=>g.length));i++)for(const group of groups)if(group[i])ranked.push(group[i]);
+    if(ranked.length)return [...ranked,...all.filter(c=>!measured.includes(c)).sort((a,b)=>candidateSort(a,b,brief))];
   }
   return all.sort((a,b)=>candidateSort(a,b,brief));
 }

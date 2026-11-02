@@ -11,6 +11,25 @@ import { buildCurrentCampaigns } from "../lib/campaigns";
 import type { OohAsset } from "../lib/ooh-catalog";
 
 const date="2026-10-31";
+test("TV recommendations retain each applicable plaza and study in the bounded AI selection",async()=>{
+  const brief=strategyBrief({selectedMedia:["television"],priority:"Eficiencia"}),bundle=buildStrategyEvidence(brief,strategyResearch,strategyCatalogs(),date);
+  const sample=bundle.candidates[0];
+  bundle.candidates=[];
+  for(const [cohort,market,period,rating] of [["gye","Guayaquil","2026-10-02",2],["uio","Quito","2026-10-02",9],["prior","Guayaquil y Quito","2026-09-27",1]] as const){
+    const sourceId=`tv-audience:${cohort}`;
+    bundle.sources.push({id:sourceId,kind:"rating",label:"Estudio sintético",period,market,target:"Adultos",use:"comparable",note:""});
+    for(let i=0;i<10;i++)bundle.candidates.push({...sample,id:`${cohort}:${i}`,cohort,market,sourceIds:[sourceId],unitPriceUsd:10+i,metrics:[{label:"Rating",value:rating,unit:"puntos",sourceId}]});
+  }
+  const pool=strategyCandidatePool(bundle,"television",brief);
+  assert.equal(pool.length,30);
+  assert.deepEqual(pool.slice(0,6).map(c=>c.id),["gye:0","uio:0","prior:0","gye:1","uio:1","prior:1"]);
+  const baseline=await buildMediaPlan({...brief,research:strategyResearch});
+  const payload=strategyAiPayload(brief,bundle,baseline);
+  assert.equal(payload.evidence.candidates.length,8);
+  assert.deepEqual(new Set(payload.evidence.candidates.map(c=>c.market)),new Set(["Guayaquil","Quito","Guayaquil y Quito"]));
+  const advice={summary:"Combina las plazas solicitadas.",allocations:[{medium:"television",weight:10000,rationale:"Conserva presencia en ambas ciudades.",evidenceIds:["tv-audience:gye","tv-audience:uio"],candidateIds:["gye:0","uio:0"]}]};
+  assert.ok(parseStrategyAdvice(JSON.stringify(advice),brief,bundle));
+});
 test("account TV prices retain current programme ratings without an undiscounted duplicate",()=>{
   const catalogs=strategyCatalogs();
   const key=`tv:${tvSource.id}:synthetic-program`;
