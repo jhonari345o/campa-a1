@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { accountRadioGroups, radioRatePreference } from "../lib/account-radio-tariffs";
+import { accountRadioGroups, radioProviderKey, radioRatePreference } from "../lib/account-radio-tariffs";
 import { scopeCatalogProducts, type AgreedCatalogRate } from "../lib/catalog-pricing";
 import { catalogCartSummary, type CatalogProduct } from "../lib/catalog-shopping";
 
@@ -45,6 +45,14 @@ test("linked names and unlinked spelling variants share one station tariff; othe
   const press = { ...product("press:workspace:test"), kind: "press" as const };
   const rows = scopeCatalogProducts([a, b, c, press], [rate(a.key, "client", "2026-09-01", 4000), rate(b.key, "client", "2026-10-01", 4400)], "2026-11-01", false);
   assert.equal(rows.filter(p => p.kind === "radio").length, 1); assert.equal(rows.find(p => p.kind === "radio")!.key, b.key); assert.ok(rows.some(p => p.key === press.key));
+  assert.equal(rows.find(p => p.kind === "radio")!.source.stationId,"station-a");
+});
+test("a directory frequency does not split the account tariff from the station detail", () => {
+  const directory = { ...product("radio:station-a:quote"), provider: "Radio Example Station 104.5 FM", source: { stationId: "station-a" } };
+  const negotiated = product("radio:workspace:negotiated");
+  const rows = scopeCatalogProducts([directory,negotiated], [rate(negotiated.key,"client","2026-10-01",3800)], "2026-11-01", false);
+  assert.equal(rows.length,1);assert.equal(rows[0].key,negotiated.key);assert.equal(rows[0].source.stationId,"station-a");assert.equal(rows[0].priceCents,3800);
+  assert.equal(radioProviderKey("i99 98.9 FM"),"i99");assert.notEqual(radioProviderKey("104.5 FM"),radioProviderKey("105.7 FM"));
 });
 
 test("private evidence becomes bounded selection hints and cannot appear in the customer projection", () => {
