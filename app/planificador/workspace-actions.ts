@@ -2,7 +2,7 @@
 import {catalogClientContext} from "@/lib/catalog-client-server";
 import {normalizeCatalogPicks} from "@/lib/catalog-shopping";
 import {readShoppingProducts} from "@/lib/catalog-shopping-server";
-import {applyDiyTvPrices} from "@/lib/diy-tv-pricing";
+import {diyTvRequests,diyTvResolver} from "@/lib/diy-tv-pricing";
 import {resolveDiyCatalog} from "@/lib/diy-catalog";
 
 
@@ -133,16 +133,16 @@ export async function guardarPlanManual(input: ManualPlanDraft): Promise<SaveRes
     selectedMedia.includes("ooh") ? getOohLocationCatalog() : Promise.resolve([]),
     selectedMedia.includes("influencers") ? getInfluencerCatalog() : Promise.resolve([]),
   ]);
-  const checked = validateBroadcastSelections(broadcast, {...brief, socioeconomic:"Todos los NSE"}, {
-    tv: selectedMedia.includes("television") ? rawSelections.tv : [],
-    radio: selectedMedia.includes("radio") ? rawSelections.radio : [],
-  });
-  if (!checked.ok) return checked;
+  const tvInput=selectedMedia.includes("television") ? rawSelections.tv??[] : [];
+  let tvProducts:Awaited<ReturnType<typeof readShoppingProducts>>=[];
   try {
-    const tv=checked.selections.tv as {id:string;sourceId:string;quantity:number}[];
-    const products=tv.length?await readShoppingProducts(tv.map(p=>({productKey:`tv:${p.sourceId}:${p.id}`,quantity:p.quantity}))):[];
-    checked.selections.tv=applyDiyTvPrices(tv,{...brief,socioeconomic:"Todos los NSE"},products);
-  }catch{return {ok:false,error:"No se pudieron consultar las tarifas de televisión de tu cuenta."};}
+    const requests=diyTvRequests(broadcast,tvInput);
+    tvProducts=requests.length?await readShoppingProducts(requests):[];
+  }catch{return {ok:false,error:"Selecciona nuevamente los programas y cantidades del catálogo de tu cuenta."};}
+  const checked = validateBroadcastSelections(broadcast, {...brief, socioeconomic:"Todos los NSE"}, {
+    tv:tvInput,radio:selectedMedia.includes("radio")?rawSelections.radio:[],
+  },diyTvResolver(brief,tvProducts));
+  if (!checked.ok) return checked;
 
   const checkedPress = validatePressPicks(press, selectedMedia.includes("press") ? rawSelections.press ?? [] : [], brief);
   if (!checkedPress.ok) return checkedPress;

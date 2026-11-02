@@ -2,7 +2,7 @@ import { BedrockRuntimeClient, ConverseCommand } from "@aws-sdk/client-bedrock-r
 import { getLlmConfiguration } from "./llm-config";
 
 export type LlmMessage = { role: "system" | "user" | "assistant"; content: string };
-type CompletionOptions = { maxTokens?: number; temperature?: number; signal?: AbortSignal; json?: boolean; timeoutMs?: number; reasoningEffort?: "low" | "medium" | "high"; reasoningEnabled?: boolean };
+type CompletionOptions = { maxTokens?: number; temperature?: number; signal?: AbortSignal; json?: boolean; responseSchema?: {name:string;schema:Record<string,unknown>}; timeoutMs?: number; reasoningEffort?: "low" | "medium" | "high"; reasoningEnabled?: boolean };
 
 /** Retain a bounded diagnosis, never the provider's raw account/prompt details. */
 async function providerErrorCode(res: Response): Promise<string> {
@@ -146,8 +146,8 @@ async function openaiChat(
         body: JSON.stringify({
           model: models[0],
           ...(models.length > 1 ? { models } : {}),
-          ...(provider.freeOnly ? { provider: { max_price: { prompt: 0, completion: 0 } } } : {}),
-          ...(opts?.json ? { response_format: { type: "json_object" } } : {}),
+          ...(provider.freeOnly||provider.openRouter&&opts?.responseSchema ? { provider: { ...(provider.freeOnly?{max_price: { prompt: 0, completion: 0 }}:{}),...(opts?.responseSchema?{require_parameters:true}:{}) } } : {}),
+          ...(opts?.responseSchema ? {response_format:{type:"json_schema",json_schema:{...opts.responseSchema,strict:true}}} : opts?.json ? { response_format: { type: "json_object" } } : {}),
           ...(provider.openRouter && opts?.reasoningEnabled===false ? { reasoning: { enabled:false } } : provider.openRouter && opts?.reasoningEffort ? { reasoning: { effort: opts.reasoningEffort, exclude: true } } : {}),
           messages,
           max_tokens: opts?.maxTokens ?? 1024,
