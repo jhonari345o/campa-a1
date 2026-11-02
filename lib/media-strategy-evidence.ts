@@ -190,7 +190,13 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
   for(const c of candidates.filter(c=>c.medium==="television"&&c.catalogKey&&c.id.startsWith("workspace:"))){
     const p=catalogs.workspaceProducts?.find(p=>p.key===c.catalogKey);
     if(!p)continue;
-    const study=catalogs.tvAudience.filter(s=>{const local=planningStudyBrief(s.marketKeys,brief);return (s.offerIds.includes(p.key)||Boolean(p.source.offerId&&s.offerIds.includes(p.source.offerId)))&&local&&tvAudienceApplies(s,{...brief,...local},asOf);}).sort((a,b)=>b.periodEnd.localeCompare(a.periodEnd))[0];
+    const study=catalogs.tvAudience.filter(s=>{
+      // Most studies belong to another programme. Reject those before resolving
+      // the Ecuador territory hierarchy for every account-product/study pair.
+      if(!s.offerIds.includes(p.key)&&!(p.source.offerId&&s.offerIds.includes(p.source.offerId)))return false;
+      const local=planningStudyBrief(s.marketKeys,brief);
+      return local&&tvAudienceApplies(s,{...brief,...local},asOf);
+    }).sort((a,b)=>b.periodEnd.localeCompare(a.periodEnd))[0];
     if(!study||study.ratingPct==null)continue;
     const sid=addSource({id:`tv-rating:${study.id}`,kind:"rating",label:study.study,period:`${study.periodStart} – ${study.periodEnd}`,market:study.market,target:study.target,use:"comparable",note:"Promedio del programa para su plaza y público."});
     c.metrics=[{label:"Rating",value:study.ratingPct,unit:"%",sourceId:sid}];c.sourceIds.push(sid);c.target=study.target;c.cohort=JSON.stringify([study.study,study.periodStart,study.periodEnd,study.marketKeys,study.target]);
