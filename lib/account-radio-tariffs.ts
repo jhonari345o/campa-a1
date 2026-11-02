@@ -13,7 +13,12 @@ export function radioRatePreference(evidence: unknown, clientSpecific: boolean):
   return { origin: /cne\s+fallback/i.test(priority) ? "fallback" : priority ? "client" : "unspecified", observedOn: date(clarification.confirmed_on) || date(source.sent_on), clientSpecific };
 }
 
-export const radioProviderKey = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\b(radio|fm|am)\b/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
+export const radioProviderKey = (value: string) => {
+  const clean = (s: string) => s.replace(/\b(radio|fm|am)\b/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
+  const normalized = value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const withoutDial = clean(normalized.replace(/\b\d{2,3}[.,]\d+(?:\s*(?:fm|am))?\b/g, " ").replace(/\b\d{3,4}\s*(?:fm|am)\b/g, " "));
+  return /[a-z]/.test(withoutDial) ? withoutDial : clean(normalized);
+};
 const originRank = { client: 3, unspecified: 2, fallback: 1 };
 
 export function accountRadioGroups(products: CatalogProduct[]): CatalogProduct[][] {
@@ -61,8 +66,11 @@ export function selectAccountRadioTariffs(products: CatalogProduct[], rates: Agr
       const key = JSON.stringify([p.name, p.format, p.unit, p.location].map(s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim()));
       formats.set(key, [...(formats.get(key) ?? []), p]);
     }
+    const stationIds = [...new Set(rows.flatMap(p => p.source.stationId ? [p.source.stationId] : []))];
     for (const sameFormat of formats.values()) {
-      const first = sameFormat[0], amount = (p: CatalogProduct) => p.priceCents ?? p.referencePriceCents ?? null;
+      const raw = sameFormat[0];
+      const first = !raw.source.stationId && stationIds.length === 1 ? { ...raw, source: { ...raw.source, stationId: stationIds[0] } } : raw;
+      const amount = (p: CatalogProduct) => p.priceCents ?? p.referencePriceCents ?? null;
       const conflict = sameFormat.some(p => amount(first) != null && amount(p) != null && amount(first) !== amount(p));
       if (conflict) {
         const { agreementId: _agreement, ...source } = first.source; void _agreement;
