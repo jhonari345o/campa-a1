@@ -1,0 +1,55 @@
+.heading { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; }
+.eyebrow { color:var(--signal-dark); font-size:11px; font-weight:900; letter-spacing:.14em; text-transform:uppercase; }
+.heading h2 { margin-top:8px; color:var(--forest); font-size:clamp(28px,3vw,38px); font-weight:900; letter-spacing:-.04em; scroll-margin-top:240px; }
+.heading p:not(.eyebrow) { max-width:620px; margin-top:10px; color:var(--muted); font-size:14px; line-height:1.7; }
+.count { flex:none; border:1px solid var(--border); border-radius:999px; background:var(--fog); padding:10px 14px; font-size:12px; font-weight:800; }
+.channels { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; margin-top:28px; }
+.channel { display:flex; min-width:0; min-height:260px; flex-direction:column; align-items:flex-start; overflow:hidden; border:1px solid var(--border); border-radius:22px; background:linear-gradient(145deg,#fff,var(--fog)); padding:24px; color:var(--forest); text-align:left; transition:box-shadow .15s,border-color .15s,transform .15s; }
+.channel:hover { transform:translateY(-3px); border-color:var(--signal-dark); box-shadow:0 10px 30px rgb(33 30 27 / 10%); }
+.channel[aria-pressed=true] { border-color:#007d00; background:#eaf3e4; box-shadow:inset 0 -4px 0 #007d00; }
+.compactChannels { grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+.compactChannels .channel { min-height:170px; align-items:center; padding:16px 12px; text-align:center; }
+.compactChannels .channel strong { margin-top:12px; font-size:14px; }
+.compactChannels .channel > span:not(.logo) { font-size:10px; }
+.compactChannels .logo { width:120px; height:70px; }
+.tariffPanel { margin-top:28px; }
+.logo { position:relative; display:grid; width:160px; max-width:100%; height:88px; place-items:center; border:1px solid #e7e1d9; border-radius:16px; background:#fff; }
+.logo svg,.heroLogo svg { width:50px; height:50px; color:#236342; }
+.channel strong { margin-top:20px; font-size:21px; font-weight:900; }
+.channel > span:not(.logo) { margin-top:6px; color:var(--muted); font-size:12px; }
+.channel > b { display:block; width:100%; margin-top:auto; border-top:1px solid var(--border); padding-top:18px; color:var(--signal-dark); font-size:13px; }
+.breadcrumb { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:20px 0; color:var(--muted); font-size:13px; }
+.breadcrumb button { min-height:44px; color:var(--signal-dark); font-weight:800; }
+.channelHero { display:flex; align-items:center; gap:26px; overflow:hidden; border-radius:22px; background:linear-gradient(120deg,#211e1b,#3b332d); padding:28px; color:#fff9ef; }
+.heroLogo { position:relative; display:grid; width:170px; height:110px; flex:none; place-items:center; border-radius:16px; background:#fff; }
+.channelHero > div > span { color:#e3c4a0; font-size:11px; font-weight:900; letter-spacing:.1em; text-transform:uppercase; }
+.channelHero h3 { margin-top:7px; font-size:30px; font-weight:900; }
+.channelHero p { margin-top:9px; color:#ded5ca; font-size:13px; line-height:1.6; }
+.markets { display:flex; flex-wrap:wrap; gap:10px; margin:24px 0 16px; }
+.markets button { display:flex; min-height:54px; align-items:center; gap:12px; border:1px solid var(--border); border-radius:14px; background:#fff; padding:10px 20px; color:var(--forest); font-size:14px; font-weight:900; }
+.markets button > span { font-size:10px; letter-spacing:.08em; }
+.markets button[aria-pressed=true] { border-color:#322d2a; background:#322d2a; color:#fff9ef; box-shadow:inset 0 -3px 0 #00a100; }
+.editions { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; }
+.editions button { min-height:44px; border:1px solid var(--border); border-radius:10px; padding:10px 14px; color:var(--muted); font-size:12px; font-weight:700; }
+.editions button[aria-pressed=true] { border-color:#296132; background:#e8f3e2; color:#235c2f; }
+.search { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:18px; margin:20px 0; }
+.search label { flex:1 1 240px; color:var(--forest); font-size:13px; font-weight:800; }
+.search input { display:block; width:100%; min-height:48px; margin-top:9px; border:1px solid var(--border); border-radius:12px; background:var(--fog); padding:12px 16px; font-size:14px; font-weight:400; }
+.search > span { padding-bottom:14px; color:var(--muted); font-size:12px; }
+.offers { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch; gap:16px; }
+.offer { display:flex; min-width:0; flex-direction:column; border:1px solid var(--border); border-radius:20px; background:#fff; padding:22px; }
+.offer header { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; }
+.offer header span { border-radius:999px; background:#e8f3e2; padding:6px 10px; color:#235c2f; font-size:10px; font-weight:900; }
+.offer header small { color:var(--muted); font-size:11px; }
+.offer h4 { margin-top:16px; color:var(--forest); font-size:20px; font-weight:900; overflow-wrap:anywhere; }
+.format { margin-top:8px; color:var(--muted); font-size:13px; line-height:1.6; }
+.price { margin-top:22px; color:var(--forest); }
+.price > strong { font-size:27px; }
+.reference { margin-top:16px; color:var(--muted); font-size:11px; line-height:1.6; }
+.conditions { margin:10px 0 14px; color:var(--muted); font-size:12px; line-height:1.6; }
+.buy { margin-top:auto; padding-top:16px; }
+.empty { margin-top:24px; border:1px dashed var(--border); border-radius:18px; background:var(--fog); padding:24px; color:var(--muted); font-size:14px; line-height:1.7; }
+.channel:focus-visible,.markets button:focus-visible,.editions button:focus-visible,.breadcrumb button:focus-visible,.search input:focus-visible { outline:3px solid var(--signal-dark); outline-offset:3px; }
+@media(max-width:1100px) { .channels { grid-template-columns:repeat(2,minmax(0,1fr)); } .compactChannels { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:650px) { .heading { flex-direction:column; } .heading h2 { scroll-margin-top:340px; } .channels,.offers { grid-template-columns:1fr; } .compactChannels { grid-template-columns:repeat(2,minmax(0,1fr)); } .channelHero { flex-direction:column; align-items:flex-start; padding:22px; } .channel { min-height:250px; } .markets button { flex:1 1 135px; padding:10px 14px; } }
+@media(prefers-reduced-motion:reduce) { .channel { transition:none; } .channel:hover { transform:none; } }

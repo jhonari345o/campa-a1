@@ -8,7 +8,7 @@ export type PressOffer = {
 };
 export type PressEdition = {
   id: string; label: string; period: string; validFrom: string | null; validTo: string | null;
-  taxIncluded: boolean | null; conditions: string[]; offers: PressOffer[];
+  taxIncluded: boolean | null; conditions: string[]; offers: PressOffer[]; publishedTariff?: boolean;
 };
 export type PressEntry = {
   id: string; name: string; regionKeys: string[]; city: string | null; description: string;
@@ -55,7 +55,7 @@ export function projectPressCatalog(value: unknown): PressEntry[] {
         const price = typeof offer.priceUsd === "number" && Number.isFinite(offer.priceUsd) && offer.priceUsd >= 0 && offer.priceUsd <= 10_000_000 ? offer.priceUsd : null;
         offers.set(offerId, { id: offerId, name: offerName, group: text(offer.group) || "Formatos", specs: text(offer.specs, 600), market: text(offer.market, 300), marketOptions: list(offer.marketOptions, 25).map(keys => [...new Set(strings(keys, 25, 80))]), target: text(offer.target) || "No segmentado en la fuente", unit: offer.unit as PressOffer["unit"], priceUsd: price, duration: text(offer.duration), notes: text(offer.notes, 900) });
       }
-      editions.push({ id: editionId, label: text(edition.label), period: text(edition.period), validFrom, validTo, taxIncluded: typeof edition.taxIncluded === "boolean" ? edition.taxIncluded : null, conditions: strings(edition.conditions, 20, 600), offers: [...offers.values()] });
+      editions.push({ id: editionId, label: text(edition.label), period: text(edition.period), validFrom, validTo, taxIncluded: typeof edition.taxIncluded === "boolean" ? edition.taxIncluded : null, conditions: strings(edition.conditions, 20, 600), offers: [...offers.values()], ...(edition.publishedTariff === true ? { publishedTariff: true } : {}) });
     }
     const logo = text(row.logo_path);
     let website: string | null = null;

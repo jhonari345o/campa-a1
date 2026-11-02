@@ -6,7 +6,7 @@ export function catalogReferenceDisclosure(product: CatalogProduct) {
   const undeclared = /vigencia no declarada|sin vigencia declarada/i.test(product.referenceLabel ?? "");
   const hasDeclaredPeriod = Boolean(product.validFrom && product.validTo) && !undeclared;
   return {
-    label: product.referenceOnly && !hasDeclaredPeriod ? "Última tarifa negociada" : "Tarifa del período",
+    label: /^Tarifa publicada/.test(product.referenceLabel ?? "") ? "Tarifa publicada" : product.referenceOnly && !hasDeclaredPeriod ? "Última tarifa negociada" : "Tarifa del período",
     priceCents: product.referencePriceCents,
     confirmation: "Reconfirmar con el medio antes de aprobar la compra.",
   };

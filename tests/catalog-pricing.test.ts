@@ -56,3 +56,13 @@ test("current firm prices and missing references never receive a historical-rate
  const freeReference={...base,priceCents:null,referencePriceCents:0,referenceOnly:true};
  assert.equal(catalogReferenceDisclosure(freeReference)?.priceCents,0);
 });
+test("published press prices are separate references and never reveal private acquisition rates or override an account agreement",()=>{
+ const published:CatalogProduct={...base,key:"press:synthetic:publication:offer",kind:"press",priceCents:null,referencePriceCents:45600,referenceLabel:"Tarifa publicada · desde 01/03/2025",source:{publicationId:"synthetic",editionId:"publication",offerId:"offer",publishedTariff:true},validFrom:"2025-03-01",validTo:null};
+ const [reference]=scopeCatalogProducts([published],[],"2026-11-02",false);
+ assert.equal(reference.priceCents,null);assert.equal(reference.referencePriceCents,45600);assert.equal(reference.taxIncluded,false);assert.equal(reference.validTo,null);
+ assert.equal(catalogReferenceDisclosure(reference)?.label,"Tarifa publicada");
+ const [negotiated]=scopeCatalogProducts([published],[{...rate,productKey:published.key,validTo:"2026-12-31",priceCents:32100,taxIncluded:null}],"2026-11-02",false);
+ assert.equal(negotiated.priceCents,32100);assert.equal(negotiated.referencePriceCents,null);assert.equal(negotiated.taxIncluded,null);
+ const [privatePrice]=scopeCatalogProducts([{...base,kind:"press",source:{publicationId:"synthetic"}}],[],"2026-11-02",false);
+ assert.equal(privatePrice.referencePriceCents,null);assert.ok(!JSON.stringify(privatePrice).includes("1234.56"));
+});

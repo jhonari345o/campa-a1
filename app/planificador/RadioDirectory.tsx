@@ -46,7 +46,7 @@ export function RadioDirectoryPanel({ directory, broadcast }: { directory: Radio
             return <button key={item.key} type="button" className={item.key === "national" ? styles.national : styles.province} onClick={() => selectRegion(item.key)}>
               {landscape && <span className={styles.landscape} aria-hidden="true"><Image src={landscape.path} alt="" fill sizes="(max-width:600px) 220px, 300px" className="object-cover" /></span>}
               <span className={styles.regionIcon} aria-hidden="true">{item.key === "national" ? <RadioIcon /> : <LocationIcon />}</span>
-              <span className={styles.regionCopy}><strong>{item.label}</strong><span>{countLabel(count)}</span>{landscape && <small>{landscape.label}</small>}</span><span aria-hidden="true" className={styles.arrow}>→</span>
+              <span className={styles.regionCopy}><strong>{item.label}</strong><span>{countLabel(count)}</span></span><span aria-hidden="true" className={styles.arrow}>→</span>
             </button>;
           })}
         </div>

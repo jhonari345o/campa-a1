@@ -1,0 +1,25 @@
+.field { position:relative; min-width:0; }
+.field > label { display:block; margin-bottom:10px; color:var(--forest); font-size:14px; font-weight:800; }
+.inputWrap { display:flex; min-width:0; min-height:56px; align-items:center; border:1px solid var(--workspace-border,#dcd4ca); border-radius:14px; background:var(--fog); }
+.inputWrap:focus-within { border-color:var(--signal-dark); box-shadow:0 0 0 3px rgb(0 125 0 / 12%); }
+.inputWrap input { min-width:0; width:100%; min-height:56px; border:0; border-radius:14px; outline:none; background:transparent; padding:14px 16px; color:var(--forest); font-size:16px; font-weight:500; }
+.calendarButton { display:grid; width:48px; min-height:48px; flex:none; place-items:center; margin-right:4px; border-radius:10px; color:var(--forest); }
+.calendarButton svg { width:23px; height:23px; }
+.calendarButton:hover { background:#e4ecdf; }
+.budget > span { padding-left:18px; color:var(--forest); font-size:20px; font-weight:800; }
+.budget input { padding-left:9px; }
+.error { display:block; margin-top:8px; color:#933d2e; font-size:12px; line-height:1.5; }
+.calendar { position:absolute; z-index:60; top:calc(100% + 8px); left:0; width:min(336px,calc(100vw - 48px)); overflow:hidden; border:1px solid #dcd4ca; border-radius:20px; background:#fffefa; padding:14px; color:#322d2a; box-shadow:0 20px 60px rgb(33 30 27 / 20%); }
+.calendar header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.calendar header strong { font-size:15px; }
+.calendar header button { width:42px; height:42px; border-radius:12px; font-size:20px; }
+.weekdays,.days { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); }
+.weekdays span { padding:10px 0; color:#6c625a; text-align:center; font-size:12px; font-weight:800; }
+.days button { min-width:0; min-height:40px; border-radius:11px; font-size:14px; font-weight:600; }
+.days button:hover:not(:disabled),.calendar header button:hover { background:#e8f3e2; }
+.days button[aria-pressed=true] { background:#322d2a; color:#fffefa; font-weight:900; }
+.days button:disabled { color:#afa79f; cursor:default; }
+.calendar footer { display:flex; align-items:center; justify-content:space-between; margin-top:10px; border-top:1px solid #e9e1d7; padding:10px 2px 0; color:#6c625a; font-size:12px; }
+.calendar footer button { min-height:40px; padding:6px 12px; color:#326335; font-weight:800; }
+.calendar button:focus-visible,.calendarButton:focus-visible { outline:3px solid #007d00; outline-offset:1px; }
+@media(max-width:600px) { .calendar { width:min(336px,100%); } .days button { min-height:40px; } }

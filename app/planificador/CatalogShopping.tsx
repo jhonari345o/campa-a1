@@ -4,6 +4,8 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import { CART_LIMITS, catalogCartSummary, catalogQuoteSignature, changeCatalogQuantity, type CatalogCart, type CatalogPick, type CatalogProduct } from "@/lib/catalog-shopping";
 import { catalogReferenceDisclosure } from "@/lib/catalog-rate-display";
 import { radioProviderKey } from "@/lib/account-radio-tariffs";
+import { digitalBudgetKey, digitalBudgetProduct, digitalGoalsForPlatform } from "@/lib/digital-budget";
+import { formatBudgetInput, parseBudgetInput } from "@/lib/brief-inputs";
 import { loadCatalogSelection, saveCatalogSelection, submitCatalogSelection } from "./catalog-actions";
 import styles from "./CatalogShopping.module.css";
 
@@ -13,23 +15,25 @@ type ShoppingState = {
   canRequest: boolean; companies: ShoppingCompany[]; isAdmin: boolean;
   change: (key: string, delta: number) => void; remove: (key: string) => void;
   open: (review?: boolean) => void; restore: () => void; retry: () => void;
+  setBudget: (slug: string, goal: string, cents: number) => void;
 };
 const Shopping = createContext<ShoppingState | null>(null);
-export const catalogMoney = (cents: number | null) => cents == null ? "Por cotizar" : new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(cents / 100);
+export const catalogMoney = (cents: number | null) => cents == null ? "Por cotizar" : `$ ${formatBudgetInput(cents / 100)}`;
 export const catalogTax = (value: boolean | null) => value === true ? "IVA incluido" : value === false ? "Sin IVA" : "Base fiscal no indicada";
 function useShopping() { const value = useContext(Shopping); if (!value) throw new Error("Shopping provider required"); return value; }
+const budgetProducts = (picks: CatalogPick[]) => picks.flatMap(pick => { const product = digitalBudgetProduct(pick.productKey); return product ? [product] : []; });
 
 export function CatalogShoppingProvider({ products: initialProducts, cart, companies, canRequest, isAdmin, children }: {
   products: CatalogProduct[]; cart: CatalogCart; companies: ShoppingCompany[]; canRequest: boolean; isAdmin: boolean; children: ReactNode;
 }) {
-  const [products, setProducts] = useState(initialProducts), [items, setItems] = useState(cart.items);
+  const [products, setProducts] = useState(() => [...initialProducts, ...budgetProducts(cart.items)]), [items, setItems] = useState(cart.items);
   const [saving, setSaving] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState(cart.error ?? "");
   const [mode, setMode] = useState<"cart" | "review" | null>(null), [orderId, setOrderId] = useState("");
   const [notice, setNotice] = useState("");
   const desired = useRef(cart.items), persisted = useRef(JSON.stringify(cart.items)), version = useRef(cart.version);
   const running = useRef(false), mounted = useRef(true), submission = useRef<string | null>(null);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
-  useEffect(() => { setProducts(initialProducts); }, [initialProducts]);
+  useEffect(() => { setProducts([...initialProducts, ...budgetProducts(desired.current)]); }, [initialProducts]);
   async function drain() {
     if (running.current) return;
     running.current = true; setSaving(true); setError("");
@@ -44,10 +48,23 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
     } catch { if (mounted.current) setError("No se pudo guardar. Tu selección sigue aquí; vuelve a intentar."); }
     finally { running.current = false; if (mounted.current) setSaving(false); }
   }
-  function replace(next: CatalogPick[]) {
+  function replace(next: CatalogPick[], nextProducts = products) {
     if (busy) return;
-    try { catalogCartSummary(next, products); } catch { setError("La selección supera el límite permitido. Reduce los productos o cantidades."); return; }
+    try { catalogCartSummary(next, nextProducts); } catch { setError("La selección supera el límite permitido. Reduce los productos o cantidades."); return; }
     desired.current = next; setItems(next); setOrderId(""); submission.current = null; void drain();
+  }
+  function setBudget(slug: string, goal: string, cents: number) {
+    if ((!canRequest && !isAdmin) || busy) return;
+    try {
+      const key = digitalBudgetKey(slug, goal, cents), product = digitalBudgetProduct(key)!;
+      const nextProducts = [...products.filter(row => row.key !== key), product];
+      const next = [...desired.current.filter(pick => {
+        const existing = digitalBudgetProduct(pick.productKey);
+        return !existing || existing.source.platformSlug !== slug || existing.source.digitalGoal !== goal;
+      }), { productKey: key, quantity: 1 }];
+      catalogCartSummary(next, nextProducts);
+      setProducts(nextProducts); replace(next, nextProducts); setNotice(`Presupuesto ${catalogMoney(cents)} · ${product.provider} · ${product.format}`);
+    } catch { setError("Revisa el objetivo y el presupuesto de la campaña."); }
   }
   function change(key: string, delta: number) {
     if (!products.some(p => p.key === key)) return;
@@ -65,7 +82,7 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
       if (result.error) { setError(result.error); return; }
       if((result.clientId??null)!==(cart.clientId??null)){setError("El cliente cambió. Recarga la página para usar su catálogo.");return;}
       version.current = result.version; desired.current = result.items;
-      persisted.current = JSON.stringify(result.items); setItems(result.items); setError(""); submission.current = null;
+      persisted.current = JSON.stringify(result.items); setItems(result.items); setProducts([...initialProducts, ...budgetProducts(result.items)]); setError(""); submission.current = null;
     } catch { setError("No se pudo recuperar el carrito. Tu selección sigue aquí."); }
     finally { setSaving(false); }
   }
@@ -86,7 +103,7 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
     } catch { setError("La conexión se interrumpió. Vuelve a enviar para recuperar la misma solicitud."); }
     finally { setBusy(false); }
   }
-  const value: ShoppingState = { products, items, saving, busy, error, companies, canRequest, isAdmin, change, remove: key => replace(desired.current.filter(p => p.productKey !== key)), open: review => { setOrderId(""); setMode(review ? "review" : "cart"); }, restore, retry: () => void drain() };
+  const value: ShoppingState = { products, items, saving, busy, error, companies, canRequest, isAdmin, change, setBudget, remove: key => replace(desired.current.filter(p => p.productKey !== key)), open: review => { setOrderId(""); setMode(review ? "review" : "cart"); }, restore, retry: () => void drain() };
   return <Shopping.Provider value={value}>{children}<span className="sr-only" role="status">{notice}</span>
     <ShoppingDialog mode={mode} orderId={orderId} onClose={() => { if (!busy) setMode(null); }} onReview={() => setMode("review")} onSend={send} />
   </Shopping.Provider>;
@@ -116,9 +133,9 @@ export function CatalogOohProducts({ assetId }: { assetId: string }) {
   const { products } = useShopping();
   return <div className={styles.oohProducts}>{products.filter(p => p.source.assetId === assetId).map(p => <CatalogProductPicker product={p} key={p.key} />)}</div>;
 }
-export function CatalogPrice({ productKey }: { productKey: string }) {
+export function CatalogPrice({ productKey, showReference = true }: { productKey: string; showReference?: boolean }) {
   const { products } = useShopping(), product = products.find(p => p.key === productKey);
-  return <><strong>{catalogMoney(product?.priceCents ?? product?.referencePriceCents ?? null)}</strong><small className="block text-xs text-muted">{product ? catalogTax(product.taxIncluded) : ""}</small>{product && <CatalogRateReference product={product}/>}</>;
+  return <><strong>{catalogMoney(product?.priceCents ?? product?.referencePriceCents ?? null)}</strong><small className="block text-xs text-muted">{product ? catalogTax(product.taxIncluded) : ""}</small>{product && showReference && <CatalogRateReference product={product}/>}</>;
 }
 export function CatalogRateReference({ product, showAmount = false }: { product: CatalogProduct; showAmount?: boolean }) {
   const reference = catalogReferenceDisclosure(product);
@@ -157,7 +174,20 @@ export function CatalogWorkspaceFormats({stationId,publicationId}:{stationId?:st
  return <section className="my-5 grid gap-4"><h5 className="text-lg font-black">Formatos de tu cuenta</h5>{rows.map(p=><article key={p.key} className="rounded-xl border border-border bg-fog p-4"><h6 className="font-black">{p.name}</h6><p className="mt-2 text-sm">{p.format} · {p.location}</p><p className="mt-3 text-xl font-black">{catalogMoney(p.priceCents??p.referencePriceCents??null)}</p><p className="text-sm text-muted">{p.unit}</p><CatalogRateReference product={p}/><p className="mt-2 text-xs text-muted">{p.referenceLabel||(p.validFrom&&p.validTo?`${p.validFrom} – ${p.validTo}`:p.reference)}</p>{p.conditions&&<p className="mt-2 text-sm">{p.conditions}</p>}<CatalogInlineProduct productKey={p.key}/></article>)}</section>;
 }
 export function CatalogPressQuote({ id }: { id: string }) { return <CatalogInlineProduct productKey={`press:${id}:quote`} label="Inserciones"/>; }
-export function CatalogDigitalBudget({ slug }: { slug: string }) { return <div className={styles.radioProduct}><p className="text-sm font-bold">Presupuesto para tu campaña</p><CatalogInlineProduct productKey={`digital:${slug}`} label="Inversión USD"/></div>; }
+export function CatalogDigitalBudget({ slug }: { slug: string }) {
+  const cart = useShopping(), goals = digitalGoalsForPlatform(slug);
+  const [goal, setGoal] = useState(""), [display, setDisplay] = useState("");
+  const amount = parseBudgetInput(display), invalid = !!display.trim() && amount == null;
+  const selected = cart.items.map(pick => ({ pick, product: cart.products.find(row => row.key === pick.productKey) })).filter(row => row.product?.source.platformSlug === slug);
+  if (!cart.canRequest && !cart.isAdmin) return null;
+  return <div className={styles.digitalBudget}>
+    <label>Objetivo de la pauta<select value={goal} onChange={event => setGoal(event.target.value)}><option value="" disabled>Selecciona un objetivo</option>{goals.map(goal => <option key={goal.id} value={goal.id}>{goal.label}</option>)}</select></label>
+    <label>Presupuesto (USD)<span className={styles.moneyInput}><span aria-hidden="true">$</span><input type="text" inputMode="decimal" maxLength={22} value={display} placeholder="0,00" aria-label={`Presupuesto de ${slug}`} aria-invalid={invalid ? true : undefined} onChange={event => setDisplay(event.target.value)} onBlur={() => { if (amount != null) setDisplay(formatBudgetInput(amount)); }}/></span></label>
+    {invalid && <p role="alert">Usa punto para miles y coma para centavos.</p>}
+    <button type="button" disabled={cart.busy || !goal || amount == null} onClick={() => { if (amount != null) cart.setBudget(slug, goal, Math.round(amount * 100)); }}>Agregar presupuesto <span aria-hidden="true">+</span></button>
+    {!!selected.length && <ul aria-label={`Presupuestos seleccionados de ${slug}`}>{selected.map(({ pick, product }) => <li key={pick.productKey}>{product!.format} <strong>{catalogMoney((product!.priceCents ?? 0) * pick.quantity)}</strong></li>)}</ul>}
+  </div>;
+}
 function Quantity({ product, quantity }: { product: CatalogProduct; quantity: number }) {
   const { change, busy } = useShopping(), name = `${product.name} · ${product.format} · ${product.provider}`;
   const [input, setInput] = useState(String(quantity));
@@ -175,10 +205,10 @@ function CartContents({ compact = false }: { compact?: boolean }) {
     <header className={styles.cartHeader}><CartIcon /><div><h3>Tu carrito</h3><p>Se guarda por dos horas sin cambios</p></div><span>{summary.quantity}</span></header>
     {!summary.lines.length ? <div className={styles.empty}><CartIcon /><h4>Elige tus medios</h4><p>Agrega cuñas, espacios y formatos de todo el catálogo.</p></div> : <div className={styles.cartLines}>{summary.lines.map(line => <article key={line.pick.productKey} className={styles.cartLine}>
       <div className={styles.lineHeading}>{line.product?.image && <Image src={line.product.image} alt="" width={48} height={48} unoptimized className={styles.thumbnail} />}<div><strong>{line.product?.provider ?? "Producto no disponible"}</strong><p>{line.product?.name}</p><small>{line.product?.format}{line.product?.kind === "ooh" ? ` · ${line.product.unit}` : ""}</small></div><button type="button" disabled={cart.busy} onClick={() => cart.remove(line.pick.productKey)} aria-label={`Quitar ${line.product?.name ?? "producto"} de ${line.product?.provider ?? "catálogo"}`}>×</button></div>
-      {line.product && <><div className={styles.linePrice}><span>{catalogMoney(line.product.priceCents)} × {line.pick.quantity}</span><strong>{catalogMoney(line.subtotalCents)}</strong></div><div className={styles.lineControls}><small>{catalogTax(line.product.taxIncluded)}</small><Quantity product={line.product} quantity={line.pick.quantity} /></div></>}
+      {line.product && <><div className={styles.linePrice}><span>{digitalBudgetProduct(line.product.key) ? "Presupuesto de campaña" : `${catalogMoney(line.product.priceCents ?? line.product.referencePriceCents ?? null)} × ${line.pick.quantity}`}</span><strong>{catalogMoney(line.subtotalCents ?? (line.product.referencePriceCents == null ? null : line.product.referencePriceCents * line.pick.quantity))}</strong></div><div className={styles.lineControls}><small>{catalogTax(line.product.taxIncluded)}</small>{!digitalBudgetProduct(line.product.key) && <Quantity product={line.product} quantity={line.pick.quantity} />}</div></>}
       {line.product && <CatalogRateReference product={line.product} showAmount/>}
     </article>)}</div>}
-    {summary.lines.length > 0 && <div className={styles.total}><span>{summary.totalLabel}</span><strong>{catalogMoney(summary.knownSubtotalCents)}</strong>{summary.pendingPrice > 0 && <small>{summary.pendingPrice} {summary.pendingPrice === 1 ? "producto requiere" : "productos requieren"} cotización</small>}</div>}
+    {summary.lines.length > 0 && <div className={styles.total}><span>{summary.pendingPrice && summary.estimatedSubtotalCents != null ? "Total estimado" : summary.totalLabel}</span><strong>{catalogMoney(summary.estimatedSubtotalCents ?? summary.knownSubtotalCents)}</strong>{summary.pendingPrice > 0 && summary.estimatedSubtotalCents == null && <small>{summary.pendingPrice} {summary.pendingPrice === 1 ? "producto requiere" : "productos requieren"} cotización</small>}</div>}
     <div className={styles.cartFooter}><span className={styles.saveState} role="status">{cart.saving ? "Guardando selección…" : cart.error ? "Revisa el guardado de tu selección" : summary.lines.length ? "Selección guardada en tu cuenta" : "Selección privada"}</span>
       {cart.error && <div className={styles.error} role="alert"><p>{cart.error}</p><button type="button" onClick={cart.retry} disabled={cart.busy || cart.saving}>Reintentar</button><button type="button" onClick={cart.restore} disabled={cart.busy || cart.saving}>Recuperar carrito guardado</button></div>}
       {!compact && <button type="button" className={styles.primary} onClick={() => cart.open(true)} disabled={!summary.lines.length || !!summary.unavailable || cart.saving || cart.busy || !!cart.error || !cart.canRequest}>Revisar selección <span aria-hidden="true">→</span></button>}
@@ -190,7 +220,7 @@ function CartContents({ compact = false }: { compact?: boolean }) {
 function MobileCartBar() {
   const cart = useShopping(), summary = catalogCartSummary(cart.items, cart.products);
   if (!summary.lines.length) return null;
-  return <button type="button" className={styles.mobileBar} onClick={() => cart.open()} aria-label={`Ver carrito: ${summary.quantity} unidades`}><span className={styles.mobileCount}>{summary.quantity}</span><strong>Ver carrito</strong><span>{catalogMoney(summary.knownSubtotalCents)}{summary.pendingPrice > 0 ? " + cotizaciones" : ""}</span></button>;
+  return <button type="button" className={styles.mobileBar} onClick={() => cart.open()} aria-label={`Ver carrito: ${summary.quantity} unidades`}><span className={styles.mobileCount}>{summary.quantity}</span><strong>Ver carrito</strong><span>{catalogMoney(summary.estimatedSubtotalCents ?? summary.knownSubtotalCents)}{summary.pendingPrice > 0 ? summary.estimatedSubtotalCents == null ? " + cotizaciones" : " est." : ""}</span></button>;
 }
 function ShoppingDialog({ mode, orderId, onClose, onReview, onSend }: { mode: "cart" | "review" | null; orderId: string; onClose: () => void; onReview: () => void; onSend: (form: HTMLFormElement) => Promise<void> }) {
   const ref = useRef<HTMLDialogElement>(null), cart = useShopping(), summary = catalogCartSummary(cart.items, cart.products);
