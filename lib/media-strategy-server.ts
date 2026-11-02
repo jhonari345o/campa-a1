@@ -15,7 +15,8 @@ import { buildMediaPlan, type MediaPlan } from "./planner";
 import { buildStrategyEvidence, scopePlanningResearch, type StrategyBrief, type StrategyCatalogs, type TvAudienceObservation } from "./media-strategy-evidence";
 import { STRATEGY_VERSION, applyStrategyPlan, buildStrategyReport, strategyAiPayload } from "./media-strategy";
 import { resolveStrategyAi } from "./media-strategy-ai";
-import { bedrockChat } from "./assistant/llm";
+import { chatCompletion } from "./assistant/llm";
+import { getLlmConfiguration, planningAiEnabled } from "./assistant/llm-config";
 import { optionalWithinBudget } from "./optional-task";
 import type { CategoryResearch } from "./infomedia";
 import { validDate } from "./broadcast-catalog";
@@ -73,7 +74,8 @@ export async function buildResearchRecommendation(brief:StrategyBrief,research:C
   const context=await catalogClientContext();
   if(context?.clients.length&&(!context.selected||brief.clientId!==context.selected.id))throw new Error("CLIENT_CONTEXT_CHANGED");
   const asOf=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Guayaquil",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
-  const generatedAt=new Date().toISOString(), model=process.env.BEDROCK_MODEL_ID?.trim()??null;
+  const generatedAt=new Date().toISOString(), aiConfig=getLlmConfiguration();
+  const model=aiConfig?`${aiConfig.provider}:${aiConfig.model}`:null;
   let catalogs=EMPTY;
   const started=Date.now(), allowance=Math.min(20_000,Math.max(1,options.timeoutMs??20_000));
   catalogs=await optionalWithinBudget(()=>loadCatalogs(brief),()=>({...EMPTY,broadcast:{...EMPTY.broadcast,error:"No se pudieron cargar todas las fuentes dentro del tiempo disponible."}}),Math.min(7000,allowance));
@@ -86,18 +88,19 @@ export async function buildResearchRecommendation(brief:StrategyBrief,research:C
     if(!(error instanceof Error)||error.message!=="NO_CATEGORY_MEDIA_EVIDENCE")throw error;
     baseline={matched:0,totalRef:0,basis:"infomedia",referencePeriod:bundle.researchPeriod,benchmark:[],plan:[],profileLabel:brief.keyword,strategySummary:"No hay evidencia suficiente para una asignación automática en los medios seleccionados."};
   }
-  const fingerprint=createHash("sha256").update(JSON.stringify(stable({version:STRATEGY_VERSION,brief,bundle,model}))).digest("hex");
+  const fingerprint=createHash("sha256").update(JSON.stringify(stable({version:STRATEGY_VERSION,brief,bundle,aiConfig}))).digest("hex");
   const db=await createClient();
   // No process-global cache: every result is scoped to its owner and source fingerprint.
   const {data:cached,error:cacheError}=await db.from("media_strategy_cache").select("result").eq("owner_id",profile.id).eq("fingerprint",fingerprint).eq("status","ready").gt("expires_at",new Date().toISOString()).maybeSingle();
   const payload=JSON.stringify(strategyAiPayload(brief,bundle,baseline));
   const ai=await resolveStrategyAi(brief,bundle,payload,Math.max(1,allowance-(Date.now()-started)),{
-    enabled:process.env.MEDIA_STRATEGY_AWS_AI_ENABLED==="true"&&Boolean(model),
+    enabled:planningAiEnabled("strategy",aiConfig),
     allowRequest:Boolean(options.allowAi),cacheAvailable:!cacheError,cached:cached?.result,
     claim:async()=>{const {data,error}=await db.rpc("claim_media_strategy_ai_request",{p_fingerprint:fingerprint});return !error&&Boolean(data);},
-    invoke:(content,signal)=>bedrockChat([{role:"system",content:SYSTEM},{role:"user",content}],{maxTokens:2400,temperature:.1,maxAttempts:1,signal}),
+    invoke:(content,signal)=>chatCompletion([{role:"system",content:SYSTEM},{role:"user",content}],{maxTokens:2400,temperature:.1,json:true,signal}),
     persist:async advice=>{const {data,error}=await createAdminClient().from("media_strategy_cache").update({status:advice?"ready":"failed",model_id:model,result:advice??{},updated_at:new Date().toISOString()}).eq("owner_id",profile.id).eq("fingerprint",fingerprint).eq("status","pending").select("fingerprint").maybeSingle();return !error&&Boolean(data);},
   });
+  if(options.allowAi)console.info("media_strategy_ai",{state:ai.state,provider:aiConfig?.provider??null,durationMs:Date.now()-started});
   const report=buildStrategyReport(brief,bundle,baseline,{advice:ai.advice,aiState:ai.state,model:ai.advice?model:null,fingerprint,generatedAt});
   return applyStrategyPlan(baseline,report,brief);
 }

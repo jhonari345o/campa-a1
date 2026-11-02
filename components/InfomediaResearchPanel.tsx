@@ -38,7 +38,7 @@ export function InfomediaResearchPanel({ research, brand = "", objective = "", h
           const result = await interpretarCategoria(research.category.id, objective, research.referenceYear);
           if (result.ok) setAdvice(result.advice); else setMessage(result.error);
         });
-      }}>{pending ? "Analizando…" : "Interpretar con IA de AWS"}</button>
+      }}>{pending ? "Analizando…" : "Interpretar con Mavi"}</button>
       {message && <p role="status">{message}</p>}
       {advice && <aside><strong>Interpretación de IA · para revisión</strong><p>{advice.emphasis}</p><ul>{advice.questions.map((question) => <li key={question}>{question}</li>)}</ul></aside>}
     </div>}

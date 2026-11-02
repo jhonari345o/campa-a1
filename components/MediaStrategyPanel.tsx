@@ -35,7 +35,7 @@ export function MediaStrategyPanel({ report, research, brand = "", objective = "
   const tgi = research?.tgi, audienceRows = tgi?.values.filter(row => row.role === audienceKind && (audienceKind === "behavior" || tgiIndicatorApplies(row.id, selectedMedia))) ?? [];
   const sourceRows = report.sources.filter(source => sourceFilter === "all" || source.use === sourceFilter);
   return <section className={styles.root} aria-label="Análisis y recomendación de medios">
-    <header className={styles.header}><div><p className={styles.kicker}>Análisis del plan</p><h2>Tu mix de medios</h2><p>{report.summary}</p></div><span className={styles.badge}>{report.customized ? "Mix personalizado" : ai ? "Datos + IA de AWS" : "Motor de datos"}</span></header>
+    <header className={styles.header}><div><p className={styles.kicker}>Análisis del plan</p><h2>Tu mix de medios</h2><p>{report.summary}</p></div><span className={styles.badge}>{report.customized ? "Mix personalizado" : ai ? "Datos + IA de Mavi" : "Motor de datos"}</span></header>
 
     <div className={styles.metrics}><div><span>Presupuesto</span><strong>{money(report.budgetUsd)}</strong></div><div><span>Medios en el mix</span><strong>{report.allocations.length}</strong></div><div><span>Opciones documentadas</span><strong>{report.candidateCount}</strong></div><div><span>Fuentes del análisis</span><strong>{report.sources.length}</strong></div></div>
     <nav className={styles.tabs} aria-label="Explorar análisis del plan">{TABS.map(tab => <button type="button" key={tab.id} aria-label={tab.label} aria-pressed={view === tab.id} onClick={() => setView(tab.id)}><span className={styles.desktopTab}>{tab.label}</span><span className={styles.mobileTab}>{tab.short}</span></button>)}</nav>
