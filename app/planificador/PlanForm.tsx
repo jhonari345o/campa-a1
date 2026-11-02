@@ -13,7 +13,7 @@ import { formatBudgetInput } from "@/lib/brief-inputs";
 import { restoreResearch } from "@/lib/infomedia";
 import type { CategoryCatalog } from "@/lib/infomedia-server";
 import type { ReactNode } from "react";
-import { enviarPlanParaRevision, aprobarPlan, generarPlan, guardarPlan, type PlanResult } from "./actions";
+import { enviarPlanParaRevision, aprobarPlan, generarPlan, completarPlan, guardarPlan, type PlanResult } from "./actions";
 import type { PlanRow } from "@/lib/planner";
 import { mediaGroupForLabel } from "@/lib/media-groups";
 import type { Campaign } from "@/lib/campaigns";
@@ -42,7 +42,8 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
   const initialBrief = initialPlan?.brief ?? {};
   const [state, formAction, pending] = useActionState<PlanResult | null, FormData>(async (previous, data) => {
     try {
-      return await generarPlan(previous, data);
+      const prepared=await generarPlan(previous, data);
+      return prepared.ok?await completarPlan(prepared.preparation):prepared;
     } catch {
       return { ok: false, error: "La conexión con el servidor se interrumpió. Tu brief sigue aquí; vuelve a intentarlo en unos momentos." };
     }

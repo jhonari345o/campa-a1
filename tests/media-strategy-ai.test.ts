@@ -23,6 +23,15 @@ test("a valid inference is applied only after persistence succeeds",async()=>{
   const {deps,count}=dependencies();assert.equal((await resolveStrategyAi(brief,bundle,"{}",2000,deps)).state,"validated");assert.deepEqual(count,{claim:1,invoke:1,persist:1});
   const failed=dependencies({persist:async()=>false});const result=await resolveStrategyAi(brief,bundle,"{}",2000,failed.deps);assert.equal(result.state,"unavailable");assert.equal(result.advice,null);
 });
+test("planning reserves an inference window within the single-flight lease",async()=>{
+  for(const [available,expected] of [[8000,8000],[38000,25000]]){
+    let budget=0;
+    const {deps}=dependencies({persist:async(_value,diagnostic)=>{budget=diagnostic.budgetMs;return true;}});
+    assert.equal((await resolveStrategyAi(brief,bundle,"{}",available,deps)).state,"validated");
+    assert.equal(budget,expected);
+    assert.ok(budget<30000);
+  }
+});
 test("invalid or failed provider output falls back to data, with no retry or alternate provider",async()=>{
   const invalid=dependencies({invoke:async()=>'{"summary":"invented","allocations":[],"questions":[]}'});
   assert.equal((await resolveStrategyAi(brief,bundle,"{}",2000,invalid.deps)).state,"rejected");

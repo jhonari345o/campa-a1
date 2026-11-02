@@ -129,7 +129,7 @@ test("radio candidates from separate dayparts remain separate cohorts",()=>{
   const bundle=buildStrategyEvidence(strategyBrief(),strategyResearch,strategyCatalogs(),date),c=bundle.candidates[0];
   bundle.sources.push({id:"radio-study:one",kind:"ranking",label:"Estudio",period:"2026-01-01 – 2026-07-31",market:"Quito",target:"Adultos",use:"comparable",note:"Franja uno"},{id:"radio-study:two",kind:"ranking",label:"Estudio",period:"2026-01-01 – 2026-07-31",market:"Quito",target:"Adultos",use:"comparable",note:"Franja dos"});
   bundle.candidates.push({...c,id:"one",medium:"radio",sourceIds:["radio-study:one"],metrics:[{label:"Rating",value:1,unit:"puntos",sourceId:"radio-study:one"}]},{...c,id:"two",medium:"radio",sourceIds:["radio-study:two"],metrics:[{label:"Rating",value:99,unit:"puntos",sourceId:"radio-study:two"}]});
-  const pool=strategyCandidatePool(bundle,"radio");assert.equal(pool.length,1);assert.equal(pool[0].id,"one");
+  const pool=strategyCandidatePool(bundle,"radio");assert.deepEqual(pool.map(c=>c.id),["one","two"]);assert.deepEqual(pool.map(c=>c.metrics[0].sourceId),["radio-study:one","radio-study:two"]);
 });
 
 test('workspace rates enter recommendations with their own package unit, geography and validity without inventing audiences',()=>{
