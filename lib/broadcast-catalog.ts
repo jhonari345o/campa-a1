@@ -52,7 +52,8 @@ export function compatibleTv(catalog: BroadcastCatalog, brief: BroadcastBrief) {
 export function sourceDescription(s: BroadcastSource) { return `${s.periodStart} – ${s.periodEnd} · ${s.market} · ${s.target}${s.frequency ? ` · ${s.frequency}` : ""}${s.daypart ? ` · ${s.daypart}` : ""}`; }
 
 /** Re-resolve submitted picks from the private catalog; never trust browser prices or metrics. */
-export function validateBroadcastSelections(catalog: BroadcastCatalog, brief: BroadcastBrief, selections: Record<string, unknown>): { ok: true; selections: Record<string, unknown> } | { ok: false; error: string } {
+export type ResolvedTvPrice = {priceUsd:number;market:string;context:string;conditions:string};
+export function validateBroadcastSelections(catalog: BroadcastCatalog, brief: BroadcastBrief, selections: Record<string, unknown>, resolveTvPrice?:(sourceId:string,offerId:string)=>ResolvedTvPrice|null): { ok: true; selections: Record<string, unknown> } | { ok: false; error: string } {
   const tv = Array.isArray(selections.tv) ? selections.tv : [];
   const radio = Array.isArray(selections.radio) ? selections.radio : [];
   if (tv.length > 100 || radio.length > 100) return {ok:false,error:"Reduce la selección a 100 opciones por medio."};
@@ -63,9 +64,11 @@ export function validateBroadcastSelections(catalog: BroadcastCatalog, brief: Br
     const offer = catalog.tv.find(o=>o.id===pick?.id && o.sourceId===pick?.sourceId);
     const source = catalog.sources.find(s=>s.id===offer?.sourceId && s.kind==='tv');
     if (!offer || !source || !quantity(pick.quantity)) return {ok:false,error:"Selecciona nuevamente los programas desde una edición del catálogo privado y revisa las cantidades."};
-    if (!tvValidity(source,brief.startDate,brief.endDate)) return {ok:false,error:`${source.label}: las fechas del plan quedan fuera del tarifario. Retira la selección o elige otra edición.`};
+    const negotiated=resolveTvPrice?.(source.id,offer.id);
+    if(resolveTvPrice&&!negotiated)return {ok:false,error:`${source.label}: selecciona un programa con tarifa de tu cuenta para las fechas y plaza de la campaña.`};
+    if (!resolveTvPrice&&!tvValidity(source,brief.startDate,brief.endDate)) return {ok:false,error:`${source.label}: las fechas del plan quedan fuera del tarifario. Retira la selección o elige otra edición.`};
     const applicable = sameMarket(source,brief) && !source.annualContract;
-    tvPicks.push({id:offer.id,sourceId:source.id,channel:source.label,title:offer.title,schedule:`${offer.day} · ${offer.schedule}`,market:source.market,context:sourceDescription(source),conditions:source.conditions,unitSeconds:source.spotSeconds,unitPrice:applicable?offer.priceUsd:null,quantity:pick.quantity});
+    tvPicks.push({id:offer.id,sourceId:source.id,channel:source.label,title:offer.title,schedule:`${offer.day} · ${offer.schedule}`,market:negotiated?.market??source.market,context:negotiated?.context??sourceDescription(source),conditions:negotiated?.conditions??source.conditions,unitSeconds:source.spotSeconds,unitPrice:negotiated?.priceUsd??(applicable?offer.priceUsd:null),quantity:pick.quantity});
   }
   for (const pick of radio) {
     const row = catalog.radio.find(r=>r.id===pick?.id && r.sourceId===pick?.sourceId);

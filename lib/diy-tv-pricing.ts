@@ -1,4 +1,4 @@
-import {normalized,type BroadcastBrief} from "./broadcast-catalog";
+import {normalized,type BroadcastBrief,type BroadcastCatalog,type ResolvedTvPrice} from "./broadcast-catalog";
 import {planningProductPrice} from "./catalog-planning";
 import {planningStudyBrief} from "./planning-market";
 import type {CatalogProduct} from "./catalog-shopping";
@@ -18,5 +18,20 @@ export function applyDiyTvPrices<T extends {id?:unknown;sourceId?:unknown;unitPr
   return picks.map(pick=>{
     const price=diyTvPrice(String(pick.sourceId??""),String(pick.id??""),brief,products);
     return {...pick,unitPrice:price?.priceUsd??null,...(price?{market:price.product.location,conditions:price.product.conditions}: {})};
+  });
+}
+export function diyTvResolver(brief:BroadcastBrief,products:CatalogProduct[]){
+  return (sourceId:string,offerId:string):ResolvedTvPrice|null=>{
+    const resolved=diyTvPrice(sourceId,offerId,brief,products);
+    return resolved?{priceUsd:resolved.priceUsd,market:resolved.product.location,context:resolved.product.reference,conditions:resolved.product.conditions}:null;
+  };
+}
+/** Bound identifiers/quantities before looking up private account products. */
+export function diyTvRequests(catalog:BroadcastCatalog,input:unknown){
+  if(!Array.isArray(input)||input.length>100)throw new Error("INVALID_TV_SELECTION");
+  return input.map(pick=>{
+    const offer=catalog.tv.find(o=>o.id===pick?.id&&o.sourceId===pick?.sourceId);
+    if(!offer||!Number.isInteger(pick?.quantity)||pick.quantity<1||pick.quantity>10000)throw new Error("INVALID_TV_SELECTION");
+    return {productKey:`tv:${offer.sourceId}:${offer.id}`,quantity:pick.quantity as number};
   });
 }
