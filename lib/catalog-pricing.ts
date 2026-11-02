@@ -8,7 +8,9 @@ export function scopeCatalogProducts(products: CatalogProduct[], rates: AgreedCa
   if (admin) return products;
   const priced = products.map(p => {
     const matching = rates.filter(r => r.productKey === p.key && r.validFrom <= day && r.validTo >= day && Number.isSafeInteger(r.priceCents) && r.priceCents >= 0);
-    const rate = !p.referenceOnly && matching.length === 1 ? matching[0] : null;
+    const specific = matching.filter(r => r.clientSpecific);
+    const applicable = specific.length ? specific : matching;
+    const rate = !p.referenceOnly && applicable.length === 1 ? applicable[0] : null;
     const history = p.source.workspaceProductId ? rates.filter(r=>r.productKey===p.key&&Number.isSafeInteger(r.priceCents)&&r.priceCents>=0) : [];
     const reference = !rate && history.length===1 ? history[0] : null;
     const publishedPrice = p.referencePriceCents ?? p.priceCents;
@@ -17,7 +19,7 @@ export function scopeCatalogProducts(products: CatalogProduct[], rates: AgreedCa
     const { rate: _privateRate, ...source } = p.source;
     void _privateRate;
     return { ...p, source: { ...source, ...(rate ? { agreementId: rate.agreementId } : {}) }, priceCents: p.kind === "digital" && !p.source.workspaceProductId ? digitalBudgetProduct(p.key)?.priceCents ?? 100 : rate?.priceCents ?? null, taxIncluded: rate ? rate.taxIncluded : reference ? reference.taxIncluded : published ? p.taxIncluded : null,
-      referencePriceCents: reference?.priceCents ?? (published && !rate ? publishedPrice : null), conditions: rate?.conditions ?? reference?.conditions ?? "", reference: rate ? `Acuerdo comercial · ${rate.validFrom} – ${rate.validTo}` : reference ? `Acuerdo comercial · ${reference.validFrom} – ${reference.validTo}` : published ? `Tarifa publicada${p.validFrom ? ` · desde ${p.validFrom}` : ""}` : p.kind === "digital" ? "Presupuesto solicitado" : "Tarifa de tu espacio", validFrom: rate?.validFrom ?? reference?.validFrom ?? (published ? p.validFrom : null), validTo: rate?.validTo ?? reference?.validTo ?? (published ? p.validTo : null), ...(published && !rate && !reference ? { referenceLabel: `Tarifa publicada${p.validFrom ? ` · desde ${p.validFrom.split("-").reverse().join("/")}` : ""}` } : {}) };
+      referencePriceCents: reference?.priceCents ?? (published && !rate ? publishedPrice : null), conditions: rate?.conditions ?? reference?.conditions ?? "", reference: rate ? rate.validTo === "infinity" ? `Tarifa de tu cuenta · desde ${rate.validFrom.split("-").reverse().join("/")}` : `Acuerdo comercial · ${rate.validFrom} – ${rate.validTo}` : reference ? `Acuerdo comercial · ${reference.validFrom} – ${reference.validTo}` : published ? `Tarifa publicada${p.validFrom ? ` · desde ${p.validFrom}` : ""}` : p.kind === "digital" ? "Presupuesto solicitado" : "Tarifa de tu espacio", validFrom: rate?.validFrom ?? reference?.validFrom ?? (published ? p.validFrom : null), validTo: rate?.validTo === "infinity" ? null : rate?.validTo ?? reference?.validTo ?? (published ? p.validTo : null), ...(published && !rate && !reference ? { referenceLabel: `Tarifa publicada${p.validFrom ? ` · desde ${p.validFrom.split("-").reverse().join("/")}` : ""}` } : {}) };
   });
   return selectAccountRadioTariffs(priced, rates);
 }

@@ -71,3 +71,14 @@ test("reference prices produce an estimate without authorizing a firm order or l
  assert.equal(catalogCartSummary(picks,[{...reference,referencePriceCents:null}]).estimatedSubtotalCents,null);
  assert.throws(()=>catalogCartSummary(picks,[{...reference,referencePriceCents:CART_LIMITS.totalCents}]));
 });
+
+test("normal and VIP totems retain different product groups and monthly versus one-time components", () => {
+ const variants=[{...asset,id:"normal-totem",name:"Tótem LED",rates:[{...asset.rates[0],amount:150}]},{...asset,id:"special-totem",name:"Tótem VIP",rates:asset.rates}];
+ const rows=catalogProducts([], {assets:variants});
+ assert.equal(rows[0].formatGroup,"totem_standard");
+ assert.equal(rows[0].priceCents,15000);
+ assert.equal(rows[1].formatGroup,"totem_special");
+ assert.equal(rows[2].formatGroup,"totem_special");
+ assert.equal(rows[2].unit,"pago único · por unidad");
+ assert.equal(new Set(rows.map(r=>r.key)).size,3);
+});

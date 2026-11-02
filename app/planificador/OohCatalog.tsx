@@ -2,7 +2,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { OOH_PROVIDERS } from "@/lib/media-catalog";
-import { oohKey, oohMatches, oohProvinceGroups, oohRateUnit, type OohAsset, type OohCatalog } from "@/lib/ooh-catalog";
+import { oohKey, oohMatches, oohProvinceGroups, type OohAsset, type OohCatalog } from "@/lib/ooh-catalog";
 import { CatalogOohProducts } from "./CatalogShopping";
 import type { OohPurchaseReference } from "@/lib/catalog-shopping-server";
 
@@ -75,10 +75,6 @@ function OohAssetCard({ asset, references }: { asset: OohAsset; references: OohP
     <div className="p-5"><p className="text-[10px] font-black uppercase tracking-wide text-signal-dark">{[asset.city, asset.brand].filter(Boolean).join(" · ") || asset.provinces.join(" · ")}</p><h3 className="mt-1 text-lg font-black leading-tight">{asset.name}</h3>{asset.code && <p className="mt-1 text-xs text-muted">Código {asset.code}</p>}
       <p className="mt-3 text-sm text-muted">{asset.address || "Ubicación exacta no informada"}</p>
       <dl className="mt-4 grid grid-cols-2 gap-3 border-y border-border py-3 text-xs"><div><dt className="text-muted">Formato</dt><dd className="mt-1 font-bold">{asset.format || "No informado"}</dd></div><div><dt className="text-muted">Medidas</dt><dd className="mt-1 font-bold">{asset.dimensions || "No informadas"}</dd></div>{asset.dailySpots != null && <div><dt className="text-muted">Spots por día</dt><dd className="mt-1 font-bold">{asset.dailySpots}</dd></div>}{asset.spotSeconds != null && <div><dt className="text-muted">Duración del spot</dt><dd className="mt-1 font-bold">{asset.spotSeconds} segundos</dd></div>}</dl>
-      <div className="mt-4 rounded-xl bg-fog p-4"><p className="text-[10px] font-black uppercase tracking-wide text-muted">Valores de referencia</p>
-        {asset.rates.length ? <ul className="mt-2 space-y-3">{asset.rates.map((rate, index) => <li key={index}><strong className="block text-xl font-black text-forest">{money(rate.amount)}</strong><span className="block text-xs text-muted">{oohRateUnit(rate)}{rate.component ? ` · ${rate.component}` : ""}</span></li>)}</ul> : <p className="mt-2 text-sm font-black">{asset.rateLabel.startsWith("$") ? asset.rateLabel : "Sin tarifa publicada"}</p>}
-        {(asset.reference || asset.taxLabel) && <p className="mt-3 text-[10px] text-muted">{[asset.reference, asset.taxLabel].filter(Boolean).join(" · ")}</p>}
-      </div>
       <CatalogOohProducts assetId={asset.id} />
       <PurchaseHistory rows={references} />
       {hasMap && <a href={`https://www.google.com/maps/search/?api=1&query=${asset.latitude},${asset.longitude}`} target="_blank" rel="noopener noreferrer" className={`mt-4 flex items-center gap-2 rounded-lg py-1 text-sm font-black text-signal-dark ${focus}`}><LocationIcon /> Ver ubicación en el mapa ↗</a>}

@@ -66,3 +66,24 @@ test("published press prices are separate references and never reveal private ac
  const [privatePrice]=scopeCatalogProducts([{...base,kind:"press",source:{publicationId:"synthetic"}}],[],"2026-11-02",false);
  assert.equal(privatePrice.referencePriceCents,null);assert.ok(!JSON.stringify(privatePrice).includes("1234.56"));
 });
+
+// A standing catalog price is an explicit agreement owned by the workspace, never a raw supplier-price fallback.
+test("standing workspace agreements have no invented expiry and retain server price identity", () => {
+ const standing = {...rate, validFrom:"2026-11-02", validTo:"infinity"};
+ const [row] = scopeCatalogProducts([base], [standing], "2026-11-02", false);
+ assert.equal(row.priceCents, 40000);
+ assert.equal(row.validTo, null);
+ assert.equal(row.source.agreementId, rate.agreementId);
+ assert.equal(row.reference, "Tarifa de tu cuenta · desde 02/11/2026");
+ assert.equal(row.source.rate, undefined);
+ assert.equal(catalogCartSummary([{productKey:row.key,quantity:2}], [row]).totalCents, 80000);
+ assert.equal(scopeCatalogProducts([base], [standing], "2026-11-01", false)[0].priceCents, null);
+});
+test("a client's exact negotiation wins over its agency catalog price, while conflicting client agreements fail closed", () => {
+ const general = {...rate, validTo:"infinity"};
+ const client = {...rate, agreementId:"client-agreement", clientSpecific:true, priceCents:35000};
+ const [row] = scopeCatalogProducts([base], [general,client], "2026-10-31", false);
+ assert.equal(row.priceCents,35000); assert.equal(row.source.agreementId,"client-agreement");
+ const [conflict] = scopeCatalogProducts([base], [general,client,{...client,agreementId:"conflict",priceCents:36000}], "2026-10-31", false);
+ assert.equal(conflict.priceCents,null); assert.equal(conflict.source.agreementId,undefined);
+});
