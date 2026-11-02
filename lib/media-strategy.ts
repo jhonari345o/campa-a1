@@ -3,7 +3,7 @@ import { mediaGroupLabel } from "./plan-optimizer";
 import type { MediaPlan, PlanRow } from "./planner";
 import type { StrategyBrief, StrategyCandidate, StrategyEvidenceBundle } from "./media-strategy-evidence";
 
-export const STRATEGY_VERSION = "2026-11-02.1";
+export const STRATEGY_VERSION = "2026-11-02.2";
 export type StrategyAiState = "validated" | "cached" | "not_configured" | "quota" | "unavailable" | "rejected";
 export type StrategyAdvice = {
   summary: string;
@@ -58,7 +58,7 @@ export function referenceQuantity(candidate:StrategyCandidate|null,amount:number
   const price=candidate?.unitPriceUsd;
   if(price==null||!Number.isFinite(price)||price<=0||amount==null||amount<0)return {units:null,spend:null,remainder:null};
   const unitCents=Math.max(1,Math.ceil(price*100)),budgetCents=Math.round(amount*100);
-  const units=Math.min(10_000,Math.floor(budgetCents/unitCents));
+  const units=Math.min(10_000,candidate?.maximumUnits??10_000,Math.floor(budgetCents/unitCents));
   const spend=Math.round(units*price*100)/100;
   return {units,spend,remainder:Math.round((amount-spend)*100)/100};
 }
@@ -100,7 +100,8 @@ export function strategyCandidatePool(bundle:StrategyEvidenceBundle,medium:Media
       const sourceA=bundle.sources.find(s=>s.id===a[0]),sourceB=bundle.sources.find(s=>s.id===b[0]);
       return (sourceB?.period??"").localeCompare(sourceA?.period??"")||b[1].length-a[1].length||a[0].localeCompare(b[0]);
     })[0]?.[1]??[];
-    return chosen.sort((a,b)=>candidateSort(a,b,brief));
+    const priced = all.filter(c=>c.id.startsWith("workspace:")&&c.unitPriceUsd!=null);
+    return [...chosen,...priced].sort((a,b)=>candidateSort(a,b,brief));
   }
   if(medium==="television"){
     const measured=all.filter(c=>c.cohort&&c.metrics.some(m=>m.label==="Rating"));

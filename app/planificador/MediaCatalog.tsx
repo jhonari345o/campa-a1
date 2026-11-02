@@ -232,14 +232,14 @@ function InfluencerCard({ profile }: { profile: InfluencerProfile }) {
             <a href={profile.profileUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block break-all text-xs font-bold text-[#9bd6fa] hover:underline">
               @{profile.handle.replace(/^@/, "")} ↗
             </a>
-          ) : <span className="text-xs text-white/60">Perfil por confirmar</span>}
+          ) : null}
         </div>
       </div>
       <dl className="mt-5 grid grid-cols-2 gap-2 text-xs">
-        <Metric label="Seguidores" value={compact(profile.followers)} />
-        <Metric label="Views promedio" value={compact(profile.avgViews)} />
-        <Metric label="Engagement" value={percent(profile.engagementPct)} />
-        <Metric label="Follower quality" value={percent(profile.followerQualityPct)} />
+        {profile.followers != null && <Metric label="Seguidores" value={compact(profile.followers)} />}
+        {profile.avgViews != null && <Metric label="Views promedio" value={compact(profile.avgViews)} />}
+        {profile.engagementPct != null && <Metric label="Engagement" value={percent(profile.engagementPct)} />}
+        {profile.followerQualityPct != null && <Metric label="Follower quality" value={percent(profile.followerQualityPct)} />}
       </dl>
       <div className="mt-5 border-t border-white/15 pt-4">
         <strong className="text-sm">Elige tus productos</strong>
@@ -266,8 +266,8 @@ function ProviderMark({ item, size }: { item: CatalogItem; size: "small" | "larg
 }
 function initials(name: string) { return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase(); }
 
-function compact(value: number | null) { return value == null ? "Por confirmar" : new Intl.NumberFormat("es-EC", { notation: "compact", maximumFractionDigits: 1 }).format(value); }
-function percent(value: number | null) { return value == null ? "Por confirmar" : `${new Intl.NumberFormat("es-EC", { maximumFractionDigits: 2 }).format(value)}%`; }
+function compact(value: number | null) { return value == null ? "—" : new Intl.NumberFormat("es-EC", { notation: "compact", maximumFractionDigits: 1 }).format(value); }
+function percent(value: number | null) { return value == null ? "—" : `${new Intl.NumberFormat("es-EC", { maximumFractionDigits: 2 }).format(value)}%`; }
 
 function WorkspaceRateCards({products,section}:{products:CatalogProduct[];section:CatalogSection}){
  const [query,setQuery]=useState(""),[limit,setLimit]=useState(6),[formatGroup,setFormatGroup]=useState("all");

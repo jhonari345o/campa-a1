@@ -1,5 +1,5 @@
 import { oohPhotoPresentation } from "./ooh-photo";
-export type OohRate = { amount: number | null; period: string; basis: string; component: string };
+export type OohRate = { amount: number | null; period: string; basis: string; component: string; authorizedFrom?: string };
 export type OohAsset = {
   id: string; providerSlug: string; provinces: string[]; name: string; code: string;
   city: string; address: string; format: string; dimensions: string; brand: string;
@@ -35,7 +35,8 @@ export function parseOohAsset(row: Record<string, unknown>): OohAsset | null {
   const rates = (Array.isArray(d.rates) ? d.rates : []).flatMap(value => {
     if (!value || typeof value !== "object") return [];
     const r = value as Record<string, unknown>, amount = number(r.amount);
-    return amount != null && amount >= 0 ? [{ amount, period: text(r.period), basis: text(r.basis), component: text(r.component) }] : [];
+    const authorized = /^user_authorized_(\d{4})_(\d{2})_(\d{2})$/.exec(text(r.kind));
+    return amount != null && amount >= 0 ? [{ amount, period: text(r.period), basis: text(r.basis), component: text(r.component), ...(authorized ? {authorizedFrom: authorized.slice(1).join("-")} : {}) }] : [];
   });
   const latitude = number(d.latitude), longitude = number(d.longitude);
   const coordinatesValid = latitude != null && longitude != null && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;

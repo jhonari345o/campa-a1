@@ -64,6 +64,8 @@ function OohAssetCard({ asset, references }: { asset: OohAsset; references: OohP
   const [imageFailed, setImageFailed] = useState(false);
   const photoUrl = `/api/ooh/images/${encodeURIComponent(asset.id)}`;
   const hasMap = asset.latitude != null && asset.longitude != null;
+  const kind = oohKey(`${asset.format} ${asset.name}`);
+  const quotationOnly = /tunel/.test(kind) || (asset.providerSlug === "meglio" && /columna/.test(kind));
   return <article className="overflow-hidden rounded-card border border-border bg-white shadow-panel">
     <div className="relative aspect-[4/3] bg-fog">
       {asset.photo && !imageFailed ? <a href={photoUrl} target="_blank" rel="noopener noreferrer" className={`block h-full ${focus}`} aria-label={`Ampliar fotografía de ${asset.name}`}>
@@ -75,7 +77,7 @@ function OohAssetCard({ asset, references }: { asset: OohAsset; references: OohP
     <div className="p-5"><p className="text-[10px] font-black uppercase tracking-wide text-signal-dark">{[asset.city, asset.brand].filter(Boolean).join(" · ") || asset.provinces.join(" · ")}</p><h3 className="mt-1 text-lg font-black leading-tight">{asset.name}</h3>{asset.code && <p className="mt-1 text-xs text-muted">Código {asset.code}</p>}
       <p className="mt-3 text-sm text-muted">{asset.address || "Ubicación exacta no informada"}</p>
       <dl className="mt-4 grid grid-cols-2 gap-3 border-y border-border py-3 text-xs"><div><dt className="text-muted">Formato</dt><dd className="mt-1 font-bold">{asset.format || "No informado"}</dd></div><div><dt className="text-muted">Medidas</dt><dd className="mt-1 font-bold">{asset.dimensions || "No informadas"}</dd></div>{asset.dailySpots != null && <div><dt className="text-muted">Spots por día</dt><dd className="mt-1 font-bold">{asset.dailySpots}</dd></div>}{asset.spotSeconds != null && <div><dt className="text-muted">Duración del spot</dt><dd className="mt-1 font-bold">{asset.spotSeconds} segundos</dd></div>}</dl>
-      <CatalogOohProducts assetId={asset.id} />
+      <CatalogOohProducts assetId={asset.id} quotationOnly={quotationOnly} />
       <PurchaseHistory rows={references} />
       {hasMap && <a href={`https://www.google.com/maps/search/?api=1&query=${asset.latitude},${asset.longitude}`} target="_blank" rel="noopener noreferrer" className={`mt-4 flex items-center gap-2 rounded-lg py-1 text-sm font-black text-signal-dark ${focus}`}><LocationIcon /> Ver ubicación en el mapa ↗</a>}
     </div>

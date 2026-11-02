@@ -133,3 +133,30 @@ test('workspace rates enter recommendations with their own package unit, geograp
  assert.equal(candidate?.unit,'package of five');assert.equal(candidate?.referencePriceUsd,1732.45);assert.deepEqual(candidate?.metrics,[]);
  const outside=buildStrategyEvidence({...b,startDate:'2027-01-01',endDate:'2027-01-31'},strategyResearch,catalogs,date).candidates.find(c=>c.id.startsWith('workspace:'));assert.equal(outside?.unitPriceUsd,null);
 });
+
+test("radio account rates remain usable without borrowing a mismatched ranking",()=>{
+ const catalogs=strategyCatalogs();
+ catalogs.workspaceProducts=[{key:"radio:workspace:synthetic",kind:"radio",provider:"Radio sintética",name:"Horario rotativo",format:"Cuña de 20 s",unit:"cuña de 20 s",priceCents:1900,taxIncluded:false,location:"Quito",marketKeys:["quito"],reference:"",conditions:"",image:null,validFrom:"2026-11-01",validTo:null,source:{workspaceProductId:"synthetic",agreementId:"synthetic-agreement"}}];
+ const brief=strategyBrief({selectedMedia:["radio"]});
+ const bundle=buildStrategyEvidence(brief,strategyResearch,catalogs,date);
+ const pool=strategyCandidatePool(bundle,"radio",brief);
+ assert.equal(pool.length,1);assert.equal(pool[0].unitPriceUsd,19);assert.deepEqual(pool[0].metrics,[]);
+ assert.equal(referenceQuantity(pool[0],190).units,10);
+ assert.equal(bundle.gaps.some(g=>g.includes("tarifa vigente")),false);
+ const mismatched=buildStrategyEvidence({...brief,geography:"Guayaquil",coverage:[{key:"city:guayaquil:guayas",kind:"city",label:"Guayaquil",context:"Guayas"}]},strategyResearch,catalogs,date);
+ assert.equal(strategyCandidatePool(mismatched,"radio").length,0);
+});
+
+test("large catalogs preserve account-priced assets and cost the campaign without duplicating one physical location",()=>{
+ const catalogs=strategyCatalogs();
+ catalogs.ooh.assets=Array.from({length:900},(_,i)=>photographedAsset({id:`synthetic-${i}`,recordType:"asset"}));
+ catalogs.workspaceProducts=[{key:"ooh:synthetic-899:0",kind:"ooh",provider:"Proveedor sintético",name:"Pantalla sintética",format:"Pantalla",unit:"mes · por pantalla",billingPeriod:"month",priceCents:123400,taxIncluded:false,location:"Quito",marketKeys:["pichincha"],reference:"",conditions:"",image:null,validFrom:"2026-11-01",validTo:null,source:{assetId:"synthetic-899",agreementId:"synthetic-standing-agreement"}}];
+ const brief=strategyBrief({selectedMedia:["ooh"],startDate:"2026-11-01",endDate:"2026-12-31",budgetUsd:10000});
+ const bundle=buildStrategyEvidence(brief,strategyResearch,catalogs,date);
+ const candidate=strategyCandidatePool(bundle,"ooh",brief)[0];
+ assert.equal(candidate.id,"workspace:ooh:synthetic-899:0");assert.equal(candidate.unitPriceUsd,2468);
+ assert.equal(candidate.maximumUnits,1);assert.deepEqual(referenceQuantity(candidate,10000),{units:1,spend:2468,remainder:7532});
+ assert.equal(candidate.oohPhoto?.assetId,"synthetic-899");
+ assert.ok(candidate.sourceIds.every(id=>bundle.sources.some(s=>s.id===id)));
+ assert.ok(bundle.candidates.length<=100);assert.deepEqual(candidate.metrics,[]);
+});

@@ -71,9 +71,9 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
   const stageCopy = stage === "brief"
     ? { eyebrow: "Nuevo plan", title: "Cuéntanos qué necesita tu marca.", description: "Completa el brief y Mavi construirá una recomendación con datos, contexto y criterios verificables." }
     : stage === "analysis"
-      ? { eyebrow: "Research preparado", title: "Categoría, audiencia y medios bajo un solo criterio.", description: "Revisamos evidencia disponible, KPI válidos y todo lo que todavía requiere una fuente o validación humana." }
+      ? { eyebrow: "Research preparado", title: "Categoría, audiencia y medios bajo un solo criterio.", description: "Explora la inversión de la categoría, el consumo de medios y las opciones de tu cuenta." }
       : stage === "proposal"
-        ? { eyebrow: "Propuesta", title: "Un plan completo, explicado medio por medio.", description: "La inversión se distribuye sin superar el presupuesto y mantiene separadas las validaciones pendientes." }
+        ? { eyebrow: "Propuesta", title: "Un plan completo, explicado medio por medio.", description: "Revisa la distribución de inversión, los medios y las cantidades propuestas." }
         : stage === "personalize"
           ? { eyebrow: "Personaliza", title: "Ajusta el peso de cada ejecución.", description: "Cada cambio redistribuye el presupuesto inmediatamente y conserva el 100% de la inversión." }
           : { eyebrow: canApprove ? "Aprobado" : "En revisión", title: "Plan registrado y listo para coordinación.", description: "Tu versión queda guardada con su brief, análisis, propuesta y distribución final." };
@@ -293,11 +293,11 @@ function AnalysisStage({ result, onBack, onContinue }: { result: Extract<PlanRes
       ? <MediaStrategyPanel key={result.plan.strategy.fingerprint} report={result.plan.strategy} research={result.research} brand={result.brief.brand} objective={result.objective} selectedMedia={result.brief.selectedMedia}/>
       : <><InfomediaResearchPanel research={result.research} brand={result.brief.brand} objective={result.objective}/><TgiResearchPanel research={result.research.tgi} selectedMedia={result.brief.selectedMedia}/></>}
 
-    <details className="planner-analysis-detail"><summary>Criterios del brief y validaciones</summary>
+    <details className="planner-analysis-detail"><summary>Tu brief y la estrategia</summary>
 
     <div className="planner-analysis-context">
       <article><span>Grupo objetivo</span><strong>{analysis.targetLabel}</strong><small>Compatibilidad indicada en cada fuente</small></article>
-      <article><span>Cobertura</span><strong>{analysis.coverageLabel}</strong><small>Rutas e inventario se reconfirman</small></article>
+      <article><span>Cobertura</span><strong>{analysis.coverageLabel}</strong><small>Cobertura seleccionada para la campaña</small></article>
       <article><span>Contexto comercial</span><strong>{analysis.commercialReadiness}% completo</strong><small>No bloquea la recomendación</small></article>
       <article><span>Preparación digital</span><strong>{analysis.digitalReadiness == null ? "No aplica" : `${analysis.digitalReadiness}% completa`}</strong><small>Solo influye cuando Digital está seleccionado</small></article>
     </div>
@@ -308,20 +308,14 @@ function AnalysisStage({ result, onBack, onContinue }: { result: Extract<PlanRes
       <p className="mt-2 text-xs text-muted">Criterio declarado para orientar la campaña. El corte TGI corresponde a los filtros indicados en el estudio.</p>
     </aside>}
 
-    <div className="planner-analysis-findings">
-      {analysis.findings.map((finding) => <article key={finding.label} className={`status-${finding.status}`}>
-        <span>{finding.label}</span><strong>{finding.value}</strong><p>{finding.detail}</p><small>{analysisStatus(finding.status)}</small>
-      </article>)}
-    </div>
 
     <div className="planner-analysis-section-heading"><div><p>Estrategia</p><h2>Categoría, target y rol de medios en un solo criterio.</h2><span>El consumo y la inversión observados ordenan el mix; no se transforman automáticamente en alcance o resultados.</span></div></div>
     <div className="planner-analysis-media-grid">
       {analysis.signals.map((signal) => <article key={signal.kind} className={`role-${signal.role}`}>
-        <header><span>{signal.label}</span><b>{signal.role === "principal" ? "Rol principal" : signal.role === "complementario" ? "Rol de apoyo" : "Rol por validar"}</b></header>
+        <header><span>{signal.label}</span><b>{signal.role === "principal" ? "Rol principal" : signal.role === "complementario" ? "Rol de apoyo" : "Opción estratégica"}</b></header>
         <div className="planner-analysis-allocation"><strong>{pct(signal.share)}</strong><span>{signal.amount == null ? "Sin inversión declarada" : money(signal.amount)}</span></div>
         <p>{signal.rationale}</p>
-        <dl><div><dt>KPI de planificación</dt><dd>{signal.planningKpi}</dd></div><div><dt>Evidencia disponible</dt><dd>{signal.evidence}</dd></div><div><dt>Antes de ordenar</dt><dd>{signal.validation}</dd></div></dl>
-        <small className={`analysis-status status-${signal.status}`}>{analysisStatus(signal.status)}</small>
+        <dl><div><dt>KPI de planificación</dt><dd>{signal.planningKpi}</dd></div><div><dt>Evidencia disponible</dt><dd>{signal.evidence}</dd></div></dl>
       </article>)}
     </div>
 
@@ -329,13 +323,9 @@ function AnalysisStage({ result, onBack, onContinue }: { result: Extract<PlanRes
 
     {analysis.wowCase && <aside className="planner-analysis-wow"><span>IDEA WOW · INDEPENDIENTE</span><div><strong>{analysis.wowCase.idea}</strong><p>{analysis.wowCase.budget} · {analysis.wowCase.status}</p>{analysis.wowCase.missing.length > 0 && <small>Falta: {analysis.wowCase.missing.join(", ")}.</small>}</div></aside>}
 
-    <aside className="planner-analysis-rules"><strong>Reglas de confianza</strong><ul>{analysis.guardrails.map((rule) => <li key={rule}>✓ {rule}</li>)}</ul></aside>
+
     <div className="planner-submit-bar"><div><small>Siguiente etapa</small><strong>Convertir el análisis en una propuesta comprable</strong></div><button type="button" onClick={onContinue} className="btn btn-primary">Ver recomendación de medios →</button></div>
   </section>;
-}
-
-function analysisStatus(status: "listo" | "por_validar" | "requiere_preparacion") {
-  return status === "listo" ? "Listo para revisión" : status === "requiere_preparacion" ? "Requiere preparación" : "Validación específica pendiente";
 }
 
 function ProposalStage({ result, onBack, onPersonalize }: { result: Extract<PlanResult, { ok: true }>; onBack: () => void; onPersonalize: () => void }) {
@@ -388,7 +378,7 @@ function PersonalizeStage({ result, onBack, onApproved, canApprove }: { canAppro
         const group = mediaGroupForLabel(row.label);
         return <article key={row.label}>
           <header><div><span>{String(index + 1).padStart(2, "0")}</span><h3>{row.label}</h3></div><strong>{money(row.amount)}</strong></header>
-          <p>{row.rationale ?? "El planner validará el producto, disponibilidad y condiciones antes de ordenar."}</p>
+          <p>{row.rationale ?? "Ajusta la participación de este medio en tu propuesta."}</p>
           <label><span>Peso dentro del plan</span><output>{pct(row.pct)}</output><input type="range" min="2" max="98" step="1" value={Math.round(row.pct * 100)} onChange={(event) => updateShare(index, Number(event.target.value))} /></label>
           {group && <a href={`/planificador?view=media&section=${catalogSection(group)}`}>Abrir catálogo correspondiente →</a>}
         </article>;
@@ -530,7 +520,7 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
       <div className="rounded-panel bg-forest p-6 text-white">
         <h3 className="text-lg font-black">¿Quieres ejecutar este plan?</h3>
         <p className="mt-1 text-sm text-white/75">
-          El equipo de Ad Mavericks lo revisa contigo, confirma disponibilidad y lo pone en marcha.
+          El equipo de Ad Mavericks te acompaña en la puesta en marcha.
         </p>
         <a
           href={`mailto:hola@admavericks.one?subject=Plan de medios - ${encodeURIComponent(keyword)}`}
@@ -551,7 +541,7 @@ function DetailedPlanView({ result }: { result: Extract<PlanResult, { ok: true }
         <div>
           <p>Plan específico de ejecución</p>
           <h3>Medios, proveedores, productos, plazas y presupuesto.</h3>
-          <span>La recomendación cruza el brief con las bases internas y conserva las validaciones pendientes.</span>
+          <span>Cada partida presenta el medio, su formato y la inversión asignada.</span>
         </div>
         <b>{detail.engine === "datos+ia" ? `DATOS + IA${detail.liveSources.length ? " + INTERNET" : ""}` : detail.liveSources.length ? "DATOS + INTERNET" : "MOTOR DE DATOS"}</b>
       </header>
@@ -579,7 +569,6 @@ function DetailedPlanView({ result }: { result: Extract<PlanResult, { ok: true }
               {channel.executions.map((execution) => (
                 <div key={execution.id} className="planner-execution-row">
                   <div className="planner-execution-main">
-                    <span className={`planner-execution-status is-${execution.status}`}>{execution.status === "cotizable" ? "Cotizable" : "Validar"}</span>
                     <div className="planner-execution-provider"><MediaProviderMark provider={execution.provider} medium={mediaGroupForLabel(channel.label) ?? "digital"}/><strong>{execution.provider}</strong></div>
                     <p>{execution.product}</p>
                   </div>
@@ -591,8 +580,6 @@ function DetailedPlanView({ result }: { result: Extract<PlanResult, { ok: true }
                   </dl>
                   {execution.oohPhoto && <OohPlanPhoto photo={execution.oohPhoto} title={execution.product}/>}
                   {execution.geo && <OohLocationPreview title={execution.location} geo={execution.geo} />}
-                  <p className="planner-execution-evidence"><b>Evidencia:</b> {execution.evidence}</p>
-                  <p className="planner-execution-next"><b>Antes de ordenar:</b> {execution.nextStep}</p>
                 </div>
               ))}
             </div>
@@ -600,7 +587,7 @@ function DetailedPlanView({ result }: { result: Extract<PlanResult, { ok: true }
         ))}
       </div>
 
-      <aside className="planner-detailed-checks"><strong>Control metodológico</strong><ul>{detail.checks.map((check) => <li key={check}>✓ {check}</li>)}</ul></aside>
+
     </section>
   );
 }

@@ -112,13 +112,15 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
 export function CatalogShoppingLayout({ active, children }: { active: boolean; children: ReactNode }) {
   return <div className={active ? styles.layout : ""}><div className={styles.content}>{children}</div>{active && <><aside className={styles.aside}><CartContents /></aside><MobileCartBar /></>}</div>;
 }
-export function CatalogProductPicker({ product }: { product: CatalogProduct }) {
+export function CatalogProductPicker({ product, emptyPriceLabel = "Por cotizar" }: { product: CatalogProduct; emptyPriceLabel?: string }) {
   const cart = useShopping(), quantity = cart.items.find(p => p.productKey === product.key)?.quantity ?? 0;
-  if (!cart.canRequest && !cart.isAdmin) return <div className={styles.product}><div className={styles.add}><span className={styles.productTitle}>{product.format}<small>{product.unit}</small></span><strong>{catalogMoney(product.priceCents ?? product.referencePriceCents ?? null)}</strong><small>{catalogTax(product.taxIncluded)}</small></div><CatalogRateReference product={product}/></div>;
+  const amount = product.priceCents ?? product.referencePriceCents ?? null;
+  const priceLabel = amount == null ? emptyPriceLabel : catalogMoney(amount);
+  if (!cart.canRequest && !cart.isAdmin) return <div className={styles.product}><div className={styles.add}><span className={styles.productTitle}>{product.format}<small>{product.unit}</small></span><strong>{priceLabel}</strong><small>{catalogTax(product.taxIncluded)}</small></div><CatalogRateReference product={product}/></div>;
   return <div className={`${styles.product} ${quantity ? styles.selected : ""}`}>
     <button type="button" className={styles.add} disabled={cart.busy || quantity >= CART_LIMITS.quantity} aria-label={`Agregar ${product.name} · ${product.format} · ${product.provider} · ${product.unit}`} onClick={() => cart.change(product.key, 1)}>
       <span className={styles.productTitle}>{product.format}{product.kind === "ooh" && <small>{product.unit}</small>}</span>
-      <strong>{catalogMoney(product.priceCents ?? product.referencePriceCents ?? null)}</strong>
+      <strong>{priceLabel}</strong>
       <span className={styles.addMark} aria-hidden="true">{quantity ? quantity : "+"}</span>
       <small>{catalogTax(product.taxIncluded)}</small>
     </button>
@@ -130,9 +132,9 @@ export function CatalogProfileProducts({ profileId }: { profileId: string }) {
   const { products } = useShopping(), rows = products.filter(p => p.source.profileId === profileId);
   return rows.length ? <div className={styles.profileProducts}>{rows.map(p => <CatalogProductPicker product={p} key={p.key} />)}</div> : <p className="mt-3 text-xs text-white/70">Sin formatos publicados.</p>;
 }
-export function CatalogOohProducts({ assetId }: { assetId: string }) {
+export function CatalogOohProducts({ assetId, quotationOnly = false }: { assetId: string; quotationOnly?: boolean }) {
   const { products } = useShopping();
-  return <div className={styles.oohProducts}>{products.filter(p => p.source.assetId === assetId).map(p => <CatalogProductPicker product={p} key={p.key} />)}</div>;
+  return <div className={styles.oohProducts}>{quotationOnly && <p className="text-sm font-bold leading-relaxed text-forest">Revisar disponibilidad, solo bajo cotización previa.</p>}{products.filter(p => p.source.assetId === assetId).map(p => <CatalogProductPicker product={p} key={p.key} emptyPriceLabel={quotationOnly ? "Solicitar cotización" : undefined} />)}</div>;
 }
 export function CatalogPrice({ productKey, showReference = true }: { productKey: string; showReference?: boolean }) {
   const { products } = useShopping(), product = products.find(p => p.key === productKey);
