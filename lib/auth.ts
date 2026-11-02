@@ -2,6 +2,7 @@ import { getMyCompanies } from "@/lib/company";
 import { redirect } from "next/navigation";
 import { workspaceIdentity, type WorkspaceIdentity } from "@/lib/workspace-brand";
 import { createClient } from "@/lib/supabase/server";
+import {requestScoped} from "./request-scope";
 
 export type Profile = {
   id: string;
@@ -13,6 +14,9 @@ export type Profile = {
 
 /** Devuelve el usuario autenticado y su perfil, o null si no hay sesion. */
 export async function getSessionProfile(): Promise<Profile | null> {
+  return requestScoped("session-profile",loadSessionProfile);
+}
+async function loadSessionProfile():Promise<Profile|null> {
   const supabase = await createClient();
   const {
     data: { user },

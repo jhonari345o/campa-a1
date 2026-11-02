@@ -34,13 +34,22 @@ test("optional follow-up text cannot discard a valid allocation or bypass source
   assert.equal((await resolveStrategyAi(brief,bundle,"{}",2000,deps)).state,"rejected");
 });
 test("planning reserves an inference window within the single-flight lease",async()=>{
-  for(const [available,expected] of [[8000,8000],[38000,25000]]){
+  for(const [available,expected] of [[8000,6500],[38000,19000]]){
     let budget=0;
     const {deps}=dependencies({persist:async(_value,diagnostic)=>{budget=diagnostic.budgetMs;return true;}});
     assert.equal((await resolveStrategyAi(brief,bundle,"{}",available,deps)).state,"validated");
-    assert.equal(budget,expected);
+    assert.ok(budget<=expected&&budget>=expected-100);
     assert.ok(budget<30000);
   }
+});
+test("quota latency is deducted before inference and persistence",async()=>{
+  const original=Date.now;let now=10000,budget=0;
+  Date.now=()=>now;
+  try{
+    const {deps}=dependencies({claim:async()=>{now+=1000;return true;},persist:async(_value,diagnostic)=>{budget=diagnostic.budgetMs;return true;}});
+    assert.equal((await resolveStrategyAi(brief,bundle,"{}",8000,deps)).state,"validated");
+    assert.equal(budget,5500);
+  }finally{Date.now=original;}
 });
 test("invalid or failed provider output falls back to data, with no retry or alternate provider",async()=>{
   const invalid=dependencies({invoke:async()=>'{"summary":"invented","allocations":[],"questions":[]}'});

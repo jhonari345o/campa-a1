@@ -24,11 +24,14 @@ export async function resolveStrategyAi(brief:StrategyBrief,bundle:StrategyEvide
   if(!deps.enabled)return result("not_configured");
   if(!deps.allowRequest||!deps.cacheAvailable||timeoutMs<1000)return result("unavailable");
   if(new TextEncoder().encode(payload).length>96_000)return result("rejected");
-  let claimed=false;try{claimed=await deps.claim();}catch{return result("unavailable");}
+  const deadline=Date.now()+Math.min(23_500,timeoutMs);
+  let claimed=false;try{claimed=await optionalWithinBudget(()=>deps.claim(),()=>false,Math.min(5000,Math.max(1,timeoutMs-2000)));}catch{return result("unavailable");}
   if(!claimed)return result("quota");
   let invalid=false;
   // Keep the inference lease below the cache's thirty-second single-flight claim.
-  const started=Date.now(), budgetMs=Math.min(25_000,timeoutMs);
+  // Quota acquisition consumes the same request budget; reserve time to save the
+  // validated result and finish the HTTP response before hosting's hard deadline.
+  const started=Date.now(), budgetMs=Math.max(1,Math.min(19_000,deadline-started-1500));
   const diagnostic:StrategyAiDiagnostic={code:"TIME_BUDGET_EXHAUSTED",durationMs:0,budgetMs,inputBytes:new TextEncoder().encode(payload).length,outputChars:0};
   const advice=await optionalWithinBudget(async signal=>{
     let raw:string;
@@ -40,7 +43,7 @@ export async function resolveStrategyAi(brief:StrategyBrief,bundle:StrategyEvide
     invalid=!parsed;if(parsed)diagnostic.code="VALIDATED";return parsed;
   },()=>null,budgetMs);
   diagnostic.durationMs=Date.now()-started;
-  let persisted=false;try{persisted=await deps.persist(advice,{...diagnostic});}catch{ /* No uncached AI recommendation is applied. */ }
+  let persisted=false;try{persisted=await optionalWithinBudget(()=>deps.persist(advice,{...diagnostic}),()=>false,Math.max(1,deadline-Date.now()));}catch{ /* No uncached AI recommendation is applied. */ }
   if(!persisted)return result("unavailable");
   return advice?result("validated",advice):result(invalid?"rejected":"unavailable");
 }
