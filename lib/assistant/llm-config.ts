@@ -16,7 +16,12 @@ export function getLlmConfiguration(env: Environment = process.env): LlmConfigur
   if (provider === "openrouter" && env.OPENROUTER_API_KEY) {
     const model = env.OPENROUTER_MODEL?.trim() || "minimax/minimax-m3:free";
     const freeOnly = freeModel(model);
-    const fallbackModels = [...new Set((env.OPENROUTER_FALLBACK_MODELS ?? "google/gemma-4-26b-a4b-it:free,openrouter/free").split(",").map(m => m.trim()))]
+    const fallbackModels = [...new Set([
+      ...(env.OPENROUTER_FALLBACK_MODELS ?? "google/gemma-4-26b-a4b-it:free").split(",").map(m => m.trim()),
+      // The router considers the currently available free pool, including new
+      // models, without hard-coding paid siblings or switching API providers.
+      ...(freeOnly ? ["openrouter/free"] : []),
+    ])]
       .filter(m => m && m !== model && (!freeOnly || freeModel(m)));
     return { provider, model, fallbackModels, freeOnly };
   }

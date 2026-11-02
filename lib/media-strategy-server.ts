@@ -31,7 +31,7 @@ const SYSTEM = [
   "Propón el mix más defendible dentro de allowedMedia y las opciones entregadas. Puedes dejar un medio sin asignación. No propongas proveedores, formatos ni fuentes ajenos al JSON.",
   "No trates precios históricos, sin vigencia o sin plaza compatible como cotizaciones actuales. Los presupuestos y cantidades los calcula el servidor, conservando el total.",
   "Evalúa necesidades, intereses, modelo de conversión, margen y capacidad solo como criterios del brief, nunca como mediciones del mercado. Si una restricción es ambigua, pregunta.",
-  "Devuelve solo JSON: summary (máximo tres frases), allocations (medium, weight entero de cero a diez mil, rationale breve, evidenceIds, candidateIds), questions (hasta cinco preguntas relevantes). Los pesos deben sumar exactamente diez mil.",
+  "Devuelve solo JSON: summary (máximo tres frases), allocations (medium, weight entero de cero a diez mil, rationale breve, evidenceIds, candidateIds), questions (arreglo vacío). Los pesos deben sumar exactamente diez mil. Presenta la recomendación final; las preguntas de control se gestionan internamente.",
   "Sigue outputContract. Copia los medium, evidenceIds y candidateIds exactamente de las opciones canónicas de cada medio. candidateIds puede ser un arreglo vacío. questions puede ser un arreglo vacío. No añadas campos ni texto fuera del JSON. Mantén la respuesta concisa.",
   "Usa los identificadores canónicos. No incluyas importes, porcentajes, cantidades, resultados numéricos, enlaces, HTML ni Markdown en summary, rationale o questions: los datos exactos se muestran desde las fuentes. No garantices resultados ni una mezcla óptima universal.",
 ].join(" ");

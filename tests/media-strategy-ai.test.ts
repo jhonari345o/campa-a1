@@ -23,6 +23,16 @@ test("a valid inference is applied only after persistence succeeds",async()=>{
   const {deps,count}=dependencies();assert.equal((await resolveStrategyAi(brief,bundle,"{}",2000,deps)).state,"validated");assert.deepEqual(count,{claim:1,invoke:1,persist:1});
   const failed=dependencies({persist:async()=>false});const result=await resolveStrategyAi(brief,bundle,"{}",2000,failed.deps);assert.equal(result.state,"unavailable");assert.equal(result.advice,null);
 });
+test("optional follow-up text cannot discard a valid allocation or bypass source checks",async()=>{
+  for(const questions of [undefined,null,"",{},["Consulta breve sin cifras", "El alcance es 99%", "https://example.com"]]){
+    const {deps}=dependencies({invoke:async()=>JSON.stringify({...advice,questions})});
+    const result=await resolveStrategyAi(brief,bundle,"{}",2000,deps);
+    assert.equal(result.state,"validated");
+    assert.deepEqual(result.advice?.questions,Array.isArray(questions)?["Consulta breve sin cifras"]:[]);
+  }
+  const {deps}=dependencies({invoke:async()=>JSON.stringify({...advice,questions:null,allocations:[{...advice.allocations[0],evidenceIds:["invented"]}]})});
+  assert.equal((await resolveStrategyAi(brief,bundle,"{}",2000,deps)).state,"rejected");
+});
 test("planning reserves an inference window within the single-flight lease",async()=>{
   for(const [available,expected] of [[8000,8000],[38000,25000]]){
     let budget=0;
