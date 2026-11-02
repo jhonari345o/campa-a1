@@ -53,6 +53,7 @@ export function catalogProducts(profiles: InfluencerProfile[], ooh: OohCatalog, 
         location: [asset.city, asset.address, asset.code].filter(Boolean).join(" · "),
         reference: asset.reference, image: asset.photo ? `/api/ooh/images/${encodeURIComponent(asset.id)}` : null,
         conditions: "Disponibilidad y período de contratación requieren revisión comercial.",
+        formatGroup: /t[oó]tem/i.test(asset.name) ? /vip|especial/i.test(asset.name) ? "totem_special" : "totem_standard" : "other",
         source: { assetId: asset.id, ...(rate ? { rate, rateIndex } : {}) },
       });
     }
