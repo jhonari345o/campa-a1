@@ -1,5 +1,5 @@
 import Image from "next/image";
-import {CatalogRadioProducts,CatalogWorkspaceFormats} from "./CatalogShopping";
+import {CatalogRadioProducts,CatalogRadioTariffs,CatalogWorkspaceFormats} from "./CatalogShopping";
 import type { BroadcastCatalog } from "@/lib/broadcast-catalog";
 import { radioRegions, type RadioDirectoryEntry } from "@/lib/radio-directory";
 import { radioStationRankings, radioTariffStatus } from "@/lib/radio-station";
@@ -25,7 +25,7 @@ export function RadioStationDetail({ station, catalog, asOf }: { station: RadioD
     </section>
     <section id="radio-tariffs" className={styles.detailSection} aria-labelledby="radio-tariffs-title">
       <p className={styles.eyebrow}>02 · Inversión</p><h4 id="radio-tariffs-title">Tarifas y formatos</h4>
-      <CatalogWorkspaceFormats stationId={station.id}/>
+      <CatalogRadioTariffs stationId={station.id} stationName={station.name}><CatalogWorkspaceFormats stationId={station.id}/>
       {!profile.tariffs.length ? <div><p className={styles.missing}>Selecciona las cuñas para solicitar una propuesta de esta emisora.</p><CatalogRadioProducts stationId={station.id}/></div> : <div className={styles.editions}>{profile.tariffs.map(tariff => {
         const status = radioTariffStatus(tariff, asOf);
         return <article key={tariff.id} className={styles.edition}>
@@ -34,7 +34,7 @@ export function RadioStationDetail({ station, catalog, asOf }: { station: RadioD
           <div className="grid gap-4 md:grid-cols-2">{tariff.rates.map((rate,index)=><div key={index}><h6 className="mt-4 text-sm font-bold">{rate.label}</h6><CatalogRadioProducts stationId={station.id} tariffId={tariff.id} rateIndex={index}/></div>)}</div>
           {tariff.conditions && <p className={styles.conditions}>{tariff.conditions}</p>}
         </article>;
-      })}</div>}
+      })}</div>}</CatalogRadioTariffs>
     </section>
     <section id="radio-rankings" className={styles.detailSection} aria-labelledby="radio-rankings-title">
       <p className={styles.eyebrow}>03 · Audiencia</p><h4 id="radio-rankings-title">Últimos rankings disponibles</h4>

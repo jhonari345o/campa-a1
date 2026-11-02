@@ -3,6 +3,7 @@ import Image from "next/image";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CART_LIMITS, catalogCartSummary, catalogQuoteSignature, changeCatalogQuantity, type CatalogCart, type CatalogPick, type CatalogProduct } from "@/lib/catalog-shopping";
 import { catalogReferenceDisclosure } from "@/lib/catalog-rate-display";
+import { radioProviderKey } from "@/lib/account-radio-tariffs";
 import { loadCatalogSelection, saveCatalogSelection, submitCatalogSelection } from "./catalog-actions";
 import styles from "./CatalogShopping.module.css";
 
@@ -137,6 +138,18 @@ export function CatalogRadioProducts({ stationId, tariffId, rateIndex }: { stati
   const [seconds, setSeconds] = useState(30);
   const product = rows.find(p => p.source.seconds === seconds) ?? rows[0];
   return product ? <div className={styles.radioProduct}>{rows.length > 1 && <label>Duración de la cuña<select value={product.source.seconds} onChange={e => setSeconds(Number(e.target.value))}>{rows.map(p => <option key={p.key} value={p.source.seconds}>{p.source.seconds} segundos</option>)}</select></label>}<p>{product.unit}</p><CatalogPrice productKey={product.key}/><CatalogInlineProduct productKey={product.key} label="Cuñas"/></div> : null;
+}
+export function CatalogRadioTariffs({ stationId, stationName, children }: { stationId: string; stationName: string; children: ReactNode }) {
+  const cart = useShopping();
+  if (cart.isAdmin) return children;
+  const products = cart.products.filter(p => p.kind === "radio" && (p.source.stationId === stationId || radioProviderKey(p.provider) === radioProviderKey(stationName)));
+  if (!products.length) return <p className="text-sm text-muted">Solicita la tarifa de esta emisora para tu cuenta.</p>;
+  return <div className="my-5"><h5 className="mb-3 text-lg font-black">Tarifa de tu cuenta</h5><CatalogAccountRateCard products={products}/></div>;
+}
+export function CatalogAccountRateCard({ products }: { products: CatalogProduct[] }) {
+  const [selected, setSelected] = useState(products[0].key);
+  const p = products.find(p => p.key === selected) ?? products[0];
+  return <article className="rounded-2xl border border-border bg-fog p-5"><p className="text-xs font-bold text-muted">{p.provider}</p><h3 className="mt-2 text-lg font-black">{p.name}</h3>{products.length > 1 && <label className="mt-4 block text-sm font-bold">Programa o formato<select className="mt-2 w-full rounded-xl border border-border bg-white p-3 font-normal" value={p.key} onChange={e => setSelected(e.target.value)} aria-label={`Programa o formato de ${p.provider}`}>{products.map(option => <option key={option.key} value={option.key}>{option.name} · {option.unit}{option.location ? ` · ${option.location}` : ""}</option>)}</select></label>}<p className="mt-2 text-sm">{p.format}</p><strong className="mt-5 block text-2xl">{p.priceCents != null || p.referencePriceCents != null ? catalogMoney(p.priceCents ?? p.referencePriceCents ?? null) : "Consultar"}</strong><p className="mt-1 text-sm text-muted">{p.unit}</p><CatalogRateReference product={p}/><p className="mt-4 text-xs text-muted">{p.referenceLabel || (p.validFrom && p.validTo ? `${p.validFrom} – ${p.validTo}` : p.reference)}</p>{p.location && <p className="mt-2 text-sm">{p.location}</p>}{p.conditions && <p className="mt-3 text-xs leading-relaxed text-muted">{p.conditions}</p>}<div className="mt-4"><CatalogInlineProduct productKey={p.key}/></div></article>;
 }
 export function CatalogWorkspaceFormats({stationId,publicationId}:{stationId?:string;publicationId?:string}){
  const {products}=useShopping(),rows=products.filter(p=>p.source.workspaceProductId&&((stationId&&p.source.stationId===stationId)||(publicationId&&p.source.publicationId===publicationId)));
