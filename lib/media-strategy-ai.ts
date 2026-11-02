@@ -27,7 +27,8 @@ export async function resolveStrategyAi(brief:StrategyBrief,bundle:StrategyEvide
   let claimed=false;try{claimed=await deps.claim();}catch{return result("unavailable");}
   if(!claimed)return result("quota");
   let invalid=false;
-  const started=Date.now(), budgetMs=Math.min(15_000,timeoutMs);
+  // Keep the inference lease below the cache's thirty-second single-flight claim.
+  const started=Date.now(), budgetMs=Math.min(25_000,timeoutMs);
   const diagnostic:StrategyAiDiagnostic={code:"TIME_BUDGET_EXHAUSTED",durationMs:0,budgetMs,inputBytes:new TextEncoder().encode(payload).length,outputChars:0};
   const advice=await optionalWithinBudget(async signal=>{
     let raw:string;

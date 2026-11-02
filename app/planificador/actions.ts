@@ -16,9 +16,10 @@ import { getCategoryResearch } from "@/lib/infomedia-server";
 import { withReferenceYear, type CategoryResearch } from "@/lib/infomedia";
 import { normalizeCoverageBrief, type CoverageSelection } from "@/lib/geographic-coverage";
 import {catalogClientContext} from "@/lib/catalog-client-server";
-import { buildResearchRecommendation } from "@/lib/media-strategy-server";
+import { buildResearchRecommendation,prepareResearchRecommendation,completeResearchRecommendation,type PreparedRecommendation } from "@/lib/media-strategy-server";
 import { customizeStrategyPlan } from "@/lib/media-strategy";
 import { validPlanPeriod } from "@/lib/brief-inputs";
+import {sealPlanningPreparation,openPlanningPreparation} from "@/lib/planning-preparation";
 
 export type PlanBrief = {
   clientId?:string|null;clientName?:string;
@@ -101,7 +102,7 @@ export type PlanResult =
 export async function generarPlan(
   _prev: PlanResult | null,
   formData: FormData,
-): Promise<PlanResult> {
+): Promise<{ok:true;preparation:string}|{ok:false;error:string}> {
   const startedAt = Date.now();
   const profile = await getSessionProfile();
   if (!profile) return { ok: false, error: "Debes iniciar sesion." };
@@ -193,29 +194,9 @@ export async function generarPlan(
   };
 
   try {
-    const plan = await buildResearchRecommendation(brief, research, { allowAi: true, timeoutMs: Math.max(1, 20_000 - (Date.now() - startedAt)) });
-    const remainingMs = Math.max(1, 20_000 - (Date.now() - startedAt));
-    const [campaigns, detail] = await Promise.all([selectedMedia.includes("digital")
-      ? buildCurrentCampaigns({
-          keyword,
-          audience,
-          objective,
-          brand: brief.brand,
-          geography: brief.geography,
-          audienceType: brief.audienceType,
-          ageRange: brief.ageRange,
-          socioeconomic: brief.socioeconomic,
-          businessModel: brief.businessModel,
-          conversionModel: brief.conversionModel,
-        }, plan, remainingMs)
-      : Promise.resolve([]),
-      buildDetailedMediaRecommendation(brief, plan, remainingMs),
-    ]);
-    const analysis = buildPlanAnalysis(brief, plan);
-    const safePlan = profile.is_platform_admin
-      ? plan
-      : { ...plan, matched: 0, totalRef: 0 };
-    return { ok: true, research, plan: safePlan, campaigns, analysis, detail, keyword, objective, audience, brief };
+    const prepared=await prepareResearchRecommendation(brief,research,{profile,timeoutMs:Math.max(1,20_000-(Date.now()-startedAt))});
+    const preparation=sealPlanningPreparation({brief,research,prepared},profile.id,process.env.SUPABASE_SERVICE_ROLE_KEY??"");
+    return {ok:true,preparation};
   } catch (err) {
     if (err instanceof Error && err.message === "INVALID_STRATEGY_BRIEF") return { ok: false, error: "Revisa las fechas, el presupuesto y la extensión del brief antes de generar la recomendación." };
     if (err instanceof Error && err.message === "NO_CATEGORY_MEDIA_EVIDENCE") return { ok: false, error: "No hay inversión de categoría ni consumo TGI disponibles para los medios seleccionados. Revisa otros medios o utiliza el constructor manual." };
@@ -223,6 +204,24 @@ export async function generarPlan(
       return { ok: false, error: "El planificador aun no esta habilitado (falta la clave de servicio)." };
     }
     return { ok: false, error: "No pudimos generar el plan. Intenta de nuevo." };
+  }
+}
+
+/** Second request reserves the inference window after the source-loading request has completed. */
+export async function completarPlan(preparation:string):Promise<PlanResult> {
+  const started=Date.now(),profile=await getSessionProfile();
+  if(!profile)return {ok:false,error:"Debes iniciar sesión."};
+  if(!profile.is_platform_admin){
+    const companies=await getMyCompanies(profile.id);
+    if(!companies.some(c=>c.status==="activa"&&canWorkspaceRole(c,"plan")))return {ok:false,error:"Tu rol no permite generar planes."};
+  }
+  try{
+    const {brief,research,prepared}=openPlanningPreparation<{brief:PlanBrief;research:CategoryResearch;prepared:PreparedRecommendation}>(preparation,profile.id,process.env.SUPABASE_SERVICE_ROLE_KEY??"");
+    const plan=await completeResearchRecommendation(brief,prepared,{profile,allowAi:true,timeoutMs:Math.max(1,27_000-(Date.now()-started))});
+    const [campaigns,detail]=await Promise.all([brief.selectedMedia.includes("digital")?buildCurrentCampaigns(brief,plan,1):Promise.resolve([]),buildDetailedMediaRecommendation(brief,plan,1)]);
+    return {ok:true,research,plan:profile.is_platform_admin?plan:{...plan,matched:0,totalRef:0},campaigns,detail,analysis:buildPlanAnalysis(brief,plan),keyword:brief.keyword,objective:brief.objective,audience:brief.audience,brief};
+  }catch{
+    return {ok:false,error:"No se pudo completar el análisis. Tu brief se conserva; vuelve a generar la recomendación."};
   }
 }
 

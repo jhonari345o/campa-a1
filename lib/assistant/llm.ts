@@ -2,7 +2,7 @@ import { BedrockRuntimeClient, ConverseCommand } from "@aws-sdk/client-bedrock-r
 import { getLlmConfiguration } from "./llm-config";
 
 export type LlmMessage = { role: "system" | "user" | "assistant"; content: string };
-type CompletionOptions = { maxTokens?: number; temperature?: number; signal?: AbortSignal; json?: boolean };
+type CompletionOptions = { maxTokens?: number; temperature?: number; signal?: AbortSignal; json?: boolean; timeoutMs?: number };
 
 /**
  * Cerebro de Mavi. Soporta proveedores intercambiables:
@@ -106,9 +106,9 @@ async function openaiChat(
 ) {
   const fallbackModels = (provider.fallbackModels ?? [])
     .filter((model) => model !== provider.model);
-  const configuredTimeout = Number(process.env.LLM_REQUEST_TIMEOUT_MS ?? "17000");
+  const configuredTimeout = opts?.timeoutMs ?? Number(process.env.LLM_REQUEST_TIMEOUT_MS ?? "17000");
   const requestTimeoutMs = Number.isFinite(configuredTimeout)
-    ? Math.min(22_000, Math.max(5_000, configuredTimeout))
+    ? Math.min(25_000, Math.max(5_000, configuredTimeout))
     : 17_000;
   let res: Response;
   try {

@@ -1,0 +1,62 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {planningStudyBrief} from "../lib/planning-market";
+import {sameMarket,radioCompatibility,type BroadcastSource} from "../lib/broadcast-catalog";
+import {strategyCandidatePool,allocateStrategyExecutions,buildStrategyReport} from "../lib/media-strategy";
+import {buildStrategyEvidence} from "../lib/media-strategy-evidence";
+import {strategyBrief,strategyResearch,strategyCatalogs} from "./media-strategy-fixture";
+import type {CatalogProduct} from "../lib/catalog-shopping";
+
+const brief=strategyBrief({geography:"Guayas · Pichincha",coverage:[{kind:"province",key:"province:guayas",label:"Guayas"},{kind:"province",key:"province:pichincha",label:"Pichincha"}]});
+test("multi-province planning uses local study scopes without relabelling them as provincial estimates",()=>{
+  const local=planningStudyBrief(["guayaquil","quito"],brief)!;
+  assert.equal(local.geography,"guayaquil, quito");
+  assert.equal(local.coverage,undefined);
+  assert.ok(planningStudyBrief(["guayaquil"],brief));
+  assert.ok(planningStudyBrief(["quito"],brief));
+  assert.equal(planningStudyBrief(["cuenca"],brief),null);
+  assert.equal(planningStudyBrief([],brief),null);
+  assert.equal(planningStudyBrief(["guayaquil","quito"],{...brief,coverage:brief.coverage!.slice(0,1)}),null);
+  const source={marketKeys:["guayaquil","quito"]} as BroadcastSource;
+  assert.equal(sameMarket(source,brief),false);
+  assert.equal(sameMarket(source,local),true);
+});
+test("territorial containment never changes the study's audience requirements",()=>{
+  const source={...strategyCatalogs().broadcast.sources[0],kind:"radio" as const,marketKeys:["guayaquil"],ageMin:18,ageMax:99,nse:"all",sex:"female",periodEnd:"2026-10-01"};
+  const local=planningStudyBrief(source.marketKeys,brief)!;
+  assert.notEqual(radioCompatibility(source,local),null);
+  assert.equal(radioCompatibility(source,{...local,sex:"Mujeres"}),null);
+});
+test("curated radio coverage and account prices join only the same station and study plaza",()=>{
+  const catalogs=strategyCatalogs();
+  const source={...catalogs.broadcast.sources[0],id:"synthetic-radio-study",kind:"radio" as const,market:"Guayaquil",marketKeys:["guayaquil"],ageMin:18,ageMax:99,nse:"all",sex:"all",periodStart:"2026-10-01",periodEnd:"2026-10-31",frequency:"FM",target:"Personas adultas"};
+  catalogs.broadcast.sources=[source];
+  catalogs.broadcast.radio=[{id:"synthetic-ranked-station",sourceId:source.id,name:"Radio sintética",genre:"",rating:2,share:3,audience:100,rank:1}];
+  catalogs.radio.stations=[{id:"synthetic-station",name:"Radio sintética",regionKeys:["national","guayas"],city:"Guayaquil",dial:null,genres:[],description:"",logoPath:null,reviewedAt:null,profile:{coverage:"Nacional",website:null,tariffs:[],rankingLinks:[{sourceId:source.id,stationName:"Radio sintética",marketKeys:["guayaquil"],frequency:"FM"}]}}];
+  const product:CatalogProduct={key:"radio:synthetic:account",kind:"radio",provider:"Radio sintética",name:"Rotativo",format:"Cuña de veinte segundos",unit:"cuña de 20 s",priceCents:1700,taxIncluded:false,location:"Guayaquil",marketKeys:["guayaquil"],reference:"",image:null,conditions:"Tarifa sintética",validFrom:"2026-11-01",validTo:"2026-11-30",source:{stationId:"synthetic-station",agreementId:"synthetic-agreement",seconds:20}};
+  catalogs.workspaceProducts=[product,{...product,key:"radio:synthetic:other-plaza",priceCents:100,marketKeys:["quito"],location:"Quito"}];
+  let bundle=buildStrategyEvidence({...brief,selectedMedia:["radio"]},strategyResearch,catalogs,"2026-11-02");
+  let ranked=bundle.candidates.find(c=>c.id.startsWith("radio:"))!;
+  assert.deepEqual(ranked.stationCoverage,["Nacionales","Guayas"]);
+  assert.equal(ranked.market,"Guayaquil");
+  assert.equal(ranked.unitPriceUsd,17);
+  assert.equal(ranked.metrics.find(m=>m.label==="Rating")?.value,2);
+  assert.ok(ranked.sourceIds.includes("workspace-tariff:radio:synthetic:account"));
+  catalogs.workspaceProducts=[{...product,source:{...product.source,stationId:"other-station"}}];
+  bundle=buildStrategyEvidence({...brief,selectedMedia:["radio"]},strategyResearch,catalogs,"2026-11-02");
+  ranked=bundle.candidates.find(c=>c.id.startsWith("radio:"))!;
+  assert.equal(ranked.unitPriceUsd,null);
+});
+test("radio candidates retain independent plazas and never sort their ratings against one another",()=>{
+  const bundle=buildStrategyEvidence(brief,strategyResearch,strategyCatalogs(),"2026-11-02");
+  const template=bundle.candidates[0]??{medium:"radio" as const,provider:"Synthetic",product:"Spot",market:"",target:"Personas 18+",period:"2026-10",sourceIds:[],sourceUse:"comparable" as const,unit:"spot",unitPriceUsd:null,referencePriceUsd:null,minimumUnits:1,minimumSpendUsd:null,metrics:[],note:""};
+  bundle.sources=[...bundle.sources,...["Guayaquil","Quito"].map((market,i)=>({id:`radio-study:${i}`,kind:"ranking" as const,label:"Synthetic",period:"2026-10",market,target:"Personas 18+",use:"comparable" as const,note:""}))];
+  bundle.candidates=[0,1,2,3].map(i=>({...template,id:`station-${i}`,medium:"radio" as const,market:i<2?"Guayaquil":"Quito",sourceIds:[`radio-study:${i<2?0:1}`],unitPriceUsd:10,minimumSpendUsd:10,metrics:[{label:"Rating",value:[5,4,90,80][i],unit:"puntos",sourceId:`radio-study:${i<2?0:1}`}]}));
+  assert.deepEqual(strategyCandidatePool(bundle,"radio").map(c=>c.id),["station-0","station-2","station-1","station-3"]);
+  const executions=allocateStrategyExecutions([bundle.candidates[0],bundle.candidates[2]],100.01);
+  assert.deepEqual(executions.map(e=>e.amountUsd),[50.01,50]);
+  assert.equal(executions.reduce((n,e)=>n+Math.round(e.amountUsd!*100),0),10001);
+  assert.ok(executions.every(e=>e.referenceSpendUsd!<=e.amountUsd!));
+  const report=buildStrategyReport({...brief,selectedMedia:["radio"],budgetUsd:100.01},bundle,{matched:0,totalRef:0,plan:[],basis:"infomedia",benchmark:[],profileLabel:"Synthetic",strategySummary:"Synthetic"},{aiState:"validated",advice:{summary:"Selección por plaza.",questions:[],allocations:[{medium:"radio",weight:10000,rationale:"Presencia local.",candidateIds:["station-0","station-2"],evidenceIds:["radio-study:0","radio-study:1"]}]},fingerprint:"test",generatedAt:"2026-11-02"});
+  assert.deepEqual(report.allocations[0].executions?.map(e=>e.candidate.market),["Guayaquil","Quito"]);
+});
