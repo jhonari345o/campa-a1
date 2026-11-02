@@ -59,6 +59,11 @@ test("Spanish and English stereo spelling do not create two customer tariffs for
   const rows=scopeCatalogProducts([own,history],[rate(own.key,"client","2026-11-01",3800),rate(history.key,"client","2026-10-01",4200)],"2026-11-01",false);
   assert.equal(accountRadioGroups(rows).length,1);assert.equal(rows.length,1);assert.equal(rows[0].key,own.key);assert.equal(rows[0].priceCents,3800);
 });
+test("the verified Radio Rey and Stereo Rey names resolve to the selected account negotiation", () => {
+  const own={...product("radio:workspace:own"),provider:"Radio Rey"}, fallback={...product("radio:workspace:fallback",30),provider:"Stereo Rey 96.7 FM",source:{workspaceProductId:"fallback",stationId:"station-rey"}};
+  const rows=scopeCatalogProducts([own,fallback],[rate(own.key,"client","2026-11-01",3800),rate(fallback.key,"fallback","2026-10-01",4500)],"2026-11-01",false);
+  assert.equal(rows.length,1);assert.equal(rows[0].key,own.key);assert.equal(rows[0].source.stationId,"station-rey");assert.equal(rows[0].unit,"cuña de 20 s");
+});
 
 test("private evidence becomes bounded selection hints and cannot appear in the customer projection", () => {
   const p = product("radio:workspace:a");

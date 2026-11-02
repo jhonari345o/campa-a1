@@ -17,7 +17,10 @@ export const radioProviderKey = (value: string) => {
   const clean = (s: string) => s.replace(/\b(radio|fm|am)\b/g, " ").replace(/[^a-z0-9]+/g, " ").trim();
   const normalized = value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\bestereo\b/g,"stereo");
   const withoutDial = clean(normalized.replace(/\b\d{2,3}[.,]\d+(?:\s*(?:fm|am))?\b/g, " ").replace(/\b\d{3,4}\s*(?:fm|am)\b/g, " "));
-  return /[a-z]/.test(withoutDial) ? withoutDial : clean(normalized);
+  const key = /[a-z]/.test(withoutDial) ? withoutDial : clean(normalized);
+  // Public registry names Stereo Rey and identifies its website as Radio Rey (record 653).
+  // https://www.consejodecomunicacion.gob.ec/wp-content/uploads/2025/06/LISTADO-DE-MEDIOS-DE-COMUNICACION-JUNIO-2025.pdf
+  return key === "stereo rey" ? "rey" : key;
 };
 const originRank = { client: 3, unspecified: 2, fallback: 1 };
 
