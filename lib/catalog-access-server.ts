@@ -8,6 +8,7 @@ import type { CatalogProduct } from "./catalog-shopping";
 import { scopeCatalogProducts, type AgreedCatalogRate } from "./catalog-pricing";
 import { mergeTvDefaults, preferNegotiatedTelevision } from "./tv-default-pricing";
 import { radioRatePreference } from "./account-radio-tariffs";
+import { mergeRadioDefaults } from "./radio-default-pricing";
 
 /** Per-request authorization precedes every privileged catalog read. Never cache across users. */
 export const catalogAccess = cache(async () => {
@@ -35,6 +36,9 @@ export async function priceCatalogProducts(products: CatalogProduct[], previewCo
   const { data: defaultRows, error: defaultError } = await scope.db.from("catalog_tv_defaults").select("product").eq("active", true).order("product_key").limit(1000);
   if (defaultError) throw new Error("TV_DEFAULT_PRICING_UNAVAILABLE");
   products = mergeTvDefaults(products, (defaultRows ?? []).map(row => row.product as CatalogProduct));
+  const {data:radioDefaults,error:radioDefaultError}=await scope.db.rpc("catalog_cne_radio_products");
+  if(radioDefaultError)throw new Error("RADIO_DEFAULT_PRICING_UNAVAILABLE");
+  products=mergeRadioDefaults(products,(radioDefaults??[]).map((row:{product:CatalogProduct})=>row.product));
   const rates:AgreedCatalogRate[]=[];
   if((!scope.isAdmin||previewCompanyId)&&companyId){
     for(let from=0;from<20000;from+=500){

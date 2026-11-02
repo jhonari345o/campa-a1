@@ -17,3 +17,14 @@ export function planningStudyBrief(marketKeys:string[],brief:BroadcastBrief):Bro
   if(!observed.every(contains))return null;
   return {...brief,coverage:undefined,geography:observed.join(", ")};
 }
+
+/** A local station can be measured in a consolidated study. Price its actual
+ * transmission footprint while preserving the study's complete denominator. */
+export function radioTariffCoversStationStudy(tariffMarkets:string[],studyMarkets:string[],stationCoverage:string[]) {
+  if(!tariffMarkets.length||!studyMarkets.length||!stationCoverage.length)return false;
+  const base={geography:stationCoverage.map(m=>normalized(m)==="nacionales"?"nacional":m).join(", ")} as BroadcastBrief;
+  const stationMarkets=studyMarkets.filter(m=>planningStudyBrief([m],base));
+  if(!stationMarkets.length)return false;
+  const tariff={geography:tariffMarkets.join(", ")} as BroadcastBrief;
+  return stationMarkets.every(m=>planningStudyBrief([m],tariff));
+}

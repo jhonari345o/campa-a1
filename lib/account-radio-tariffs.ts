@@ -66,7 +66,7 @@ export function selectAccountRadioTariffs(products: CatalogProduct[], rates: Agr
   }
   const rank = (p: CatalogProduct): Array<number | string> => {
     const pref = preferences.get(p.key);
-    return [p.source.workspaceProductId ? originRank[pref?.origin ?? "unspecified"] : 0, pref?.clientSpecific ? 1 : 0,
+    return [p.source.workspaceProductId ? originRank[pref?.origin ?? "unspecified"] + 1 : p.source.defaultPrice && p.source.standingPrice ? 1 : 0, pref?.clientSpecific ? 1 : 0,
       pref?.observedOn || p.validFrom || "", p.validFrom || ""];
   };
   const compare = (a: CatalogProduct, b: CatalogProduct) => {

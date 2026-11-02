@@ -1,4 +1,4 @@
-import {planningStudyBrief} from "./planning-market";
+import {planningStudyBrief,radioTariffCoversStationStudy} from "./planning-market";
 import type {CatalogProduct} from "./catalog-shopping";
 import {planningProductPrice} from "./catalog-planning";
 import {productMedium} from "./diy-catalog";
@@ -201,11 +201,11 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
     const sid=addSource({id:`tv-rating:${study.id}`,kind:"rating",label:study.study,period:`${study.periodStart} – ${study.periodEnd}`,market:study.market,target:study.target,use:"comparable",note:"Promedio del programa para su plaza y público."});
     c.metrics=[{label:"Rating",value:study.ratingPct,unit:"%",sourceId:sid}];c.sourceIds.push(sid);c.target=study.target;c.cohort=JSON.stringify([study.study,study.periodStart,study.periodEnd,study.marketKeys,study.target]);
   }
-  // Join account prices to research by curated station identity and exact study territory.
+  // Match the curated station's purchased signal without relabeling a study's denominator.
   for(const c of candidates.filter(c=>c.medium==="radio"&&c.stationId&&c.id.startsWith("radio:"))){
     const local=planningStudyBrief(c.marketKeys??[],brief);
     if(!local)continue;
-    const price=candidates.filter(p=>p.id.startsWith("workspace:")&&p.medium==="radio"&&p.stationId===c.stationId&&p.unitPriceUsd!=null&&p.unitPriceUsd>0&&(p.marketKeys?.some(k=>normalized(k)==="nacional")||sameMarket({marketKeys:p.marketKeys??[]} as BroadcastSource,local))).sort((a,b)=>a.unitPriceUsd!-b.unitPriceUsd!||a.id.localeCompare(b.id))[0];
+    const price=candidates.filter(p=>p.id.startsWith("workspace:")&&p.medium==="radio"&&p.stationId===c.stationId&&p.unitPriceUsd!=null&&p.unitPriceUsd>0&&(sameMarket({marketKeys:p.marketKeys??[]} as BroadcastSource,local)||radioTariffCoversStationStudy(p.marketKeys??[],c.marketKeys??[],c.stationCoverage??[]))).sort((a,b)=>a.unitPriceUsd!-b.unitPriceUsd!||a.id.localeCompare(b.id))[0];
     if(price){c.catalogKey=price.catalogKey;c.unitPriceUsd=price.unitPriceUsd;c.referencePriceUsd=price.referencePriceUsd;c.minimumSpendUsd=price.minimumSpendUsd;c.unit=price.unit;c.sourceIds=[...new Set([...c.sourceIds.filter(id=>!id.startsWith("radio-tariff:")),...price.sourceIds])];c.note=[c.note.replace("Falta una tarifa compatible para calcular cuñas comprables.",""),price.note].filter(Boolean).join(" ");}
   }
   const resolvedTariffGaps:Partial<Record<MediaGroup,string>>={television:"TV: no hay tarifas compatibles con todas las fechas, plaza y condiciones del brief.",radio:"Radio: no hay una tarifa vigente y compatible para cuantificar la pauta.",press:"Prensa: faltan tarifas con vigencia y plaza compatibles con la campaña."};

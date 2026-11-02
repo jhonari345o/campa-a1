@@ -5,7 +5,11 @@ export type AgreedCatalogRate = { agreementId: string; productKey: string; price
 
 /** Explicit owner selling defaults are allowed; private supplier prices and other clients are never fallbacks. */
 export function scopeCatalogProducts(products: CatalogProduct[], rates: AgreedCatalogRate[], day: string, admin: boolean): CatalogProduct[] {
-  if (admin) return products;
+  if (admin) {
+    if(!products.some(p=>p.kind==="radio"&&p.source.defaultPrice))return products;
+    const selected=new Set(selectAccountRadioTariffs(products.filter(p=>!p.source.workspaceProductId),[]).map(p=>p.key));
+    return products.filter(p=>p.kind!=="radio"||p.source.workspaceProductId||selected.has(p.key));
+  }
   const priced = products.map(p => {
     const matching = rates.filter(r => r.productKey === p.key && r.validFrom <= day && r.validTo >= day && Number.isSafeInteger(r.priceCents) && r.priceCents >= 0);
     const specific = matching.filter(r => r.clientSpecific);
@@ -13,7 +17,7 @@ export function scopeCatalogProducts(products: CatalogProduct[], rates: AgreedCa
     const rate = !p.referenceOnly && applicable.length === 1 ? applicable[0] : null;
     const history = p.source.workspaceProductId ? rates.filter(r=>r.productKey===p.key&&Number.isSafeInteger(r.priceCents)&&r.priceCents>=0) : [];
     const reference = !rate && history.length===1 ? history[0] : null;
-    const defaultRate = p.kind === "tv" && p.source.defaultPrice && p.source.standingPrice && p.validFrom && p.validFrom <= day && (!p.validTo || p.validTo >= day) && !rates.some(r => r.productKey === p.key) ? p : null;
+    const defaultRate = (p.kind === "tv" || p.kind === "radio") && p.source.defaultPrice && p.source.standingPrice && p.validFrom && p.validFrom <= day && (!p.validTo || p.validTo >= day) && !rates.some(r => r.productKey === p.key) ? p : null;
     const publishedPrice = p.referencePriceCents ?? p.priceCents;
     const published = p.kind === "press" && p.source.publishedTariff === true && publishedPrice != null;
     // Source IDs are sufficient to resolve an order; raw acquisition rates must never reach a customer.
