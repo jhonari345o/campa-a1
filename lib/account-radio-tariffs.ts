@@ -23,6 +23,21 @@ export const radioProviderKey = (value: string) => {
   return key === "stereo rey" ? "rey" : key;
 };
 const originRank = { client: 3, unspecified: 2, fallback: 1 };
+const formatText = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+  .replace(/\bestereo\b/g, "stereo").replace(/\b(?:horarios?\s+)?rotativ[oa]s?\b/g, "rotativo")
+  .replace(/[^a-z0-9]+/g, " ").trim();
+
+/** Campaign/scenario titles are not a second commercial format. Named programs remain distinct. */
+function radioFormatKey(p: CatalogProduct): string {
+  const provider = formatText(p.provider);
+  let program = formatText(p.name.replace(/\s*·\s*escenario\s+(?:final|\d+)\s*$/i, ""));
+  if (program === provider) program = "";
+  else if (program.startsWith(`${provider} `)) program = program.slice(provider.length + 1);
+  const format = formatText(p.format);
+  const withoutDuration = formatText(p.format.replace(/\b\d+\s*(?:s|seg(?:undos?)?)\b/gi, ""));
+  if (program === withoutDuration) program = "";
+  return JSON.stringify([program, format, formatText(p.unit), formatText(p.location)]);
+}
 
 export function accountRadioGroups(products: CatalogProduct[]): CatalogProduct[][] {
   const aliases = new Map<string, string>();
@@ -51,10 +66,8 @@ export function selectAccountRadioTariffs(products: CatalogProduct[], rates: Agr
   }
   const rank = (p: CatalogProduct): Array<number | string> => {
     const pref = preferences.get(p.key);
-    const seconds = p.source.seconds ?? Number(p.unit.match(/cuña de\s+(\d+)\s*s/i)?.[1] ?? 0);
     return [p.source.workspaceProductId ? originRank[pref?.origin ?? "unspecified"] : 0, pref?.clientSpecific ? 1 : 0,
-      pref?.observedOn || p.validFrom || "", p.validFrom || "",
-      p.source.workspaceProductId ? 0 : seconds === 30 ? 3 : seconds === 20 ? 2 : seconds > 0 ? 1 : 0];
+      pref?.observedOn || p.validFrom || "", p.validFrom || ""];
   };
   const compare = (a: CatalogProduct, b: CatalogProduct) => {
     const x = rank(a), y = rank(b);
@@ -65,12 +78,16 @@ export function selectAccountRadioTariffs(products: CatalogProduct[], rates: Agr
   for (const rows of accountRadioGroups(products)) {
     rows.sort((a, b) => compare(a, b) || a.key.localeCompare(b.key));
     const formats = new Map<string, CatalogProduct[]>();
-    for (const p of rows.filter(p => compare(rows[0], p) === 0)) {
-      const key = JSON.stringify([p.name, p.format, p.unit, p.location].map(s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim()));
+    const preferred = rank(rows[0]);
+    // Prefer the account's negotiation to a station-wide fallback, then resolve dates per format.
+    // A newer rotativo rate must not remove a separate noticiero rate received on another date.
+    for (const p of rows.filter(p => rank(p)[0] === preferred[0] && rank(p)[1] === preferred[1])) {
+      const key = radioFormatKey(p);
       formats.set(key, [...(formats.get(key) ?? []), p]);
     }
     const stationIds = [...new Set(rows.flatMap(p => p.source.stationId ? [p.source.stationId] : []))];
-    for (const sameFormat of formats.values()) {
+    for (const history of formats.values()) {
+      const sameFormat = history.filter(p => compare(history[0], p) === 0);
       const raw = sameFormat[0];
       const first = !raw.source.stationId && stationIds.length === 1 ? { ...raw, source: { ...raw.source, stationId: stationIds[0] } } : raw;
       const amount = (p: CatalogProduct) => p.priceCents ?? p.referencePriceCents ?? null;
