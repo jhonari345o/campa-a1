@@ -7,6 +7,7 @@ import { getSessionProfile } from "@/lib/auth";
 import { getMyCompanies, getCompanyTeam, ROLE_LABELS, type TeamMember } from "@/lib/company";
 import { MaviScene } from "@/components/Mavi";
 import { MaviTour } from "@/components/MaviTour";
+import { personalGreeting } from "@/lib/personal-greeting";
 
 export const metadata = { title: "Mi panel" };
 
@@ -41,7 +42,7 @@ export default async function PanelPage() {
           />
           <div>
             <h2 className="text-3xl font-black tracking-tight">
-              Hola{profile.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}.
+              {personalGreeting(profile.full_name,profile.workspace?.name)}
             </h2>
             <p className="mt-1 text-muted">
               {companies.length > 0

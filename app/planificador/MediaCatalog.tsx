@@ -274,8 +274,7 @@ function SectionHeading({ eyebrow, title, description, count }: { eyebrow: strin
 }
 
 function Status({ status }: { status: CatalogStatus }) {
-  const styles = status === "cotizable" ? "bg-signal/15 text-signal-dark" : status === "validacion" ? "bg-amber/20 text-[#735000]" : "bg-concrete text-muted";
-  return <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${styles}`}>{STATUS_LABELS[status]}</span>;
+  return <span className={`catalog-status catalog-status--${status}`}>{STATUS_LABELS[status]}</span>;
 }
 
 function CatalogConditions() {

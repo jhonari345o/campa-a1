@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { Wordmark } from "./Wordmark";
 import { MaviFloatingAssistant } from "./MaviFloatingAssistant";
 import { AccountMenu } from "./AccountMenu";
-import { WorkspaceClientBrand } from "./WorkspaceClientBrand";
+import { WorkspaceBanner } from "./WorkspaceBanner";
 
 type ActivePage = "mercado" | "consola" | "panel" | "asistente" | "planificador" | "campanas" | "pautar" | "reportes" | "laboratorio" | "clientes" | "configuracion";
 
@@ -133,11 +133,11 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
         <Link href="/" className="portal-mobile-brand" aria-label="Ad Mavericks One, página principal"><Wordmark one/></Link>
         <div className="portal-topbar-copy"><p>Ad Mavericks One</p><strong>{displayTitle}</strong></div>
         <div className="portal-topbar-account">
-          <WorkspaceClientBrand workspace={workspace}/>
           <span className="portal-license-pill"><i />Licencia activa</span>
           <AccountMenu name={name} isAdmin={isAdmin} workspaceName={workspace?.name} role={workspace?.role} preview={Boolean(previewCompanyId)}/>
         </div>
       </header>
+      {workspace && <WorkspaceBanner workspace={workspace}/>}
       {!previewCompanyId && <MaviFloatingAssistant />}
     </>
   );
