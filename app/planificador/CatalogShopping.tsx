@@ -6,6 +6,7 @@ import { catalogReferenceDisclosure } from "@/lib/catalog-rate-display";
 import { radioProviderKey } from "@/lib/account-radio-tariffs";
 import { digitalBudgetKey, digitalBudgetProduct, digitalGoalsForPlatform } from "@/lib/digital-budget";
 import { formatBudgetInput, parseBudgetInput } from "@/lib/brief-inputs";
+import { CalendarDateField } from "@/components/PlanScheduleFields";
 import { loadCatalogSelection, saveCatalogSelection, submitCatalogSelection } from "./catalog-actions";
 import styles from "./CatalogShopping.module.css";
 
@@ -231,10 +232,14 @@ function ShoppingDialog({ mode, orderId, onClose, onReview, onSend }: { mode: "c
       {mode === "cart" ? <button type="button" className={styles.primary} onClick={onReview} disabled={!summary.lines.length || !!summary.unavailable || cart.saving || !!cart.error || !cart.canRequest}>Revisar selección →</button> : <form className={styles.requestForm} onSubmit={event => { event.preventDefault(); void onSend(event.currentTarget); }}>
         <label>Nombre de la solicitud<input name="title" required maxLength={120} defaultValue="Selección del catálogo" placeholder="Marca o referencia de la compra" /></label>
         {cart.companies.length > 1 || cart.isAdmin ? <label>Espacio de la solicitud<select name="companyId" defaultValue={cart.companies.length === 1 ? cart.companies[0].id : ""}>{cart.isAdmin && <option value="">Ad Mavericks · cuenta propia</option>}{!cart.isAdmin && <option value="" disabled>Selecciona un espacio</option>}{cart.companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label> : <input type="hidden" name="companyId" value={cart.companies[0]?.id ?? ""} />}
-        <label>Fecha de inicio deseada <small>Opcional</small><input name="desiredStart" type="date" /></label>
+        <DesiredStartField/>
         <label>Indicaciones <small>Opcional</small><textarea name="notes" rows={3} maxLength={2000} placeholder="Fechas, ciudad, marca o detalles de los entregables" /></label>
         <button className={styles.primary} type="submit" disabled={cart.busy || cart.saving || !!cart.error || !!summary.unavailable || !summary.lines.length || !cart.canRequest}>{cart.busy ? "Registrando solicitud…" : "Enviar solicitud →"}</button>
       </form>}</>}
   </dialog>;
+}
+function DesiredStartField() {
+  const [date, setDate] = useState("");
+  return <CalendarDateField name="desiredStart" label="Fecha de inicio deseada · opcional" value={date} onChange={setDate} required={false}/>;
 }
 function CartIcon() { return <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 4h2l2.2 11h11.6l2-8H6M8 19h.01M18 19h.01" /><circle cx="8" cy="19" r="1" /><circle cx="18" cy="19" r="1" /></svg>; }

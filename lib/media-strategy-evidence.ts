@@ -31,6 +31,7 @@ export type StrategyCandidate = {
   metrics: { label: string; value: number; unit: string; sourceId: string }[];
   cohort?: string;
   geo?: { latitude: number; longitude: number };
+  oohPhoto?: { assetId: string; kind: "asset" | "format" };
   note: string;
 };
 export type StrategyEvidenceBundle = {
@@ -151,7 +152,7 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
     if(!territorialFit(asset.city,asset.provinces,brief)) continue;
     const sid=addSource({id:`ooh:${asset.id}`,kind:"inventory",label:`${asset.brand || asset.providerSlug} · ${asset.name}`,period:asset.reference||"Corte no declarado",market:[asset.city,...asset.provinces].filter(Boolean).join(" · "),target:"Audiencia del soporte no medida",use:"context",note:"Inventario territorial; disponibilidad y vigencia comercial no confirmadas para esta campaña."});
     const rate=asset.rates.filter(r=>r.amount!=null && r.amount>0).sort((a,b)=>a.amount!-b.amount!)[0];
-    candidates.push({id:`ooh:${asset.id}`,medium:"ooh",provider:asset.brand||asset.providerSlug,product:[asset.name,asset.code].filter(Boolean).join(" · "),market:[asset.city,asset.address].filter(Boolean).join(" · "),target:"Sin audiencia homologada",period:asset.reference||"Corte no declarado",sourceIds:[sid],sourceUse:"context",unit:rate?oohRateUnit(rate):"unidad por definir",unitPriceUsd:null,referencePriceUsd:rate?.amount??null,minimumUnits:1,minimumSpendUsd:null,metrics:[],...(asset.latitude!=null&&asset.longitude!=null?{geo:{latitude:asset.latitude,longitude:asset.longitude}}:{}),note:"Referencia por unidad original. No se asume disponibilidad ni se convierte afluencia en alcance."});
+    candidates.push({id:`ooh:${asset.id}`,medium:"ooh",provider:asset.brand||asset.providerSlug,product:[asset.name,asset.code].filter(Boolean).join(" · "),market:[asset.city,asset.address].filter(Boolean).join(" · "),target:"Sin audiencia homologada",period:asset.reference||"Corte no declarado",sourceIds:[sid],sourceUse:"context",unit:rate?oohRateUnit(rate):"unidad por definir",unitPriceUsd:null,referencePriceUsd:rate?.amount??null,minimumUnits:1,minimumSpendUsd:null,metrics:[],...(asset.photo?{oohPhoto:{assetId:asset.id,kind:asset.photoKind}}:{}),...(asset.latitude!=null&&asset.longitude!=null?{geo:{latitude:asset.latitude,longitude:asset.longitude}}:{}),note:"Referencia por unidad original. No se asume disponibilidad ni se convierte afluencia en alcance."});
   }
   if(selected(brief,"ooh")&&!candidates.some(c=>c.medium==="ooh")) gaps.push("Vía pública: no hay activos localizados dentro de las coberturas seleccionadas.");
   if(selected(brief,"influencers")){
@@ -176,7 +177,8 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
     const valid=datesCover(p.validFrom??null,p.validTo??null,brief),referencePrice=p.priceCents??p.referencePriceCents??null;
     const quoted=!p.referenceOnly&&valid&&referencePrice!=null&&referencePrice>0;
     const sid=addSource({id:`workspace-tariff:${p.source.workspaceProductId}`,kind:"tariff",label:`${p.provider} · ${p.name}`,period:`${p.validFrom??""} – ${p.validTo??""}`,market:p.location,target:"Sin audiencia homologada en el acuerdo",use:quoted?"comparable":"context",note:p.conditions});
-    candidates.push({id:`workspace:${p.key}`,medium,provider:p.provider,product:p.name,market:p.location,target:"Sin audiencia homologada en el acuerdo",period:`${p.validFrom??""} – ${p.validTo??""}`,sourceIds:[sid],sourceUse:quoted?"comparable":"context",unit:p.unit,unitPriceUsd:quoted?referencePrice!/100:null,referencePriceUsd:referencePrice==null?null:referencePrice/100,minimumUnits:1,minimumSpendUsd:quoted?referencePrice!/100:null,metrics:[],note:[p.format,p.conditions].filter(Boolean).join(" · ")});
+    const asset = medium === "ooh" && p.source.assetId ? catalogs.ooh.assets.find(asset => asset.id === p.source.assetId) : undefined;
+    candidates.push({id:`workspace:${p.key}`,medium,provider:p.provider,product:p.name,market:p.location,target:"Sin audiencia homologada en el acuerdo",period:`${p.validFrom??""} – ${p.validTo??""}`,sourceIds:[sid],sourceUse:quoted?"comparable":"context",unit:p.unit,unitPriceUsd:quoted?referencePrice!/100:null,referencePriceUsd:referencePrice==null?null:referencePrice/100,minimumUnits:1,minimumSpendUsd:quoted?referencePrice!/100:null,metrics:[],...(asset?.photo?{oohPhoto:{assetId:asset.id,kind:asset.photoKind}}:{}),...(asset?.latitude!=null&&asset.longitude!=null?{geo:{latitude:asset.latitude,longitude:asset.longitude}}:{}),note:[p.format,p.conditions].filter(Boolean).join(" · ")});
   }
   const resolvedTariffGaps:Partial<Record<MediaGroup,string>>={television:"TV: no hay tarifas compatibles con todas las fechas, plaza y condiciones del brief.",radio:"Radio: no hay una tarifa vigente y compatible para cuantificar la pauta.",press:"Prensa: faltan tarifas con vigencia y plaza compatibles con la campaña."};
   for(const [medium,gap] of Object.entries(resolvedTariffGaps))if(candidates.some(c=>c.medium===medium&&c.id.startsWith("workspace:")&&c.unitPriceUsd!=null)){const i=gaps.indexOf(gap);if(i>=0)gaps.splice(i,1);}

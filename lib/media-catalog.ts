@@ -143,7 +143,7 @@ export const OOH_PROVIDERS: CatalogItem[] = [
   { slug: "creamedios", name: "Creamedios", imagePath: "/providers/ooh/creamedios/logo.png", status: "directorio", statusNote: "En carga", summary: "Proveedor de publicidad exterior incorporado al directorio.", detail: "Inventario y condiciones comerciales en carga." },
   { slug: "induvallas", name: "Induvallas", imagePath: "/providers/ooh/induvallas/logo.png", status: "directorio", statusNote: "En carga", summary: "Proveedor de publicidad exterior incorporado al directorio.", detail: "Inventario y condiciones comerciales en carga." },
   { slug: "basics", name: "Basics", status: "directorio", statusNote: "En carga", summary: "Proveedor incorporado al directorio de vía pública.", detail: "Inventario y condiciones comerciales en carga." },
-  { slug: "independientes", name: "Titulares independientes en validación", status: "validacion", statusNote: "2 fichas incorporadas", summary: "Colección de titulares y activos independientes.", detail: "Identidad, ubicación, disponibilidad y condiciones por validar.", count: 2 },
+  { slug: "independientes", name: "Titulares independientes", status: "validacion", statusNote: "2 fichas incorporadas", summary: "Colección de titulares y activos independientes.", detail: "Ubicaciones y formatos de titulares independientes.", count: 2 },
 ];
 
 export const PRESS_OUTLETS: CatalogItem[] = [

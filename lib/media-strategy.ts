@@ -3,7 +3,7 @@ import { mediaGroupLabel } from "./plan-optimizer";
 import type { MediaPlan, PlanRow } from "./planner";
 import type { StrategyBrief, StrategyCandidate, StrategyEvidenceBundle } from "./media-strategy-evidence";
 
-export const STRATEGY_VERSION = "2026-11-01.2";
+export const STRATEGY_VERSION = "2026-11-02.1";
 export type StrategyAiState = "validated" | "cached" | "not_configured" | "quota" | "unavailable" | "rejected";
 export type StrategyAdvice = {
   summary: string;
@@ -76,6 +76,13 @@ function candidateSort(a:StrategyCandidate,b:StrategyCandidate,brief?:Pick<Strat
   const ar=a.metrics.find(m=>m.label==="Rating"),br=b.metrics.find(m=>m.label==="Rating");
   if(a.unitPriceUsd!=null&&b.unitPriceUsd==null)return -1;
   if(b.unitPriceUsd!=null&&a.unitPriceUsd==null)return 1;
+  if(a.medium==="ooh"&&b.medium==="ooh") {
+    const ap=a.unitPriceUsd??a.referencePriceUsd,bp=b.unitPriceUsd??b.referencePriceUsd;
+    const aPriced=ap!=null&&ap>0,bPriced=bp!=null&&bp>0;
+    if(aPriced!==bPriced)return aPriced?-1:1;
+    if(Boolean(a.oohPhoto)!==Boolean(b.oohPhoto))return a.oohPhoto?-1:1;
+    return (ap??Infinity)-(bp??Infinity)||a.id.localeCompare(b.id);
+  }
   const sameCohort=ar&&br&&(ar.sourceId===br.sourceId||a.cohort&&a.cohort===b.cohort)&&ar.unit===br.unit&&a.unit===b.unit;
   if(sameCohort&&ar!.value>0&&br!.value>0){
     if(/eficiencia|costo/.test(normalize(`${brief?.objective??""} ${brief?.priority??""}`))&&a.unitPriceUsd!=null&&b.unitPriceUsd!=null){const difference=a.unitPriceUsd/ar!.value-b.unitPriceUsd/br!.value;if(difference)return difference;}

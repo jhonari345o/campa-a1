@@ -28,6 +28,7 @@ export type DetailedExecution = {
   evidence: string;
   nextStep: string;
   geo?: OohGeoRecommendation;
+  oohPhoto?: { assetId: string; kind: "asset" | "format" };
 };
 
 export type OohGeoRecommendation = {
@@ -168,6 +169,7 @@ function strategyExecutions(brief: PlanAnalysisInput, plan: MediaPlan): Detailed
         status:candidate.unitPriceUsd!=null&&candidate.sourceUse==="comparable"&&(allocation?.units??0)>0?"cotizable":"validacion",
         evidence:[sourceText,candidate.metrics.map(m=>`${m.label}: ${m.value} ${m.unit}`).join(" · "),candidate.note].filter(Boolean).join(". "),
         nextStep:candidate.unitPriceUsd!=null?"Revisar la combinación, frecuencia y disponibilidad antes de emitir la orden.":"Completar una cotización con vigencia y plaza compatibles antes de cuantificar o comprar.",
+        ...(candidate.oohPhoto ? {oohPhoto:candidate.oohPhoto} : {}),
         ...(candidate.geo?{geo:{...candidate.geo,...googleMapUrls(candidate.geo.latitude,candidate.geo.longitude,""),locationStatus:"inventory" as const,fitScore:null,audienceFit:"Composición de audiencia no homologada para este soporte.",priceFit:"La tarifa conserva su unidad original y requiere vigencia para la campaña.",trafficEvidence:"Sin una medición de movilidad o alcance aplicable al brief."}}:{}),
       } : pendingExecution(kind,`${mediaGroupLabel(kind)} por completar`,brief.geography,row.amount,"No hay un producto homologado para todos los filtros del brief.");
       return {kind,label:row.label,budgetUsd:row.amount,objective:channelObjective(kind,brief.objective),rationale:row.rationale??"",executions:[execution]};

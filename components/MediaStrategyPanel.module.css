@@ -29,6 +29,8 @@
 .donutCenter>small {font-size:10px;color:#6b7e70;}
 .compactDonut {max-width:235px;}
 .compactDonut .donutCenter>strong {font-size:23px;max-width:140px;}
+.donutCenter>strong.moneyInDonut {font-size:18px;white-space:nowrap;}
+.compactDonut .donutCenter>strong.moneyInDonut {font-size:15px;}
 .chartHelp {font-size:11px;color:#708174;text-align:center;line-height:1.6;margin:4px 0 20px;}
 .mixLegend {display:grid;gap:7px;}
 .mixLegend>button {display:grid;grid-template-columns:9px minmax(0,1fr) auto;gap:3px 9px;align-items:center;padding:10px 12px;border:1px solid transparent;border-radius:12px;text-align:left;}

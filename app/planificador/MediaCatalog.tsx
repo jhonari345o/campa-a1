@@ -159,7 +159,7 @@ function InfluencerSection({ profiles }: { profiles: InfluencerProfile[] }) {
         eyebrow="Influenciadores"
         title="Encuentra el perfil desde su territorio creativo"
         description="Elige reels, stories y otros entregables. Pulsa cada producto para agregarlo y ajusta su cantidad."
-        count={`${profiles.length} perfiles`}
+        count={`${profiles.length} ${profiles.length === 1 ? "perfil" : "perfiles"}`}
       />
       <div className="mt-6 grid gap-3 sm:grid-cols-3" role="group" aria-label="Categorías de influenciadores">
         {([
@@ -189,7 +189,7 @@ function InfluencerSection({ profiles }: { profiles: InfluencerProfile[] }) {
             className="mt-1 w-full rounded-xl border border-border bg-fog px-4 py-3 font-normal outline-none focus:border-signal focus:ring-2 focus:ring-signal/20"
           />
         </label>
-        <span className="rounded-xl bg-forest px-4 py-3 text-sm font-black text-white">{matches.length} perfiles</span>
+        <span className="rounded-xl bg-forest px-4 py-3 text-sm font-black text-white">{matches.length} {matches.length === 1 ? "perfil" : "perfiles"}</span>
       </div>
       {profiles.length === 0 ? (
         <EmptyData message="No hay perfiles disponibles en este momento. Vuelve a intentar más tarde." />
