@@ -32,11 +32,12 @@ export function radioTariffCoversStationStudy(tariffMarkets:string[],studyMarket
 
 /** Commercial coverage may contain a requested canton. This must never be used
  * to change the population denominator of a rating or audience study. */
-export function commercialTerritoryFits(markets:string[],brief:BroadcastBrief):boolean {
+export function commercialTerritoryFits(markets:string[],brief:BroadcastBrief,allowBroaderSignal=false):boolean {
   const requested=briefMarketKeys(brief);
-  // A commercial package may also cover unrequested areas. That does not
-  // invalidate its coverage of the brief; audience cohorts remain exact above.
-  return markets.length>0 && markets.some(m=>requested.some(r=>territoriesOverlap(m,r)));
+  // A TV signal may extend beyond the selected province. Multi-edition print
+  // packages still require every contracted plaza to belong to the brief.
+  const overlaps=(market:string)=>requested.some(r=>territoriesOverlap(market,r));
+  return markets.length>0 && (allowBroaderSignal ? markets.some(overlaps) : markets.every(overlaps));
 }
 export const NATIONAL_PROVINCE_PRIORITY=["Guayas","Pichincha","Azuay","Manabí","Tungurahua","El Oro","Los Ríos"];
 export const territoryKey=(value:string)=>{
