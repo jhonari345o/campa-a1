@@ -1,6 +1,7 @@
 "use client";
 import { PlanDeliveryPreview } from "@/components/PlanDeliveryPreview";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CART_LIMITS, catalogCartSummary, catalogQuoteSignature, changeCatalogQuantity, type CatalogCart, type CatalogPick, type CatalogProduct } from "@/lib/catalog-shopping";
 import { catalogReferenceDisclosure } from "@/lib/catalog-rate-display";
@@ -28,28 +29,64 @@ const budgetProducts = (picks: CatalogPick[]) => picks.flatMap(pick => { const p
 export function CatalogShoppingProvider({ products: initialProducts, cart, companies, canRequest, isAdmin, children }: {
   products: CatalogProduct[]; cart: CatalogCart; companies: ShoppingCompany[]; canRequest: boolean; isAdmin: boolean; children: ReactNode;
 }) {
+  const router = useRouter();
   const [products, setProducts] = useState(() => [...initialProducts, ...budgetProducts(cart.items)]), [items, setItems] = useState(cart.items);
   const [saving, setSaving] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState(cart.error ?? "");
   const [mode, setMode] = useState<"cart" | "review" | null>(null), [orderId, setOrderId] = useState("");
   const [notice, setNotice] = useState("");
   const desired = useRef(cart.items), persisted = useRef(JSON.stringify(cart.items)), version = useRef(cart.version);
   const running = useRef(false), mounted = useRef(true), submission = useRef<string | null>(null);
+  const flight = useRef<Promise<boolean> | null>(null), pendingNavigation = useRef("");
+  const flush = useRef<() => Promise<boolean>>(async () => true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => { setProducts([...initialProducts, ...budgetProducts(desired.current)]); }, [initialProducts]);
-  async function drain() {
-    if (running.current) return;
+  useEffect(() => {
+    function beforeNavigation(event: MouseEvent) {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
+      if (!link || link.download || link.target && link.target !== "_self") return;
+      const destination = new URL(link.href, location.href);
+      if (destination.origin !== location.origin || destination.pathname === location.pathname && destination.search === location.search) return;
+      if (!running.current && JSON.stringify(desired.current) === persisted.current) return;
+      event.preventDefault();
+      const href = destination.pathname + destination.search + destination.hash;
+      pendingNavigation.current = href;
+      setNotice("Guardando tu selección antes de continuar…");
+      void flush.current().then(saved => {
+        if (saved && mounted.current && pendingNavigation.current === href) {
+          pendingNavigation.current = "";
+          router.push(href);
+        }
+      });
+    }
+    function beforeUnload(event: BeforeUnloadEvent) {
+      if (running.current || JSON.stringify(desired.current) !== persisted.current) { event.preventDefault(); event.returnValue = ""; }
+    }
+    document.addEventListener("click", beforeNavigation, true);
+    window.addEventListener("beforeunload", beforeUnload);
+    return () => { document.removeEventListener("click", beforeNavigation, true); window.removeEventListener("beforeunload", beforeUnload); };
+  }, [router]);
+  function drain(): Promise<boolean> {
+    if (flight.current) return flight.current;
+    if (JSON.stringify(desired.current) === persisted.current) return Promise.resolve(true);
     running.current = true; setSaving(true); setError("");
+    const task = (async () => {
     try {
       while (JSON.stringify(desired.current) !== persisted.current) {
         const snapshot = desired.current;
         const result = await saveCatalogSelection(snapshot, version.current,cart.clientId??null);
-        if (!result.ok) { if (mounted.current) setError(result.error); return; }
+        if (!result.ok) { if (mounted.current) setError(result.error); return false; }
         version.current = result.cart.version;
         persisted.current = JSON.stringify(result.cart.items);
       }
-    } catch { if (mounted.current) setError("No se pudo guardar. Tu selección sigue aquí; vuelve a intentar."); }
-    finally { running.current = false; if (mounted.current) setSaving(false); }
+      return true;
+    } catch { if (mounted.current) setError("No se pudo guardar. Tu selección sigue aquí; vuelve a intentar."); return false; }
+    finally { running.current = false; flight.current = null; if (mounted.current) setSaving(false); }
+    })();
+    flight.current = task;
+    return task;
   }
+  flush.current = drain;
   function replace(next: CatalogPick[], nextProducts = products) {
     if (busy) return;
     try { catalogCartSummary(next, nextProducts); } catch { setError("La selección supera el límite permitido. Reduce los productos o cantidades."); return; }
