@@ -11,7 +11,7 @@ import { MediaProviderMark } from "./MediaProviderMark";
 import { StrategyMixChart } from "./StrategyMixChart";
 import { InfomediaResearchPanel } from "./InfomediaResearchPanel";
 import { OohPlanPhoto } from "./OohPlanPhoto";
-import { formatBudgetInput } from "@/lib/brief-inputs";
+import { displayCampaignPeriod, formatBudgetInput } from "@/lib/brief-inputs";
 import { PlanDeliveryPreview } from "./PlanDeliveryPreview";
 import type { BroadcastBrief } from "@/lib/broadcast-catalog";
 import type { CatalogPick } from "@/lib/catalog-shopping";
@@ -29,6 +29,7 @@ export function MediaStrategyPanel({ report, research, brief, brand = "", object
   const [brandLimit, setBrandLimit] = useState(5), [audienceKind, setAudienceKind] = useState<"media" | "behavior">("media");
   const [comparisonId, setComparisonId] = useState("current");
   const ai = report.aiState === "validated" || report.aiState === "cached", sources = new Map(report.sources.map(source => [source.id, source]));
+  const campaignPeriod = displayCampaignPeriod(brief?.startDate, brief?.endDate);
   const active = report.allocations.find(row => row.medium === selectedMedium) ?? report.allocations[0];
   const scenarios = [{ id: "current", label: "Mix recomendado", allocations: report.allocations }, ...report.alternatives].filter((row, index, all) => all.findIndex(item => JSON.stringify(item.allocations.map(({ medium, pct, amountUsd }) => ({ medium, pct, amountUsd }))) === JSON.stringify(row.allocations.map(({ medium, pct, amountUsd }) => ({ medium, pct, amountUsd })))) === index);
   const comparison = scenarios.find(row => row.id === comparisonId) ?? scenarios[0];
@@ -65,7 +66,7 @@ export function MediaStrategyPanel({ report, research, brief, brand = "", object
           {execution.candidate.oohPhoto && <OohPlanPhoto photo={execution.candidate.oohPhoto} title={execution.candidate.product}/>}
           {execution.candidate.digitalProduction && <ul className={styles.productionRights}>{execution.candidate.digitalProduction.rights.map((right,index)=><li key={index}>{right}</li>)}</ul>}
           {execution.candidate.stationCoverage?.length ? <p>Cobertura de la emisora: {execution.candidate.stationCoverage.join(", ")}</p> : null}
-          <dl><div><dt>Plaza</dt><dd>{execution.candidate.market || "No declarada"}</dd></div><div><dt>Público</dt><dd>{execution.candidate.target}</dd></div><div><dt>Período</dt><dd>{execution.candidate.period}</dd></div><div><dt>Formato / unidad</dt><dd>{execution.candidate.unit}</dd></div></dl>
+          <dl><div><dt>Plaza</dt><dd>{execution.candidate.market || "No declarada"}</dd></div><div><dt>Público</dt><dd>{execution.candidate.target}</dd></div><div><dt>{campaignPeriod ? "Fechas de campaña" : "Período de referencia"}</dt><dd>{campaignPeriod ?? execution.candidate.period}</dd></div><div><dt>Formato / unidad</dt><dd>{execution.candidate.unit}</dd></div></dl>
           {execution.units != null && execution.units > 0 && <div className={styles.unitSummary}><strong>{number(execution.units)} {execution.candidate.unit}</strong><span>{money(execution.referenceSpendUsd)}{execution.remainderUsd ? ` · saldo ${money(execution.remainderUsd)}` : ""}</span></div>}
           {execution.candidate.metrics.length > 0 && <div className={styles.evidenceMetrics}>{execution.candidate.metrics.map((metric, index) => { const source = sources.get(metric.sourceId); return <div key={`${metric.sourceId}-${index}`}><span>{metric.label}</span><strong>{number(metric.value)} {metric.unit}</strong>{source && <small>{source.period} · {source.market}<br/>{source.target}</small>}</div>; })}</div>}
         </div>) : active.medium === "digital" ? <p className={styles.rationale}>La propuesta distribuye este presupuesto entre las plataformas del plan.</p> : <div className={styles.empty}>No hay una opción comercial documentada para este medio en el corte del análisis.</div>}

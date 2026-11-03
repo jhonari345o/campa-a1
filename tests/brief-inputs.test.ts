@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { displayPlanDate, formatBudgetInput, parseBudgetInput, parsePlanDate, validPlanPeriod } from "../lib/brief-inputs";
+import { displayCampaignPeriod, displayPlanDate, formatBudgetInput, parseBudgetInput, parsePlanDate, validPlanPeriod } from "../lib/brief-inputs";
 
 test("Spanish dates preserve the ISO day and reject impossible or reversed periods", () => {
   assert.equal(displayPlanDate("2026-11-02"), "02/11/2026");
@@ -10,6 +10,12 @@ test("Spanish dates preserve the ISO day and reject impossible or reversed perio
   assert.equal(validPlanPeriod("2026-11-02", "2026-11-02"), true);
   assert.equal(validPlanPeriod("2026-12-31", "2026-11-02"), false);
   assert.equal(validPlanPeriod("", "2026-11-02"), false);
+});
+test("campaign dates preserve the brief days across months and do not invent missing dates", () => {
+  assert.equal(displayCampaignPeriod("2026-11-04", "2026-11-30"), "04/11/2026 – 30/11/2026");
+  assert.equal(displayCampaignPeriod("2026-12-31", "2027-01-02"), "31/12/2026 – 02/01/2027");
+  assert.equal(displayCampaignPeriod("2028-02-29", "2028-02-29"), "29/02/2028");
+  for (const [start, end] of [[undefined, undefined], ["2026-11-04", ""], ["2026-11-04", "2026-11-03"], ["2026-02-29", "2026-03-01"]]) assert.equal(displayCampaignPeriod(start, end), null);
 });
 test("local currency input keeps cents and never treats a decimal dot as thousands silently", () => {
   for (const value of ["100000", "100.000", "100.000,00", "$ 100.000,00"]) assert.equal(parseBudgetInput(value), 100000);

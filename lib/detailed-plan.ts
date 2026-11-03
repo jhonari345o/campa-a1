@@ -1,4 +1,5 @@
 import { optionalWithinBudget } from "@/lib/optional-task";
+import { displayCampaignPeriod } from "@/lib/brief-inputs";
 import { bedrockChat } from "@/lib/assistant/llm";
 import { buildLiveTrendContext, type LiveTrendSource } from "@/lib/assistant/trends";
 import { isAiAssistantEnabled, isAiWebTrendsEnabled } from "@/lib/commercial";
@@ -20,6 +21,7 @@ export type DetailedExecution = {
   product: string;
   location: string;
   schedule: string;
+  scheduleLabel?: string;
   budgetUsd: number | null;
   referenceUnitPriceUsd: number | null;
   estimatedUnits: number | null;
@@ -154,6 +156,7 @@ export async function buildDetailedMediaRecommendation(
 /** A source-backed planning allocation is not an order or a predicted result. */
 function strategyExecutions(brief: PlanAnalysisInput, plan: MediaPlan): DetailedMediaRecommendation {
   const strategy = plan.strategy!;
+  const campaignPeriod = displayCampaignPeriod(brief.startDate, brief.endDate);
   return {
     engine: strategy.aiState === "validated" || strategy.aiState === "cached" ? "datos+ia" : "datos",
     aiNarrative: !strategy.customized && (strategy.aiState === "validated" || strategy.aiState === "cached") ? strategy.summary : null,
@@ -169,7 +172,7 @@ function strategyExecutions(brief: PlanAnalysisInput, plan: MediaPlan): Detailed
         ? Math.round(pick.units*candidate.unitPriceUsd*100)/100 : pick.amountUsd;
       const sourceText = candidate?.sourceIds.map(id=>strategy.sources.find(s=>s.id===id)).filter(Boolean).map(s=>`${s!.label} · ${s!.period} · ${s!.market} · ${s!.target}`).join("; ");
       const execution:DetailedExecution = candidate ? {
-        id:[candidate.id,candidate.planningTerritory].filter(Boolean).join(":"),provider:candidate.provider,product:candidate.product,location:candidate.planningTerritory??(candidate.medium==="radio"&&candidate.stationCoverage?.length?candidate.stationCoverage.join(" · "):candidate.market),schedule:candidate.period,budgetUsd:cost,
+        id:[candidate.id,candidate.planningTerritory].filter(Boolean).join(":"),provider:candidate.provider,product:candidate.product,location:candidate.planningTerritory??(candidate.medium==="radio"&&candidate.stationCoverage?.length?candidate.stationCoverage.join(" · "):candidate.market),schedule:campaignPeriod??candidate.period,scheduleLabel:campaignPeriod?"Fechas de campaña":"Período de referencia",budgetUsd:cost,
         referenceUnitPriceUsd:candidate.unitPriceUsd,estimatedUnits:pick.units,unit:candidate.unit,
         status:candidate.unitPriceUsd!=null&&candidate.sourceUse==="comparable"&&(pick.units??0)>0?"cotizable":"validacion",
         evidence:[sourceText,candidate.metrics.map(m=>`${m.label}: ${m.value} ${m.unit}`).join(" · "),candidate.note].filter(Boolean).join(". "),
@@ -398,7 +401,8 @@ function digitalExecutions(row: PlanRow, brief: PlanAnalysisInput): DetailedExec
     provider: platform?.name ?? row.label,
     product: platform?.formats ?? "Campaña configurada por objetivo, audiencia y destino.",
     location: brief.geography || "Cobertura del brief",
-    schedule: "Fechas del brief · aprendizaje y optimización continua",
+    schedule: displayCampaignPeriod(brief.startDate, brief.endDate) ?? "Fechas del brief",
+    scheduleLabel: "Fechas de campaña",
     budgetUsd: row.amount,
     referenceUnitPriceUsd: null,
     estimatedUnits: null,
