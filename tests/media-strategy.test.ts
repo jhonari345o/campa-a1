@@ -175,7 +175,10 @@ test("personalizing the mix recomputes source quantities instead of reusing the 
   const requested=plan.plan.map(r=>({...r,pct:mediaGroupForLabel(r.label)==="television"?.01:.99/(plan.plan.length-1)}));
   const revised=customizeStrategyPlan(plan,requested,b.budgetUsd);
   assert.equal(revised.strategy?.customized,true);assert.equal(revised.strategy?.allocations.find(a=>a.medium==="television")?.units,0);
-  assert.equal(revised.plan.reduce((n,r)=>n+Math.round(r.amount!*100),0),123457);
+  assert.equal(revised.strategy?.allocations.find(a=>a.medium==="television")?.amountUsd,0);
+  assert.equal(revised.strategy?.reserveUsd,12.35);
+  assert.equal(revised.plan.reduce((n,r)=>n+Math.round(r.amount!*100),0)+Math.round(revised.strategy!.reserveUsd!*100),123457);
+  assert.ok(revised.strategy?.evaluation.budgetConserved);
 });
 test("radio candidates from separate dayparts remain separate cohorts",()=>{
   const bundle=buildStrategyEvidence(strategyBrief(),strategyResearch,strategyCatalogs(),date),c=bundle.candidates[0];
