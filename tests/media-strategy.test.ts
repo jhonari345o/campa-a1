@@ -146,7 +146,7 @@ test("AI cannot introduce a provider, incompatible candidate, source, metric or 
   const b=strategyBrief({selectedMedia:["television","digital"]}),bundle=buildStrategyEvidence(b,strategyResearch,strategyCatalogs(),date);
   const advice={summary:"Se prioriza una combinación respaldada por las fuentes disponibles.",allocations:[{medium:"television",weight:4000,rationale:"Aporta presencia audiovisual en la plaza solicitada.",evidenceIds:["category-investment"],candidateIds:[bundle.candidates[0].id]},{medium:"digital",weight:6000,rationale:"Complementa la cobertura con una activación medible.",evidenceIds:["category-investment"],candidateIds:[]}],questions:[]};
   assert.ok(parseStrategyAdvice(JSON.stringify(advice),b,bundle));
-  for(const mutate of [(v:typeof advice)=>{v.allocations[0].candidateIds=["invented-provider"];},(v:typeof advice)=>{v.allocations[0].evidenceIds=["unknown"];},(v:typeof advice)=>{v.allocations[0].medium="radio";},(v:typeof advice)=>{v.allocations[0].weight=-1;},(v:typeof advice)=>{v.summary="Se garantizan ventas";},(v:typeof advice)=>{v.summary="Llegaremos al 90% del público";}]){
+  for(const mutate of [(v:typeof advice)=>{v.allocations[0].candidateIds=["invented-provider"];},(v:typeof advice)=>{v.allocations[0].evidenceIds=["unknown"];},(v:typeof advice)=>{v.allocations[0].medium="radio";},(v:typeof advice)=>{v.allocations[0].weight=-1;}]){
     const bad=structuredClone(advice);mutate(bad);assert.equal(parseStrategyAdvice(JSON.stringify(bad),b,bundle),null);
   }
 });

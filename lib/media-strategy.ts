@@ -6,7 +6,7 @@ import { briefMarketKeys } from "./broadcast-catalog";
 import { planningStudyBrief, nationalTerritoryOrder, territoryProvince, territoryKey, territoriesOverlap } from "./planning-market";
 import { coverageFromLabels } from "./geographic-coverage";
 
-export const STRATEGY_VERSION = "2026-11-02.17";
+export const STRATEGY_VERSION = "2026-11-02.18";
 export const MAX_STRATEGY_EXECUTIONS = 25;
 // Planning policy approved by the platform owner; it is not an audience study.
 export const STARTING_MEDIA_MIX: Readonly<Record<MediaGroup, number>> = {
@@ -295,12 +295,13 @@ function affordableWeights(weights:{medium:MediaGroup;weight:number}[],bundle:St
   return result;
 }
 /** JSON is an instruction proposal. Server-owned sources, metrics, rates and arithmetic are immutable. */
-export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:StrategyEvidenceBundle,onReject?:(code:string)=>void):StrategyAdvice|null {
+export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:StrategyEvidenceBundle,onReject?:(code:string)=>void,onSafeText?:()=>void):StrategyAdvice|null {
   const reject=(code:string)=>{onReject?.(code);return null;};
   if(typeof raw!=="string"||raw.length>24_000)return reject("SIZE");
   let v:Record<string,unknown>;try{v=obj(JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/g,"").trim()));}catch{return reject("JSON");}
   const text=(s:unknown,max:number)=>typeof s==="string"&&s.trim().length>0&&s.length<=max&&!/[<>]|https?:|www\.|garantiz/i.test(s)&&!/[\d%$€]/.test(s.replace(/\bB2[BC]\b/gi,""));
-  if(!text(v.summary,1400))return reject("SUMMARY");
+  if(typeof v.summary!=="string")return reject("SUMMARY");
+  let safeTextUsed=!text(v.summary,1400);
   if(!Array.isArray(v.allocations)||!v.allocations.length||v.allocations.length>6)return reject("ALLOCATIONS");
   // Optional follow-up prose is not part of the allocation contract. Drop malformed
   // questions without discarding an otherwise valid, source-bound recommendation.
@@ -310,7 +311,9 @@ export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:Strate
   for(const value of v.allocations){const r=obj(value),medium=r.medium as MediaGroup;
     if(!allowed.has(medium)||used.has(medium))return reject("MEDIUM");
     if(!Number.isInteger(r.weight)||Number(r.weight)<0||Number(r.weight)>10_000)return reject("WEIGHT");
-    if(!text(r.rationale,700))return reject("RATIONALE");
+    if(typeof r.rationale!=="string")return reject("RATIONALE");
+    const safeRationale=text(r.rationale,700);
+    safeTextUsed ||= !safeRationale;
     if(!Array.isArray(r.evidenceIds)||!r.evidenceIds.length||r.evidenceIds.length>6||!r.evidenceIds.every(id=>typeof id==="string"&&sourceIds.has(id)))return reject("EVIDENCE_IDS");
     if(!Array.isArray(r.candidateIds))return reject("CANDIDATE_SHAPE");
     if(r.candidateIds.length>MAX_STRATEGY_EXECUTIONS)return reject("CANDIDATE_COUNT");
@@ -326,10 +329,22 @@ export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:Strate
     }
     const relevantSources=new Set(["category-investment",...(bundle.consumption.some(c=>c.medium===medium)?["audience-consumption"]:[]),...pool.flatMap(c=>c.sourceIds),...bundle.audienceReferences.filter(r=>r.medium===medium).map(r=>r.sourceId),...(medium==="ooh"?(bundle.oohMarketReferences??[]).map(r=>r.sourceId):[])]);
     if(!r.evidenceIds.every(id=>relevantSources.has(String(id))))return reject("EVIDENCE_MEDIUM");
-    used.add(medium);allocations.push({medium,weight:Number(r.weight),rationale:String(r.rationale).trim(),evidenceIds:r.evidenceIds as string[],candidateIds:[...new Set(r.candidateIds as string[])]});
+    // Explanatory prose cannot inject a metric, guarantee or link. If the model
+    // supplied unsafe copy, discard the entire field. Its structured selection
+    // still must pass every source, geography, medium and weight check above.
+    const safeRationales:Record<MediaGroup,string>={
+      television:"Selecciona programas y franjas dentro de las opciones de televisión de tu cuenta.",
+      radio:"Combina emisoras según la cobertura solicitada y las opciones de pauta disponibles.",
+      ooh:"Organiza la presencia física en las zonas elegidas con los formatos disponibles.",
+      press:"Incluye publicaciones y formatos dentro de las opciones de tu cuenta.",
+      digital:"Distribuye la inversión digital de acuerdo con el objetivo del brief.",
+      influencers:"Selecciona perfiles y productos dentro del catálogo de tu cuenta.",
+    };
+    used.add(medium);allocations.push({medium,weight:Number(r.weight),rationale:safeRationale?String(r.rationale).trim():safeRationales[medium],evidenceIds:r.evidenceIds as string[],candidateIds:[...new Set(r.candidateIds as string[])]});
   }
   if(allocations.reduce((n,r)=>n+r.weight,0)!==10_000)return reject("WEIGHT_TOTAL");
-  return {summary:String(v.summary).trim(),allocations,questions};
+  if(safeTextUsed)onSafeText?.();
+  return {summary:text(v.summary,1400)?String(v.summary).trim():"La recomendación organiza la inversión entre los medios seleccionados y sus opciones de compra.",allocations,questions};
 }
 export function strategyAiPayload(brief:StrategyBrief,bundle:StrategyEvidenceBundle,plan:MediaPlan) {
   const allowed=allowedStrategyMedia(brief,bundle);

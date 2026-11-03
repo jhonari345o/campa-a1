@@ -10,7 +10,7 @@ type AiDependencies = {
   persist: (advice: StrategyAdvice | null, diagnostic: StrategyAiDiagnostic) => Promise<boolean>;
 };
 export type StrategyAiDiagnostic = {
-  code: string; durationMs: number; budgetMs: number; inputBytes: number; outputChars: number; attempts?: number;
+  code: string; durationMs: number; budgetMs: number; inputBytes: number; outputChars: number; attempts?: number; safeTextUsed?: boolean;
 };
 /** Codes only: never persist prompts, raw output, account details or error messages. */
 function providerFailureCode(error: unknown): string {
@@ -42,7 +42,7 @@ export async function resolveStrategyAi(brief:StrategyBrief,bundle:StrategyEvide
       catch(error) { if(!signal.aborted)diagnostic.code=providerFailureCode(error);return null; }
       if(signal.aborted)return null;
       diagnostic.outputChars=raw.length;
-      const parsed=parseStrategyAdvice(raw,brief,bundle,code=>{correction=code;diagnostic.code=`OUTPUT_${code}`;});
+      const parsed=parseStrategyAdvice(raw,brief,bundle,code=>{correction=code;diagnostic.code=`OUTPUT_${code}`;},()=>{diagnostic.safeTextUsed=true;});
       invalid=!parsed;
       if(parsed){diagnostic.code="VALIDATED";return parsed;}
       // Repair a malformed selection once without weakening validation, changing
