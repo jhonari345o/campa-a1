@@ -138,7 +138,7 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
     }
     for (const source of catalogs.broadcast.sources.filter(s => s.kind === "tv")) {
       const local=planningStudyBrief(source.marketKeys,brief);
-      if (!tvValidity(source,brief.startDate,brief.endDate) || !commercialTerritoryFits(source.marketKeys,brief) || source.annualContract) continue;
+      if (!tvValidity(source,brief.startDate,brief.endDate) || !commercialTerritoryFits(source.marketKeys,brief,true) || source.annualContract) continue;
       const sid = addSource({ id: `tv-tariff:${source.id}`, kind: "tariff", label: source.label, period: `${source.periodStart} – ${source.periodEnd}`, market: source.market, target: source.target, use: "comparable", note: source.conditions });
       for (const offer of catalogs.broadcast.tv.filter(o => o.sourceId === source.id && nonnegative(o.priceUsd) && o.priceUsd > 0).slice(0,150)) {
         const studies = catalogs.tvAudience.filter(s => s.offerIds.includes(offer.id) && local&&tvAudienceApplies(s,{...brief,...local},asOf)).sort((a,b) => b.periodEnd.localeCompare(a.periodEnd));
@@ -200,7 +200,7 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
   for(const p of catalogs.workspaceProducts??[]){
     const medium=productMedium(p);if(!selected(brief,medium)||!(p.source.workspaceProductId||p.source.agreementId||p.source.standingPrice))continue;
     const asset = medium === "ooh" && p.source.assetId ? catalogs.ooh.assets.find(asset => asset.id === p.source.assetId) : undefined;
-    const marketFit=asset?territorialFit(asset.city,asset.provinces,brief):p.marketKeys?.length?commercialTerritoryFits(p.marketKeys,brief):tariffMarket(p.location,brief);
+    const marketFit=asset?territorialFit(asset.city,asset.provinces,brief):p.marketKeys?.length?commercialTerritoryFits(p.marketKeys,brief,medium==="television"):tariffMarket(p.location,brief);
     if(!marketFit)continue;
     const priced=planningProductPrice(p,brief.startDate,brief.endDate),referencePrice=p.priceCents??p.referencePriceCents??null;
     const quoted=Boolean(priced),period=p.validTo?`${p.validFrom??""} – ${p.validTo}`:p.validFrom?`Desde ${p.validFrom}`:p.reference;
