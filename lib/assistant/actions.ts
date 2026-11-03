@@ -9,7 +9,12 @@ export type AssistantAction = {
 export function detectAssistantAction(message: string): AssistantAction | null {
   const normalized = normalize(message);
   if (!/paut|promocion|anunci|campana/.test(normalized)) return null;
-  const url = message.match(/https?:\/\/[^\s<>]+/i)?.[0]?.replace(/[),.;]+$/, "") ?? null;
+  const match = message.match(/https?:\/\/[^\s<>]+/i)?.[0];
+  // Scan the trailing punctuation once. A suffix regexp retries at every
+  // character on a long run followed by a non-punctuation character.
+  let urlEnd = match?.length ?? 0;
+  while (match && urlEnd > 0 && "),.;".includes(match[urlEnd - 1])) urlEnd--;
+  const url = match ? match.slice(0, urlEnd) : null;
   const network = /facebook|fb\.com|facebook\.com/.test(normalized) ? "facebook" : "instagram";
   if (!/instagram|facebook|reel|post|publicacion|video|foto|historia/.test(normalized) && !url) return null;
   const amountMatches = [...message.matchAll(/(?:\$|usd\s*)?([0-9]+(?:[.,][0-9]{1,2})?)/gi)];
