@@ -34,7 +34,9 @@ export function radioTariffCoversStationStudy(tariffMarkets:string[],studyMarket
  * to change the population denominator of a rating or audience study. */
 export function commercialTerritoryFits(markets:string[],brief:BroadcastBrief):boolean {
   const requested=briefMarketKeys(brief);
-  return markets.length>0 && markets.every(m=>requested.some(r=>territoriesOverlap(m,r)));
+  // A commercial package may also cover unrequested areas. That does not
+  // invalidate its coverage of the brief; audience cohorts remain exact above.
+  return markets.length>0 && markets.some(m=>requested.some(r=>territoriesOverlap(m,r)));
 }
 export const NATIONAL_PROVINCE_PRIORITY=["Guayas","Pichincha","Azuay","Manabí","Tungurahua","El Oro","Los Ríos"];
 export const territoryKey=(value:string)=>{

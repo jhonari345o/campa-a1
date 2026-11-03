@@ -94,6 +94,8 @@ test("a station's provincial CNE tariff joins its consolidated ranking without c
 test("commercial provincial coverage includes its canton without extrapolating a city study",()=>{
  const tulcan=strategyBrief({geography:"Tulcán",coverage:[{key:"city:tulcan:carchi",kind:"city",label:"Tulcán",context:"Carchi"}]});
  assert.equal(commercialTerritoryFits(["Carchi"],tulcan),true);
+ assert.equal(commercialTerritoryFits(["Carchi","Imbabura"],tulcan),true);
+ assert.equal(planningStudyBrief(["Carchi","Imbabura"],tulcan),null);
  assert.equal(commercialTerritoryFits(["Nacional"],tulcan),true);
  assert.equal(commercialTerritoryFits(["Ibarra"],tulcan),false);
  assert.equal(commercialTerritoryFits(["Imbabura"],tulcan),false);

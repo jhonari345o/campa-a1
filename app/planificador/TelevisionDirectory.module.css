@@ -4,6 +4,16 @@
 .heading h2 { margin-top:8px; color:var(--forest); font-size:clamp(26px,3vw,36px); font-weight:900; letter-spacing:-.04em; }
 .heading p:not(.eyebrow) { max-width:620px; margin-top:10px; color:var(--muted); font-size:14px; line-height:1.7; }
 .count { flex:none; border:1px solid var(--border); border-radius:999px; background:var(--fog); padding:10px 14px; font-size:12px; font-weight:800; }
+.distributions,.provinces,.signals { display:flex; flex-wrap:wrap; gap:8px; margin-top:22px; }
+.distributions button,.provinces button { min-height:40px; border:1px solid #d4cbbf; border-radius:10px; background:#fff; padding:10px 16px; color:#40392f; font-size:13px; font-weight:750; }
+.distributions button[aria-pressed=true] { background:#302b26; border-color:#302b26; color:#fff9ef; }
+.provinces { margin-top:14px; }
+.provinces button { min-height:36px; padding:8px 12px; font-size:12px; }
+.provinces button[aria-pressed=true] { background:#e7efd9; border-color:#6b8b50; color:#284126; }
+.signals { margin:22px 26px 0; }
+.signals button { min-height:44px; border:1px solid #7c6f5f; border-radius:10px; padding:11px 22px; color:#fff9ef; font-size:14px; font-weight:850; }
+.signals button[aria-pressed=true] { background:#fff7eb; color:#312b24; border-color:#fff7eb; }
+.distributions button:focus-visible,.provinces button:focus-visible,.signals button:focus-visible { outline:2px solid #79a85d; outline-offset:3px; }
 .channels { display:grid; grid-template-columns:repeat(auto-fit,minmax(112px,1fr)); gap:10px; margin-top:26px; }
 .channel { display:flex; min-width:0; flex-direction:column; align-items:center; gap:10px; border:1px solid var(--border); border-radius:15px; background:#fff; padding:12px 8px; color:#322d29; text-align:center; transition:border-color .15s,background .15s; }
 .channel:hover { border-color:#397b43; background:#f0f5ec; }
@@ -11,6 +21,7 @@
 .logo { position:relative; display:grid; width:112px; max-width:100%; height:64px; place-items:center; border-radius:10px; background:#fff; }
 .logo svg { width:42px; height:42px; color:#236342; }
 .channel strong { font-size:13px; font-weight:800; line-height:1.4; }
+.channel small { color:#695f52; font-size:10px; }
 .tariffPanel { margin-top:24px; overflow:hidden; border:1px solid #494137; border-radius:24px; background:#282420; color:#fff9ef; --muted:#d0c8bc; }
 .panelHeading { display:flex; justify-content:space-between; flex-wrap:wrap; align-items:center; gap:14px; padding:26px 26px 0; }
 .panelHeading .eyebrow { color:#ddbd99; }

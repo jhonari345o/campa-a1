@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CART_LIMITS, catalogCartSummary, catalogQuoteSignature, changeCatalogQuantity, type CatalogCart, type CatalogPick, type CatalogProduct } from "@/lib/catalog-shopping";
 import { catalogReferenceDisclosure } from "@/lib/catalog-rate-display";
+import { catalogReplacementOptions, replaceCatalogProduct } from "@/lib/catalog-cart-replacements";
 import { radioProviderKey } from "@/lib/account-radio-tariffs";
 import { digitalBudgetKey, digitalBudgetProduct, digitalGoalsForPlatform } from "@/lib/digital-budget";
 import { formatBudgetInput, parseBudgetInput } from "@/lib/brief-inputs";
@@ -19,6 +20,7 @@ type ShoppingState = {
   change: (key: string, delta: number) => void; remove: (key: string) => void;
   open: (review?: boolean) => void; restore: () => void; retry: () => void;
   setBudget: (slug: string, goal: string, cents: number) => void;
+  replaceProduct: (oldKey: string, newKey: string) => void;
 };
 const Shopping = createContext<ShoppingState | null>(null);
 export const catalogMoney = (cents: number | null) => cents == null ? "Por cotizar" : `$ ${formatBudgetInput(cents / 100)}`;
@@ -142,7 +144,12 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
     } catch { setError("La conexión se interrumpió. Vuelve a enviar para recuperar la misma solicitud."); }
     finally { setBusy(false); }
   }
-  const value: ShoppingState = { clientId:cart.clientId??null,products, items, saving, busy, error, companies, canRequest, isAdmin, change, setBudget, remove: key => replace(desired.current.filter(p => p.productKey !== key)), open: review => { setOrderId(""); setMode(review ? "review" : "cart"); }, restore, retry: () => void drain() };
+  function replaceProduct(oldKey: string, newKey: string) {
+    if (busy || (!canRequest && !isAdmin)) return;
+    try { replace(replaceCatalogProduct(desired.current, oldKey, newKey, products)); setNotice("Formato actualizado. Conservamos tu cantidad de cuñas."); }
+    catch { setError("No se pudo actualizar el formato. Revisa la cantidad y vuelve a elegir."); }
+  }
+  const value: ShoppingState = { clientId:cart.clientId??null,products, items, saving, busy, error, companies, canRequest, isAdmin, change, setBudget, replaceProduct, remove: key => replace(desired.current.filter(p => p.productKey !== key)), open: review => { setOrderId(""); setMode(review ? "review" : "cart"); }, restore, retry: () => void drain() };
   return <Shopping.Provider value={value}>{children}<span className="sr-only" role="status">{notice}</span>
     <ShoppingDialog mode={mode} orderId={orderId} onClose={() => { if (!busy) setMode(null); }} onReview={() => setMode("review")} onSend={send} />
   </Shopping.Provider>;
@@ -246,7 +253,8 @@ function CartContents({ compact = false }: { compact?: boolean }) {
   return <section className={styles.cart} aria-label="Carrito del catálogo">
     <header className={styles.cartHeader}><CartIcon /><div><h3>Tu carrito</h3><p>Se guarda por dos horas sin cambios</p></div><span>{summary.quantity}</span></header>
     {!summary.lines.length ? <div className={styles.empty}><CartIcon /><h4>Elige tus medios</h4><p>Agrega cuñas, espacios y formatos de todo el catálogo.</p></div> : <div className={styles.cartLines}>{summary.lines.map(line => <article key={line.pick.productKey} className={styles.cartLine}>
-      <div className={styles.lineHeading}>{line.product?.image && <Image src={line.product.image} alt="" width={48} height={48} unoptimized className={styles.thumbnail} />}<div><strong>{line.product?.provider ?? "Producto no disponible"}</strong><p>{line.product?.name}</p><small>{line.product?.format}{line.product?.kind === "ooh" ? ` · ${line.product.unit}` : ""}</small></div><button type="button" disabled={cart.busy} onClick={() => cart.remove(line.pick.productKey)} aria-label={`Quitar ${line.product?.name ?? "producto"} de ${line.product?.provider ?? "catálogo"}`}>×</button></div>
+      <div className={styles.lineHeading}>{line.product?.image && <Image src={line.product.image} alt="" width={48} height={48} unoptimized className={styles.thumbnail} />}<div><strong>{line.product?.provider ?? catalogReplacementOptions(line.pick.productKey, cart.products)[0]?.provider ?? "Producto no disponible"}</strong><p>{line.product?.name}</p><small>{line.product?.format}{line.product?.kind === "ooh" ? ` · ${line.product.unit}` : ""}</small></div><button type="button" disabled={cart.busy} onClick={() => cart.remove(line.pick.productKey)} aria-label={`Quitar ${line.product?.name ?? "producto"} de ${line.product?.provider ?? "catálogo"}`}>×</button></div>
+      {!line.product && <CartFormatReplacement pick={line.pick}/>}
       {line.product && <><div className={styles.linePrice}><span>{digitalBudgetProduct(line.product.key) ? "Presupuesto de campaña" : `${catalogMoney(line.product.priceCents ?? line.product.referencePriceCents ?? null)} × ${line.pick.quantity}`}</span><strong>{catalogMoney(line.subtotalCents ?? (line.product.referencePriceCents == null ? null : line.product.referencePriceCents * line.pick.quantity))}</strong></div><div className={styles.lineControls}><small>{catalogTax(line.product.taxIncluded)}</small>{!digitalBudgetProduct(line.product.key) && <Quantity product={line.product} quantity={line.pick.quantity} />}</div></>}
       {line.product && <CatalogRateReference product={line.product} showAmount/>}
     </article>)}</div>}
@@ -258,6 +266,16 @@ function CartContents({ compact = false }: { compact?: boolean }) {
       <p className={styles.note}>Las cantidades respetan la unidad de cada producto. La solicitud pasa a revisión comercial.</p>
     </div>
   </section>;
+}
+function CartFormatReplacement({ pick }: { pick: CatalogPick }) {
+  const cart = useShopping(), options = catalogReplacementOptions(pick.productKey, cart.products);
+  if (!options.length) return null;
+  return <label className={styles.replacement}>Elige el formato de tus {pick.quantity} cuñas
+    <select value="" disabled={cart.busy || (!cart.canRequest && !cart.isAdmin)} onChange={event => cart.replaceProduct(pick.productKey, event.target.value)}>
+      <option value="" disabled>Seleccionar duración y horario</option>
+      {options.map(product => <option key={product.key} value={product.key}>{product.name} · {product.source.seconds} s · {catalogMoney(product.priceCents)}</option>)}
+    </select>
+  </label>;
 }
 function MobileCartBar() {
   const cart = useShopping(), summary = catalogCartSummary(cart.items, cart.products);

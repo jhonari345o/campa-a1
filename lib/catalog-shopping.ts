@@ -13,7 +13,7 @@ export type CatalogProduct = {
   key: string; kind: "influencer" | "ooh" | "tv" | "radio" | "press" | "digital"; provider: string; name: string;
   format: string; unit: string; priceCents: number | null; taxIncluded: boolean | null;
   location: string; reference: string; image: string | null; conditions: string;
-  source: { standingPrice?: boolean; defaultPrice?: boolean; rateId?: string; profileId?: string; assetId?: string; rate?: OohRate; rateIndex?: number; sourceId?: string; offerId?: string; stationId?: string; tariffId?: string; seconds?: number; publicationId?: string; editionId?: string; publishedTariff?: boolean; platformSlug?: string; digitalGoal?: string; workspaceProductId?: string; agreementId?: string };
+  source: { standingPrice?: boolean; defaultPrice?: boolean; rateId?: string; profileId?: string; assetId?: string; rate?: OohRate; rateIndex?: number; sourceId?: string; offerId?: string; stationId?: string; tariffId?: string; seconds?: number; publicationId?: string; editionId?: string; publishedTariff?: boolean; platformSlug?: string; digitalGoal?: string; workspaceProductId?: string; agreementId?: string; tvDistribution?: "national" | "local" | "paid" };
   marketKeys?: string[];
   billingPeriod?: string;
   referenceOnly?:boolean;referenceLabel?:string;
