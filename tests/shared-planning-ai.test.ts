@@ -173,6 +173,23 @@ test("fast planning routing advances on a busy free model and retains zero-price
   });
 });
 
+test("a mandatory-reasoning rejection retries the free model with its default without weakening the contract",async()=>{
+  const responseSchema={name:"selection",schema:{type:"object"}};
+  await mockProvider([
+    Response.json({error:{message:"This model requires reasoning; cannot disable it"}},{status:400}),
+    Response.json({choices:[{message:{content:'{"ok":true}'}}]}),
+  ],async requests=>{
+    assert.equal(await chatCompletion([{role:"user",content:"test"}],{fastFreeRouting:true,reasoningEnabled:false,responseSchema}),'{"ok":true}');
+    assert.equal(requests.length,2);
+    assert.equal(requests[0].body.model,requests[1].body.model);
+    assert.deepEqual(requests[0].body.reasoning,{enabled:false});
+    assert.equal(Object.hasOwn(requests[1].body,"reasoning"),false);
+    assert.deepEqual(requests[1].body.provider,requests[0].body.provider);
+    assert.deepEqual(requests[1].body.response_format,requests[0].body.response_format);
+    assert.deepEqual(requests[1].body.models,requests[0].body.models);
+  });
+});
+
 test("fast planning routing recovers from a timed-out provider without retrying cancellation or paid models",async()=>{
   await mockProvider(Response.json({choices:[{message:{content:'{"ok":true}'}}]}),async requests=>{
     const savedFetch=globalThis.fetch;

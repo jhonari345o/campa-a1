@@ -10,7 +10,7 @@ type AiDependencies = {
   persist: (advice: StrategyAdvice | null, diagnostic: StrategyAiDiagnostic) => Promise<boolean>;
 };
 export type StrategyAiDiagnostic = {
-  code: string; durationMs: number; budgetMs: number; inputBytes: number; outputChars: number; attempts?: number; safeTextUsed?: boolean;
+  code: string; durationMs: number; budgetMs: number; inputBytes: number; outputChars: number; attempts?: number; safeTextUsed?: boolean; attemptCodes?: string[];
 };
 /** Codes only: never persist prompts, raw output, account details or error messages. */
 function providerFailureCode(error: unknown): string {
@@ -33,18 +33,18 @@ export async function resolveStrategyAi(brief:StrategyBrief,bundle:StrategyEvide
   // Quota acquisition consumes the same request budget; reserve time to save the
   // validated result and finish the HTTP response before hosting's hard deadline.
   const started=Date.now(), budgetMs=Math.max(1,Math.min(19_000,deadline-started-1500));
-  const diagnostic:StrategyAiDiagnostic={code:"TIME_BUDGET_EXHAUSTED",durationMs:0,budgetMs,inputBytes:new TextEncoder().encode(payload).length,outputChars:0};
+  const diagnostic:StrategyAiDiagnostic={code:"TIME_BUDGET_EXHAUSTED",durationMs:0,budgetMs,inputBytes:new TextEncoder().encode(payload).length,outputChars:0,attemptCodes:[]};
   const advice=await optionalWithinBudget(async signal=>{
     let correction:string|undefined;
     for(let attempt=0;attempt<(deps.allowRepair?2:1);attempt++){
       let raw:string;diagnostic.attempts=attempt+1;
       try { raw=await deps.invoke(payload,signal,correction); }
-      catch(error) { if(!signal.aborted)diagnostic.code=providerFailureCode(error);return null; }
+      catch(error) { if(!signal.aborted)diagnostic.code=providerFailureCode(error);diagnostic.attemptCodes!.push(diagnostic.code);return null; }
       if(signal.aborted)return null;
       diagnostic.outputChars=raw.length;
-      const parsed=parseStrategyAdvice(raw,brief,bundle,code=>{correction=code;diagnostic.code=`OUTPUT_${code}`;},()=>{diagnostic.safeTextUsed=true;});
+      const parsed=parseStrategyAdvice(raw,brief,bundle,code=>{correction=code;diagnostic.code=`OUTPUT_${code}`;diagnostic.attemptCodes!.push(diagnostic.code);},()=>{diagnostic.safeTextUsed=true;});
       invalid=!parsed;
-      if(parsed){diagnostic.code="VALIDATED";return parsed;}
+      if(parsed){diagnostic.code="VALIDATED";diagnostic.attemptCodes!.push(diagnostic.code);return parsed;}
       // Repair a malformed selection once without weakening validation, changing
       // evidence, adding paid inference, or extending this request's deadline.
       if(!deps.allowRepair||attempt>0||budgetMs-(Date.now()-started)<6000)break;
