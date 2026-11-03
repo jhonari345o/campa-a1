@@ -47,6 +47,7 @@ async function mockProvider(response: Response | Response[], run: (requests: { u
   const requests: { url: string; body: Record<string, unknown>; signal: AbortSignal | null | undefined }[] = [];
   Object.assign(process.env, freeEnv, { OPENROUTER_MODEL: "test/primary:free", OPENROUTER_FALLBACK_MODELS: "test/backup:free,paid/model", LLM_REQUEST_TIMEOUT_MS: "10000" });
   globalThis.fetch = async (url, init) => {
+    if (String(url).endsWith("/models")) return Response.json({ data: ["test/primary:free", "test/backup:free"].map(id => ({ id, context_length: 100000, pricing: { prompt: "0", completion: "0" }, supported_parameters: ["response_format"] })) });
     requests.push({ url: String(url), body: JSON.parse(String(init?.body)), signal: init?.signal });
     const responses = Array.isArray(response) ? response : [response];
     return responses[Math.min(requests.length - 1, responses.length - 1)].clone();
@@ -194,7 +195,7 @@ test("fast planning routing recovers from a timed-out provider without retrying 
   await mockProvider(Response.json({choices:[{message:{content:'{"ok":true}'}}]}),async requests=>{
     const savedFetch=globalThis.fetch;
     let attempt=0;
-    globalThis.fetch=async(...args)=>{if(attempt++===0)throw new DOMException("timed out","TimeoutError");return savedFetch(...args);};
+    globalThis.fetch=async(...args)=>{if(!String(args[0]).endsWith("/models")&&attempt++===0)throw new DOMException("timed out","TimeoutError");return savedFetch(...args);};
     assert.equal(await chatCompletion([{role:"user",content:"test"}],{fastFreeRouting:true}),'{"ok":true}');
     assert.equal(requests[0].body.model,"test/backup:free");
     const controller=new AbortController();controller.abort();
@@ -206,12 +207,13 @@ test("fast planning routing recovers from a timed-out provider without retrying 
   });
 });
 
-test("a stalled free attempt is cancelled before the overall deadline to leave time for its fallback",async()=>{
+test("an exhausted overall deadline cancels the provider and cannot start another fallback",async()=>{
   await mockProvider(Response.json({choices:[{message:{content:'{"ok":true}'}}]}),async requests=>{
     const savedFetch=globalThis.fetch,savedTimeout=AbortSignal.timeout;
     const signals:AbortSignal[]=[];
-    AbortSignal.timeout=(ms)=>savedTimeout(ms===10_000?10:ms);
+    AbortSignal.timeout=(ms)=>savedTimeout(ms===19_000?20:ms);
     globalThis.fetch=async(...args)=>{
+      if(String(args[0]).endsWith("/models"))return savedFetch(...args);
       const signal=args[1]?.signal as AbortSignal;signals.push(signal);
       if(signals.length===1)return new Promise<Response>((_resolve,reject)=>signal.addEventListener("abort",()=>reject(signal.reason),{once:true}));
       return savedFetch(...args);
@@ -219,9 +221,9 @@ test("a stalled free attempt is cancelled before the overall deadline to leave t
     // A referenced timer keeps the synthetic network wait alive in Node's test runner.
     const keepAlive=setTimeout(()=>{},1000);
     try{
-      assert.equal(await chatCompletion([{role:"user",content:"test"}],{fastFreeRouting:true,timeoutMs:19_000}),'{"ok":true}');
-      assert.equal(signals.length,2);assert.equal(signals[0].aborted,true);assert.equal(signals[1].aborted,false);
-      assert.equal(requests[0].body.model,"test/backup:free");
+      await assert.rejects(chatCompletion([{role:"user",content:"test"}],{fastFreeRouting:true,timeoutMs:19_000}),/PROVIDER_TIMEOUT/);
+      assert.equal(signals.length,1);assert.equal(signals[0].aborted,true);
+      assert.equal(requests.length,0);
     }finally{AbortSignal.timeout=savedTimeout;clearTimeout(keepAlive);}
   });
 });

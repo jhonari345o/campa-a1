@@ -1,8 +1,9 @@
 import { BedrockRuntimeClient, ConverseCommand } from "@aws-sdk/client-bedrock-runtime";
 import { getLlmConfiguration } from "./llm-config";
+import { availableFreeModels } from "./free-model-routing";
 
 export type LlmMessage = { role: "system" | "user" | "assistant"; content: string };
-type CompletionOptions = { maxTokens?: number; temperature?: number; signal?: AbortSignal; json?: boolean; responseSchema?: {name:string;schema:Record<string,unknown>}; timeoutMs?: number; reasoningEffort?: "low" | "medium" | "high"; reasoningEnabled?: boolean; fastFreeRouting?: boolean };
+type CompletionOptions = { maxTokens?: number; temperature?: number; signal?: AbortSignal; json?: boolean; responseSchema?: {name:string;schema:Record<string,unknown>}; timeoutMs?: number; reasoningEffort?: "low" | "medium" | "high"; reasoningEnabled?: boolean; fastFreeRouting?: boolean; onModel?: (model: string) => void };
 
 /** Retain a bounded diagnosis, never the provider's raw account/prompt details. */
 async function providerErrorCode(res: Response): Promise<string> {
@@ -134,15 +135,15 @@ async function openaiChat(
   let retriedTruncation = false;
   let omitReasoningOption = false;
   const fastFree = Boolean(opts?.fastFreeRouting && provider.openRouter && provider.freeOnly);
-  const maxAttempts = Math.min(3, 1 + fallbackModels.length) + (fastFree ? 1 : 0);
+  if (fastFree) models = await availableFreeModels(models, Boolean(opts?.responseSchema || opts?.json), Math.ceil(new TextEncoder().encode(JSON.stringify(messages)).length / 2) + (opts?.maxTokens ?? 1024), signal);
+  const maxAttempts = Math.min(3, models.length) + (fastFree ? 1 : 0);
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const hasRetryTime = () => attempt < maxAttempts - 1 && !signal.aborted && deadline - Date.now() >= 5000;
     const canAdvance = () => provider.openRouter && provider.freeOnly && models.length > 1 && hasRetryTime();
-    // Preserve enough of the one request deadline for another free model if a
-    // provider stalls. This never extends the caller's cancellation or lease.
-    const remainingMs = Math.max(1, deadline - Date.now());
-    const attemptMs = fastFree && models.length > 1 && remainingMs >= 11_000 ? Math.min(10_000, remainingMs - 6000) : remainingMs;
-    const attemptSignal = fastFree ? AbortSignal.any([signal, AbortSignal.timeout(attemptMs)]) : signal;
+    // A live model gets the remaining caller deadline. Cutting every attempt
+    // at ten seconds discarded valid slower completions from the free pool.
+    // HTTP/model failures can still advance immediately without resetting it.
+    const attemptSignal = signal;
     let res: Response;
     let data: { model?: string; choices?: { finish_reason?: string; message?: { content?: string } }[] } | undefined;
     try {
@@ -207,6 +208,7 @@ async function openaiChat(
     }
     const reply = data?.choices?.[0]?.message?.content;
     if (typeof reply !== "string") throw new Error("Respuesta inesperada del modelo.");
+    if (typeof data?.model === "string" && /^[a-z0-9._:/-]{1,160}$/i.test(data.model)) opts?.onModel?.(data.model);
     return reply.trim();
   }
   throw new Error("PROVIDER_OUTPUT_TRUNCATED");

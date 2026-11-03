@@ -32,7 +32,7 @@ export async function resolveStrategyAi(brief:StrategyBrief,bundle:StrategyEvide
   // Keep the inference lease below the cache's thirty-second single-flight claim.
   // Quota acquisition consumes the same request budget; reserve time to save the
   // validated result and finish the HTTP response before hosting's hard deadline.
-  const started=Date.now(), budgetMs=Math.max(1,Math.min(19_000,deadline-started-1500));
+  const started=Date.now(), budgetMs=Math.max(1,Math.min(22_000,deadline-started-1500));
   const diagnostic:StrategyAiDiagnostic={code:"TIME_BUDGET_EXHAUSTED",durationMs:0,budgetMs,inputBytes:new TextEncoder().encode(payload).length,outputChars:0,attemptCodes:[]};
   const advice=await optionalWithinBudget(async signal=>{
     let correction:string|undefined;

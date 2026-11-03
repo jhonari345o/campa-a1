@@ -49,7 +49,7 @@ test("optional follow-up text cannot discard a valid allocation or bypass source
   assert.equal((await resolveStrategyAi(brief,bundle,"{}",2000,deps)).state,"rejected");
 });
 test("planning reserves an inference window within the single-flight lease",async()=>{
-  for(const [available,expected] of [[8000,6500],[38000,19000]]){
+  for(const [available,expected] of [[8000,6500],[38000,22000]]){
     let budget=0;
     const {deps}=dependencies({persist:async(_value,diagnostic)=>{budget=diagnostic.budgetMs;return true;}});
     assert.equal((await resolveStrategyAi(brief,bundle,"{}",available,deps)).state,"validated");
