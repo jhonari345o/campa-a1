@@ -21,3 +21,25 @@ test("unknown and national commercial coverage never becomes a city-specific tar
   assert.deepEqual(televisionMarkets(product({ location: "GYE", marketKeys: ["quito"] })), ["Quito"]);
   assert.equal(televisionEdition(product({ source: { workspaceProductId: "synthetic-private" } }), { sources: [], tv: [], radio: [] }).key, "account");
 });
+
+test("programme lists include account defaults alongside broadcast editions and isolate each plaza", async () => {
+  const { televisionPrograms } = await import("../lib/television-directory");
+  const morning = product({ key:"tv:default:morning-gye",provider:"Ecuavisa GYE",name:"Televistazo en la comunidad",format:"Lunes a viernes · 07:30",source:{defaultPrice:true,standingPrice:true} });
+  const noon = product({ ...morning,key:"tv:default:noon-uio",provider:"Ecuavisa UIO",name:"Televistazo II",location:"Quito" });
+  const show = product({ key:"tv:source:show",provider:"Ecuavisa",name:"Programa sintético",source:{sourceId:"edition"} });
+  const catalog = {sources:[],tv:[],radio:[]};
+  const ecuavisa = televisionChannels([morning,noon,show]).find(channel=>channel.key==="ecuavisa")!;
+  assert.equal(ecuavisa.products.length,3);
+  assert.deepEqual(new Set(televisionPrograms(ecuavisa.products,catalog,"Guayaquil").map(row=>row.key)),new Set([morning.key,show.key]));
+  assert.deepEqual(televisionPrograms(ecuavisa.products,catalog,"Quito","televistazo"),[noon]);
+  assert.deepEqual(televisionPrograms(ecuavisa.products,catalog,"Guayaquil","","account"),[morning]);
+});
+
+test("an expired edition cannot become the initial buying list ahead of the current account programmes", async () => {
+  const { activeTelevisionProducts } = await import("../lib/television-directory");
+  const old=product({key:"tv:archive",validFrom:"2026-06-01",validTo:"2026-06-30"});
+  const active=product({key:"tv:default:news",validFrom:"2026-11-02",validTo:null,source:{defaultPrice:true,standingPrice:true}});
+  const future=product({key:"tv:next",validFrom:"2026-12-01",validTo:"2026-12-31"});
+  assert.deepEqual(activeTelevisionProducts([old,active,future],"2026-11-02"),[active]);
+  assert.deepEqual(activeTelevisionProducts([old,active,future],"2026-12-01"),[active,future]);
+});

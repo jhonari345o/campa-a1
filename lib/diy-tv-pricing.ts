@@ -7,6 +7,12 @@ import type {CatalogProduct} from "./catalog-shopping";
 export function diyTvPrice(sourceId:string,offerId:string,brief:BroadcastBrief,products:CatalogProduct[]){
   const product=products.find(p=>p.kind==="tv"&&p.key===`tv:${sourceId}:${offerId}`);
   if(!product)return null;
+  return diyTvProductPrice(product,brief);
+}
+/** The same dates and commercial coverage apply to source, default and
+ * individually negotiated programme SKUs. */
+export function diyTvProductPrice(product:CatalogProduct,brief:BroadcastBrief){
+  if(product.kind!=="tv")return null;
   const markets=product.marketKeys??[];
   // Tariff territories describe where the same product is sold, unlike a
   // consolidated audience study whose denominator cannot be split.

@@ -37,3 +37,21 @@ export function televisionEdition(product: CatalogProduct, catalog: BroadcastCat
   const source = catalog.sources.find(source => source.id === product.source.sourceId);
   return source ? { key: source.id, label: `${source.periodStart} – ${source.periodEnd}` } : { key: "catalog", label: "Tarifas del catálogo" };
 }
+
+/** All account-resolved programmes are visible initially, including approved
+ * defaults that do not belong to a broadcast-source edition. */
+export function televisionPrograms(products: CatalogProduct[], catalog: BroadcastCatalog, market: TelevisionMarket, query = "", edition = "all") {
+  const needle = normalized(query);
+  return products.filter(product => product.kind === "tv" && televisionMarkets(product).includes(market)
+    && (edition === "all" || televisionEdition(product, catalog).key === edition)
+    && normalized(`${product.name} ${product.format} ${product.unit}`).includes(needle))
+    .sort((a,b) => a.name.localeCompare(b.name,"es",{numeric:true}) || a.format.localeCompare(b.format,"es",{numeric:true}));
+}
+
+/** An expired archive edition must not hide current negotiated programmes or
+ * appear as an active buying option. Historical plan records stay untouched. */
+export function activeTelevisionProducts(products: CatalogProduct[], day: string) {
+  return products.filter(product => product.kind === "tv"
+    && (!product.validFrom || product.validFrom <= day)
+    && (!product.validTo || product.validTo >= day));
+}
