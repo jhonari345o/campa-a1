@@ -14,7 +14,7 @@ export function PlanesPricing() {
           >
             {p.destacado && (
               <span className="absolute -top-3 left-6 rounded-full bg-signal px-3 py-0.5 text-xs font-black text-forest">
-                Mas popular
+                Más popular
               </span>
             )}
             <h3 className="text-lg font-black tracking-tight text-forest">{p.name}</h3>
@@ -36,8 +36,8 @@ export function PlanesPricing() {
         ))}
       </div>
       <p className="mx-auto mt-6 max-w-2xl text-center text-xs text-muted">
-        Cada propuesta se cotiza de forma personalizada segun alcance, usuarios, medios y nivel de
-        acompanamiento. El acceso se habilita por invitacion despues de validar contrato y responsables.
+        Cada propuesta se cotiza de forma personalizada según alcance, usuarios, medios y nivel de
+        acompañamiento. El acceso se habilita por invitación después de validar contrato y responsables.
       </p>
     </>
   );

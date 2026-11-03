@@ -9,29 +9,29 @@ const BASE_STEPS: Step[] = [
   {
     emoji: "🦎",
     title: "¡Hola! Soy Mavi",
-    body: "Tu guia de medios. Te acompano desde el plan hasta la solicitud de campana, siempre con revision humana. Te muestro rapido como funciona.",
+    body: "Tu guía de medios. Te acompaño desde el plan hasta la solicitud de campaña, siempre con revisión humana. Te muestro rápido cómo funciona.",
   },
   {
     emoji: "🧭",
     title: "1. Planificador de medios",
-    body: "Cuentame de tu negocio y te armo un plan con los canales que mas te convienen (Meta, Google, TikTok, WhatsApp), con base en datos del mercado.",
+    body: "Cuéntame de tu negocio y te armo un plan con los canales que más te convienen (Meta, Google, TikTok, YouTube), con base en datos del mercado.",
   },
   {
     emoji: "💬",
-    title: "2. Preguntame lo que sea",
+    title: "2. Pregúntame lo que sea",
     body: "En 'Asistente' resuelvo tus dudas de publicidad, te sugiero ideas y te genero los textos y guiones de tus anuncios.",
   },
   {
     emoji: "🚀",
     title: "3. Prepara y sigue tus solicitudes",
-    body: "Cuando envies una solicitud, preparo el borrador y lo veras en 'Mis campanas'. Nunca publico ni compro sola: una persona autorizada da el visto bueno.",
+    body: "Cuando envíes una solicitud, preparo el borrador y lo verás en 'Mis campañas'. Nunca publico ni compro sola: una persona autorizada da el visto bueno.",
   },
 ];
 
 const ADMIN_STEP: Step = {
   emoji: "👥",
   title: "4. Suma a tu equipo",
-  body: "Como administrador, aqui mismo en tu panel puedes crear las cuentas de tu equipo (hasta tus cupos). Cada persona ve solo la informacion de tu empresa.",
+  body: "Como administrador, aquí mismo en tu panel puedes crear las cuentas de tu equipo (hasta tus cupos). Cada persona ve solo la información de tu empresa.",
 };
 
 const STORAGE_KEY = "mavi_tour_v1";
@@ -75,7 +75,7 @@ export function MaviTour({ isAdmin = false }: { isAdmin?: boolean }) {
         }}
         className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full border border-border bg-white px-4 py-2 text-sm font-black text-forest shadow-panel transition-transform hover:-translate-y-0.5"
       >
-        <MaviAvatar size={24} /> Como funciona
+        <MaviAvatar size={24} /> Cómo funciona
       </button>
 
       {open && (

@@ -1,3 +1,4 @@
+import { MAX_STRATEGY_EXECUTIONS } from "./media-strategy";
 import type { strategyAiPayload } from "./media-strategy";
 
 /** Short request-local identifiers reduce tokens without changing the source-bound contract. */
@@ -13,7 +14,7 @@ export function strategyAiTransport(payload:ReturnType<typeof strategyAiPayload>
     summary:{type:"string",minLength:1,maxLength:1400,description:"Conclusión breve en español, sin cifras ni importes."},
     allocations:{type:"array",minItems:1,maxItems:payload.allowedMedia.length,items:{anyOf:validOptions.map(option=>({type:"object",additionalProperties:false,required:["medium","weight","rationale","evidenceIds","candidateIds"],properties:{
       medium:{type:"string",enum:[option.medium]},weight:{type:"integer",minimum:0,maximum:10000,description:"Los pesos de todos los medios suman diez mil."},rationale:{type:"string",minLength:1,maxLength:700,description:"Motivo de la selección, sin cifras ni importes."},
-      evidenceIds:idList(option.evidenceIds,1,6),candidateIds:idList(option.candidateIds,0,3),
+      evidenceIds:idList(option.evidenceIds,1,6),candidateIds:idList(option.candidateIds,0,MAX_STRATEGY_EXECUTIONS),
     }}))}},questions:{type:"array",maxItems:0,items:{type:"string"}},
   }};
   return {content,ready:validOptions.length>0,responseSchema:{name:"media_strategy",schema},restore(raw:string):string {

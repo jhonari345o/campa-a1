@@ -142,7 +142,7 @@ export const OOH_PROVIDERS: CatalogItem[] = [
   { slug: "meglio", name: "De Meglio", imagePath: "/providers/ooh/meglio/logo.png", status: "cotizable", statusNote: "Circuito Mall del Sol", summary: "Columnas y circuitos publicitarios en Mall del Sol.", detail: "Ubicaciones, medidas, frecuencia y formatos del circuito.", coverage: "Guayas" },
   { slug: "creamedios", name: "Creamedios", imagePath: "/providers/ooh/creamedios/logo.png", status: "directorio", statusNote: "En carga", summary: "Proveedor de publicidad exterior incorporado al directorio.", detail: "Inventario y condiciones comerciales en carga." },
   { slug: "induvallas", name: "Induvallas", imagePath: "/providers/ooh/induvallas/logo.png", status: "directorio", statusNote: "En carga", summary: "Proveedor de publicidad exterior incorporado al directorio.", detail: "Inventario y condiciones comerciales en carga." },
-  { slug: "basics", name: "Basics", status: "directorio", statusNote: "En carga", summary: "Proveedor incorporado al directorio de vía pública.", detail: "Inventario y condiciones comerciales en carga." },
+  { slug: "basics", name: "Imprescindibles en cobertura", status: "cotizable", statusNote: "Formatos de cobertura", summary: "Pasacalles, bicibanners, minivallas y vallas móviles para acercar tu marca a cada territorio.", detail: "Explora los formatos, recorridos y paquetes de Ad Mavericks.", coverage: "Ecuador" },
   { slug: "independientes", name: "Titulares independientes", status: "validacion", statusNote: "2 fichas incorporadas", summary: "Colección de titulares y activos independientes.", detail: "Ubicaciones y formatos de titulares independientes.", count: 2 },
 ];
 

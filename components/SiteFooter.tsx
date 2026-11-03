@@ -7,7 +7,7 @@ export function SiteFooter() {
         <div>
           <Wordmark one invert className="text-lg" />
           <p className="mt-4 max-w-xs text-sm text-white/70">
-            Tu central de medios del nuevo siglo. Planificacion, compra y control
+            Tu central de medios del nuevo siglo. Planificación, compra y control
             de pauta publicitaria, clara y segura. Guayaquil, Ecuador.
           </p>
         </div>
@@ -16,9 +16,9 @@ export function SiteFooter() {
             Plataforma
           </h3>
           <ul className="mt-4 space-y-2 text-sm text-white/80">
-            <li><a href="#como-funciona" className="hover:text-signal">Como funciona</a></li>
+            <li><a href="#como-funciona" className="hover:text-signal">Cómo funciona</a></li>
             <li><a href="#seguridad" className="hover:text-signal">Seguridad</a></li>
-            <li><a href="#fases" className="hover:text-signal">Implementacion</a></li>
+            <li><a href="#fases" className="hover:text-signal">Implementación</a></li>
           </ul>
         </div>
         <div>

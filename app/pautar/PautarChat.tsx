@@ -49,12 +49,12 @@ export function PautarChat({
             from: "mavi",
             text: hasPost
               ? `¡Recibí la pauta para ${redLabel(initialRed!)}! 🦎 Ahora selecciona la ubicación y el radio de cobertura.`
-              : `¡Te prepare esta campana! 🦎 ${redLabel(initialRed!)}${initialMonto ? ` · ${money(initialMonto)}` : ""}${
+              : `¡Te preparé esta campaña! 🦎 ${redLabel(initialRed!)}${initialMonto ? ` · ${money(initialMonto)}` : ""}${
               initialObjetivo ? ` · ${initialObjetivo}` : ""
-            }. Solo pega el link de la publicacion que quieres pautar 👇`,
+            }. Solo pega el enlace de la publicación que quieres pautar 👇`,
           },
         ]
-      : [{ from: "mavi", text: "¡Listo para pautar! 🦎 Vamos paso a paso. Primero: ¿en que plataforma quieres pautar?" }],
+      : [{ from: "mavi", text: "¡Listo para pautar! 🦎 Vamos paso a paso. Primero: ¿en qué plataforma quieres pautar?" }],
   );
   const [step, setStep] = useState<Step>(hasPost ? "geo" : prefilled ? "link" : "red");
   const [red, setRed] = useState(initialRed ?? "");
@@ -81,7 +81,7 @@ export function PautarChat({
     if (!r.enabled) return;
     setRed(r.id);
     push({ from: "user", text: r.label });
-    push({ from: "mavi", text: "Perfecto. Pega el link de la publicacion (video o foto) que quieres pautar 👇" });
+    push({ from: "mavi", text: "Perfecto. Pega el link de la publicación (video o foto) que quieres pautar 👇" });
     setStep("link");
   }
 
@@ -93,11 +93,11 @@ export function PautarChat({
       const ch = computeCharge(monto);
       push({
         from: "mavi",
-        text: `¡Buenisimo! Para pautar ${money(monto)} pasas por caja: se suman los costos de servicio y gestion. Total a pagar: ${money(ch.total)}.`,
+        text: `¡Buenísimo! Para pautar ${money(monto)} pasas por caja: se suman los costos de servicio y gestión. Total a pagar: ${money(ch.total)}.`,
       });
       setStep("pago");
     } else {
-      push({ from: "mavi", text: "¡Buenisimo! ¿Cuanto quieres pautar? Escribe el monto en dolares (ej. 200)." });
+      push({ from: "mavi", text: "¡Buenísimo! ¿Cuánto quieres pautar? Escribe el monto en dólares (ej. 200)." });
       setStep("monto");
     }
   }
@@ -124,14 +124,14 @@ export function PautarChat({
     } else if (step === "monto") {
       const n = Number(value.replace(/[^0-9.]/g, ""));
       if (!Number.isFinite(n) || n <= 0) {
-        push({ from: "mavi", text: "Necesito un monto en dolares, solo el numero (ej. 200)." });
+        push({ from: "mavi", text: "Necesito un monto en dólares, solo el número (ej. 200)." });
         return;
       }
       setMonto(n);
       const ch = computeCharge(n);
       push({
         from: "mavi",
-        text: `Perfecto. Para pautar ${money(n)} pasas por caja: se suman los costos de servicio y gestion. Total a pagar: ${money(ch.total)}.`,
+        text: `Perfecto. Para pautar ${money(n)} pasas por caja: se suman los costos de servicio y gestión. Total a pagar: ${money(ch.total)}.`,
       });
       setStep("pago");
     }
@@ -139,7 +139,7 @@ export function PautarChat({
 
   async function pagar() {
     if (!geoTarget) {
-      setError("Selecciona la geolocalizacion y el radio de la pauta.");
+      setError("Selecciona la geolocalización y el radio de la pauta.");
       return;
     }
     if (!paymentAccepted) {
@@ -263,7 +263,7 @@ export function PautarChat({
             </div>
 
             <div className="mt-3 space-y-1.5 text-sm">
-              <Row label={`Inversion en anuncios (${red || "red"})`} value={money(charge.base)} />
+              <Row label={`Inversión en anuncios (${red || "red"})`} value={money(charge.base)} />
               <Row label={TAX_LABEL} value={money(charge.tax)} />
               <Row label={SERVICE_FEE_LABEL} value={money(charge.fee)} />
               <div className="my-2 border-t border-border" />

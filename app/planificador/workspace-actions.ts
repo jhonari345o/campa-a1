@@ -16,7 +16,7 @@ import { validateManualExtras } from "@/lib/diy-workspace";
 import { FALLBACK_OOH } from "@/lib/diy-zones";
 import { validateBroadcastSelections } from "@/lib/broadcast-catalog";
 import { revalidatePath } from "next/cache";
-import { normalizeCoverageBrief } from "@/lib/geographic-coverage";
+import { normalizeCoverageBrief, normalizeCoverage, coverageLegacyLabels, type CoverageSelection } from "@/lib/geographic-coverage";
 import { getSessionProfile } from "@/lib/auth";
 import { getMyCompanies } from "@/lib/company";
 import { canWorkspaceRole } from "@/lib/permissions";
@@ -46,6 +46,7 @@ export type ManualPlanDraft = {
   audienceType: string;
   budgetUsd: number;
   geographies: string[];
+  coverage?: CoverageSelection[];
   selectedMedia: MediaGroup[];
   scenarioId: PlanningScenario["id"];
   digitalReady: boolean;
@@ -95,7 +96,8 @@ export async function guardarPlanManual(input: ManualPlanDraft): Promise<SaveRes
   }
   const selectedMedia = [...new Set(input.selectedMedia)].filter(isMediaGroup);
   if (!selectedMedia.length) return { ok: false, error: "Selecciona al menos un medio." };
-  const geographies = [...new Set(input.geographies.map((item) => cleanText(item, 120)).filter(Boolean))].slice(0, 20);
+  const coverage=normalizeCoverage(input.coverage);
+  const geographies = coverage.length?coverageLegacyLabels(coverage):[...new Set(input.geographies.map((item) => cleanText(item, 120)).filter(Boolean))].slice(0, 300);
   if (!geographies.length) return { ok: false, error: "Selecciona al menos una cobertura geográfica." };
   const scenarios = buildPlanningScenarios({
     budgetUsd,
@@ -122,7 +124,7 @@ export async function guardarPlanManual(input: ManualPlanDraft): Promise<SaveRes
     audienceType: cleanText(input.audienceType, 40),
     budgetUsd,
     geography: geographies.join(" · "),
-    geographies, startDate: input.startDate, endDate: input.endDate, ageRange: input.ageRange, sex: input.sex,
+    geographies, coverage, startDate: input.startDate, endDate: input.endDate, ageRange: input.ageRange, sex: input.sex,
     selectedMedia,
   };
   const rawSelections = cleanObject(input.selections);

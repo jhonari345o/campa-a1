@@ -45,3 +45,10 @@ test('every deployed polygon has a unique directory match with province context 
     }
   }
 });
+
+test("DIY legacy known provinces and cantons restore full polygons without expanding radius plans",()=>{
+ const locations=restoreCoverage({geographies:["Provincia de Guayas","Tulcán"]});
+ assert.equal(locations.length,2);assert.equal(locations[0].kind,"province");assert.equal(locations[1].context,"Carchi");
+ assert.deepEqual(restoreCoverage({geographies:["Tulcán · radio 5 km"]}),[]);
+ assert.equal(restoreCoverage({geographies:["Todo Ecuador"]})[0].kind,"country");
+});

@@ -193,7 +193,7 @@ function RecentClients({ companies }: { companies: Company[] }) {
   return (
     <section className="rounded-panel border border-border bg-white p-8 shadow-panel">
       <h2 className="text-xl font-black tracking-tight">Clientes recientes</h2>
-      <p className="mt-1 text-sm text-muted">Ultimos clientes dados de alta.</p>
+      <p className="mt-1 text-sm text-muted">Últimos clientes dados de alta.</p>
       {companies.length === 0 ? (
         <p className="mt-6 rounded-xl border border-border bg-fog px-4 py-6 text-center text-sm text-muted">
           Aun no hay clientes. Crea el primero con el formulario.

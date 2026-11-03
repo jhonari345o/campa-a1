@@ -17,14 +17,16 @@ export function OohCatalogPanel({ catalog, purchaseReferences = [] }: { catalog:
   const providerAssets = catalog.assets.filter(item => item.providerSlug === providerSlug);
   const groups = oohProvinceGroups(providerAssets);
   const province = groups.find(group => group.key === provinceKey);
-  const shown = (province?.assets ?? []).filter(item => oohMatches(item, query));
+  const formats = providerSlug === "basics";
+  const currentAssets = formats ? providerAssets : province?.assets ?? [];
+  const shown = currentAssets.filter(item => oohMatches(item, query));
   function selectProvider(slug: string | null) { setProviderSlug(slug); setProvinceKey(null); setQuery(""); }
   function selectProvince(key: string | null) { setProvinceKey(key); setQuery(""); }
 
   return <section className="media-portal-section">
     <header className="flex flex-wrap items-end justify-between gap-4">
-      <div><p className="text-xs font-black uppercase tracking-[.18em] text-signal-dark">Vía pública</p><h2 className="mt-1 text-2xl font-black tracking-tight">{province ? `${provider?.name} · ${province.name}` : provider ? `Explora ${provider.name}` : "Encuentra el espacio para tu marca"}</h2><p className="mt-2 max-w-3xl text-sm text-muted">{province ? "Fotografías, ubicaciones, formatos y valores de referencia." : provider ? "Selecciona una provincia para ver sus espacios." : "Elige un proveedor, explora sus provincias y compara los espacios disponibles en el catálogo."}</p></div>
-      <span className="rounded-xl bg-forest px-4 py-2 text-sm font-black text-white">{province ? `${province.assets.length} fichas` : provider ? `${groups.length} coberturas · ${providerAssets.length} fichas` : `${OOH_PROVIDERS.length} proveedores · ${catalog.assets.length} fichas`}</span>
+      <div><p className="text-xs font-black uppercase tracking-[.18em] text-signal-dark">Vía pública</p><h2 className="mt-1 text-2xl font-black tracking-tight">{province ? `${provider?.name} · ${province.name}` : provider ? provider.name : "Encuentra el espacio para tu marca"}</h2><p className="mt-2 max-w-3xl text-sm text-muted">{province ? "Fotografías, ubicaciones, formatos y valores de referencia." : formats ? "Elige un formato y conoce el paquete completo para tu campaña." : provider ? "Selecciona una provincia para ver sus espacios." : "Elige un proveedor, explora sus provincias y compara los espacios disponibles en el catálogo."}</p></div>
+      <span className="rounded-xl bg-forest px-4 py-2 text-sm font-black text-white">{province ? `${province.assets.length} fichas` : formats ? `${providerAssets.length} formatos` : provider ? `${groups.length} coberturas · ${providerAssets.length} fichas` : `${OOH_PROVIDERS.length} proveedores · ${catalog.assets.length} fichas`}</span>
     </header>
 
     {provider && <nav aria-label="Ubicación en el catálogo de vía pública" className="mt-6 flex flex-wrap items-center gap-2 border-b border-border pb-4 text-sm">
@@ -38,14 +40,14 @@ export function OohCatalogPanel({ catalog, purchaseReferences = [] }: { catalog:
       <div className="media-directory-grid">
         {OOH_PROVIDERS.filter(item => oohKey(item.name).includes(oohKey(query))).map(item => {
           const rows = catalog.assets.filter(asset => asset.providerSlug === item.slug), provinces = oohProvinceGroups(rows);
-          return <button key={item.slug} type="button" onClick={() => selectProvider(item.slug)} className={`media-directory-card w-full text-left transition hover:border-signal ${focus}`} aria-label={`Ver provincias de ${item.name}`}>
+          return <button key={item.slug} type="button" onClick={() => selectProvider(item.slug)} className={`media-directory-card w-full text-left transition hover:border-signal ${focus}`} aria-label={`${item.slug === "basics" ? "Ver formatos de" : "Ver provincias de"} ${item.name}`}>
             <div className="flex items-start justify-between gap-3"><div className={`relative h-16 w-24 overflow-hidden rounded-2xl border border-border ${item.slug === "duoprint" ? "bg-forest" : "bg-white"}`}>{item.imagePath ? <Image src={item.imagePath} alt={item.name} fill sizes="96px" className="object-contain p-2" /> : <span className="grid h-full place-items-center text-xl font-black">{item.name.slice(0, 1)}</span>}</div><span className="rounded-full bg-signal/10 px-3 py-1 text-xs font-black text-signal-dark">{rows.length} fichas</span></div>
             <h3>{item.name}</h3><p>{item.summary}</p><p className="media-directory-detail">{provinces.length ? provinces.map(group => group.name).join(" · ") : "Fichas de ubicaciones aún no incorporadas."}</p>
-            <span className="mt-5 flex items-center justify-between border-t border-border pt-4 text-sm font-black text-signal-dark">Ver provincias <span aria-hidden="true">→</span></span>
+            <span className="mt-5 flex items-center justify-between border-t border-border pt-4 text-sm font-black text-signal-dark">{item.slug === "basics" ? "Ver formatos" : "Ver provincias"} <span aria-hidden="true">→</span></span>
           </button>;
         })}
       </div>
-    </> : !province ? <>
+    </> : !province && !formats ? <>
       <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {groups.map(group => <button key={group.key} type="button" onClick={() => selectProvince(group.key)} className={`flex items-center gap-4 rounded-2xl border border-border bg-white p-5 text-left transition hover:border-signal hover:bg-fog ${focus}`}>
           <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-signal/10 text-signal-dark"><LocationIcon /></span><span className="min-w-0 flex-1"><strong className="block text-lg font-black">{group.name}</strong><span className="mt-1 block text-xs text-muted">{group.assets.length} fichas · {new Set(group.assets.map(asset => asset.city).filter(Boolean)).size} localidades</span></span><span aria-hidden="true" className="text-xl text-signal-dark">→</span>
@@ -53,7 +55,7 @@ export function OohCatalogPanel({ catalog, purchaseReferences = [] }: { catalog:
       </div>
       {!groups.length && <p className="mt-6 rounded-2xl border border-dashed border-border bg-fog p-6 text-sm text-muted">Este proveedor todavía no tiene fichas de ubicaciones incorporadas al catálogo.</p>}
     </> : <>
-      <div className="mt-6 flex flex-wrap items-end gap-4"><label className="min-w-0 flex-1 text-sm font-black">Buscar en {province.name}<input value={query} onChange={event => setQuery(event.target.value)} placeholder="Ciudad, dirección, código o formato" className="mt-2 w-full rounded-xl border border-border bg-fog px-4 py-3 font-normal outline-none focus:border-signal focus:ring-2 focus:ring-signal/20" /></label><p role="status" className="pb-3 text-sm text-muted">{shown.length} de {province.assets.length} fichas</p></div>
+      <div className="mt-6 flex flex-wrap items-end gap-4"><label className="min-w-0 flex-1 text-sm font-black">Buscar en {formats ? "formatos" : province?.name}<input value={query} onChange={event => setQuery(event.target.value)} placeholder="Ciudad, dirección, código o formato" className="mt-2 w-full rounded-xl border border-border bg-fog px-4 py-3 font-normal outline-none focus:border-signal focus:ring-2 focus:ring-signal/20" /></label><p role="status" className="pb-3 text-sm text-muted">{shown.length} de {currentAssets.length} fichas</p></div>
       <div className="mt-6 grid items-start gap-5" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,280px),1fr))" }}>{shown.map(asset => <OohAssetCard key={asset.id} asset={asset} references={purchaseReferences.filter(r => r.asset_id === asset.id)} />)}</div>
       {!shown.length && <p className="py-10 text-center text-sm text-muted">No hay fichas que coincidan con esa búsqueda.</p>}
     </>}
@@ -72,12 +74,13 @@ function OohAssetCard({ asset, references }: { asset: OohAsset; references: OohP
         <Image src={photoUrl} alt={`${asset.name}${asset.city ? ` en ${asset.city}` : ""}${asset.photoKind === "format" ? " · imagen de referencia del formato" : ""}`} fill unoptimized sizes="(max-width: 767px) 100vw, (max-width: 1279px) 50vw, 33vw" className="object-contain" onError={() => setImageFailed(true)} />
         <span className="absolute bottom-3 right-3 rounded-lg bg-forest/90 px-3 py-1.5 text-[10px] font-black text-white">Ampliar ↗</span>
       </a> : <div className="grid h-full place-content-center gap-2 text-center text-muted"><span className="mx-auto"><LocationIcon /></span><span className="text-xs">{imageFailed ? "Fotografía no disponible en este momento" : "Sin fotografía incorporada"}</span></div>}
-      {asset.photoKind === "format" && asset.photo && <span className="absolute left-3 top-3 rounded-lg bg-white/95 px-3 py-1.5 text-[10px] font-bold text-forest">Imagen de referencia del formato</span>}
+      {asset.photoKind === "format" && asset.photo && <span className="absolute left-3 top-3 rounded-lg bg-white/95 px-3 py-1.5 text-[10px] font-bold text-forest">{asset.photoCaption || "Imagen de referencia del formato"}</span>}
     </div>
     <div className="p-5"><p className="text-[10px] font-black uppercase tracking-wide text-signal-dark">{[asset.city, asset.brand].filter(Boolean).join(" · ") || asset.provinces.join(" · ")}</p><h3 className="mt-1 text-lg font-black leading-tight">{asset.name}</h3>{asset.code && <p className="mt-1 text-xs text-muted">Código {asset.code}</p>}
       <p className="mt-3 text-sm text-muted">{asset.address || "Ubicación exacta no informada"}</p>
-      <dl className="mt-4 grid grid-cols-2 gap-3 border-y border-border py-3 text-xs"><div><dt className="text-muted">Formato</dt><dd className="mt-1 font-bold">{asset.format || "No informado"}</dd></div><div><dt className="text-muted">Medidas</dt><dd className="mt-1 font-bold">{asset.dimensions || "No informadas"}</dd></div>{asset.dailySpots != null && <div><dt className="text-muted">Spots por día</dt><dd className="mt-1 font-bold">{asset.dailySpots}</dd></div>}{asset.spotSeconds != null && <div><dt className="text-muted">Duración del spot</dt><dd className="mt-1 font-bold">{asset.spotSeconds} segundos</dd></div>}</dl>
-      <CatalogOohProducts assetId={asset.id} quotationOnly={quotationOnly} />
+      <dl className="mt-4 grid grid-cols-2 gap-3 border-y border-border py-3 text-xs"><div><dt className="text-muted">Formato</dt><dd className="mt-1 font-bold">{asset.format || "No informado"}</dd></div>{asset.dimensions && <div><dt className="text-muted">Medidas</dt><dd className="mt-1 font-bold">{asset.dimensions}</dd></div>}{asset.dailySpots != null && <div><dt className="text-muted">Spots por día</dt><dd className="mt-1 font-bold">{asset.dailySpots}</dd></div>}{asset.spotSeconds != null && <div><dt className="text-muted">Duración del spot</dt><dd className="mt-1 font-bold">{asset.spotSeconds} segundos</dd></div>}</dl>
+      {asset.conditions && <p className="mt-4 text-sm leading-relaxed text-muted">{asset.conditions}</p>}
+      <CatalogOohProducts assetId={asset.purchaseAssetId || asset.id} quotationOnly={quotationOnly} />
       <PurchaseHistory rows={references} />
       {hasMap && <a href={`https://www.google.com/maps/search/?api=1&query=${asset.latitude},${asset.longitude}`} target="_blank" rel="noopener noreferrer" className={`mt-4 flex items-center gap-2 rounded-lg py-1 text-sm font-black text-signal-dark ${focus}`}><LocationIcon /> Ver ubicación en el mapa ↗</a>}
     </div>

@@ -16,7 +16,7 @@ import {
   verificarConexionMeta,
 } from "./actions";
 
-export const metadata = { title: "Mis campanas" };
+export const metadata = { title: "Mis campañas" };
 
 const supabaseConfigured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -126,14 +126,14 @@ export default async function CampanasPage({
           />
           <div>
             <h1 className="text-3xl font-black tracking-tight">
-              {isAdmin ? "Campanas de tus clientes" : "Mis campanas"}
+              {isAdmin ? "Campañas de tus clientes" : "Mis campañas"}
             </h1>
             <p className="mt-1 text-muted">
               {isAdmin
                 ? `Cola de TODOS los clientes${pendientes > 0 ? ` — ${pendientes} en espera.` : "."} Cada cliente solo ve las suyas.`
                 : pendientes > 0
-                  ? `Tienes ${pendientes} solicitud${pendientes === 1 ? "" : "es"} en revision.`
-                  : "Estado de las solicitudes preparadas para revision humana."}
+                  ? `Tienes ${pendientes} solicitud${pendientes === 1 ? "" : "es"} en revisión.`
+                  : "Estado de las solicitudes preparadas para revisión humana."}
             </p>
           </div>
         </div>
@@ -143,8 +143,8 @@ export default async function CampanasPage({
             <p className="font-black">Control de lanzamiento activo</p>
             <p className="mt-1">
               {metaDraftsEnabled
-                ? "Los borradores pausados estan habilitados; el gasto real sigue bloqueado."
-                : "La creacion de borradores y el gasto real siguen bloqueados hasta completar la validacion tecnica y comercial."}
+                ? "Los borradores pausados están habilitados; el gasto real sigue bloqueado."
+                : "La creación de borradores y el gasto real siguen bloqueados hasta completar la validación técnica y comercial."}
             </p>
           </div>
         )}
@@ -152,10 +152,10 @@ export default async function CampanasPage({
         {isAdmin && (
           <form action={verificarConexionMeta} className="mt-4">
             <button type="submit" className="btn btn-secondary text-xs">
-              Verificar conexion con Meta
+              Verificar conexión con Meta
             </button>
             <p className="mt-1 text-xs text-muted">
-              Prueba token, cuenta publicitaria, pagina, Instagram y permisos sin crear anuncios ni iniciar gasto.
+              Prueba token, cuenta publicitaria, página, Instagram y permisos sin crear anuncios ni iniciar gasto.
             </p>
           </form>
         )}
@@ -169,11 +169,11 @@ export default async function CampanasPage({
           <>
             <MaviShowcase />
             <p className="mt-6 rounded-panel border border-border bg-fog px-4 py-8 text-center text-sm text-muted">
-              Aun no has enviado campanas. Ve al{" "}
+              Aún no has enviado campañas. Ve al{" "}
               <a href="/planificador" className="font-black text-signal-dark hover:underline">
                 Planificador
               </a>{" "}
-              y prepara una solicitud para revision.
+              y prepara una solicitud para revisión.
             </p>
           </>
         ) : (
@@ -212,7 +212,7 @@ export default async function CampanasPage({
                       rel="noreferrer"
                       className="mt-1 inline-block text-xs font-black text-signal-dark hover:underline"
                     >
-                      Ver publicacion pautada ↗
+                      Ver publicación pautada ↗
                     </a>
                   )}
 
@@ -293,19 +293,19 @@ function MetaControls({
             </form>
             <form action={actualizarMetricasMeta}>
               <input type="hidden" name="job_id" value={job.id} />
-              <button type="submit" className="btn btn-secondary text-xs">Actualizar metricas</button>
+              <button type="submit" className="btn btn-secondary text-xs">Actualizar métricas</button>
             </form>
           </>
         )}
       </div>
       {!draftsEnabled && (
         <p className="mt-2 text-xs font-bold text-[#9a6a00]">
-          La creacion en Meta esta bloqueada hasta aprobar los controles de lanzamiento.
+          La creación en Meta está bloqueada hasta aprobar los controles de lanzamiento.
         </p>
       )}
       {draftsEnabled && delivery?.status === "paused" && !spendEnabled && (
         <p className="mt-2 text-xs font-bold text-[#9a6a00]">
-          Borrador disponible para revision; la activacion con gasto real permanece bloqueada.
+          Borrador disponible para revisión; la activación con gasto real permanece bloqueada.
         </p>
       )}
     </div>
@@ -317,15 +317,15 @@ function MetaResultNotice({ result, detail }: { result: string; detail?: string 
     borrador_listo: "Borrador creado en Meta y mantenido en pausa.",
     activada: "Pauta activada en Meta. El presupuesto ya puede empezar a consumirse.",
     pausada: "Pauta pausada en Meta.",
-    metricas_actualizadas: "Metricas actualizadas desde Meta.",
+    metricas_actualizadas: "Métricas actualizadas desde Meta.",
     falta_confirmacion: "Debes confirmar expresamente el inicio del gasto real.",
     no_autorizado: "Solo el equipo administrador puede operar Meta.",
     orden_invalida: "La orden seleccionada no es valida.",
     bloqueada_cumplimiento:
-      "Operacion bloqueada por el control de lanzamiento. Completa las validaciones antes de habilitar pauta real.",
-    conexion_lista: "Conexion de Meta validada para una prueba pausada.",
+      "Operación bloqueada por el control de lanzamiento. Completa las validaciones antes de habilitar pauta real.",
+    conexion_lista: "Conexión de Meta validada para una prueba pausada.",
     conexion_permisos: "Meta respondio, pero la credencial no tiene todos los permisos necesarios.",
-    conexion_error: "No se pudo validar la conexion con Meta.",
+    conexion_error: "No se pudo validar la conexión con Meta.",
   };
   const isError = ["error", "falta_confirmacion", "bloqueada_cumplimiento", "conexion_permisos", "conexion_error"].includes(result);
   return (
@@ -334,7 +334,7 @@ function MetaResultNotice({ result, detail }: { result: string; detail?: string 
         isError ? "border-coral/40 bg-coral/10 text-[#a13b31]" : "border-signal/40 bg-signal/10 text-forest"
       }`}
     >
-      {detail || messages[result] || "Operacion de Meta completada."}
+      {detail || messages[result] || "Operación de Meta completada."}
     </p>
   );
 }
@@ -346,7 +346,7 @@ function paymentLabel(status: string): string {
     paid: "pago confirmado",
     cancelled: "cancelado",
     failed: "fallido",
-    requires_attention: "requiere revision",
+    requires_attention: "requiere revisión",
     reversed: "reversado",
   };
   return labels[status] ?? status;
@@ -377,7 +377,7 @@ function MetricsPanel({
   return (
     <div className="mt-3 rounded-xl border border-border bg-fog/50 p-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-black uppercase tracking-wide text-muted">Metricas</span>
+        <span className="text-xs font-black uppercase tracking-wide text-muted">Métricas</span>
         <span className="text-[10px] font-black uppercase text-muted">
           {updatedAt
             ? `Actualizadas ${new Date(updatedAt).toLocaleString("es-EC")}`
@@ -387,7 +387,7 @@ function MetricsPanel({
         </span>
       </div>
       <p className="mt-2 text-[10px] text-muted">
-        Fuente: Meta Marketing API · periodo acumulado de la campana · metodo reportado por la plataforma.
+        Fuente: Meta Marketing API · período acumulado de la campaña · método reportado por la plataforma.
       </p>
       <div className="mt-2 grid grid-cols-4 gap-2 text-center">
         {cells.map((c) => (

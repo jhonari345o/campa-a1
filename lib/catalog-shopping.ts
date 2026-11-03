@@ -41,19 +41,21 @@ export function catalogProducts(profiles: InfluencerProfile[], ooh: OohCatalog, 
     });
   }
   for (const asset of ooh.assets) {
+    // Two format cards can describe one package without creating two billable products.
+    if (asset.purchaseAssetId && asset.purchaseAssetId !== asset.id) continue;
     const rates: Array<OohRate | undefined> = asset.rates.length ? asset.rates : [undefined];
     for (const [rateIndex, rate] of rates.entries()) {
       const key = oohProductKey(asset.id, rate, rateIndex);
       if (key.length > 2048) continue;
       const normalizedTax = asset.taxLabel.toLowerCase();
       products.push({
-        key, kind: "ooh", provider: asset.brand || OOH_PROVIDERS.find(p => p.slug === asset.providerSlug)?.name || asset.providerSlug, name: asset.name,
+        key, kind: "ooh", provider: asset.brand || OOH_PROVIDERS.find(p => p.slug === asset.providerSlug)?.name || asset.providerSlug, name: asset.purchaseName || asset.name,
         format: rate?.component || asset.format || "Espacio publicitario",
         unit: rate ? oohRateUnit(rate) : "unidad por cotizar", priceCents: rate ? price(rate.amount) : null,
         taxIncluded: /sin iva|no incluy/.test(normalizedTax) ? false : /iva incluid|incluye iva/.test(normalizedTax) ? true : null,
         location: [asset.city, asset.address, asset.code].filter(Boolean).join(" · "),
         reference: asset.reference, image: asset.photo ? `/api/ooh/images/${encodeURIComponent(asset.id)}` : null,
-        conditions: "",
+        conditions: asset.conditions || "",
         marketKeys: asset.provinces, billingPeriod: rate?.period,
         ...(rate?.authorizedFrom ? {validFrom: rate.authorizedFrom, validTo: null} : {}),
         formatGroup: /t[oó]tem/i.test(asset.name) ? /vip|especial/i.test(asset.name) ? "totem_special" : "totem_standard" : "other",

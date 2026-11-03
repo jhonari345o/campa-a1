@@ -78,9 +78,9 @@ export function normalizeCoverage(value: unknown): CoverageSelection[] {
 export function restoreCoverage(brief: Record<string, unknown>): CoverageSelection[] {
   const saved = normalizeCoverage(brief.coverage);
   if (saved.length) return saved;
-  return typeof brief.geography === "string" && /^(todo ecuador|nacional)$/i.test(brief.geography.trim())
-    ? [{ ...nationalCoverage }]
-    : [];
+  if (brief.geoTarget && typeof brief.geoTarget === "object" && "radiusKm" in brief.geoTarget) return [];
+  const labels=Array.isArray(brief.geographies)?brief.geographies.filter((s):s is string=>typeof s==="string"):typeof brief.geography==="string"?[brief.geography]:[];
+  return coverageFromLabels(labels);
 }
 
 export function coverageDescription(value: CoverageSelection[]): string {
@@ -96,4 +96,23 @@ export function normalizeCoverageBrief(brief: Record<string, unknown>): { covera
   // Existing radius-based plans retain their exact territory until the user replaces it.
   const geography = coverage.length ? coverageDescription(coverage) : typeof brief.geography === "string" ? brief.geography : "";
   return { coverage, geography };
+}
+
+
+/** Legacy labels are restored only when they identify an unambiguous boundary.
+ * Radius descriptions and unknown places retain their original stored text. */
+export function coverageFromLabels(labels:string[]):CoverageSelection[] {
+  const resolved:CoverageSelection[]=[];
+  for(const label of labels){
+    if(/^(todo ecuador|nacional|ecuador)$/i.test(label.trim()))return [{...nationalCoverage}];
+    const province=/^provincia de |\(provincia\)$/i.test(label.trim());
+    const key=normalizeSearch(label.replace(/^provincia de /i,"").replace(/\s*\(provincia\)$/i,""));
+    const candidates=selections.filter(s=>normalizeSearch(s.label)===key&&(!province||s.kind==="province"));
+    if(candidates.length!==1)return [];
+    resolved.push(candidates[0]);
+  }
+  return normalizeCoverage(resolved);
+}
+export function coverageLegacyLabels(value:CoverageSelection[]):string[] {
+  return normalizeCoverage(value).map(s=>s.kind==="country"?"Todo Ecuador":s.kind==="province"?`Provincia de ${s.label}`:s.label);
 }

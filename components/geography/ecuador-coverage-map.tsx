@@ -51,9 +51,9 @@ export function EcuadorCoverageMap(props: Props) {
         maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · geoBoundaries',
       }).addTo(instance);
       const style = (feature?: Feature<Geometry, CoverageMapProperties>): PathOptions => ({
-        color: feature?.properties.selected ? "#7f211a" : "#ffffff",
+        color: feature?.properties.selected ? "#185c38" : "#ffffff",
         weight: feature?.properties.selected ? 2 : 1,
-        fillColor: feature?.properties.selected ? "#ff735c" : "#aeb7b2",
+        fillColor: feature?.properties.selected ? "#56c877" : "#aeb7b2",
         fillOpacity: feature?.properties.selected ? 0.65 : feature?.properties.shapeType === "ADM2" ? 0 : 0.24,
       });
       function makeLayer(kind: "ADM1" | "ADM2") {

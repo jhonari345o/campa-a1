@@ -43,7 +43,7 @@ export default async function PanelPage() {
             <span>
               {companies.length > 0
                 ? "Aquí encontrarás los planes y solicitudes de tu equipo."
-                : "Bienvenido a Ad Mavericks One. Yo te guio."}
+                : "Bienvenido a Ad Mavericks One. Yo te guío."}
             </span>
           </div>
           <MaviScene height={176} motion="float" className={homeStyles.mavi}/>
@@ -175,7 +175,7 @@ function AdminWelcome() {
     <section className="mt-8 rounded-panel border border-border bg-white p-8 shadow-panel">
       <h2 className="text-xl font-black tracking-tight">Cuenta de plataforma</h2>
       <p className="mt-1 text-muted">
-        Tu cuenta es del equipo Ad Mavericks. Desde aqui administras clientes y datos.
+        Tu cuenta es del equipo Ad Mavericks. Desde aquí administras clientes y datos.
       </p>
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <Link href="/consola" className="btn btn-primary">

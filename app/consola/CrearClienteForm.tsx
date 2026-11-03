@@ -103,7 +103,7 @@ function CompanyResult({ companyName, planName }: { companyName: string; planNam
         {planName ? ` (plan ${planName})` : ""} creado correctamente.
       </p>
       <p className="mt-3 text-xs text-muted">
-        Usa «Agregar usuario a una empresa» para crear accesos de cliente. No existe autorregistro publico.
+        Usa «Agregar usuario a una empresa» para crear accesos de cliente. No existe autorregistro público.
       </p>
     </div>
   );
