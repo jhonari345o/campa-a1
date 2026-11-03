@@ -33,6 +33,7 @@ import type { SavedMediaPlan } from "@/lib/media-workspace";
 import { guardarProgresoBrief } from "./workspace-actions";
 import { PlanOrderButton } from "./PlanOrderButton";
 import {prepareWithSourceRetry,type PlanningPreparationResult} from "@/lib/planning-source-loading";
+import {completeWithFreeAiRetry} from "@/lib/planning-ai-retry";
 
 const money = (n: number | null) =>
   n == null ? "—" : `$ ${formatBudgetInput(n)}`;
@@ -49,7 +50,7 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
         return response.json() as Promise<T>;
       };
       const prepared=await prepareWithSourceRetry(()=>send<PlanningPreparationResult>({phase:"prepare",fields:[...data.entries()]}));
-      return prepared.ok?await send<PlanResult>({phase:"complete",preparation:prepared.preparation}):prepared;
+      return prepared.ok?await completeWithFreeAiRetry(()=>send<PlanResult>({phase:"complete",preparation:prepared.preparation})):prepared;
     } catch {
       return { ok: false, error: "La conexión con el servidor se interrumpió. Tu brief sigue aquí; vuelve a intentarlo en unos momentos." };
     }
