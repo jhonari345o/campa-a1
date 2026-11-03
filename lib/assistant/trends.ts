@@ -117,13 +117,11 @@ function tag(block: string, name: string): string {
   return match?.[1]?.replace(/^<!\[CDATA\[|\]\]>$/g, "").trim() ?? "";
 }
 
-function decodeXml(value: string): string {
-  return value
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
+export function decodeXml(value: string): string {
+  const entities: Record<string,string> = {"&amp;":"&", "&quot;":'"', "&#39;":"'", "&apos;":"'", "&lt;":"<", "&gt;":">"};
+  // Decode a single layer: &amp;lt; must remain literal &lt; instead of
+  // becoming markup through a second replacement in the same operation.
+  return value.replace(/&(?:amp|quot|#39|apos|lt|gt);/g, entity => entities[entity]);
 }
 
 function displayDate(value: string): string | null {
