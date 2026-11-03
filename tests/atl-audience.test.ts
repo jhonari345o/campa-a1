@@ -65,3 +65,17 @@ test("outdoor inventory outside the studied cities survives large catalogs for g
  assert.ok(pool.some(c=>c.market.includes("Guayaquil")));
  assert.equal(bundle.oohMarketReferences?.length,0);
 });
+test("province briefs retain documented city press offers without widening packages or inventing validity",()=>{
+ const c=strategyCatalogs();
+ const offers=[{id:"gye",market:"Guayaquil",marketOptions:[["guayaquil"]]},{id:"uio",market:"Quito",marketOptions:[["quito"]]},{id:"gye-uio",market:"Guayaquil y Quito",marketOptions:[["guayaquil","quito"]]},{id:"cuenca",market:"Cuenca",marketOptions:[["cuenca"]]},{id:"wide",market:"Paquete tres ciudades",marketOptions:[["guayaquil","quito","cuenca"]]},{id:"unknown",market:"Sin plaza documentada",marketOptions:[]}].map(o=>({...o,group:"Impreso",name:"Página impresa",specs:"",target:"General",unit:"inserción" as const,priceUsd:100,duration:"",notes:""}));
+ c.press.entries=[{id:"synthetic-press",name:"Diario sintético",regionKeys:["guayas","pichincha"],city:null,description:"",logoPath:null,website:null,coverage:"",editions:[{id:"current",label:"Edición sintética",period:"2026",validFrom:"2026-01-01",validTo:"2026-12-31",taxIncluded:false,conditions:[],offers}]}];
+ let bundle=buildStrategyEvidence(brief(),strategyResearch,c,date);
+ assert.deepEqual(bundle.candidates.map(c=>c.id.split(":").at(-1)),["gye","uio","gye-uio"]);
+ assert.ok(bundle.candidates.every(c=>c.unitPriceUsd===100));
+ c.press.entries[0].editions[0].validTo=null;
+ bundle=buildStrategyEvidence(brief(),strategyResearch,c,date);
+ assert.equal(bundle.candidates.length,3);
+ assert.ok(bundle.candidates.every(c=>c.unitPriceUsd===null&&c.referencePriceUsd===100));
+ c.press.entries[0].editions[0].validTo="2025-12-31";
+ assert.equal(buildStrategyEvidence(brief(),strategyResearch,c,date).candidates.length,0);
+});

@@ -2,8 +2,10 @@ import { mediaGroupForLabel, type MediaGroup } from "./media-groups";
 import { mediaGroupLabel } from "./plan-optimizer";
 import type { MediaPlan, PlanRow } from "./planner";
 import type { StrategyBrief, StrategyCandidate, StrategyEvidenceBundle } from "./media-strategy-evidence";
+import { briefMarketKeys } from "./broadcast-catalog";
+import { planningStudyBrief } from "./planning-market";
 
-export const STRATEGY_VERSION = "2026-11-02.14";
+export const STRATEGY_VERSION = "2026-11-02.15";
 export type StrategyAiState = "validated" | "cached" | "not_configured" | "quota" | "unavailable" | "rejected";
 export type StrategyAdvice = {
   summary: string;
@@ -113,6 +115,12 @@ function candidateSort(a:StrategyCandidate,b:StrategyCandidate,brief?:Pick<Strat
   }
   return (a.unitPriceUsd??Infinity)-(b.unitPriceUsd??Infinity)||a.id.localeCompare(b.id);
 }
+const radioFootprint=(candidate:StrategyCandidate)=>normalize(candidate.stationCoverage?.length?candidate.stationCoverage.slice().sort().join(", "):candidate.market);
+function radioCoversMarket(candidate:StrategyCandidate,market:string,brief:StrategyBrief) {
+  const coverage=candidate.stationCoverage;
+  if(!coverage?.length)return false;
+  return Boolean(planningStudyBrief([market],{...brief,coverage:undefined,geography:coverage.map(m=>normalize(m)==="nacionales"?"nacional":m).join(", ")}));
+}
 export function strategyCandidatePool(bundle:StrategyEvidenceBundle,medium:MediaGroup,brief?:Pick<StrategyBrief,"objective"|"priority">) {
   const all=bundle.candidates.filter(c=>c.medium===medium);
   if(medium==="radio") {
@@ -122,7 +130,15 @@ export function strategyCandidatePool(bundle:StrategyEvidenceBundle,medium:Media
     const groups=[...cohorts].sort((a,b)=>{
       const sourceA=bundle.sources.find(s=>s.id===a[0]),sourceB=bundle.sources.find(s=>s.id===b[0]);
       return (sourceA?.market??"").localeCompare(sourceB?.market??"","es")||(sourceB?.period??"").localeCompare(sourceA?.period??"")||a[0].localeCompare(b[0]);
-    }).map(([,rows])=>rows.sort((a,b)=>candidateSort(a,b,brief)));
+    }).map(([,rows])=>{
+      // The measured cohort may consolidate several cities. Preserve the
+      // stations' actual signals before bounding the model's candidate list.
+      const footprints=new Map<string,StrategyCandidate[]>();
+      for(const c of rows.sort((a,b)=>candidateSort(a,b,brief))){const key=radioFootprint(c);footprints.set(key,[...(footprints.get(key)??[]),c]);}
+      const balanced:StrategyCandidate[]=[];
+      for(let i=0;i<Math.max(0,...[...footprints.values()].map(g=>g.length));i++)for(const group of footprints.values())if(group[i])balanced.push(group[i]);
+      return balanced;
+    });
     const ranked:StrategyCandidate[]=[];
     for(let i=0;i<Math.max(0,...groups.map(g=>g.length));i++)for(const group of groups)if(group[i])ranked.push(group[i]);
     const priced = all.filter(c=>c.id.startsWith("workspace:")&&c.unitPriceUsd!=null).sort((a,b)=>candidateSort(a,b,brief));
@@ -187,6 +203,14 @@ export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:Strate
     if(r.candidateIds.length>3)return reject("CANDIDATE_COUNT");
     const pool=strategyCandidatePool(bundle,medium,brief).slice(0,8);
     if(!r.candidateIds.every(id=>typeof id==="string"&&pool.some(c=>c.id===id)))return reject("CANDIDATE_UNKNOWN");
+    if(medium==="radio"&&Number(r.weight)>0&&r.candidateIds.length){
+      const markets=briefMarketKeys(brief),amount=brief.budgetUsd==null?null:brief.budgetUsd*Number(r.weight)/10000;
+      // Enforce a feasible multi-plaza selection, not an impossible national
+      // inventory promise or a footprint inferred from the study denominator.
+      const required=markets.filter(m=>pool.some(c=>radioCoversMarket(c,m,brief)&&(amount==null||c.unitPriceUsd!=null&&(c.minimumSpendUsd??c.unitPriceUsd)<=amount/markets.length)));
+      const picked=pool.filter(c=>(r.candidateIds as string[]).includes(c.id));
+      if(required.length>1&&required.length<=3&&!required.every(m=>picked.some(c=>radioCoversMarket(c,m,brief))))return reject("RADIO_GEOGRAPHY");
+    }
     const relevantSources=new Set(["category-investment",...(bundle.consumption.some(c=>c.medium===medium)?["audience-consumption"]:[]),...pool.flatMap(c=>c.sourceIds),...bundle.audienceReferences.filter(r=>r.medium===medium).map(r=>r.sourceId),...(medium==="ooh"?(bundle.oohMarketReferences??[]).map(r=>r.sourceId):[])]);
     if(!r.evidenceIds.every(id=>relevantSources.has(String(id))))return reject("EVIDENCE_MEDIUM");
     used.add(medium);allocations.push({medium,weight:Number(r.weight),rationale:String(r.rationale).trim(),evidenceIds:r.evidenceIds as string[],candidateIds:[...new Set(r.candidateIds as string[])]});
@@ -218,7 +242,7 @@ export function buildStrategyReport(brief:StrategyBrief,bundle:StrategyEvidenceB
     const advice=options.advice?.allocations.find(a=>a.medium===row.medium),pool=strategyCandidatePool(bundle,row.medium,brief);
     const preferred=advice?.candidateIds.map(id=>pool.find(c=>c.id===id)!).filter(Boolean)??[];
     const candidate=[...preferred,...pool].find(c=>row.amountUsd==null||c.unitPriceUsd==null||(c.minimumSpendUsd??c.unitPriceUsd)<=row.amountUsd)??null;
-    const regional=row.medium==="radio"?pool.filter((c,i,all)=>all.findIndex(other=>other.market===c.market)===i).slice(0,3):[];
+    const regional=row.medium==="radio"?pool.filter((c,i,all)=>all.findIndex(other=>radioFootprint(other)===radioFootprint(c))===i).slice(0,3):[];
     const choices=preferred.length?preferred:regional.length?regional:candidate?[candidate]:[];
     let executions=allocateStrategyExecutions(choices,row.amountUsd);
     if(!executions.length&&candidate)executions=allocateStrategyExecutions([candidate],row.amountUsd);

@@ -183,6 +183,31 @@ test("radio candidates from separate dayparts remain separate cohorts",()=>{
   bundle.candidates.push({...c,id:"one",medium:"radio",sourceIds:["radio-study:one"],metrics:[{label:"Rating",value:1,unit:"puntos",sourceId:"radio-study:one"}]},{...c,id:"two",medium:"radio",sourceIds:["radio-study:two"],metrics:[{label:"Rating",value:99,unit:"puntos",sourceId:"radio-study:two"}]});
   const pool=strategyCandidatePool(bundle,"radio");assert.deepEqual(pool.map(c=>c.id),["one","two"]);assert.deepEqual(pool.map(c=>c.metrics[0].sourceId),["radio-study:one","radio-study:two"]);
 });
+test("a consolidated radio ranking preserves actual provincial signals and rejects incomplete feasible coverage",async()=>{
+ const brief=strategyBrief({selectedMedia:["radio"],coverage:undefined,geography:"Guayas, Pichincha",budgetUsd:1000});
+ const bundle=buildStrategyEvidence(strategyBrief(),strategyResearch,strategyCatalogs(),date),sample=bundle.candidates[0],sid="radio-study:combined";
+ bundle.sources.push({id:sid,kind:"ranking",label:"Estudio sintético",period:"2026-08-01 – 2026-08-31",market:"Guayaquil · Quito",target:"Adultos",use:"comparable",note:""});
+ bundle.candidates=Array.from({length:12},(_,i)=>({...sample,id:`radio-${i}`,medium:"radio" as const,market:"Guayaquil · Quito",marketKeys:["guayaquil","quito"],stationCoverage:[i<10?"Guayas":"Pichincha"],sourceIds:[sid],unitPriceUsd:10,minimumSpendUsd:10,metrics:[{label:"Rating",value:20-i,unit:"puntos",sourceId:sid}]}));
+ const pool=strategyCandidatePool(bundle,"radio",brief).slice(0,8);
+ assert.deepEqual(pool.slice(0,2).map(c=>c.id),["radio-0","radio-10"]);
+ assert.ok(pool.every(c=>c.market==="Guayaquil · Quito"&&c.metrics[0].sourceId===sid));
+ const advice={summary:"Cobertura en las plazas solicitadas.",allocations:[{medium:"radio",weight:10000,rationale:"Combina señales de ambas provincias.",evidenceIds:[sid],candidateIds:["radio-0"]}],questions:[]};
+ let rejected="";
+ assert.equal(parseStrategyAdvice(JSON.stringify(advice),brief,bundle,code=>{rejected=code;}),null);assert.equal(rejected,"RADIO_GEOGRAPHY");
+ advice.allocations[0].candidateIds.push("radio-10");
+ assert.ok(parseStrategyAdvice(JSON.stringify(advice),brief,bundle));
+ const baseline=await buildMediaPlan({...brief,research:strategyResearch});
+ const report=buildStrategyReport(brief,bundle,baseline,{aiState:"unavailable",fingerprint:"synthetic",generatedAt:date});
+ assert.deepEqual(report.allocations[0].executions?.map(e=>e.candidate.stationCoverage?.[0]),["Guayas","Pichincha"]);
+ assert.equal(report.allocations[0].executions?.reduce((total,e)=>total+(e.referenceSpendUsd??0),0),1000);
+ // A genuinely national signal may cover both; an unaffordable extra market is
+ // not a requirement to invent money or replace the user's requested budget.
+ bundle.candidates[0].stationCoverage=["Nacionales"];
+ advice.allocations[0].candidateIds=["radio-0"];
+ assert.ok(parseStrategyAdvice(JSON.stringify(advice),brief,bundle));
+ bundle.candidates[0].stationCoverage=["Guayas"];
+ assert.ok(parseStrategyAdvice(JSON.stringify(advice),{...brief,budgetUsd:10},bundle));
+});
 
 test('workspace rates enter recommendations with their own package unit, geography and validity without inventing audiences',()=>{
  const catalogs=strategyCatalogs();catalogs.workspaceProducts=[{key:'ooh:workspace:synthetic',kind:'ooh',provider:'Synthetic provider',name:'Special package',format:'Five totems',formatGroup:'totem_special',unit:'package of five',priceCents:173245,taxIncluded:null,location:'Ecuador',marketKeys:['nacional'],reference:'',conditions:'',image:null,validFrom:'2026-10-01',validTo:'2026-12-31',source:{workspaceProductId:'synthetic'}}];
