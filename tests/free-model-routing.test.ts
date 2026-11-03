@@ -3,7 +3,7 @@ import test from "node:test";
 import { selectAvailableFreeModels } from "../lib/assistant/free-model-routing";
 import { chatCompletion } from "../lib/assistant/llm";
 
-const row = (id:string, overrides:Record<string,unknown>={}) => ({ id, context_length:100_000, pricing:{prompt:"0",completion:"0"}, supported_parameters:["response_format"], ...overrides });
+const row = (id:string, overrides:Record<string,unknown>={}) => ({ id, context_length:100_000, pricing:{prompt:"0",completion:"0"}, supported_parameters:["response_format","structured_outputs"], ...overrides });
 
 test("only available, explicitly free, compatible models replace retired configured IDs",()=>{
   const models=selectAvailableFreeModels(["retired/model:free","live/preferred:free","paid/model"],[
@@ -23,10 +23,11 @@ test("a valid free completion can finish after ten seconds without a premature r
   globalThis.fetch=async (url,options)=>{
     if(String(url).endsWith("/models")) {
       assert.equal(options?.headers,undefined);
-      return new Response(JSON.stringify({data:[row("live/preferred:free"),row("live/other:free")]}),{status:200});
+      return new Response(JSON.stringify({data:[row("live/preferred:free"),row("live/other:free"),row("live/third:free"),row("live/fourth:free"),row("json-only/model:free",{supported_parameters:["response_format"]})]}),{status:200});
     }
     const body=JSON.parse(String(options?.body));requests.push(body);
     assert.equal(body.model,"live/preferred:free");
+    assert.deepEqual(body.models,["live/preferred:free","live/other:free","live/third:free"]);
     assert.deepEqual(body.provider.max_price,{prompt:0,completion:0});
     assert.equal(body.provider.require_parameters,true);
     await new Promise<void>((resolve,reject)=>{
@@ -43,4 +44,10 @@ test("a valid free completion can finish after ten seconds without a premature r
     globalThis.fetch=originalFetch;
     keys.forEach((key,index)=>{if(previous[index]===undefined)delete process.env[key];else process.env[key]=previous[index];});
   }
+});
+
+test("schema requests exclude JSON-mode-only models while ordinary JSON mode keeps them",()=>{
+  const rows=[row("json-only/model:free",{supported_parameters:["response_format"]}),row("strict/model:free")];
+  assert.deepEqual(selectAvailableFreeModels([],rows,true,40_000,true),["strict/model:free","openrouter/free"]);
+  assert.deepEqual(selectAvailableFreeModels([],rows,true,40_000),["json-only/model:free","strict/model:free","openrouter/free"]);
 });

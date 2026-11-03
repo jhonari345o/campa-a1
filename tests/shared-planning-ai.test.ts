@@ -47,7 +47,7 @@ async function mockProvider(response: Response | Response[], run: (requests: { u
   const requests: { url: string; body: Record<string, unknown>; signal: AbortSignal | null | undefined }[] = [];
   Object.assign(process.env, freeEnv, { OPENROUTER_MODEL: "test/primary:free", OPENROUTER_FALLBACK_MODELS: "test/backup:free,paid/model", LLM_REQUEST_TIMEOUT_MS: "10000" });
   globalThis.fetch = async (url, init) => {
-    if (String(url).endsWith("/models")) return Response.json({ data: ["test/primary:free", "test/backup:free"].map(id => ({ id, context_length: 100000, pricing: { prompt: "0", completion: "0" }, supported_parameters: ["response_format"] })) });
+    if (String(url).endsWith("/models")) return Response.json({ data: ["test/primary:free", "test/backup:free"].map(id => ({ id, context_length: 100000, pricing: { prompt: "0", completion: "0" }, supported_parameters: ["response_format", "structured_outputs"] })) });
     requests.push({ url: String(url), body: JSON.parse(String(init?.body)), signal: init?.signal });
     const responses = Array.isArray(response) ? response : [response];
     return responses[Math.min(requests.length - 1, responses.length - 1)].clone();
