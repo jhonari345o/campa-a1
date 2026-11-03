@@ -15,6 +15,7 @@ import {
 } from "@/lib/media-catalog";
 import type { CatalogHealth } from "@/lib/media-workspace";
 
+import { DigitalProductions } from "./DigitalProductions";
 import { TelevisionDirectoryPanel } from "./TelevisionDirectory";
 import type { BroadcastCatalog } from "@/lib/broadcast-catalog";
 import type { OohCatalog } from "@/lib/ooh-catalog";
@@ -89,7 +90,7 @@ export function MediaCatalog({
 
       {section !== "tv" && <WorkspaceRateCards products={shoppingProducts} section={section}/>}
       <CatalogShoppingLayout active={canRequest || isAdmin}><div className="media-portal-panel" role="tabpanel">
-        {section === "digital" && <DigitalSection />}
+        {section === "digital" && <DigitalSection products={shoppingProducts}/>}
         {section === "influencers" && <InfluencerSection profiles={influencers} />}
         {section === "radio" && <RadioDirectoryPanel directory={radioDirectory} broadcast={broadcast} />}
         {section === "tv" && <TelevisionDirectoryPanel catalog={broadcast} products={shoppingProducts}/>}
@@ -104,9 +105,12 @@ export function MediaCatalog({
   );
 }
 
-function DigitalSection() {
+function DigitalSection({products}:{products:CatalogProduct[]}) {
+  const [section,setSection]=useState<"platforms"|"productions">("platforms");
   return (
     <section className="media-portal-section">
+      <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label="Tipo de publicidad digital">{([["platforms","Plataformas digitales"],["productions","Medios digitales"]] as const).map(([id,label])=><button key={id} type="button" aria-pressed={section===id} onClick={()=>setSection(id)} className={`rounded-xl border px-5 py-3 text-sm font-bold ${section===id?"border-[#302c28] bg-[#302c28] text-white":"border-border bg-white text-forest"}`}>{label}</button>)}</div>
+      {section === "productions" ? <DigitalProductions products={products}/> : <>
       <SectionHeading
         eyebrow="Digital"
         title="Plataformas según el objetivo"
@@ -115,7 +119,7 @@ function DigitalSection() {
       />
       <div className="mt-6 grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,340px),1fr))" }}>
         {DIGITAL_PLATFORMS.map((item) => <DigitalCard key={item.slug} item={item} />)}
-      </div>
+      </div></>}
     </section>
   );
 }
