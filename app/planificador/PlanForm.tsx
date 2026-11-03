@@ -8,6 +8,7 @@ import { MediaStrategyPanel } from "@/components/MediaStrategyPanel";
 import { MediaSelectionIcon } from "@/components/MediaSelectionIcon";
 import { MediaProviderMark } from "@/components/MediaProviderMark";
 import { OohPlanPhoto } from "@/components/OohPlanPhoto";
+import { OohLocationPreview } from "@/components/OohLocationPreview";
 import { BudgetField, PlanScheduleFields } from "@/components/PlanScheduleFields";
 import { formatBudgetInput } from "@/lib/brief-inputs";
 import { restoreResearch } from "@/lib/infomedia";
@@ -482,14 +483,14 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
 
       <div className="rounded-panel border border-border bg-white p-6 shadow-panel">
         <h3 className="text-sm font-black uppercase tracking-wide text-muted">
-          {plan.strategy ? "Mezcla observada de la categoría" : "Como invierte tu giro (referencia)"}
+          {plan.strategy ? "Mezcla observada de la categoría" : "Cómo invierte tu giro (referencia)"}
         </h3>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[320px] text-left text-sm">
             <thead>
               <tr className="text-xs font-black uppercase tracking-wide text-muted">
                 <th className="pb-2">Medio</th>
-                <th className="pb-2">Participacion</th>
+                <th className="pb-2">Participación</th>
                 {!plan.strategy && result.plan.plan.some((r) => r.amount != null) && <th className="pb-2">Sugerido</th>}
               </tr>
             </thead>
@@ -760,26 +761,6 @@ function Field({
       />
     </div>
   );
-}
-
-function OohLocationPreview({ title, geo }: { title: string; geo: NonNullable<import("@/lib/detailed-plan").DetailedExecution["geo"]> }) {
-  const embedKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY;
-  const latitude = geo.latitude.toFixed(6);
-  const longitude = geo.longitude.toFixed(6);
-  const embedUrl = embedKey
-    ? `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(embedKey)}&q=${encodeURIComponent(`${latitude},${longitude}`)}&zoom=17&maptype=satellite`
-    : `https://www.openstreetmap.org/export/embed.html?bbox=${geo.longitude - 0.006}%2C${geo.latitude - 0.004}%2C${geo.longitude + 0.006}%2C${geo.latitude + 0.004}&layer=mapnik&marker=${latitude}%2C${longitude}`;
-  return <section className="planner-ooh-map-card">
-    <div className="planner-ooh-map-frame"><iframe src={embedUrl} title={`Mapa de ${title}`} loading="lazy" allowFullScreen referrerPolicy="no-referrer-when-downgrade" /></div>
-    <div className="planner-ooh-map-copy">
-      <header><span>{geo.locationStatus === "inventory" ? "ACTIVO EN INVENTARIO" : "ZONA CANDIDATA"}</span>{geo.fitScore!=null&&<strong>{geo.fitScore}/100</strong>}</header>
-      <p><b>Afinidad:</b> {geo.audienceFit}</p>
-      <p><b>Movilidad:</b> {geo.trafficEvidence}</p>
-      <p><b>Presupuesto:</b> {geo.priceFit}</p>
-      <div><a href={geo.mapUrl} target="_blank" rel="noopener noreferrer">Abrir en Google Maps ↗</a><a href={geo.streetViewUrl} target="_blank" rel="noopener noreferrer">Probar vista 360 ↗</a></div>
-      <small>La vista 360 depende de la cobertura disponible en Google Street View.</small>
-    </div>
-  </section>;
 }
 
 function SelectField({

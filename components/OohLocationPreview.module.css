@@ -1,0 +1,14 @@
+.location { grid-column:1 / -1; min-width:0; overflow:hidden; border:1px solid #ded8cf; border-radius:14px; background:#faf8f4; color:#322d2a; }
+.heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:14px 24px; padding:16px 18px; }
+.heading > div:first-child { flex:1 1 220px; min-width:0; }
+.heading strong { display:block; font-size:13px; font-weight:800; }
+.heading p { margin:5px 0 0; color:#64584d; font-size:13px; line-height:1.5; overflow-wrap:anywhere; }
+.links { display:flex; flex-wrap:wrap; gap:8px; }
+.links a { display:inline-flex; align-items:center; min-height:40px; border:1px solid #d4ccbf; border-radius:9px; background:#fffdf8; padding:9px 12px; color:#27553d; font-size:12px; font-weight:750; text-decoration:none; }
+.links a:hover { border-color:#27553d; background:#eef3e9; }
+.map { border-top:1px solid #e4ded4; }
+.map summary { padding:12px 18px; color:#27553d; font-size:12px; font-weight:750; cursor:pointer; }
+.map summary:hover { background:#eef3e9; }
+.map iframe { display:block; width:100%; height:280px; border:0; border-top:1px solid #e4ded4; background:#e7ebe3; }
+.links a:focus-visible,.map summary:focus-visible { outline:2px solid #27553d; outline-offset:-3px; }
+@media(max-width:600px) { .heading { padding:14px; } .links { width:100%; } .links a { flex:1 1 auto; justify-content:center; } .map summary { padding-inline:14px; } }
