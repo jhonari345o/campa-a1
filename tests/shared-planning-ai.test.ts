@@ -162,3 +162,49 @@ test("structured response contracts survive fallback and require compatible zero
     }
   });
 });
+
+test("fast planning routing advances on a busy free model and retains zero-price and schema requirements",async()=>{
+  const responseSchema={name:"selection",schema:{type:"object"}};
+  await mockProvider([new Response("quota",{status:429}),Response.json({choices:[{message:{content:'{"ok":true}'}}]})],async requests=>{
+    assert.equal(await chatCompletion([{role:"user",content:"test"}],{fastFreeRouting:true,responseSchema}),'{"ok":true}');
+    assert.equal(requests.length,2);
+    assert.equal(requests[1].body.model,"test/backup:free");
+    for(const request of requests)assert.deepEqual(request.body.provider,{max_price:{prompt:0,completion:0},require_parameters:true,sort:{by:"latency",partition:"none"}});
+  });
+});
+
+test("fast planning routing recovers from a timed-out provider without retrying cancellation or paid models",async()=>{
+  await mockProvider(Response.json({choices:[{message:{content:'{"ok":true}'}}]}),async requests=>{
+    const savedFetch=globalThis.fetch;
+    let attempt=0;
+    globalThis.fetch=async(...args)=>{if(attempt++===0)throw new DOMException("timed out","TimeoutError");return savedFetch(...args);};
+    assert.equal(await chatCompletion([{role:"user",content:"test"}],{fastFreeRouting:true}),'{"ok":true}');
+    assert.equal(requests[0].body.model,"test/backup:free");
+    const controller=new AbortController();controller.abort();
+    await assert.rejects(chatCompletion([{role:"user",content:"test"}],{fastFreeRouting:true,signal:controller.signal}),/PROVIDER_TIMEOUT/);
+    assert.equal(requests.length,1);
+    process.env.OPENROUTER_MODEL="paid/model";
+    globalThis.fetch=async()=>{throw new DOMException("timed out","TimeoutError");};
+    await assert.rejects(chatCompletion([{role:"user",content:"test"}],{fastFreeRouting:true}),/PROVIDER_TIMEOUT/);
+  });
+});
+
+test("a stalled free attempt is cancelled before the overall deadline to leave time for its fallback",async()=>{
+  await mockProvider(Response.json({choices:[{message:{content:'{"ok":true}'}}]}),async requests=>{
+    const savedFetch=globalThis.fetch,savedTimeout=AbortSignal.timeout;
+    const signals:AbortSignal[]=[];
+    AbortSignal.timeout=(ms)=>savedTimeout(ms===10_000?10:ms);
+    globalThis.fetch=async(...args)=>{
+      const signal=args[1]?.signal as AbortSignal;signals.push(signal);
+      if(signals.length===1)return new Promise<Response>((_resolve,reject)=>signal.addEventListener("abort",()=>reject(signal.reason),{once:true}));
+      return savedFetch(...args);
+    };
+    // A referenced timer keeps the synthetic network wait alive in Node's test runner.
+    const keepAlive=setTimeout(()=>{},1000);
+    try{
+      assert.equal(await chatCompletion([{role:"user",content:"test"}],{fastFreeRouting:true,timeoutMs:19_000}),'{"ok":true}');
+      assert.equal(signals.length,2);assert.equal(signals[0].aborted,true);assert.equal(signals[1].aborted,false);
+      assert.equal(requests[0].body.model,"test/backup:free");
+    }finally{AbortSignal.timeout=savedTimeout;clearTimeout(keepAlive);}
+  });
+});

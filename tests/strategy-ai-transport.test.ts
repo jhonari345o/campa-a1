@@ -11,6 +11,10 @@ function expandTexts(value:unknown,texts:Record<string,string>):unknown {
   if(value&&typeof value==="object"){
     const row=value as Record<string,unknown>;
     if(typeof row.$text==="string")return texts[row.$text];
+    if(Array.isArray(row.$columns)&&Array.isArray(row.$rows))return row.$rows.map(cells=>{
+      const values=cells as unknown[],columns=row.$columns as string[];
+      return {...Object.fromEntries(columns.map((column,i)=>[column,expandTexts(values[i],texts)])),...expandTexts(values[columns.length],texts) as object};
+    });
     return Object.fromEntries(Object.entries(row).map(([key,item])=>[key,expandTexts(item,texts)]));
   }
   return value;
@@ -37,6 +41,23 @@ test("compact IDs restore to the original evidence and cannot select a forged so
   advice.allocations[0].evidenceIds=["s99999"];
   assert.equal(parseStrategyAdvice(transport.restore(JSON.stringify(advice)),brief,bundle),null);
   assert.equal(transport.restore('{"truncated"'),'{"truncated"');
+});
+
+test("table transport preserves optional fields, zero prices, nulls and separate audience scopes",async()=>{
+  const brief=strategyBrief({selectedMedia:["television"]});
+  const bundle=buildStrategyEvidence(brief,strategyResearch,strategyCatalogs(),"2026-10-31");
+  bundle.candidates=Array.from({length:30},(_,i)=>({...bundle.candidates[0],id:`synthetic-${i}`,unitPriceUsd:i===0?0:i===1?null:100+i,market:i%2?"Guayaquil":"Quito",...(i%2?{maximumUnits:5}:{cohort:"Una cohorte distinta"})}));
+  const payload=strategyAiPayload(brief,bundle,await buildMediaPlan({...brief,research:strategyResearch}));
+  const transport=strategyAiTransport(payload),compact=JSON.parse(transport.content);
+  assert.ok(transport.content.includes('"$columns"'));
+  const expanded=expandTexts(compact,compact.textReferences??{}) as typeof payload;
+  for(let i=0;i<payload.evidence.candidates.length;i++){
+    const {id:_a,sourceIds:_as,...actual}=expanded.evidence.candidates[i];
+    const {id:_b,sourceIds:_bs,...expected}=payload.evidence.candidates[i];
+    void _a;void _as;void _b;void _bs;
+    const sourceAliases=new Map(payload.evidence.sources.map((source,index)=>[source.id,`s${index+1}`]));
+    assert.deepEqual(actual,JSON.parse(JSON.stringify(expected,(_key,value)=>typeof value==="string"?sourceAliases.get(value)??value:value)));
+  }
 });
 
 test("large repeated commercial conditions are compressed losslessly, including scope and dates",async()=>{
