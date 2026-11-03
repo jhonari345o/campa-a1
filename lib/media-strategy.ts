@@ -7,7 +7,7 @@ import { briefMarketKeys } from "./broadcast-catalog";
 import { planningStudyBrief, nationalTerritoryOrder, territoryProvince, territoryKey, territoriesOverlap } from "./planning-market";
 import { coverageFromLabels } from "./geographic-coverage";
 
-export const STRATEGY_VERSION = "2026-11-03.29";
+export const STRATEGY_VERSION = "2026-11-03.30";
 export const MAX_STRATEGY_EXECUTIONS = 25;
 // Planning policy approved by the platform owner; it is not an audience study.
 export const STARTING_MEDIA_MIX: Readonly<Record<MediaGroup, number>> = {
@@ -18,7 +18,7 @@ type TerritoryBrief = Pick<StrategyBrief,"objective"|"priority"> & Partial<Strat
 export type StrategyAiState = "validated" | "cached" | "not_configured" | "quota" | "unavailable" | "rejected";
 export type StrategyAdvice = {
   summary: string;
-  allocations: { medium: MediaGroup; weight: number; rationale: string; evidenceIds: string[]; candidateIds: string[] }[];
+  allocations: { medium: MediaGroup; weight: number; rationale: string; evidenceIds: string[]; candidateIds: string[]; productionWeight?: number }[];
   questions: string[];
 };
 export type StrategyExecution = {candidate:StrategyCandidate;amountUsd:number|null;units:number|null;referenceSpendUsd:number|null;remainderUsd:number|null};
@@ -342,7 +342,7 @@ export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:Strate
   const reject=(code:string)=>{onReject?.(code);return null;};
   if(typeof raw!=="string"||raw.length>24_000)return reject("SIZE");
   let v:Record<string,unknown>;try{v=obj(JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/g,"").trim()));}catch{return reject("JSON");}
-  const internalCopy=/\b(?:mixPolicy|candidateIds?|evidenceIds?|referenceCases|allocationOptions|outputContract|allowedMedia|executionPatterns|providerCount|budgetScale|stationCoverage|coverageKeys|territorialPolicy|same_client|structural_reference|ooh|press|influencers)\b/i;
+  const internalCopy=/\b(?:mixPolicy|productionWeight|digitalOptions|candidateIds?|evidenceIds?|referenceCases|allocationOptions|outputContract|allowedMedia|executionPatterns|providerCount|budgetScale|stationCoverage|coverageKeys|territorialPolicy|same_client|structural_reference|ooh|press|influencers)\b/i;
   const text=(s:unknown,max:number)=>typeof s==="string"&&s.trim().length>0&&s.length<=max&&!/[<>]|https?:|www\.|garantiz/i.test(s)&&!internalCopy.test(s)&&!/[\d%$€]/.test(s.replace(/\bB2[BC]\b/gi,""));
   if(typeof v.summary!=="string")return reject("SUMMARY");
   let safeTextUsed=!text(v.summary,1400);
@@ -376,6 +376,11 @@ export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:Strate
     if(r.candidateIds.length>MAX_STRATEGY_EXECUTIONS)return reject("CANDIDATE_COUNT");
     const pool=strategyCandidatePool(bundle,medium,brief).slice(0,MODEL_CANDIDATE_LIMIT);
     if(!r.candidateIds.every(id=>typeof id==="string"&&pool.some(c=>c.id===id)))return reject("CANDIDATE_UNKNOWN");
+    const hasProductions=medium==="digital"&&pool.some(c=>c.digitalProduction&&(r.candidateIds as string[]).includes(c.id));
+    // A list of programmes is not permission to spend the entire digital
+    // allocation. Their envelope must be an explicit, validated AI decision.
+    if((hasProductions||r.productionWeight!==undefined)&&
+      (medium!=="digital"||!Number.isInteger(r.productionWeight)||Number(r.productionWeight)<0||Number(r.productionWeight)>10_000||!hasProductions&&Number(r.productionWeight)>0))return reject("DIGITAL_SPLIT");
     if(medium==="radio"&&weight>0&&r.candidateIds.length){
       const markets=briefMarketKeys(brief),amount=brief.budgetUsd==null?null:brief.budgetUsd*weight/10000;
       // Enforce a feasible multi-plaza selection, not an impossible national
@@ -397,7 +402,7 @@ export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:Strate
       digital:"Distribuye la inversión digital de acuerdo con el objetivo del brief.",
       influencers:"Selecciona perfiles y productos dentro del catálogo de tu cuenta.",
     };
-    used.add(medium);allocations.push({medium,weight,rationale:safeRationale?String(r.rationale).trim():safeRationales[medium],evidenceIds:r.evidenceIds as string[],candidateIds:[...new Set(r.candidateIds as string[])]});
+    used.add(medium);allocations.push({medium,weight,rationale:safeRationale?String(r.rationale).trim():safeRationales[medium],evidenceIds:r.evidenceIds as string[],candidateIds:[...new Set(r.candidateIds as string[])],...(medium==="digital"?{productionWeight:Number(r.productionWeight??0)}:{})});
   }
   if(allocations.reduce((n,r)=>n+r.weight,0)!==10_000)return reject("WEIGHT_TOTAL");
   if(safeTextUsed)onSafeText?.();
@@ -416,9 +421,9 @@ export function strategyAiPayload(brief:StrategyBrief,bundle:StrategyEvidenceBun
   }));
   // Use the same integer scale as the response contract, instead of fractional baseline shares.
   const baseline=allocateStrategyBudget(baseWeights(brief,bundle,plan),100).map(r=>({medium:r.medium,weight:Math.round(r.amountUsd!*100)}));
-  const outputContract={summary:"Texto breve sin cifras",allocations:[{medium:"Copiar de allocationOptions",weight:"Peso relativo entero entre cero y diez mil; el servidor normaliza la suma y conserva el presupuesto",rationale:"Texto breve sin cifras",evidenceIds:"Entre uno y seis identificadores de evidenceIds del mismo medio",candidateIds:"Entre cero y veinticinco identificadores de candidateIds del mismo medio, solo los necesarios para la cobertura y el presupuesto"}],questions:[]};
+  const outputContract={summary:"Texto breve sin cifras",allocations:[{medium:"Copiar de allocationOptions",weight:"Peso relativo entero entre cero y diez mil; el servidor normaliza la suma y conserva el presupuesto",rationale:"Texto breve sin cifras",evidenceIds:"Entre uno y seis identificadores de evidenceIds del mismo medio",candidateIds:"Entre cero y veinticinco identificadores de candidateIds del mismo medio, solo los necesarios para la cobertura y el presupuesto",productionWeight:"Solo en digital: entero de cero a diez mil que fija la fracción máxima del presupuesto digital para programas editoriales; el resto va a plataformas. Obligatorio si seleccionas programas; cero sin programas."}],questions:[]};
   const mixPolicy={startingPercentages:STARTING_MEDIA_MIX,appliesToAllSix:ALL.every(m=>brief.selectedMedia.includes(m)),adjustable:true,basis:"Política de planificación; no es una medición",adjustUsing:["competencia","consumo comparable de la audiencia","estudios y vigencia","rankings y ratings de cada plaza y público","cobertura","objetivo","presupuesto y tarifas"]};
-  return {version:STRATEGY_VERSION,brief,mixPolicy,territorialPolicy:{nationalPriority:nationalTerritoryOrder(),nationalFirst:briefMarketKeys(brief).includes("nacional"),coverageBeforeMeasurements:true},allowedMedia:allowed,allocationOptions,outputContract,referenceCases,broadcastPolicy:{tvMinimumProgramsPerChannel:2,tvPlanningBands:["A","AA","AAA"],lateForRelevantAdultsOnly:true,radioMonthlyStationBudgetUsd:{from:1000,to:2000}},evidence:{sources:bundle.sources.filter(s=>wanted.has(s.id)),competition:bundle.competition,categoryMix:bundle.categoryMix,consumption:bundle.consumption,candidates,audienceReferences:bundle.audienceReferences,channelShares:bundle.channelShares,oohMarketReferences:bundle.oohMarketReferences,gaps:bundle.gaps},baseline,rules:["Las cifras y el presupuesto se calculan en el servidor.","La inversión de competidores no mide efectividad.","Las fuentes contextuales no son mediciones del target.","Un tarifario no es un rating y un ranking no es alcance de campaña.","No declares una mezcla óptima universal; compara solo alternativas respaldadas."]};
+  return {version:STRATEGY_VERSION,brief,mixPolicy,digitalOptions:{platforms:plan.plan.filter(r=>mediaGroupForLabel(r.label)==="digital"&&r.label!==DIGITAL_PRODUCTIONS_LABEL&&!/whatsapp/i.test(r.label)).map(r=>r.label),requestedPlatforms:brief.digitalPlatforms,programmeBudgetIsExplicit:true},territorialPolicy:{nationalPriority:nationalTerritoryOrder(),nationalFirst:briefMarketKeys(brief).includes("nacional"),coverageBeforeMeasurements:true},allowedMedia:allowed,allocationOptions,outputContract,referenceCases,broadcastPolicy:{tvMinimumProgramsPerChannel:2,tvPlanningBands:["A","AA","AAA"],lateForRelevantAdultsOnly:true,radioMonthlyStationBudgetUsd:{from:1000,to:2000}},evidence:{sources:bundle.sources.filter(s=>wanted.has(s.id)),competition:bundle.competition,categoryMix:bundle.categoryMix,consumption:bundle.consumption,candidates,audienceReferences:bundle.audienceReferences,channelShares:bundle.channelShares,oohMarketReferences:bundle.oohMarketReferences,gaps:bundle.gaps},baseline,rules:["Las cifras y el presupuesto se calculan en el servidor.","La inversión de competidores no mide efectividad.","Las fuentes contextuales no son mediciones del target.","Un tarifario no es un rating y un ranking no es alcance de campaña.","No declares una mezcla óptima universal; compara solo alternativas respaldadas."]};
 }
 export function buildStrategyReport(brief:StrategyBrief,bundle:StrategyEvidenceBundle,baseline:MediaPlan,options:{advice?:StrategyAdvice|null;aiState:StrategyAiState;model?:string|null;fingerprint:string;generatedAt:string}):StrategyReport {
   const weights=options.advice?.allocations.map(r=>({medium:r.medium,weight:r.weight}))??baseWeights(brief,bundle,baseline);
@@ -432,7 +437,9 @@ export function buildStrategyReport(brief:StrategyBrief,bundle:StrategyEvidenceB
     const candidate=[...preferred,...pool].find(c=>row.amountUsd==null||c.unitPriceUsd==null||(c.minimumSpendUsd??c.unitPriceUsd)<=row.amountUsd)??null;
     const seeds=row.medium==="digital"?[]:territorialChoices(pool,preferred,brief,row.amountUsd);
     const choices=row.medium==="television"?diversifyTelevision(pool,preferred,brief,row.amountUsd,bundle.channelShares,MAX_STRATEGY_EXECUTIONS):row.medium==="radio"?diversifyRadio(pool,seeds,brief,row.amountUsd,MAX_STRATEGY_EXECUTIONS):seeds;
-    let executions=row.medium==="digital"?digitalProductions(preferred,row.amountUsd):allocateStrategyExecutions(choices,row.amountUsd);
+    const productionWeight=advice?.productionWeight??0;
+    const productionBudget=row.amountUsd==null?null:Math.floor(Math.round(row.amountUsd*100)*productionWeight/10_000)/100;
+    let executions=row.medium==="digital"?digitalProductions(preferred,productionBudget):allocateStrategyExecutions(choices,row.amountUsd);
     if(!executions.length&&candidate&&!["television","radio","digital"].includes(row.medium))executions=allocateStrategyExecutions([candidate],row.amountUsd);
     const first=executions[0],purchase=first?{units:first.units,spend:first.referenceSpendUsd,remainder:first.remainderUsd}:referenceQuantity(candidate,row.amountUsd);
     const amountUsd=row.amountUsd==null?null:row.medium==="digital"?row.amountUsd:executions.length?Math.round(executions.reduce((n,e)=>n+(e.amountUsd??0),0)*100)/100:["television","radio"].includes(row.medium)?0:row.amountUsd;

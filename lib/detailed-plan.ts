@@ -47,6 +47,7 @@ export type DetailedChannelPlan = {
   kind: MediaGroup;
   label: string;
   budgetUsd: number | null;
+  unallocatedUsd?: number;
   objective: string;
   rationale: string;
   executions: DetailedExecution[];
@@ -164,9 +165,11 @@ function strategyExecutions(brief: PlanAnalysisInput, plan: MediaPlan): Detailed
       const allocation = strategy.allocations.find(a=>a.medium===kind);
       const executions=(allocation?.executions?.length?allocation.executions:[{candidate:allocation?.candidate,amountUsd:row.amount,units:allocation?.units??null}]).map(pick=>{
       const candidate=pick.candidate;
+      const cost=pick.units!=null&&candidate?.unitPriceUsd!=null
+        ? Math.round(pick.units*candidate.unitPriceUsd*100)/100 : pick.amountUsd;
       const sourceText = candidate?.sourceIds.map(id=>strategy.sources.find(s=>s.id===id)).filter(Boolean).map(s=>`${s!.label} · ${s!.period} · ${s!.market} · ${s!.target}`).join("; ");
       const execution:DetailedExecution = candidate ? {
-        id:[candidate.id,candidate.planningTerritory].filter(Boolean).join(":"),provider:candidate.provider,product:candidate.product,location:candidate.planningTerritory??candidate.market,schedule:candidate.period,budgetUsd:pick.amountUsd,
+        id:[candidate.id,candidate.planningTerritory].filter(Boolean).join(":"),provider:candidate.provider,product:candidate.product,location:candidate.planningTerritory??candidate.market,schedule:candidate.period,budgetUsd:cost,
         referenceUnitPriceUsd:candidate.unitPriceUsd,estimatedUnits:pick.units,unit:candidate.unit,
         status:candidate.unitPriceUsd!=null&&candidate.sourceUse==="comparable"&&(pick.units??0)>0?"cotizable":"validacion",
         evidence:[sourceText,candidate.metrics.map(m=>`${m.label}: ${m.value} ${m.unit}`).join(" · "),candidate.note].filter(Boolean).join(". "),
@@ -175,7 +178,8 @@ function strategyExecutions(brief: PlanAnalysisInput, plan: MediaPlan): Detailed
         ...(candidate.geo?{geo:{...candidate.geo,...googleMapUrls(candidate.geo.latitude,candidate.geo.longitude,""),locationStatus:"inventory" as const,fitScore:null,audienceFit:"Composición de audiencia no homologada para este soporte.",priceFit:"La tarifa conserva su unidad original y requiere vigencia para la campaña.",trafficEvidence:"Sin una medición de movilidad o alcance aplicable al brief."}}:{}),
       } : pendingExecution(kind,`${mediaGroupLabel(kind)} por completar`,brief.geography,row.amount,"No hay un producto homologado para todos los filtros del brief.");
       return execution;});
-      return {kind,label:row.label,budgetUsd:row.amount,objective:channelObjective(kind,brief.objective),rationale:row.rationale??"",executions};
+      const unallocatedUsd=row.amount==null?0:Math.max(0,Math.round((row.amount-executions.reduce((n,e)=>n+(e.budgetUsd??0),0))*100)/100);
+      return {kind,label:row.label,budgetUsd:row.amount,unallocatedUsd,objective:channelObjective(kind,brief.objective),rationale:row.rationale??"",executions};
     }),
   };
 }
