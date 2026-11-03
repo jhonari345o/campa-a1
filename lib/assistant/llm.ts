@@ -132,11 +132,14 @@ async function openaiChat(
   let models = [provider.model, ...fallbackModels];
   const deadline = Date.now() + requestTimeoutMs;
   let retriedTruncation = false;
-  for (let attempt = 0; attempt < Math.min(3, 1 + fallbackModels.length); attempt++) {
-    const canAdvance = () => provider.openRouter && provider.freeOnly && models.length > 1 && attempt < 2 && !signal.aborted && deadline - Date.now() >= 5000;
+  let omitReasoningOption = false;
+  const fastFree = Boolean(opts?.fastFreeRouting && provider.openRouter && provider.freeOnly);
+  const maxAttempts = Math.min(3, 1 + fallbackModels.length) + (fastFree ? 1 : 0);
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const hasRetryTime = () => attempt < maxAttempts - 1 && !signal.aborted && deadline - Date.now() >= 5000;
+    const canAdvance = () => provider.openRouter && provider.freeOnly && models.length > 1 && hasRetryTime();
     // Preserve enough of the one request deadline for another free model if a
     // provider stalls. This never extends the caller's cancellation or lease.
-    const fastFree = Boolean(opts?.fastFreeRouting && provider.openRouter && provider.freeOnly);
     const remainingMs = Math.max(1, deadline - Date.now());
     const attemptMs = fastFree && models.length > 1 && remainingMs >= 11_000 ? Math.min(10_000, remainingMs - 6000) : remainingMs;
     const attemptSignal = fastFree ? AbortSignal.any([signal, AbortSignal.timeout(attemptMs)]) : signal;
@@ -156,7 +159,7 @@ async function openaiChat(
           ...(models.length > 1 ? { models } : {}),
           ...(provider.freeOnly||provider.openRouter&&opts?.responseSchema ? { provider: { ...(provider.freeOnly?{max_price: { prompt: 0, completion: 0 }}:{}),...(opts?.responseSchema?{require_parameters:true}:{}),...(fastFree?{sort:{by:"latency",partition:"none"}}:{}) } } : {}),
           ...(opts?.responseSchema ? {response_format:{type:"json_schema",json_schema:{...opts.responseSchema,strict:true}}} : opts?.json ? { response_format: { type: "json_object" } } : {}),
-          ...(provider.openRouter && opts?.reasoningEnabled===false ? { reasoning: { enabled:false } } : provider.openRouter && opts?.reasoningEffort ? { reasoning: { effort: opts.reasoningEffort, exclude: true } } : {}),
+          ...(!omitReasoningOption && provider.openRouter && opts?.reasoningEnabled===false ? { reasoning: { enabled:false } } : !omitReasoningOption && provider.openRouter && opts?.reasoningEffort ? { reasoning: { effort: opts.reasoningEffort, exclude: true } } : {}),
           messages,
           max_tokens: opts?.maxTokens ?? 1024,
           temperature: opts?.temperature ?? 0.4,
@@ -175,6 +178,13 @@ async function openaiChat(
     }
     if (!res.ok) {
       const code = await providerErrorCode(res);
+      // Some free models require reasoning and reject an explicit disable.
+      // Retry the same free pool once with its native default. Keep the schema,
+      // zero-price cap, output limit and original cancellation deadline intact.
+      if (code === "PROVIDER_HTTP_400_REASONING" && fastFree && !omitReasoningOption && (opts?.reasoningEnabled === false || opts?.reasoningEffort) && hasRetryTime()) {
+        omitReasoningOption = true;
+        continue;
+      }
       // A retired model or an unsupported option can be rejected before the
       // gateway applies its models fallback. Advance only within the configured
       // free pool and original deadline. Never retry authentication/access denial.
@@ -188,7 +198,7 @@ async function openaiChat(
       // HTTP 200 with incomplete content does not trigger OpenRouter's normal
       // error fallback. Retry once within the same deadline, only in the free pool.
       const remaining = models.slice(1).filter(model => model !== data.model);
-      if (provider.openRouter && provider.freeOnly && !retriedTruncation && attempt < 2 && remaining.length && !signal.aborted && deadline - Date.now() >= 5000) {
+      if (provider.openRouter && provider.freeOnly && !retriedTruncation && remaining.length && hasRetryTime()) {
         retriedTruncation = true;
         models = remaining;
         continue;

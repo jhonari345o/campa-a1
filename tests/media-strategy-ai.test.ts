@@ -30,6 +30,7 @@ test("free structured-output repair revalidates every field and persists only th
   const result=await resolveStrategyAi(brief,bundle,"{}",19000,deps);
   assert.equal(result.state,"validated");assert.equal(calls,2);assert.deepEqual(corrections,[undefined,"CANDIDATE_UNKNOWN"]);
   assert.equal(persisted.length,1);assert.equal((persisted[0] as [unknown,{attempts:number}])[1].attempts,2);
+  assert.deepEqual((persisted[0] as [unknown,{attemptCodes:string[]}])[1].attemptCodes,["OUTPUT_CANDIDATE_UNKNOWN","VALIDATED"]);
 });
 test("repair never accepts invented candidates and stays inside the original inference deadline",async()=>{
   let calls=0;const signals:AbortSignal[]=[];

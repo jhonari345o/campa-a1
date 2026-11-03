@@ -27,8 +27,10 @@ export function strategyAiTransport(payload:ReturnType<typeof strategyAiPayload>
   // No observations, price, geography, date or qualification is truncated.
   const aliased=JSON.parse(JSON.stringify(payload,(_key,value)=>typeof value==="string"?aliases.get(value)??value:value));
   const occurrences=new Map<string,number>();
-  JSON.stringify(aliased,(_key,value)=>{if(typeof value==="string"&&value.length>=64)occurrences.set(value,(occurrences.get(value)??0)+1);return value;});
-  const texts=new Map([...occurrences].filter(([,count])=>count>=2).map(([value],i)=>[value,`t${i+1}`]));
+  JSON.stringify(aliased,(_key,value)=>{if(typeof value==="string"&&value.length>=28)occurrences.set(value,(occurrences.get(value)??0)+1);return value;});
+  // Include shorter repeated cohort/location labels only when the reference
+  // genuinely saves bytes after accounting for the dictionary entry.
+  const texts=new Map([...occurrences].filter(([value,count])=>count>=2&&(value.length-17)*count>value.length+12).map(([value],i)=>[value,`t${i+1}`]));
   const compressed=JSON.parse(JSON.stringify(aliased,(_key,value)=>typeof value==="string"&&texts.has(value)?{$text:texts.get(value)}:value));
   const content=JSON.stringify(compactTables(texts.size?{textReferences:Object.fromEntries([...texts].map(([value,id])=>[id,value])),...compressed}:aliased));
   const validOptions=payload.allocationOptions.filter(option=>option.evidenceIds.length>0);
