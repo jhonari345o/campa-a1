@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildMediaPlan } from "../lib/planner";
 import { buildStrategyEvidence, scopePlanningResearch, tvAudienceApplies } from "../lib/media-strategy-evidence";
-import { allocateStrategyBudget, allowedStrategyMedia, applyStrategyPlan, buildStrategyReport, customizeStrategyPlan, excludedMedia, parseStrategyAdvice, referenceQuantity, strategyAiPayload, strategyCandidatePool } from "../lib/media-strategy";
+import { allocateStrategyBudget, allocateStrategyExecutions, allowedStrategyMedia, applyStrategyPlan, buildStrategyReport, customizeStrategyPlan, excludedMedia, parseStrategyAdvice, referenceQuantity, strategyAiPayload, strategyCandidatePool } from "../lib/media-strategy";
 import type { MediaGroup } from "../lib/media-groups";
 import { mediaGroupForLabel } from "../lib/media-groups";
 import { projectResearch } from "../lib/infomedia";
@@ -294,4 +294,18 @@ test("OOH broadens physical locations before repeating an activation to absorb t
  assert.equal(new Set(rows.map(e=>e.candidate.catalogKey)).size,rows.length);
  assert.equal(rows.reduce((n,e)=>n+(e.referenceSpendUsd??0),0),10000);
  assert.equal(report.evaluation.budgetConserved,true);
+});
+
+test("OOH production charges stay out of media recommendations while a placement including production remains eligible",()=>{
+ const catalogs=strategyCatalogs();
+ catalogs.ooh.assets=[photographedAsset({id:"physical-location",recordType:"asset"})];
+ const base={kind:"ooh" as const,provider:"Proveedor sintético",name:"Soporte sintético",unit:"contratación",priceCents:100000,taxIncluded:false,location:"Quito",marketKeys:["quito"],reference:"",conditions:"",image:null,validFrom:"2026-11-01",validTo:null,source:{assetId:"physical-location",standingPrice:true}};
+ catalogs.workspaceProducts=["Pauta","Cambio de branding","Producción de lona","Instalación","Pauta + producción"].map((component,i)=>({...base,key:`ooh:physical-location:${i}`,format:"Soporte",source:{...base.source,rate:{amount:1000,component,period:"mes",basis:"soporte"}}}));
+ const bundle=buildStrategyEvidence(strategyBrief({selectedMedia:["ooh"]}),strategyResearch,catalogs,date);
+ const rows=bundle.candidates.filter(c=>c.id.startsWith("workspace:"));
+ assert.deepEqual(rows.map(c=>c.catalogKey),["ooh:physical-location:0","ooh:physical-location:4"]);
+ assert.ok(rows.every(c=>c.physicalAssetId==="physical-location"));
+ const executions=allocateStrategyExecutions(rows,10000);
+ assert.equal(executions.length,1);assert.equal(executions[0].units,1);
+ assert.equal(catalogs.workspaceProducts.length,5);
 });

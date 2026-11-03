@@ -7,7 +7,7 @@ import { briefMarketKeys } from "./broadcast-catalog";
 import { planningStudyBrief, nationalTerritoryOrder, territoryProvince, territoryKey, territoriesOverlap } from "./planning-market";
 import { coverageFromLabels } from "./geographic-coverage";
 
-export const STRATEGY_VERSION = "2026-11-03.33";
+export const STRATEGY_VERSION = "2026-11-03.34";
 export const MAX_STRATEGY_EXECUTIONS = 25;
 // Planning policy approved by the platform owner; it is not an audience study.
 export const STARTING_MEDIA_MIX: Readonly<Record<MediaGroup, number>> = {
@@ -79,7 +79,7 @@ export function referenceQuantity(candidate:StrategyCandidate|null,amount:number
 }
 /** Split one medium's budget once across its selected executions; preserve cents and quantities. */
 export function allocateStrategyExecutions(candidates:StrategyCandidate[],amount:number|null):StrategyExecution[] {
-  const unique=[...new Map(candidates.map(c=>[JSON.stringify([c.id,c.planningTerritory??null]),c])).values()].slice(0,MAX_STRATEGY_EXECUTIONS);
+  const unique=[...new Map(candidates.map(c=>[JSON.stringify([c.medium==="ooh"&&c.physicalAssetId?`asset:${c.physicalAssetId}`:c.id,c.planningTerritory??null]),c])).values()].slice(0,MAX_STRATEGY_EXECUTIONS);
   let remaining=amount==null?null:Math.round(amount*100);
   const minimum=(c:StrategyCandidate)=>Math.ceil(Math.max(c.minimumSpendUsd??c.unitPriceUsd??0,(c.unitPriceUsd??0)*(c.planningMinimumUnits??1))*100);
   const capacity=(c:StrategyCandidate)=>Math.min(c.planningMaximumSpendUsd==null?Infinity:Math.floor(c.planningMaximumSpendUsd*100),c.unitPriceUsd==null?Infinity:Math.ceil(c.unitPriceUsd*100)*Math.min(c.maximumUnits??Infinity,c.planningMaximumUnits??Infinity));
@@ -270,7 +270,7 @@ function territorialChoices(pool:StrategyCandidate[],preferred:StrategyCandidate
   const days=brief.startDate&&brief.endDate?Math.max(1,Math.ceil((Date.parse(brief.endDate)-Date.parse(brief.startDate))/86400000)+1):20;
   const targets=territoryTargets(brief);
   const isMovable=(c:StrategyCandidate)=>c.medium==="ooh"&&c.maximumUnits!==1&&candidateTerritories({...c,planningTerritory:undefined}).includes("nacional");
-  const sameProduct=(a:StrategyCandidate,b:StrategyCandidate)=>a.medium==="radio"&&b.medium==="radio"?(a.stationId&&b.stationId?a.stationId===b.stationId:normalize(a.provider)===normalize(b.provider)&&candidateTerritories(a).sort().join(",")===candidateTerritories(b).sort().join(",")):(a.catalogKey&&b.catalogKey?a.catalogKey===b.catalogKey:a.id===b.id)&&a.planningTerritory===b.planningTerritory;
+  const sameProduct=(a:StrategyCandidate,b:StrategyCandidate)=>a.medium==="ooh"&&b.medium==="ooh"&&a.physicalAssetId&&b.physicalAssetId?a.physicalAssetId===b.physicalAssetId:a.medium==="radio"&&b.medium==="radio"?(a.stationId&&b.stationId?a.stationId===b.stationId:normalize(a.provider)===normalize(b.provider)&&candidateTerritories(a).sort().join(",")===candidateTerritories(b).sort().join(",")):(a.catalogKey&&b.catalogKey?a.catalogKey===b.catalogKey:a.id===b.id)&&a.planningTerritory===b.planningTerritory;
   const cadence=(c:StrategyCandidate)=>national&&c.medium==="radio"?Math.min(20,days):1;
   const planned=(c:StrategyCandidate,target?:string):StrategyCandidate=>({...c,
     planningMinimumUnits:cadence(c),
