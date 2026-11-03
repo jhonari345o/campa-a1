@@ -20,7 +20,9 @@ export function matchesCurveScope(curve:ReachCurve, lines:RatedDeliveryLine[]):b
     const programmes=channels.get(line.providerKey)??new Set<string>();
     programmes.add(line.programmeKey);channels.set(line.providerKey,programmes);
   }
-  return channels.size>=2&&[...channels.values()].every(programmes=>programmes.size>=2);
+  // Additional channels may have only one measured programme. They must not
+  // erase a qualifying diversified schedule already present in the purchase.
+  return [...channels.values()].filter(programmes=>programmes.size>=2).length>=2;
 }
 
 /** Project an authorized selection using current compatible ratings and the supplied historical calibration. */

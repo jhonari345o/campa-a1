@@ -109,3 +109,15 @@ test("scope requires distinct channels and programmes, never rate variants or se
  const result=projectPlanningDelivery(brief,varied,{...model,curves:[curve]})!;
  assert.ok(result.reach1Pct!>0);assert.ok(result.frequency!>=1);
 });
+
+test("adding a partly measured channel preserves a diversified TV schedule's reach",()=>{
+ const curve={...model.curves[0],scope:"multi_channel" as const};
+ const varied=["a","b"].flatMap(providerKey=>["news","entertainment"].map(programmeKey=>({...line("television"),id:`${providerKey}-${programmeKey}`,providerKey,programmeKey})));
+ const base=projectPlanningDelivery(brief,varied,{...model,curves:[curve]})!;
+ const expanded=[...varied,{...line("television"),id:"third-channel",providerKey:"c",programmeKey:"news"}];
+ assert.equal(matchesCurveScope(curve,expanded),true);
+ const result=projectPlanningDelivery(brief,expanded,{...model,curves:[curve]})!;
+ assert.ok(result.reach1Pct!>=base.reach1Pct!);
+ assert.ok(result.grps!>base.grps!);
+ assert.equal(matchesCurveScope(curve,[varied[0],varied[1],expanded.at(-1)!]),false);
+});

@@ -72,6 +72,11 @@ test("province briefs retain documented city press offers without widening packa
  let bundle=buildStrategyEvidence(brief(),strategyResearch,c,date);
  assert.deepEqual(bundle.candidates.map(c=>c.id.split(":").at(-1)),["gye","uio","gye-uio"]);
  assert.ok(bundle.candidates.every(c=>c.unitPriceUsd===100));
+ assert.ok(bundle.candidates.every(c=>c.catalogKey===c.id));
+ c.press.entries[0].editions[0].publishedTariff=true;
+ const published=buildStrategyEvidence(brief(),strategyResearch,c,date);
+ assert.ok(published.candidates.every(c=>c.unitPriceUsd===null&&c.referencePriceUsd===100));
+ c.press.entries[0].editions[0].publishedTariff=false;
  c.press.entries[0].editions[0].validTo=null;
  bundle=buildStrategyEvidence(brief(),strategyResearch,c,date);
  assert.equal(bundle.candidates.length,3);

@@ -11,6 +11,24 @@ import { buildCurrentCampaigns } from "../lib/campaigns";
 import type { OohAsset } from "../lib/ooh-catalog";
 
 const date="2026-10-31";
+test("a budget cannot be assigned to a press format without a purchasable price",()=>{
+  const brief=strategyBrief({selectedMedia:["press"],budgetUsd:5000});
+  const bundle=buildStrategyEvidence(brief,strategyResearch,strategyCatalogs(),date);
+  const template={id:"press:unknown",catalogKey:"press:unknown",medium:"press" as const,provider:"Diario sintético",product:"Página",market:"Quito",coverageKeys:["quito"],target:"",period:"",sourceIds:[],sourceUse:"context" as const,unit:"inserción",unitPriceUsd:null,referencePriceUsd:1000,minimumUnits:1,minimumSpendUsd:null,metrics:[],note:""};
+  bundle.candidates=[template];
+  const base={matched:0,totalRef:0,plan:[],basis:"infomedia" as const,benchmark:[],profileLabel:"Sintético",strategySummary:"Sintético"};
+  const options={aiState:"validated" as const,fingerprint:"synthetic",generatedAt:date,advice:{summary:"Pauta de prensa.",questions:[],allocations:[{medium:"press" as const,weight:10000,rationale:"Presencia editorial.",candidateIds:[template.id],evidenceIds:[]}]}};
+  const report=buildStrategyReport(brief,bundle,base,options);
+  assert.equal(report.allocations[0].amountUsd,0);
+  assert.equal(report.allocations[0].candidate,null);
+  assert.deepEqual(report.allocations[0].executions,[]);
+  assert.equal(report.reserveUsd,5000);
+  bundle.candidates.push({...template,id:"press:priced",catalogKey:"press:priced",unitPriceUsd:400,minimumSpendUsd:400,sourceUse:"comparable"});
+  const priced=buildStrategyReport(brief,bundle,base,options);
+  assert.equal(priced.allocations[0].candidate?.catalogKey,"press:priced");
+  assert.ok(priced.allocations[0].units!>0);
+  assert.ok(priced.evaluation.budgetConserved);
+});
 test("a large TV tariff cannot remove all programmes in another requested city",()=>{
   const catalogs=strategyCatalogs();
   catalogs.broadcast.sources=[{...tvSource,id:"large-gye",market:"Guayaquil",marketKeys:["guayaquil"]},tvSource];
