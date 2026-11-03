@@ -7,7 +7,7 @@ import { briefMarketKeys } from "./broadcast-catalog";
 import { planningStudyBrief, nationalTerritoryOrder, territoryProvince, territoryKey, territoriesOverlap } from "./planning-market";
 import { coverageFromLabels } from "./geographic-coverage";
 
-export const STRATEGY_VERSION = "2026-11-03.21";
+export const STRATEGY_VERSION = "2026-11-03.22";
 export const MAX_STRATEGY_EXECUTIONS = 25;
 // Planning policy approved by the platform owner; it is not an audience study.
 export const STARTING_MEDIA_MIX: Readonly<Record<MediaGroup, number>> = {
@@ -323,10 +323,23 @@ export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:Strate
   // questions without discarding an otherwise valid, source-bound recommendation.
   const questions = Array.isArray(v.questions) ? v.questions.filter(q=>text(q,400)).slice(0,5) as string[] : [];
   const allowed=new Set(allowedStrategyMedia(brief,bundle)),sourceIds=new Set(bundle.sources.filter(s=>s.use!=="unavailable").map(s=>s.id)),used=new Set<string>();
+  const weights = new Map<MediaGroup,number>();
+  for (const value of v.allocations) {
+    const r=obj(value), medium=r.medium as MediaGroup;
+    if(!allowed.has(medium)||weights.has(medium))return reject("MEDIUM");
+    if(!Number.isInteger(r.weight)||Number(r.weight)<0||Number(r.weight)>10_000)return reject("WEIGHT");
+    weights.set(medium,Number(r.weight));
+  }
+  // The model proposes relative priorities, not money. Canonicalize them with
+  // the same deterministic cent allocation used by the budget calculator.
+  // A percent-scale answer or a rounding discrepancy cannot alter total spend.
+  const canonicalWeights=new Map(allocateStrategyBudget([...weights].map(([medium,weight])=>({medium,weight})),100).map(r=>[r.medium,Math.round(r.amountUsd!*100)]));
+  if(!canonicalWeights.size)return reject("WEIGHT_TOTAL");
   const allocations:StrategyAdvice["allocations"]=[];
   for(const value of v.allocations){const r=obj(value),medium=r.medium as MediaGroup;
     if(!allowed.has(medium)||used.has(medium))return reject("MEDIUM");
     if(!Number.isInteger(r.weight)||Number(r.weight)<0||Number(r.weight)>10_000)return reject("WEIGHT");
+    const weight=canonicalWeights.get(medium)??0;
     if(typeof r.rationale!=="string")return reject("RATIONALE");
     const safeRationale=text(r.rationale,700);
     safeTextUsed ||= !safeRationale;
@@ -335,8 +348,8 @@ export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:Strate
     if(r.candidateIds.length>MAX_STRATEGY_EXECUTIONS)return reject("CANDIDATE_COUNT");
     const pool=strategyCandidatePool(bundle,medium,brief).slice(0,MODEL_CANDIDATE_LIMIT);
     if(!r.candidateIds.every(id=>typeof id==="string"&&pool.some(c=>c.id===id)))return reject("CANDIDATE_UNKNOWN");
-    if(medium==="radio"&&Number(r.weight)>0&&r.candidateIds.length){
-      const markets=briefMarketKeys(brief),amount=brief.budgetUsd==null?null:brief.budgetUsd*Number(r.weight)/10000;
+    if(medium==="radio"&&weight>0&&r.candidateIds.length){
+      const markets=briefMarketKeys(brief),amount=brief.budgetUsd==null?null:brief.budgetUsd*weight/10000;
       // Enforce a feasible multi-plaza selection, not an impossible national
       // inventory promise or a footprint inferred from the study denominator.
       const required=markets.filter(m=>pool.some(c=>radioCoversMarket(c,m,brief)&&(amount==null||c.unitPriceUsd!=null&&(c.minimumSpendUsd??c.unitPriceUsd)<=amount/markets.length)));
@@ -356,7 +369,7 @@ export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:Strate
       digital:"Distribuye la inversión digital de acuerdo con el objetivo del brief.",
       influencers:"Selecciona perfiles y productos dentro del catálogo de tu cuenta.",
     };
-    used.add(medium);allocations.push({medium,weight:Number(r.weight),rationale:safeRationale?String(r.rationale).trim():safeRationales[medium],evidenceIds:r.evidenceIds as string[],candidateIds:[...new Set(r.candidateIds as string[])]});
+    used.add(medium);allocations.push({medium,weight,rationale:safeRationale?String(r.rationale).trim():safeRationales[medium],evidenceIds:r.evidenceIds as string[],candidateIds:[...new Set(r.candidateIds as string[])]});
   }
   if(allocations.reduce((n,r)=>n+r.weight,0)!==10_000)return reject("WEIGHT_TOTAL");
   if(safeTextUsed)onSafeText?.();
@@ -375,7 +388,7 @@ export function strategyAiPayload(brief:StrategyBrief,bundle:StrategyEvidenceBun
   }));
   // Use the same integer scale as the response contract, instead of fractional baseline shares.
   const baseline=allocateStrategyBudget(baseWeights(brief,bundle,plan),100).map(r=>({medium:r.medium,weight:Math.round(r.amountUsd!*100)}));
-  const outputContract={summary:"Texto breve sin cifras",allocations:[{medium:"Copiar de allocationOptions",weight:"Entero; la suma de todos los pesos debe ser 10000",rationale:"Texto breve sin cifras",evidenceIds:"Entre uno y seis identificadores de evidenceIds del mismo medio",candidateIds:"Entre cero y veinticinco identificadores de candidateIds del mismo medio, solo los necesarios para la cobertura y el presupuesto"}],questions:[]};
+  const outputContract={summary:"Texto breve sin cifras",allocations:[{medium:"Copiar de allocationOptions",weight:"Peso relativo entero entre cero y diez mil; el servidor normaliza la suma y conserva el presupuesto",rationale:"Texto breve sin cifras",evidenceIds:"Entre uno y seis identificadores de evidenceIds del mismo medio",candidateIds:"Entre cero y veinticinco identificadores de candidateIds del mismo medio, solo los necesarios para la cobertura y el presupuesto"}],questions:[]};
   const mixPolicy={startingPercentages:STARTING_MEDIA_MIX,appliesToAllSix:ALL.every(m=>brief.selectedMedia.includes(m)),adjustable:true,basis:"Política de planificación; no es una medición",adjustUsing:["competencia","consumo comparable de la audiencia","estudios y vigencia","rankings y ratings de cada plaza y público","cobertura","objetivo","presupuesto y tarifas"]};
   return {version:STRATEGY_VERSION,brief,mixPolicy,territorialPolicy:{nationalPriority:nationalTerritoryOrder(),nationalFirst:briefMarketKeys(brief).includes("nacional"),coverageBeforeMeasurements:true},allowedMedia:allowed,allocationOptions,outputContract,referenceCases,broadcastPolicy:{tvMinimumProgramsPerChannel:2,tvPlanningBands:["A","AA","AAA"],lateForRelevantAdultsOnly:true,radioMonthlyStationBudgetUsd:{from:1000,to:2000}},evidence:{sources:bundle.sources.filter(s=>wanted.has(s.id)),competition:bundle.competition,categoryMix:bundle.categoryMix,consumption:bundle.consumption,candidates,audienceReferences:bundle.audienceReferences,channelShares:bundle.channelShares,oohMarketReferences:bundle.oohMarketReferences,gaps:bundle.gaps},baseline,rules:["Las cifras y el presupuesto se calculan en el servidor.","La inversión de competidores no mide efectividad.","Las fuentes contextuales no son mediciones del target.","Un tarifario no es un rating y un ranking no es alcance de campaña.","No declares una mezcla óptima universal; compara solo alternativas respaldadas."]};
 }
