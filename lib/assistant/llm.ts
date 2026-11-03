@@ -3,7 +3,7 @@ import { getLlmConfiguration } from "./llm-config";
 import { availableFreeModels } from "./free-model-routing";
 
 export type LlmMessage = { role: "system" | "user" | "assistant"; content: string };
-type CompletionOptions = { maxTokens?: number; temperature?: number; signal?: AbortSignal; json?: boolean; responseSchema?: {name:string;schema:Record<string,unknown>}; timeoutMs?: number; reasoningEffort?: "low" | "medium" | "high"; reasoningEnabled?: boolean; fastFreeRouting?: boolean; onModel?: (model: string) => void };
+type CompletionOptions = { maxTokens?: number; temperature?: number; signal?: AbortSignal; json?: boolean; responseSchema?: {name:string;schema:Record<string,unknown>}; timeoutMs?: number; reasoningEffort?: "low" | "medium" | "high"; reasoningEnabled?: boolean; fastFreeRouting?: boolean; excludedFreeModels?: string[]; onAttemptModels?: (models:string[]) => void; onModel?: (model: string) => void };
 
 /** Retain a bounded diagnosis, never the provider's raw account/prompt details. */
 async function providerErrorCode(res: Response): Promise<string> {
@@ -142,6 +142,10 @@ async function openaiChat(
     // full messages so a larger catalogue cannot select an undersized model.
     const contextBytes = new TextEncoder().encode(JSON.stringify({messages,responseSchema:opts?.responseSchema})).length;
     models = await availableFreeModels(models, Boolean(opts?.responseSchema || opts?.json), Math.ceil(contextBytes / 2) + (opts?.maxTokens ?? 1024), signal, Boolean(opts?.responseSchema));
+    // A completed failed planning request can continue on another compatible
+    // free pool without shortening a valid inference or extending this deadline.
+    const alternatives=models.filter(model=>!opts?.excludedFreeModels?.includes(model));
+    if(alternatives.length)models=alternatives;
   }
   const maxAttempts = Math.min(3, models.length) + (fastFree ? 1 : 0);
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -155,6 +159,7 @@ async function openaiChat(
     let data: { model?: string; choices?: { finish_reason?: string; message?: { content?: string } }[] } | undefined;
     try {
       attemptSignal.throwIfAborted();
+      if(fastFree)opts?.onAttemptModels?.(models.slice(0,3));
       res = await fetch(`${provider.baseUrl.replace(/\/$/, "")}/chat/completions`, {
         method: "POST",
         headers: {

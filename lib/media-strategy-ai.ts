@@ -24,7 +24,7 @@ function providerFailureCode(error: unknown): string {
     ? message : "PROVIDER_UNAVAILABLE";
 }
 /** Dependency boundary makes quota, provider failure and fail-closed validation testable without inference charges. */
-export async function resolveStrategyAi(brief:StrategyBrief,bundle:StrategyEvidenceBundle,payload:string,timeoutMs:number,deps:AiDependencies):Promise<{advice:StrategyAdvice|null;state:StrategyAiState}> {
+export async function resolveStrategyAi(brief:StrategyBrief,bundle:StrategyEvidenceBundle,payload:string,timeoutMs:number,deps:AiDependencies):Promise<{advice:StrategyAdvice|null;state:StrategyAiState;retryable?:boolean}> {
   const result=(state:StrategyAiState,advice:StrategyAdvice|null=null)=>({state,advice});
   if(deps.cached){const advice=parseStrategyAdvice(JSON.stringify(deps.cached),brief,bundle);if(advice)return result("cached",advice);}
   if(!deps.enabled)return result("not_configured");
@@ -59,5 +59,9 @@ export async function resolveStrategyAi(brief:StrategyBrief,bundle:StrategyEvide
   diagnostic.durationMs=Date.now()-started;
   let persisted=false;try{persisted=await optionalWithinBudget(()=>deps.persist(advice,{...diagnostic}),()=>false,Math.max(1,deadline-Date.now()));}catch{ /* No uncached AI recommendation is applied. */ }
   if(!persisted)return result("unavailable");
-  return advice?result("validated",advice):result(invalid?"rejected":"unavailable");
+  if(advice)return result("validated",advice);
+  // Only a known, persisted failure may trigger a new free-model request.
+  // Authentication, quota, unknown outcomes and persistence failures never do.
+  const retryable=Boolean(deps.allowRepair&&/^(?:TIME_BUDGET_EXHAUSTED|PROVIDER_TIMEOUT|PROVIDER_OUTPUT_TRUNCATED|PROVIDER_HTTP_(?:429|5\d\d)|OUTPUT_[A-Z_]+)$/.test(diagnostic.code));
+  return {...result(invalid?"rejected":"unavailable"),...(retryable?{retryable:true}:{})};
 }

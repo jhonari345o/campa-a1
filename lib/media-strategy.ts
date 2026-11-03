@@ -7,7 +7,7 @@ import { briefMarketKeys } from "./broadcast-catalog";
 import { planningStudyBrief, nationalTerritoryOrder, territoryProvince, territoryKey, territoriesOverlap } from "./planning-market";
 import { coverageFromLabels } from "./geographic-coverage";
 
-export const STRATEGY_VERSION = "2026-11-03.31";
+export const STRATEGY_VERSION = "2026-11-03.32";
 export const MAX_STRATEGY_EXECUTIONS = 25;
 // Planning policy approved by the platform owner; it is not an audience study.
 export const STARTING_MEDIA_MIX: Readonly<Record<MediaGroup, number>> = {
@@ -31,6 +31,7 @@ export type StrategyAllocation = {
 export type StrategyReport = {
   customized?: boolean;
   version: string; generatedAt: string; fingerprint: string; model: string | null; aiState: StrategyAiState;
+  aiRetryable?: boolean;
   summary: string; allocations: StrategyAllocation[]; sources: StrategyEvidenceBundle["sources"];
   competition: StrategyEvidenceBundle["competition"]; gaps: string[]; questions: string[];
   audienceReferences: StrategyEvidenceBundle["audienceReferences"];

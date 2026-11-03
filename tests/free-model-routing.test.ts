@@ -79,3 +79,26 @@ test("catalogue schemas count toward model context and keep the zero-price routi
     keys.forEach((key,index)=>{if(previous[index]===undefined)delete process.env[key];else process.env[key]=previous[index];});
   }
 });
+
+test("a planning continuation moves away from the failed free pool and preserves schema and price caps",async()=>{
+ const originalFetch=globalThis.fetch;
+ const keys=["AI_PROVIDER","OPENROUTER_API_KEY","OPENROUTER_MODEL","OPENROUTER_FALLBACK_MODELS"];
+ const previous=keys.map(key=>process.env[key]);
+ Object.assign(process.env,{AI_PROVIDER:"openrouter",OPENROUTER_API_KEY:"synthetic-test-key",OPENROUTER_MODEL:"live/preferred:free",OPENROUTER_FALLBACK_MODELS:"live/other:free"});
+ const attempts:string[][]=[];
+ globalThis.fetch=async(url,options)=>{
+  if(String(url).endsWith("/models"))return new Response(JSON.stringify({data:[row("live/preferred:free"),row("live/other:free"),row("live/third:free"),row("live/fourth:free")]}),{status:200});
+  const body=JSON.parse(String(options?.body));
+  assert.equal(body.model,"live/third:free");
+  assert.deepEqual(body.models,["live/third:free","live/fourth:free","openrouter/free"]);
+  assert.deepEqual(body.provider.max_price,{prompt:0,completion:0});
+  assert.equal(body.provider.require_parameters,true);
+  assert.equal(body.messages[0].content,"Unchanged synthetic brief");
+  assert.equal(body.response_format.json_schema.strict,true);
+  return new Response(JSON.stringify({model:"live/third:free",choices:[{finish_reason:"stop",message:{content:'{"ok":true}'}}]}),{status:200});
+ };
+ try{
+  const result=await chatCompletion([{role:"user",content:"Unchanged synthetic brief"}],{fastFreeRouting:true,responseSchema:{name:"test",schema:{type:"object"}},excludedFreeModels:["live/preferred:free","live/other:free"],onAttemptModels:models=>attempts.push(models)});
+  assert.equal(result,'{"ok":true}');assert.deepEqual(attempts,[["live/third:free","live/fourth:free","openrouter/free"]]);
+ }finally{globalThis.fetch=originalFetch;keys.forEach((key,index)=>{if(previous[index]===undefined)delete process.env[key];else process.env[key]=previous[index];});}
+});

@@ -130,3 +130,16 @@ test("safe copy fallback never rehabilitates forged sources, candidates or budge
     assert.equal(result.state,"rejected");assert.equal(result.advice,null);
   }
 });
+
+test("only persisted transient failures in the free path authorize continuation",async()=>{
+ for(const [message,retryable] of [["PROVIDER_TIMEOUT",true],["PROVIDER_HTTP_429",true],["PROVIDER_HTTP_503",true],["PROVIDER_HTTP_401",false],["PROVIDER_HTTP_403",false],["unknown private error",false]] as const){
+  for(const [free,persisted] of [[true,true],[false,true],[true,false]] as const){
+   const {deps}=dependencies({allowRepair:free,invoke:async()=>{throw new Error(message);},persist:async()=>persisted});
+   const result=await resolveStrategyAi(brief,bundle,"{}",2000,deps);
+   assert.equal(result.retryable===true,retryable&&free&&persisted);
+   assert.equal(result.advice,null);
+  }
+ }
+ const valid=dependencies({allowRepair:true});
+ assert.equal((await resolveStrategyAi(brief,bundle,"{}",2000,valid.deps)).retryable,undefined);
+});
