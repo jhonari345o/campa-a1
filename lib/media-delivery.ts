@@ -13,6 +13,7 @@ export type DeliveryObservation = {
 };
 export type DeliverySummary = {
   scopeLabel?: string;
+  geographicComplements?: MediaGroup[];
   media: { medium: MediaGroup; reachPct: number; people: number }[];
   reach1Pct: number | null; reach2Pct: number | null; reach3Pct: number | null;
   people: number | null; frequency: number | null; grps: number | null;
@@ -83,7 +84,7 @@ function validObservation(row: DeliveryObservation) {
   return true;
 }
 /** Sainsbury across media, never repeated insertions. Method and evidence stay server-side. */
-export function combineMediaDelivery(selection: DeliverySelection, observations: DeliveryObservation[]): { summary: DeliverySummary; issues: string[] } {
+export function combineMediaDelivery(selection: DeliverySelection, observations: DeliveryObservation[],options:{allowGeographicComplements?:boolean}={}): { summary: DeliverySummary; issues: string[] } {
   const normalized = normalizeDeliverySelection(selection), issues: string[] = [];
   const empty: DeliverySummary = { media: [], reach1Pct: null, reach2Pct: null, reach3Pct: null, people: null, frequency: null, grps: null, digital: null };
   if (!normalized) return { summary: empty, issues: ["INVALID_SELECTION"] };
@@ -96,8 +97,11 @@ export function combineMediaDelivery(selection: DeliverySelection, observations:
   const summary: DeliverySummary = { ...empty, media: matched.map(row => ({ medium: row.medium, reachPct: row.reach1Pct, people: Math.round(row.universe * row.reach1Pct / 100) })) };
   const digital = matched.find(row => row.medium === "digital");
   if (digital) summary.digital = { impressions: digital.impressions ?? null, views: digital.views ?? null, conversations: digital.conversations ?? null };
-  // Never label a subset of the plan as the plan's total reach.
-  if (matched.length !== normalized.media.length) return { summary, issues };
+  // Owner-approved planning convention: unmeasured OOH/press may add geographic
+  // presence, but contribute no additional contacts to the numerical projection.
+  const complements=normalized.media.filter(({medium})=>!matched.some(r=>r.medium===medium)&&options.allowGeographicComplements&&["ooh","press"].includes(medium)&&!observations.some(r=>r.medium===medium));
+  if(complements.length)summary.geographicComplements=complements.map(r=>r.medium);
+  if (!matched.length||matched.length+complements.length !== normalized.media.length) return { summary, issues };
   const first = matched[0];
   if (!matched.every(row => row.universe === first.universe && row.universeId === first.universeId && row.targetId === first.targetId && row.geographyId === first.geographyId && row.periodId === first.periodId)) return { summary, issues: [...issues, "INCOMPATIBLE_POPULATIONS"] };
   const p0 = matched.reduce((p, row) => p * (1 - row.reach1Pct / 100), 1);

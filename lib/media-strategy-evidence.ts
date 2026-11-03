@@ -12,6 +12,7 @@ import { lookupKey, type CategoryResearch } from "./infomedia";
 import type { PlanAnalysisInput } from "./plan-analysis";
 import { mediaGroupForLabel, type MediaGroup } from "./media-groups";
 import { tgiUsage } from "./tgi";
+import { oohMarketReferences, pressAudienceApplies, pressObservationFor, type AtlAudienceCatalog, type OohMarketReference } from "./atl-audience";
 
 export type StrategyBrief = PlanAnalysisInput & { brand?: string; categoryId?: string; referenceYear?: number; clientId?:string|null };
 export type EvidenceUse = "comparable" | "context" | "unavailable";
@@ -38,15 +39,16 @@ export type StrategyCandidate = {
   note: string;
 };
 export type StrategyEvidenceBundle = {
+  oohMarketReferences?: OohMarketReference[];
   channelShares?: { provider:string;sharePct:number;period:string;market:string;target:string }[];
   asOf: string; sources: StrategySource[]; candidates: StrategyCandidate[];
   competition: { brand: string; estimatedInvestment: number; soi: number; declared: boolean }[];
   categoryMix: { medium: MediaGroup; share: number }[];
   consumption: { medium: MediaGroup; value: number; comparable: boolean; sourceId: string }[];
   gaps: string[]; researchPeriod: string; competitionAvailable: boolean;
-  audienceReferences: { sourceId: string; medium: MediaGroup; provider: string; product: string; rating: number | null }[];
+  audienceReferences: { sourceId: string; medium: MediaGroup; provider: string; product: string; rating: number | null; reachPct?:number; audience?:number; rank?:number }[];
 };
-export type StrategyCatalogs = { tvShares?:{channel:string;sharePct:number;periodStart:string;periodEnd:string}[]; workspaceProducts?:CatalogProduct[]; broadcast: BroadcastCatalog; press: PressCatalog; radio: RadioDirectoryCatalog; ooh: OohCatalog; influencers: InfluencerProfile[]; tvAudience: TvAudienceObservation[] };
+export type StrategyCatalogs = { atlAudience?:AtlAudienceCatalog; tvShares?:{channel:string;sharePct:number;periodStart:string;periodEnd:string}[]; workspaceProducts?:CatalogProduct[]; broadcast: BroadcastCatalog; press: PressCatalog; radio: RadioDirectoryCatalog; ooh: OohCatalog; influencers: InfluencerProfile[]; tvAudience: TvAudienceObservation[] };
 export function scopePlanningResearch(research:CategoryResearch,bundle:StrategyEvidenceBundle):CategoryResearch {
   return {...research,tgi:bundle.consumption.some(c=>c.comparable)?research.tgi:undefined,periods:research.periods.map(p=>bundle.competitionAvailable?p:{...p,mediaMix:[]})};
 }
@@ -90,6 +92,14 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
   const sources = new Map<string, StrategySource>(), candidates: StrategyCandidate[] = [], gaps: string[] = [];
   const audienceReferences:StrategyEvidenceBundle["audienceReferences"]=[];
   const addSource = (source: StrategySource) => { sources.set(source.id, source); return source.id; };
+  const pressStudies=(catalogs.atlAudience?.press??[]).filter(s=>selected(brief,"press")&&pressAudienceApplies(s,brief,asOf));
+  const pressSource=(s:typeof pressStudies[number])=>addSource({id:`press-study:${s.periodStart}:${s.periodEnd}:${s.sex}:${s.marketKeys.join("-")}`,kind:"ranking",label:"Ranking y alcance de lectura de prensa",period:`${s.periodStart} – ${s.periodEnd}`,market:s.marketKeys.join(" · "),target:`${s.sex==="all"?"Personas":s.sex==="male"?"Hombres":"Mujeres"} ${s.ageMin}–${s.ageMax} · todos los NSE`,use:"comparable",note:"Alcance de lectura del medio en el universo completo del estudio. No es alcance de una inserción ni se multiplica por compras. La posición se ordena por alcance; personas combina los dos universos por sus tamaños."});
+  for(const s of pressStudies)audienceReferences.push({sourceId:pressSource(s),medium:"press",provider:s.provider,product:"Lectura de la publicación",rating:null,reachPct:s.reachPct,audience:s.audience,rank:s.rank});
+  const oohReferences:OohMarketReference[]=selected(brief,"ooh")?oohMarketReferences(catalogs.atlAudience?.ooh??[],brief,asOf).map(r=>{
+    const sourceId=addSource({id:`ooh-study:${normalized(r.city)}`,kind:"ranking",label:"Optimiza VP · referencia territorial",period:r.observedOn??"Corte no declarado",market:r.city,target:"Público y universo no declarados",use:"context",note:"Última base disponible, histórica. Ranking, circulación e impactos del soporte observado; no son personas únicas ni mediciones actuales del inventario. No extrapolar a otro elemento, público o período."});
+    return {sourceId,city:r.city,location:[r.street,r.intersection].filter(Boolean).join(" / "),format:r.format,rank:r.rank,score:r.score,estimatedImpacts:r.estimatedImpacts,impactPeriod:r.impactPeriod,observedOn:r.observedOn};
+  }):[];
+  if(catalogs.atlAudience?.error)gaps.push(catalogs.atlAudience.error);
   const period = research.periods.find(p => p.year === research.referenceYear) ?? research.periods[0];
   const cut = period && validDate(research.dataThrough) ? (period.year < Number(research.dataThrough.slice(0,4)) ? `${period.year}-12-31` : research.dataThrough) : "";
   const observationDate = validDate(brief.startDate) ? brief.startDate : asOf;
@@ -208,6 +218,13 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
     const price=candidates.filter(p=>p.id.startsWith("workspace:")&&p.medium==="radio"&&p.stationId===c.stationId&&p.unitPriceUsd!=null&&p.unitPriceUsd>0&&(sameMarket({marketKeys:p.marketKeys??[]} as BroadcastSource,local)||radioTariffCoversStationStudy(p.marketKeys??[],c.marketKeys??[],c.stationCoverage??[]))).sort((a,b)=>a.unitPriceUsd!-b.unitPriceUsd!||a.id.localeCompare(b.id))[0];
     if(price){c.catalogKey=price.catalogKey;c.unitPriceUsd=price.unitPriceUsd;c.referencePriceUsd=price.referencePriceUsd;c.minimumSpendUsd=price.minimumSpendUsd;c.unit=price.unit;c.sourceIds=[...new Set([...c.sourceIds.filter(id=>!id.startsWith("radio-tariff:")),...price.sourceIds])];c.note=[c.note.replace("Falta una tarifa compatible para calcular cuñas comprables.",""),price.note].filter(Boolean).join(" ");}
   }
+  for(const c of candidates.filter(c=>c.medium==="press")){
+    const s=pressObservationFor(c.provider,`${c.product} ${c.unit}`,pressStudies,brief,asOf);
+    if(!s)continue;
+    const sid=pressSource(s);
+    c.sourceIds=[...new Set([...c.sourceIds,sid])];c.cohort=sid;
+    c.metrics.push({label:"Alcance de lectura",value:s.reachPct,unit:"%",sourceId:sid},{label:"Posición por lectura",value:s.rank,unit:"ranking",sourceId:sid});
+  }
   const resolvedTariffGaps:Partial<Record<MediaGroup,string>>={television:"TV: no hay tarifas compatibles con todas las fechas, plaza y condiciones del brief.",radio:"Radio: no hay una tarifa vigente y compatible para cuantificar la pauta.",press:"Prensa: faltan tarifas con vigencia y plaza compatibles con la campaña."};
   for(const [medium,gap] of Object.entries(resolvedTariffGaps))if(candidates.some(c=>c.medium===medium&&c.id.startsWith("workspace:")&&c.unitPriceUsd!=null)){const i=gaps.indexOf(gap);if(i>=0)gaps.splice(i,1);}
   if(candidates.some(c=>c.medium==="television"&&c.metrics.some(m=>m.label==="Rating"))){
@@ -225,7 +242,7 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
     for(let i=0;balanced.length<100;i++)for(const market of markets.values())if(market[i]&&balanced.length<100)balanced.push(market[i]);
     return balanced;
   });
-  const needed=new Set(["category-investment","audience-consumption",...audienceReferences.map(r=>r.sourceId),...boundedCandidates.flatMap(c=>c.sourceIds)]);
+  const needed=new Set(["category-investment","audience-consumption",...audienceReferences.map(r=>r.sourceId),...oohReferences.map(r=>r.sourceId),...boundedCandidates.flatMap(c=>c.sourceIds)]);
   const boundedSources=[...sources.values()].filter(s=>needed.has(s.id)).slice(0,800), sourceIds=new Set(boundedSources.map(s=>s.id));
-  return {asOf,sources:boundedSources,candidates:boundedCandidates.filter(c=>c.sourceIds.every(id=>sourceIds.has(id))),competition,categoryMix,consumption,gaps:[...new Set(gaps)].slice(0,30),researchPeriod:period?.periodLabel??"Sin período",competitionAvailable,audienceReferences,channelShares};
+  return {asOf,sources:boundedSources,candidates:boundedCandidates.filter(c=>c.sourceIds.every(id=>sourceIds.has(id))),competition,categoryMix,consumption,gaps:[...new Set(gaps)].slice(0,30),researchPeriod:period?.periodLabel??"Sin período",competitionAvailable,audienceReferences,channelShares,oohMarketReferences:oohReferences};
 }
