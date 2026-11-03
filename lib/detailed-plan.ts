@@ -169,7 +169,7 @@ function strategyExecutions(brief: PlanAnalysisInput, plan: MediaPlan): Detailed
         ? Math.round(pick.units*candidate.unitPriceUsd*100)/100 : pick.amountUsd;
       const sourceText = candidate?.sourceIds.map(id=>strategy.sources.find(s=>s.id===id)).filter(Boolean).map(s=>`${s!.label} · ${s!.period} · ${s!.market} · ${s!.target}`).join("; ");
       const execution:DetailedExecution = candidate ? {
-        id:[candidate.id,candidate.planningTerritory].filter(Boolean).join(":"),provider:candidate.provider,product:candidate.product,location:candidate.planningTerritory??candidate.market,schedule:candidate.period,budgetUsd:cost,
+        id:[candidate.id,candidate.planningTerritory].filter(Boolean).join(":"),provider:candidate.provider,product:candidate.product,location:candidate.planningTerritory??(candidate.medium==="radio"&&candidate.stationCoverage?.length?candidate.stationCoverage.join(" · "):candidate.market),schedule:candidate.period,budgetUsd:cost,
         referenceUnitPriceUsd:candidate.unitPriceUsd,estimatedUnits:pick.units,unit:candidate.unit,
         status:candidate.unitPriceUsd!=null&&candidate.sourceUse==="comparable"&&(pick.units??0)>0?"cotizable":"validacion",
         evidence:[sourceText,candidate.metrics.map(m=>`${m.label}: ${m.value} ${m.unit}`).join(" · "),candidate.note].filter(Boolean).join(". "),
