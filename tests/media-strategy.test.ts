@@ -85,6 +85,7 @@ test("OOH chooses a priced photographed circuit before an unpriced alphabetic pl
 });
 test("source-backed plans keep creative templates separate from measured analysis",async()=>{
   const b=strategyBrief({selectedMedia:["digital"]}),bundle=buildStrategyEvidence(b,strategyResearch,strategyCatalogs(),date),base=await buildMediaPlan({...b,research:scopePlanningResearch(strategyResearch,bundle)});
+  bundle.candidates.push({...bundle.candidates[0],id:"second-synthetic-program",catalogKey:"second-synthetic-program",product:"Otro programa sintético"});
   const plan=applyStrategyPlan(base,buildStrategyReport(b,bundle,base,{aiState:"not_configured",fingerprint:"test",generatedAt:date}),b);
   const campaigns=await buildCurrentCampaigns({keyword:b.keyword,audience:b.audience,objective:b.objective},plan);
   assert.ok(campaigns.length>0);
@@ -171,6 +172,7 @@ test("digital budget honors explicit platform choices and is never assigned to W
 });
 test("personalizing the mix recomputes source quantities instead of reusing the original spend",async()=>{
   const b=strategyBrief({selectedMedia:["television","digital"]}),bundle=buildStrategyEvidence(b,strategyResearch,strategyCatalogs(),date),base=await buildMediaPlan({...b,research:scopePlanningResearch(strategyResearch,bundle)});
+  bundle.candidates.push({...bundle.candidates[0],id:"second-synthetic-program",catalogKey:"second-synthetic-program",product:"Otro programa sintético"});
   const plan=applyStrategyPlan(base,buildStrategyReport(b,bundle,base,{aiState:"not_configured",fingerprint:"test",generatedAt:date}),b);
   const requested=plan.plan.map(r=>({...r,pct:mediaGroupForLabel(r.label)==="television"?.01:.99/(plan.plan.length-1)}));
   const revised=customizeStrategyPlan(plan,requested,b.budgetUsd);

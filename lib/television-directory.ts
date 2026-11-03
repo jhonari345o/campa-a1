@@ -7,6 +7,7 @@ const aliases: Record<string, string[]> = {
   ecuavisa: ["ecuavisa"], "tc-television": ["tc", "tc television", "tc tv"], teleamazonas: ["teleamazonas"],
   "red-comercial": ["red comercial"], "oromar-tv": ["oromar", "oromar tv"], "ecuador-tv": ["ecuador tv"],
   "catomedia-ucsg": ["catomedia", "ucsg tv", "catomedia ucsg tv"],
+  rts: ["rts"], tvc: ["tvc"],
 };
 export function televisionProviderKey(provider: string) {
   const key = normalized(provider);
