@@ -60,6 +60,7 @@
 .detailHero { display:flex; align-items:flex-start; gap:28px; border:1px solid var(--workspace-border,#d7e0d9); border-radius:22px; background:linear-gradient(130deg,#f0f7ed,#fff); padding:28px; }
 .detailLogo { position:relative; display:flex; width:140px; height:140px; flex:none; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; border:1px solid var(--workspace-border,#d7e0d9); border-radius:20px; background:#fff; color:var(--workspace-ink,#27693a); }
 .detailLogo > span { font-size:38px; font-weight:900; }
+.detailLogo > svg { width:64px; height:64px; }
 .detailLogo > small { margin-top:8px; color:var(--muted,#6c625a); font-size:11px; }
 .detailIntro { min-width:0; }
 .detailIntro h3 { margin-top:8px; color:var(--workspace-ink,#203e32); font-size:clamp(24px,3vw,34px); font-weight:900; letter-spacing:-.035em; line-height:1.2; overflow-wrap:anywhere; }

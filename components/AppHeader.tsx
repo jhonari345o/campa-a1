@@ -35,7 +35,7 @@ const CATALOG = [
   { mark: "RA", label: "Radio", detail: "Cobertura y rankings", id: "radio" },
   { mark: "VP", label: "Vía pública", detail: "Proveedores e inventario", id: "ooh" },
   { mark: "PR", label: "Prensa", detail: "Medios por cobertura", id: "press" },
-  { mark: "DI", label: "Digital", detail: "Plataformas y objetivos", id: "digital" },
+  { mark: "DI", label: "Digital", detail: "Plataformas y programas", id: "digital" },
   { mark: "IN", label: "Influenciadores", detail: "Perfiles por categoría", id: "influencers" },
 ] as const;
 
