@@ -14,9 +14,11 @@ export type RatedDeliveryLine = {id:string;medium:MediaGroup;quantity:number;amo
 export function projectPlanningDelivery(brief:BroadcastBrief,lines:RatedDeliveryLine[],model:PlanningCurveModel):DeliverySummary|null {
   if(!validDate(brief.startDate)||!validDate(brief.endDate)||brief.endDate<brief.startDate||!Number.isFinite(model.universe)||model.universe<=0)return null;
   if(model.target.ageMin!==18||model.target.ageMax!==99||model.target.sex!=="all"||model.target.nse!=="all"||!["18","18 99","personas 18"].includes(normalized(brief.ageRange??""))||normalized(brief.sex??"")!=="todas las personas"||normalized(brief.socioeconomic??"")!=="todos los nse"||brief.audienceType!=="B2C")return null;
-  const keys=[...new Set(briefMarketKeys(brief).map(key=>key.replace(/^provincia de /, "")).map(key=>key==="guayas"?"guayaquil":key==="pichincha"?"quito":key))].sort();
-  // Province briefs retain the narrower city label of the calibration.
-  if(!keys.length||keys.some(key=>!model.marketKeys.includes(key)))return null;
+  const requested=[...new Set(briefMarketKeys(brief).map(key=>key.replace(/^provincia de /, "")).map(key=>key==="guayas"?"guayaquil":key==="pichincha"?"quito":key))].sort();
+  // Geographic complements can sit outside the calibrated cities. Keep the
+  // measured population and its visible scope label; never expand the universe.
+  const keys=requested.filter(key=>model.marketKeys.includes(key));
+  if(!keys.length)return null;
   const scopeWeight=keys.reduce((sum,key)=>sum+(model.marketWeights[key]??0),0);
   if(!Number.isFinite(scopeWeight)||scopeWeight<=0||scopeWeight>1.000001)return null;
   const universe=model.universe*scopeWeight;
