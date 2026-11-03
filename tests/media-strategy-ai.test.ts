@@ -88,7 +88,7 @@ test("failed inference persists only bounded diagnostic metadata, never provider
     assert.equal(JSON.stringify(diagnostic).includes("account-private-secret"),false);
   }
   let code="";
-  const invalid=dependencies({invoke:async()=>JSON.stringify({...advice,allocations:[{...advice.allocations[0],weight:100}]}),persist:async(value,info)=>{assert.equal(value,null);code=info.code;return true;}});
+  const invalid=dependencies({invoke:async()=>JSON.stringify({...advice,allocations:[{...advice.allocations[0],weight:0}]}),persist:async(value,info)=>{assert.equal(value,null);code=info.code;return true;}});
   assert.equal((await resolveStrategyAi(brief,bundle,"{}",2000,invalid.deps)).state,"rejected");
   assert.equal(code,"OUTPUT_WEIGHT_TOTAL");
 });
@@ -111,7 +111,7 @@ test("unsafe explanatory copy is replaced without losing a validated selection o
 });
 
 test("safe copy fallback never rehabilitates forged sources, candidates or budgets",async()=>{
-  for(const patch of [{evidenceIds:["forged"]},{candidateIds:["forged"]},{weight:9999},{medium:"radio"}]){
+  for(const patch of [{evidenceIds:["forged"]},{candidateIds:["forged"]},{weight:10001},{medium:"radio"}]){
     const {deps}=dependencies({invoke:async()=>JSON.stringify({...advice,summary:"Garantiza el 99%",allocations:[{...advice.allocations[0],...patch,rationale:"Garantiza todas las ventas"}]})});
     const result=await resolveStrategyAi(brief,bundle,"{}",2000,deps);
     assert.equal(result.state,"rejected");assert.equal(result.advice,null);

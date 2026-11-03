@@ -38,7 +38,7 @@ export function strategyAiTransport(payload:ReturnType<typeof strategyAiPayload>
   const schema:Record<string,unknown>={type:"object",additionalProperties:false,required:["summary","allocations","questions"],properties:{
     summary:{type:"string",minLength:1,maxLength:480,pattern:"^[^0-9%$€<>]*$",description:"Conclusión de una o dos frases en español. Sin dígitos, porcentajes, importes, enlaces ni HTML; tampoco escribir edades o nombres con cifras."},
     allocations:{type:"array",minItems:1,maxItems:payload.allowedMedia.length,items:{anyOf:validOptions.map(option=>({type:"object",additionalProperties:false,required:["medium","weight","rationale","evidenceIds","candidateIds"],properties:{
-      medium:{type:"string",enum:[option.medium]},weight:{type:"integer",minimum:0,maximum:10000,description:"Los pesos de todos los medios suman diez mil."},rationale:{type:"string",minLength:1,maxLength:240,pattern:"^[^0-9%$€<>]*$",description:"Una frase sobre la selección. Sin dígitos, porcentajes, importes, enlaces ni HTML; tampoco escribir edades o nombres con cifras."},
+      medium:{type:"string",enum:[option.medium]},weight:{type:"integer",minimum:0,maximum:10000,description:"Prioridad relativa entera. El servidor normaliza los pesos y conserva el presupuesto."},rationale:{type:"string",minLength:1,maxLength:240,pattern:"^[^0-9%$€<>]*$",description:"Una frase sobre la selección. Sin dígitos, porcentajes, importes, enlaces ni HTML; tampoco escribir edades o nombres con cifras."},
       evidenceIds:idList(option.evidenceIds,1,6),candidateIds:idList(option.candidateIds,0,MAX_STRATEGY_EXECUTIONS),
     }}))}},questions:{type:"array",maxItems:0,items:{type:"string"}},
   }};

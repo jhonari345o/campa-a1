@@ -151,6 +151,23 @@ test("AI cannot introduce a provider, incompatible candidate, source, metric or 
     const bad=structuredClone(advice);mutate(bad);assert.equal(parseStrategyAdvice(JSON.stringify(bad),b,bundle),null);
   }
 });
+test("AI relative weights normalize without copying money or changing selected evidence",()=>{
+  const b=strategyBrief({selectedMedia:["television","digital"]}),bundle=buildStrategyEvidence(b,strategyResearch,strategyCatalogs(),date);
+  const row=(medium:"television"|"digital",weight:number)=>({medium,weight,rationale:"Se ajusta al objetivo del brief.",evidenceIds:["category-investment"],candidateIds:medium==="television"?[bundle.candidates[0].id]:[]});
+  for(const weights of [[30,70],[3333,6666],[1,2],[10000,10000],[0,100]]){
+    const raw={summary:"Combina medios para la cobertura solicitada.",allocations:[row("television",weights[0]),row("digital",weights[1])],questions:[]};
+    const parsed=parseStrategyAdvice(JSON.stringify(raw),b,bundle)!;
+    assert.ok(parsed);assert.equal(parsed.allocations.reduce((n,a)=>n+a.weight,0),10000);
+    const reverse=parseStrategyAdvice(JSON.stringify({...raw,allocations:[...raw.allocations].reverse()}),b,bundle)!;
+    assert.deepEqual(allocateStrategyBudget(parsed.allocations,12345.67),allocateStrategyBudget(reverse.allocations,12345.67));
+    assert.equal(allocateStrategyBudget(parsed.allocations,12345.67).reduce((n,a)=>n+Math.round(a.amountUsd!*100),0),1234567);
+    assert.deepEqual(parsed.allocations.map(a=>a.candidateIds),raw.allocations.map(a=>a.candidateIds));
+    for(let i=0;i<2;i++)assert.ok(Math.abs(parsed.allocations[i].weight-10000*weights[i]/(weights[0]+weights[1]))<1);
+  }
+  for(const weight of [-1,10001,.5,NaN])assert.equal(parseStrategyAdvice(JSON.stringify({summary:"Propuesta.",allocations:[row("digital",weight)]}),b,bundle),null);
+  assert.equal(parseStrategyAdvice(JSON.stringify({summary:"Propuesta.",allocations:[row("digital",0)]}),b,bundle),null);
+  assert.equal(parseStrategyAdvice(JSON.stringify({summary:"Propuesta.",allocations:[row("digital",1),row("digital",1)]}),b,bundle),null);
+});
 test("the complete brief and only canonical source fields are sent to the strategy adapter",async()=>{
   const b=strategyBrief({audience:"Necesidad específica",competitors:"Competidor sintético",restrictions:"No usar prensa",learnings:"Aprendizaje sintético"}),bundle=buildStrategyEvidence(b,strategyResearch,strategyCatalogs(),date);
   const base=await buildMediaPlan({...b,research:scopePlanningResearch(strategyResearch,bundle)});
@@ -199,6 +216,9 @@ test("a consolidated radio ranking preserves actual provincial signals and rejec
  const advice={summary:"Cobertura en las plazas solicitadas.",allocations:[{medium:"radio",weight:10000,rationale:"Combina señales de ambas provincias.",evidenceIds:[sid],candidateIds:["radio-0"]}],questions:[]};
  let rejected="";
  assert.equal(parseStrategyAdvice(JSON.stringify(advice),brief,bundle,code=>{rejected=code;}),null);assert.equal(rejected,"RADIO_GEOGRAPHY");
+ advice.allocations[0].weight=1;
+ assert.equal(parseStrategyAdvice(JSON.stringify(advice),brief,bundle,code=>{rejected=code;}),null);assert.equal(rejected,"RADIO_GEOGRAPHY");
+ advice.allocations[0].weight=10000;
  advice.allocations[0].candidateIds.push("radio-10");
  assert.ok(parseStrategyAdvice(JSON.stringify(advice),brief,bundle));
  const baseline=await buildMediaPlan({...brief,research:strategyResearch});
