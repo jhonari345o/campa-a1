@@ -47,3 +47,16 @@ test("projections use current GRPs and preserve target, measured city scope and 
  const city=projectPlanningDelivery({...brief,geography:"Guayaquil"},[{...line("television"),ratingMarketKeys:["guayaquil"]}],model)!;
  assert.equal(city.people,9000);assert.equal(city.scopeLabel,"Personas de 18 años o más · Guayaquil");
 });
+test("OOH and unranked press in other cities retain measured reach without widening its population",()=>{
+ const measured=[line("television"),line("radio")],base=projectPlanningDelivery(brief,measured,model)!;
+ const wider={...brief,geography:"Guayas, Pichincha, Azuay"};
+ const extra:RatedDeliveryLine[]=[{id:"outside-ooh",medium:"ooh",quantity:2,amountCents:200000,ratingPct:null,ratingMarketKeys:[],studyEnd:null},{id:"unranked-press",medium:"press",quantity:1,amountCents:10000,ratingPct:null,ratingMarketKeys:[],studyEnd:null}];
+ const result=projectPlanningDelivery(wider,[...measured,...extra],model)!;
+ for(const metric of ["reach1Pct","reach2Pct","reach3Pct","people","frequency","grps"] as const)assert.equal(result[metric],base[metric]);
+ assert.equal(result.scopeLabel,"Personas de 18 años o más · Guayaquil y Quito");
+ assert.deepEqual(result.geographicComplements,["ooh","press"]);
+ assert.equal(projectPlanningDelivery(wider,extra,model),null);
+ // A radio observation outside the calibration still cannot be added to it.
+ const outsideRadio={...line("radio"),id:"cuenca-radio",ratingMarketKeys:["cuenca"]};
+ assert.equal(projectPlanningDelivery(wider,[...measured,outsideRadio,...extra],model)?.reach1Pct,null);
+});
