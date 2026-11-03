@@ -20,6 +20,7 @@ import { buildResearchRecommendation,prepareResearchRecommendation,completeResea
 import { customizeStrategyPlan } from "@/lib/media-strategy";
 import { validPlanPeriod } from "@/lib/brief-inputs";
 import {sealPlanningPreparation,openPlanningPreparation} from "@/lib/planning-preparation";
+import {PlanningSourcesUnavailable,type PlanningPreparationResult} from "@/lib/planning-source-loading";
 
 export type PlanBrief = {
   clientId?:string|null;clientName?:string;
@@ -102,7 +103,7 @@ export type PlanResult =
 export async function generarPlan(
   _prev: PlanResult | null,
   formData: FormData,
-): Promise<{ok:true;preparation:string}|{ok:false;error:string}> {
+): Promise<PlanningPreparationResult> {
   const startedAt = Date.now();
   const profile = await getSessionProfile();
   if (!profile) return { ok: false, error: "Debes iniciar sesion." };
@@ -194,10 +195,11 @@ export async function generarPlan(
   };
 
   try {
-    const prepared=await prepareResearchRecommendation(brief,research,{profile,timeoutMs:Math.max(1,20_000-(Date.now()-startedAt))});
+    const prepared=await prepareResearchRecommendation(brief,research,{profile,timeoutMs:Math.max(1,24_000-(Date.now()-startedAt))});
     const preparation=sealPlanningPreparation({brief,research,prepared},profile.id,process.env.SUPABASE_SERVICE_ROLE_KEY??"");
     return {ok:true,preparation};
   } catch (err) {
+    if(err instanceof PlanningSourcesUnavailable)return {ok:false,retryable:true,error:"No pudimos cargar los medios de tu cuenta. Tu brief se conserva; vuelve a generar el plan."};
     if (err instanceof Error && err.message === "INVALID_STRATEGY_BRIEF") return { ok: false, error: "Revisa las fechas, el presupuesto y la extensión del brief antes de generar la recomendación." };
     if (err instanceof Error && err.message === "NO_CATEGORY_MEDIA_EVIDENCE") return { ok: false, error: "No hay inversión de categoría ni consumo TGI disponibles para los medios seleccionados. Revisa otros medios o utiliza el constructor manual." };
     if (err instanceof Error && err.message.includes("SUPABASE_SERVICE_ROLE_KEY")) {
