@@ -10,6 +10,14 @@ test("radio defaults require authorized sale identity and explicit duration, nev
  assert.deepEqual(mergeRadioDefaults([],[base]),[base]);
  for(const p of [{...base,key:"radio:workspace:private"},{...base,source:{...base.source,agreementId:"private"}},{...base,source:{...base.source,standingPrice:false}},{...base,source:{...base.source,seconds:10}},{...base,priceCents:NaN}])assert.deepEqual(mergeRadioDefaults([],[p]),[]);
 });
+test("regional defaults retain their exact station, duration and price without accepting an unlinked fallback",()=>{
+ const regional={...base,key:`radio:regional:${"b".repeat(32)}`,priceCents:1200,source:{...base.source,seconds:30},unit:"cuña de 30 s",format:"Cuña de 30 s"};
+ assert.deepEqual(mergeRadioDefaults([],[regional]),[regional]);
+ assert.deepEqual(mergeRadioDefaults([],[{...regional,source:{...regional.source,stationId:undefined}}]),[]);
+ assert.equal(scopeCatalogProducts([regional],[],"2026-11-03",false)[0].priceCents,1200);
+ const rate:AgreedCatalogRate={productKey:regional.key,agreementId:"account",priceCents:1100,taxIncluded:false,conditions:"",validFrom:"2026-11-03",validTo:"infinity"};
+ assert.equal(scopeCatalogProducts([regional],[rate],"2026-11-03",false)[0].priceCents,1100);
+});
 test("CNE defaults can price future campaigns without inheriting the source campaign's dates",()=>{
  const [p]=scopeCatalogProducts([base],[],"2026-11-02",false);
  assert.equal(planningProductPrice(p,"2026-11-03","2026-11-30")?.priceUsd,20);
