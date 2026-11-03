@@ -301,11 +301,12 @@ test("OOH production charges stay out of media recommendations while a placement
  catalogs.ooh.assets=[photographedAsset({id:"physical-location",recordType:"asset"})];
  const base={kind:"ooh" as const,provider:"Proveedor sintético",name:"Soporte sintético",unit:"contratación",priceCents:100000,taxIncluded:false,location:"Quito",marketKeys:["quito"],reference:"",conditions:"",image:null,validFrom:"2026-11-01",validTo:null,source:{assetId:"physical-location",standingPrice:true}};
  catalogs.workspaceProducts=["Pauta","Cambio de branding","Producción de lona","Instalación","Pauta + producción"].map((component,i)=>({...base,key:`ooh:physical-location:${i}`,format:"Soporte",source:{...base.source,rate:{amount:1000,component,period:"mes",basis:"soporte"}}}));
+ catalogs.workspaceProducts.push({...base,key:"ooh:workspace:ancillary-charge",format:"Pauta",unit:"pago único · cambio de branding",source:{workspaceProductId:"synthetic-workspace-charge",assetId:"physical-location"}});
  const bundle=buildStrategyEvidence(strategyBrief({selectedMedia:["ooh"]}),strategyResearch,catalogs,date);
  const rows=bundle.candidates.filter(c=>c.id.startsWith("workspace:"));
  assert.deepEqual(rows.map(c=>c.catalogKey),["ooh:physical-location:0","ooh:physical-location:4"]);
  assert.ok(rows.every(c=>c.physicalAssetId==="physical-location"));
  const executions=allocateStrategyExecutions(rows,10000);
  assert.equal(executions.length,1);assert.equal(executions[0].units,1);
- assert.equal(catalogs.workspaceProducts.length,5);
+ assert.equal(catalogs.workspaceProducts.length,6);
 });

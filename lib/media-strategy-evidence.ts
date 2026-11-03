@@ -209,7 +209,10 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
     // Additional production/branding charges remain in the commercial catalog,
     // but are not independent media placements or geographic coverage.
     const component=normalized(p.source.rate?.component||p.format);
-    if(medium==="ooh"&&/\b(?:branding|produccion|impresion|instalacion|montaje|desmontaje)\b/.test(component)&&!/\b(?:pauta|alquiler|arrendamiento|exhibicion|difusion)\b/.test(component))continue;
+    const ancillary=/\b(?:branding|produccion|impresion|instalacion|montaje|desmontaje)\b/;
+    const billingUnit=normalized(p.unit);
+    const ancillaryUnit=ancillary.test(billingUnit)&&/\b(?:pago unico|cambio de|por servicio)\b/.test(billingUnit);
+    if(medium==="ooh"&&(ancillaryUnit||ancillary.test(component)&&!/\b(?:pauta|alquiler|arrendamiento|exhibicion|difusion)\b/.test(component)))continue;
     const asset = medium === "ooh" && p.source.assetId ? catalogs.ooh.assets.find(asset => asset.id === p.source.assetId) : undefined;
     const station=medium==="radio"&&p.source.stationId?catalogs.radio.stations.find(s=>s.id===p.source.stationId):undefined;
     const radioCoverage=station?radioCommercialCoverage(p.marketKeys?.length?p.marketKeys:p.location.split(/\s*[·,+]\s*/),station.regionKeys):undefined;
