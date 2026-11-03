@@ -15,7 +15,7 @@ export type StrategyAiDiagnostic = {
 /** Codes only: never persist prompts, raw output, account details or error messages. */
 function providerFailureCode(error: unknown): string {
   const message = error instanceof Error ? error.message : "";
-  return /^(?:PROVIDER_HTTP_[45]\d\d|PROVIDER_HTTP_400_(?:REASONING|MODEL|FORMAT|CONTEXT)|PROVIDER_TIMEOUT|PROVIDER_OUTPUT_TRUNCATED|BEDROCK_OUTPUT_TRUNCATED)$/.test(message)
+  return /^(?:PROVIDER_HTTP_[45]\d\d|PROVIDER_HTTP_400_(?:REASONING|MODEL|MODEL_COUNT|ROUTING|FORMAT|CONTEXT)|PROVIDER_TIMEOUT|PROVIDER_OUTPUT_TRUNCATED|BEDROCK_OUTPUT_TRUNCATED)$/.test(message)
     ? message : "PROVIDER_UNAVAILABLE";
 }
 /** Dependency boundary makes quota, provider failure and fail-closed validation testable without inference charges. */

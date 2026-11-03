@@ -7,7 +7,7 @@ import { briefMarketKeys } from "./broadcast-catalog";
 import { planningStudyBrief, nationalTerritoryOrder, territoryProvince, territoryKey, territoriesOverlap } from "./planning-market";
 import { coverageFromLabels } from "./geographic-coverage";
 
-export const STRATEGY_VERSION = "2026-11-03.24";
+export const STRATEGY_VERSION = "2026-11-03.25";
 export const MAX_STRATEGY_EXECUTIONS = 25;
 // Planning policy approved by the platform owner; it is not an audience study.
 export const STARTING_MEDIA_MIX: Readonly<Record<MediaGroup, number>> = {
@@ -315,7 +315,8 @@ export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:Strate
   const reject=(code:string)=>{onReject?.(code);return null;};
   if(typeof raw!=="string"||raw.length>24_000)return reject("SIZE");
   let v:Record<string,unknown>;try{v=obj(JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/g,"").trim()));}catch{return reject("JSON");}
-  const text=(s:unknown,max:number)=>typeof s==="string"&&s.trim().length>0&&s.length<=max&&!/[<>]|https?:|www\.|garantiz/i.test(s)&&!/[\d%$€]/.test(s.replace(/\bB2[BC]\b/gi,""));
+  const internalCopy=/\b(?:mixPolicy|candidateIds?|evidenceIds?|referenceCases|allocationOptions|outputContract|allowedMedia|executionPatterns|providerCount|budgetScale|stationCoverage|coverageKeys|territorialPolicy|same_client|structural_reference|ooh|press|influencers)\b/i;
+  const text=(s:unknown,max:number)=>typeof s==="string"&&s.trim().length>0&&s.length<=max&&!/[<>]|https?:|www\.|garantiz/i.test(s)&&!internalCopy.test(s)&&!/[\d%$€]/.test(s.replace(/\bB2[BC]\b/gi,""));
   if(typeof v.summary!=="string")return reject("SUMMARY");
   let safeTextUsed=!text(v.summary,1400);
   if(!Array.isArray(v.allocations)||!v.allocations.length||v.allocations.length>6)return reject("ALLOCATIONS");

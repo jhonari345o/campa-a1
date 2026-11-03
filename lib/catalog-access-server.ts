@@ -36,9 +36,15 @@ export async function priceCatalogProducts(products: CatalogProduct[], previewCo
   const { data: defaultRows, error: defaultError } = await scope.db.from("catalog_tv_defaults").select("product").eq("active", true).order("product_key").limit(1000);
   if (defaultError) throw new Error("TV_DEFAULT_PRICING_UNAVAILABLE");
   products = mergeTvDefaults(products, (defaultRows ?? []).map(row => row.product as CatalogProduct));
-  const {data:radioDefaults,error:radioDefaultError}=await scope.db.rpc("catalog_cne_radio_products");
-  if(radioDefaultError)throw new Error("RADIO_DEFAULT_PRICING_UNAVAILABLE");
-  products=mergeRadioDefaults(products,(radioDefaults??[]).map((row:{product:CatalogProduct})=>row.product));
+  const radioProducts: CatalogProduct[] = [];
+  for (let from = 0; from < 20000; from += 500) {
+    const {data,error}=await scope.db.rpc("catalog_cne_radio_products").range(from,from+499);
+    if(error)throw new Error("RADIO_DEFAULT_PRICING_UNAVAILABLE");
+    radioProducts.push(...(data??[]).map((row:{product:CatalogProduct})=>row.product));
+    if((data??[]).length<500)break;
+    if(from===19500)throw new Error("RADIO_DEFAULT_PRICING_LIMIT");
+  }
+  products=mergeRadioDefaults(products,radioProducts);
   const rates:AgreedCatalogRate[]=[];
   if((!scope.isAdmin||previewCompanyId)&&companyId){
     for(let from=0;from<20000;from+=500){

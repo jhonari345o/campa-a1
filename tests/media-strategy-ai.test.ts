@@ -79,7 +79,7 @@ test("oversized prompts, insufficient time and forged cached sources are rejecte
   const forged=dependencies({cached,allowRequest:false});assert.equal((await resolveStrategyAi(brief,bundle,"{}",2000,forged.deps)).advice,null);
 });
 test("failed inference persists only bounded diagnostic metadata, never provider detail or raw output",async()=>{
-  for(const [message,expected] of [["PROVIDER_HTTP_429","PROVIDER_HTTP_429"],["account-private-secret","PROVIDER_UNAVAILABLE"]]){
+  for(const [message,expected] of [["PROVIDER_HTTP_429","PROVIDER_HTTP_429"],["PROVIDER_HTTP_400_MODEL_COUNT","PROVIDER_HTTP_400_MODEL_COUNT"],["PROVIDER_HTTP_400_ROUTING","PROVIDER_HTTP_400_ROUTING"],["account-private-secret","PROVIDER_UNAVAILABLE"]]){
     let diagnostic:unknown;
     const {deps}=dependencies({invoke:async()=>{throw new Error(message);},persist:async(value,info)=>{assert.equal(value,null);diagnostic=info;return true;}});
     const result=await resolveStrategyAi(brief,bundle,"{}",2000,deps);
@@ -94,7 +94,7 @@ test("failed inference persists only bounded diagnostic metadata, never provider
 });
 
 test("unsafe explanatory copy is replaced without losing a validated selection or exposing claims",async()=>{
-  for(const unsafe of ["Garantiza las ventas", "Alcanzaremos el 90%", "https://example.com", "<script>alert('x')</script>", "".padEnd(1500,"x")]){
+  for(const unsafe of ["Garantiza las ventas", "Alcanzaremos el 90%", "https://example.com", "<script>alert('x')</script>", "".padEnd(1500,"x"), "Se distribuye el presupuesto según mixPolicy y evidencia comparable en television, radio, ooh, press y digital.", "Priorizamos same_client y referenceCases.", "Seleccionamos candidateIds según coverageKeys."]){
     let info:Record<string,unknown>={},persisted=0;
     const {deps}=dependencies({allowRepair:true,invoke:async()=>JSON.stringify({...advice,summary:unsafe,allocations:[{...advice.allocations[0],rationale:unsafe}]}),persist:async(value,diagnostic)=>{assert.ok(value);persisted++;info=diagnostic;return true;}});
     const result=await resolveStrategyAi(brief,bundle,"{}",19000,deps);
