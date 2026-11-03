@@ -25,6 +25,7 @@ import { getLlmConfiguration, planningAiEnabled } from "./assistant/llm-config";
 import { optionalWithinBudget } from "./optional-task";
 import type { CategoryResearch } from "./infomedia";
 import { validDate } from "./broadcast-catalog";
+import {PlanningSourcesUnavailable,requirePlanningSources} from "./planning-source-loading";
 
 const EMPTY:StrategyCatalogs={broadcast:{sources:[],tv:[],radio:[]},radio:{stations:[]},press:{entries:[]},ooh:{assets:[]},influencers:[],tvAudience:[]};
 const SYSTEM = [
@@ -75,6 +76,7 @@ async function loadCatalogs(brief:StrategyBrief):Promise<StrategyCatalogs> {
     wanted.has("television")?readPlanningDeliveryModel():Promise.resolve(null),
     readAtlAudience((["press","ooh"] as const).filter(m=>wanted.has(m))),
   ]);
+  if([broadcast,radio,press,ooh,atlAudience].some(c=>c.error))throw new PlanningSourcesUnavailable();
   const workspaceProducts=(await priceCatalogProducts(catalogProducts(influencers,ooh,{broadcast,radio,press}))).filter(p=>p.source.workspaceProductId||p.source.agreementId||p.source.standingPrice);
   return {broadcast,radio,press,ooh,tvAudience,influencers,workspaceProducts,tvShares:deliveryModel?.channelShares,atlAudience};
 }
@@ -90,9 +92,8 @@ export async function prepareResearchRecommendation(brief:StrategyBrief,research
   const asOf=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Guayaquil",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
   const generatedAt=new Date().toISOString(), aiConfig=getLlmConfiguration();
   const model=aiConfig?`${aiConfig.provider}:${aiConfig.model}`:null;
-  let catalogs=EMPTY;
-  const allowance=Math.min(20_000,Math.max(1,options.timeoutMs??20_000));
-  catalogs=await optionalWithinBudget(()=>loadCatalogs(brief),()=>({...EMPTY,broadcast:{...EMPTY.broadcast,error:"No se pudieron cargar todas las fuentes dentro del tiempo disponible."}}),Math.min(7000,allowance));
+  const allowance=Math.min(22_000,Math.max(1,options.timeoutMs??22_000));
+  const catalogs=await requirePlanningSources(()=>loadCatalogs(brief),Math.max(1,allowance-2500));
   const bundle=buildStrategyEvidence(brief,research,catalogs,asOf);
   bundle.referenceCases=await optionalWithinBudget(()=>readPlanningReferenceCases(brief,bundle.candidates),()=>[],1500);
   for(const catalog of [catalogs.broadcast,catalogs.radio,catalogs.press,catalogs.ooh])if(catalog.error)bundle.gaps.push(catalog.error);

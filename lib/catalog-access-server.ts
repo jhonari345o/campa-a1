@@ -10,9 +10,10 @@ import { mergeTvDefaults, preferNegotiatedTelevision } from "./tv-default-pricin
 import { radioRatePreference } from "./account-radio-tariffs";
 import { mergeRadioDefaults } from "./radio-default-pricing";
 import { mergeDigitalProductions } from "./digital-productions";
+import {requestScoped} from "./request-scope";
 
 /** Per-request authorization precedes every privileged catalog read. Never cache across users. */
-export const catalogAccess = cache(async () => {
+export const catalogAccess = cache(() => requestScoped("catalog-access",async () => {
   const profile = await getSessionProfile();
   if (!profile) throw new Error("AUTH_REQUIRED");
   const caller = await createClient();
@@ -21,7 +22,7 @@ export const catalogAccess = cache(async () => {
   const db = createAdminClient();
   return { db, isAdmin: profile.is_platform_admin, companyId: profile.workspace?.companyId, clientContext:await catalogClientContext() };
 
-});
+}));
 export async function priceCatalogProducts(products: CatalogProduct[], previewCompanyId?: string, previewClientId?:string): Promise<CatalogProduct[]> {
   const scope = await catalogAccess();
   const day = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Guayaquil", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -34,21 +35,25 @@ export async function priceCatalogProducts(products: CatalogProduct[], previewCo
     if(error||!data)throw new Error("CLIENT_SCOPE_REQUIRED");
   }
   // Only authenticated catalog users reach this privileged read. Project public sale fields only.
-  const { data: defaultRows, error: defaultError } = await scope.db.from("catalog_tv_defaults").select("product").eq("active", true).order("product_key").limit(1000);
-  if (defaultError) throw new Error("TV_DEFAULT_PRICING_UNAVAILABLE");
-  products = mergeTvDefaults(products, (defaultRows ?? []).map(row => row.product as CatalogProduct));
-  const radioProducts: CatalogProduct[] = [];
-  for (let from = 0; from < 20000; from += 500) {
-    const {data,error}=await scope.db.rpc("catalog_cne_radio_products").range(from,from+499);
-    if(error)throw new Error("RADIO_DEFAULT_PRICING_UNAVAILABLE");
-    radioProducts.push(...(data??[]).map((row:{product:CatalogProduct})=>row.product));
-    if((data??[]).length<500)break;
-    if(from===19500)throw new Error("RADIO_DEFAULT_PRICING_LIMIT");
-  }
+  const [tvDefaults,radioProducts,digitalDefaults]=await Promise.all([
+    scope.db.from("catalog_tv_defaults").select("product").eq("active",true).order("product_key").limit(1000),
+    (async()=>{
+      const rows:CatalogProduct[]=[];
+      for(let from=0;from<20000;from+=500){
+        const {data,error}=await scope.db.rpc("catalog_cne_radio_products").range(from,from+499);
+        if(error)throw new Error("RADIO_DEFAULT_PRICING_UNAVAILABLE");
+        rows.push(...(data??[]).map((row:{product:CatalogProduct})=>row.product));
+        if((data??[]).length<500)return rows;
+      }
+      throw new Error("RADIO_DEFAULT_PRICING_LIMIT");
+    })(),
+    scope.db.from("catalog_digital_productions").select("product").eq("active",true).order("product_key").limit(1000),
+  ]);
+  if(tvDefaults.error)throw new Error("TV_DEFAULT_PRICING_UNAVAILABLE");
+  if(digitalDefaults.error)throw new Error("DIGITAL_CATALOG_UNAVAILABLE");
+  products=mergeTvDefaults(products,(tvDefaults.data??[]).map(row=>row.product as CatalogProduct));
   products=mergeRadioDefaults(products,radioProducts);
-  const {data:digitalRows,error:digitalError}=await scope.db.from("catalog_digital_productions").select("product").eq("active",true).order("product_key").limit(1000);
-  if(digitalError)throw new Error("DIGITAL_CATALOG_UNAVAILABLE");
-  products=mergeDigitalProductions(products,(digitalRows??[]).map(row=>row.product as CatalogProduct));
+  products=mergeDigitalProductions(products,(digitalDefaults.data??[]).map(row=>row.product as CatalogProduct));
   const rates:AgreedCatalogRate[]=[];
   if((!scope.isAdmin||previewCompanyId)&&companyId){
     for(let from=0;from<20000;from+=500){
