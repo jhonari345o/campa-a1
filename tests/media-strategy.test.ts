@@ -268,3 +268,30 @@ test("large catalogs preserve account-priced assets and cost the campaign withou
  assert.ok(candidate.sourceIds.every(id=>bundle.sources.some(s=>s.id===id)));
  assert.ok(bundle.candidates.length<=100);assert.deepEqual(candidate.metrics,[]);
 });
+
+test("unpriced addresses do not displace current priced OOH products in one city",()=>{
+ const catalogs=strategyCatalogs();
+ catalogs.ooh.assets=Array.from({length:150},(_,i)=>photographedAsset({id:`context-${i}`,address:`Dirección sintética ${i}`,recordType:"asset"}));
+ catalogs.ooh.assets.push(...Array.from({length:12},(_,i)=>photographedAsset({id:`priced-${i}`,recordType:"asset"})));
+ catalogs.workspaceProducts=Array.from({length:12},(_,i)=>({key:`ooh:priced-${i}:0`,kind:"ooh",provider:"Proveedor sintético",name:`Pantalla sintética ${i}`,format:"Pantalla",unit:"mes · por pantalla",billingPeriod:"month",priceCents:100000,taxIncluded:false,location:"Quito",marketKeys:["pichincha"],reference:"",conditions:"",image:null,validFrom:"2026-11-01",validTo:null,source:{assetId:`priced-${i}`,agreementId:"synthetic-agreement"}}));
+ const bundle=buildStrategyEvidence(strategyBrief({selectedMedia:["ooh"]}),strategyResearch,catalogs,date);
+ assert.equal(bundle.candidates.length,100);
+ assert.equal(bundle.candidates.filter(c=>c.unitPriceUsd===1000).length,12);
+ assert.ok(bundle.candidates.filter(c=>c.id.startsWith("workspace:")).every(c=>c.maximumUnits===1&&c.sourceIds.every(id=>bundle.sources.some(s=>s.id===id))));
+});
+
+test("OOH broadens physical locations before repeating an activation to absorb the budget",()=>{
+ const b=strategyBrief({selectedMedia:["ooh"],budgetUsd:10000}),bundle=buildStrategyEvidence(b,strategyResearch,strategyCatalogs(),date);
+ const template={medium:"ooh" as const,provider:"Proveedor sintético",product:"Elemento",market:"Quito",coverageKeys:["quito"],target:"",period:"",sourceIds:[],sourceUse:"comparable" as const,unit:"contratación",unitPriceUsd:1000,referencePriceUsd:1000,minimumUnits:1,minimumSpendUsd:1000,metrics:[],note:""};
+ bundle.candidates=Array.from({length:12},(_,i)=>({...template,id:`fixed-${i}`,catalogKey:`fixed-${i}`,maximumUnits:1}));
+ bundle.candidates.push({...template,id:"outing",catalogKey:"outing",unit:"salida",unitPriceUsd:500,referencePriceUsd:500,minimumSpendUsd:500});
+ const base={matched:0,totalRef:0,plan:[],basis:"infomedia" as const,benchmark:[],profileLabel:"Sintético",strategySummary:"Sintético"};
+ const report=buildStrategyReport(b,bundle,base,{aiState:"validated",fingerprint:"synthetic",generatedAt:date,advice:{summary:"Combina ubicaciones y activaciones.",questions:[],allocations:[{medium:"ooh",weight:10000,rationale:"Presencia territorial.",candidateIds:["fixed-0","fixed-1","outing"],evidenceIds:[]}]}});
+ const rows=report.allocations[0].executions!;
+ assert.equal(rows.filter(e=>e.candidate.maximumUnits===1).length,9);
+ assert.ok(rows.filter(e=>e.candidate.maximumUnits===1).every(e=>e.units===1));
+ assert.equal(rows.find(e=>e.candidate.id==="outing")?.units,2);
+ assert.equal(new Set(rows.map(e=>e.candidate.catalogKey)).size,rows.length);
+ assert.equal(rows.reduce((n,e)=>n+(e.referenceSpendUsd??0),0),10000);
+ assert.equal(report.evaluation.budgetConserved,true);
+});
