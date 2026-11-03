@@ -47,3 +47,11 @@ test("Ecuavisa's named Contacto Directo segment retains only its matching hour",
  assert.equal(televisionStudyMatches(p,study),true);
  assert.equal(televisionStudyMatches({...p,format:"Lunes a viernes · 08:00"},study),false);
 });
+
+import {strategyDeliveryPicks} from "../lib/strategy-delivery-picks";
+test("proposal and analysis measure the exact catalog quantities, not allocated budgets",()=>{
+ const candidate={id:"sample",catalogKey:"tv:news"} as StrategyCandidate;
+ const rows=[{candidate,units:12},{candidate,units:18},{candidate:{...candidate,catalogKey:"radio:spot"},units:30},{candidate:{...candidate,catalogKey:null},units:10},{candidate:{...candidate,catalogKey:"invalid:fraction"},units:1.5},{candidate:{...candidate,catalogKey:"invalid:negative"},units:-2}];
+ const allocations=[{medium:"television",executions:rows,candidate,units:1000},{medium:"radio",executions:[],candidate:{...candidate,catalogKey:"radio:spot"},units:10}] as StrategyAllocation[];
+ assert.deepEqual(strategyDeliveryPicks({allocations}),[{productKey:"tv:news",quantity:30},{productKey:"radio:spot",quantity:40}]);
+});

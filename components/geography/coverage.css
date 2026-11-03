@@ -1,4 +1,4 @@
-.geographic-coverage-field { --forest:#22392f; --forest-deep:#17281f; --signal:#00a100; --signal-dark:#007d00; --signal-soft:#eaf6e8; --muted:#69716d; --white:#fff; --border:#d7ddd8; --concrete:#dfe3dd; --coverage-selected:#56c877; --coverage-outline:#185c38; --coverage-unselected:#aeb7b2; }
+.geographic-coverage-field { --forest:#22392f; --forest-deep:#17281f; --signal:#00a100; --signal-dark:#007d00; --signal-soft:#eaf6e8; --muted:#69716d; --white:#fff; --border:#d7ddd8; --concrete:#dfe3dd; --coverage-selected:#ff735c; --coverage-outline:#7f211a; --coverage-unselected:#aeb7b2; }
 .geographic-coverage-field {
   background:
     radial-gradient(circle at 8% 7%, rgba(0, 161, 0, .09), transparent 29%),
@@ -231,7 +231,7 @@
 
 .geographic-coverage-field .coverage-chips > button:hover { border-color: var(--coverage-outline); transform: translateY(-1px); }
 .geographic-coverage-field .coverage-chips > button > i { background: var(--coverage-selected); border: 1px solid var(--coverage-outline); border-radius: 50%; display: block; height: 8px; width: 8px; }
-.geographic-coverage-field .coverage-chips > button > i.city { box-shadow: 0 0 0 3px rgb(86 200 119 / 18%); }
+.geographic-coverage-field .coverage-chips > button > i.city { box-shadow: 0 0 0 3px rgb(255 115 92 / 18%); }
 .geographic-coverage-field .coverage-chips span,
 .geographic-coverage-field .coverage-chips small { display: block; }
 .geographic-coverage-field .coverage-chips span { font-size: 11px; font-weight: 850; }

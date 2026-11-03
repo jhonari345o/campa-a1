@@ -14,7 +14,7 @@ export function ProviderPlanCards({allocation,delivery,campaignPeriod}:{allocati
     const measurement=delivery?.providers?.find(p=>p.key===group.key);
     const programs=[...new Set(group.rows.map(r=>r.candidate.product))];
     return <details className={styles.card} key={group.key}>
-      <summary><div className={styles.identity}><MediaProviderMark provider={group.provider} medium={allocation.medium} context={group.rows.map(r=>r.candidate.market).join(" ")}/><div><h4>{group.provider}</h4><p>{programs.length} {broadcast?"programas / formatos":"opciones"}</p></div><strong>{money(group.spend)}</strong></div>
+      <summary><div className={styles.identity}><MediaProviderMark provider={group.provider} medium={allocation.medium} context={group.rows.map(r=>r.candidate.market).join(" ")}/><div><h4>{group.provider}</h4><p>{programs.length} {broadcast ? (programs.length === 1 ? "programa / formato" : "programas / formatos") : (programs.length === 1 ? "opción" : "opciones")}</p></div><strong>{money(group.spend)}</strong></div>
         <p className={styles.programs}>{programs.slice(0,3).join(" · ")}{programs.length>3?` · +${programs.length-3}`:""}</p>
         <dl className={styles.kpis}><div><dt>{broadcast?"Cuñas":"Unidades"}</dt><dd>{number(group.spots)}</dd></div>{measurement?.grps!=null&&<div><dt>GRPs</dt><dd>{number(measurement.grps)}</dd></div>}{measurement&&<div><dt>Alcance</dt><dd>{number(measurement.reachPct)}%</dd></div>}{measurement?.frequency!=null&&<div><dt>Frecuencia</dt><dd>{number(measurement.frequency)}×</dd></div>}</dl>
         <span className={styles.expand}>Ver {broadcast?"mapa de pauta":"selección"}<b aria-hidden="true">＋</b></span>
