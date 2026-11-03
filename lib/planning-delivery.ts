@@ -8,7 +8,20 @@ export type PlanningCurveModel = {
   programs?: {key:string;provider:string;program:string;hour:string;ratings:Record<string,number>;productKeys:string[];offerIds:string[]}[];
   channelShares?: {channel:string;sharePct:number;periodStart:string;periodEnd:string}[];
 };
-export type RatedDeliveryLine = {id:string;medium:MediaGroup;quantity:number;amountCents:number;ratingPct:number|null;ratingMarketKeys:string[];studyEnd:string|null};
+export type RatedDeliveryLine = {id:string;medium:MediaGroup;quantity:number;amountCents:number;ratingPct:number|null;ratingMarketKeys:string[];studyEnd:string|null;providerKey?:string;programmeKey?:string};
+
+/** A campaign-wide curve cannot establish a single channel's or programme's reach.
+ * Requiring a varied schedule is an applicability guard, not a duplication model. */
+export function matchesCurveScope(curve:ReachCurve, lines:RatedDeliveryLine[]):boolean {
+  if(curve.scope!=="multi_channel")return true;
+  const channels=new Map<string,Set<string>>();
+  for(const line of lines){
+    if(!line.providerKey||!line.programmeKey)return false;
+    const programmes=channels.get(line.providerKey)??new Set<string>();
+    programmes.add(line.programmeKey);channels.set(line.providerKey,programmes);
+  }
+  return channels.size>=2&&[...channels.values()].every(programmes=>programmes.size>=2);
+}
 
 /** Project an authorized selection using current compatible ratings and the supplied historical calibration. */
 export function projectPlanningDelivery(brief:BroadcastBrief,lines:RatedDeliveryLine[],model:PlanningCurveModel):DeliverySummary|null {
@@ -27,6 +40,7 @@ export function projectPlanningDelivery(brief:BroadcastBrief,lines:RatedDelivery
   const geography=keys.join(",");
   const selection:DeliverySelection={context:{startDate:brief.startDate,endDate:brief.endDate,geography,audience:"18+|all|all"},media:media.map(medium=>({medium,items:lines.filter(l=>l.medium===medium).map(({id,quantity,amountCents})=>({id,quantity,amountCents}))}))};
   const observations:DeliveryObservation[]=[];
+  const contactsWithoutReach:NonNullable<DeliverySummary["contactMedia"]>=[];
   for(const medium of media){
     const curve=model.curves.find(c=>c.medium===medium),all=lines.filter(l=>l.medium===medium);
     // Keep geographic purchases in the plan, without attributing contacts to
@@ -44,6 +58,10 @@ export function projectPlanningDelivery(brief:BroadcastBrief,lines:RatedDelivery
       grps+=line.quantity*line.ratingPct!*weight;
     }
     if(!compatible)continue;
+    if(!matchesCurveScope(curve,selected)){
+      if(medium==="television"||medium==="radio")contactsWithoutReach.push({medium,grps,impressions:grps*universe/100,frequency:null});
+      continue;
+    }
     const modeledReach=reachAtGrps(curve,grps);
     const cap=Math.min(100,[...covered].reduce((sum,key)=>sum+(model.marketWeights[key]??0),0)/scopeWeight*100);
     const reach=modeledReach==null?null:Math.min(cap,modeledReach),thresholds=reach==null?null:projectContactThresholds(reach,grps);
@@ -51,5 +69,13 @@ export function projectPlanningDelivery(brief:BroadcastBrief,lines:RatedDelivery
     observations.push({medium,selectionKey:deliverySelectionKey(selection,medium),universe,universeId:`planning-adults-${geography}`,targetId:"18+|all|all",geographyId:geography,periodId:`${brief.startDate}/${brief.endDate}`,reach1Pct:reach,...thresholds,impressions:grps*universe/100,evidenceId:"owner-authorized-historical-curve-projection",approved:true});
   }
   const {summary}=combineMediaDelivery(selection,observations,{allowGeographicComplements:true});
-  return summary.media.length?{...summary,scopeLabel:`Personas de 18 años o más · ${keys.map(key=>key==="guayaquil"?"Guayaquil":"Quito").join(" y ")}`}:null;
+  if(contactsWithoutReach.length){
+    // Retain valid gross contacts; do not substitute them for unique viewers or
+    // present a partial-media figure as the complete plan's deduplicated reach.
+    summary.contactMedia=[...(summary.contactMedia??[]),...contactsWithoutReach];
+    summary.geographicComplements=summary.geographicComplements?.filter(medium=>!contactsWithoutReach.some(row=>row.medium===medium));
+    summary.reach1Pct=null;summary.reach2Pct=null;summary.reach3Pct=null;summary.people=null;summary.frequency=null;
+    summary.grps=summary.contactMedia.reduce((sum,row)=>sum+row.grps,0);
+  }
+  return summary.media.length||summary.contactMedia?.length?{...summary,scopeLabel:`Personas de 18 años o más · ${keys.map(key=>key==="guayaquil"?"Guayaquil":"Quito").join(" y ")}`}:null;
 }

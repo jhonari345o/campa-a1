@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { combineMediaDelivery, deliverySelectionKey, reachAtGrps, projectContactThresholds, type DeliverySelection, type DeliveryObservation } from "../lib/media-delivery";
-import { projectPlanningDelivery, type PlanningCurveModel, type RatedDeliveryLine } from "../lib/planning-delivery";
+import { matchesCurveScope, projectPlanningDelivery, type PlanningCurveModel, type RatedDeliveryLine } from "../lib/planning-delivery";
 import type { BroadcastBrief } from "../lib/broadcast-catalog";
 const selection:DeliverySelection={context:{startDate:"2026-11-03",endDate:"2026-11-30",audience:"18+",geography:"quito,guayaquil"},media:[{medium:"television",items:[{id:"tv-a",quantity:30,amountCents:10000}]},{medium:"radio",items:[{id:"radio-a",quantity:40,amountCents:3000}]}]};
 const observation=(medium:"television"|"radio",reach:number):DeliveryObservation=>({medium,selectionKey:deliverySelectionKey(selection,medium),universeId:"same",universe:100000,targetId:"adults",geographyId:"cities",periodId:"november",reach1Pct:reach,reach2Pct:reach*.5,reach3Pct:reach*.25,impressions:100000,evidenceId:"private",approved:true});
@@ -81,4 +81,31 @@ test("national coverage keeps measured cities and unmeasured radio without inven
  assert.ok(Math.abs(projectPlanningDelivery(brief,[line("television"),stale],model)!.reach1Pct!-15)<1e-8);
  const bad=observation("radio",40);bad.reach1Pct=NaN;
  assert.equal(combineMediaDelivery(selection,[observation("television",30),bad],{allowGeographicComplements:true}).summary.reach1Pct,null);
+});
+
+test("a mixed-channel curve never turns repeated spots in one programme into unsupported unique reach",()=>{
+ const mixed:PlanningCurveModel={...model,curves:model.curves.map(c=>c.medium==="television"?{...c,scope:"multi_channel"}:c)};
+ const programme={...line("television"),quantity:30,ratingPct:4.23,providerKey:"ecuavisa",programmeKey:"televistazo ii"};
+ const result=projectPlanningDelivery(brief,[programme],mixed)!;
+ assert.equal(result.reach1Pct,null);assert.equal(result.reach2Pct,null);assert.equal(result.reach3Pct,null);
+ assert.equal(result.frequency,null);assert.equal(result.people,null);assert.equal(result.media.length,0);
+ assert.ok(Math.abs(result.grps!-126.9)<1e-8);
+ assert.ok(Math.abs(result.contactMedia![0].impressions!-126900)<1e-8);
+ assert.deepEqual(result.geographicComplements,[]);
+ const radioMix=projectPlanningDelivery(brief,[programme,line("radio")],mixed)!;
+ assert.deepEqual(radioMix.media.map(r=>r.medium),["radio"]);assert.equal(radioMix.reach1Pct,null);
+ assert.ok(Math.abs(radioMix.grps!-146.9)<1e-8);assert.equal(radioMix.frequency,null);
+});
+
+test("scope requires distinct channels and programmes, never rate variants or separate city observations",()=>{
+ const curve={...model.curves[0],scope:"multi_channel" as const};
+ const programme={...line("television"),providerKey:"ecuavisa",programmeKey:"televistazo ii"};
+ assert.equal(matchesCurveScope(curve,[programme,{...programme,id:"other-duration"}]),false);
+ assert.equal(matchesCurveScope(curve,[programme,{...programme,id:"quito",ratingMarketKeys:["quito"]}]),false);
+ assert.equal(matchesCurveScope(curve,[programme,{...programme,providerKey:"tc"}]),false);
+ assert.equal(matchesCurveScope(curve,[line("television")]),false);
+ const varied=[programme,{...programme,id:"b",programmeKey:"televistazo i"},{...programme,id:"c",providerKey:"tc",programmeKey:"noticiero"},{...programme,id:"d",providerKey:"tc",programmeKey:"entretenimiento"}];
+ assert.equal(matchesCurveScope(curve,varied),true);
+ const result=projectPlanningDelivery(brief,varied,{...model,curves:[curve]})!;
+ assert.ok(result.reach1Pct!>0);assert.ok(result.frequency!>=1);
 });
