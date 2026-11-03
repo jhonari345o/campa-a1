@@ -60,6 +60,21 @@ export function territoriesOverlap(a:string,b:string):boolean {
   return directory.some(p=>p.kind==="province"&&normalized(p.label)===x)&&territoryProvince(y)===x
     ||directory.some(p=>p.kind==="province"&&normalized(p.label)===y)&&territoryProvince(x)===y;
 }
+
+/** A broad commercial rate does not expand the station's actual signal.
+ * Conversely, a local price cannot purchase every region of a national signal. */
+export function radioCommercialCoverage(tariffMarkets:string[],signalMarkets:string[]):string[] {
+  const tariff=[...new Set(tariffMarkets.map(territoryKey).filter(Boolean))];
+  const signal=[...new Set(signalMarkets.map(territoryKey).filter(Boolean))];
+  if(!tariff.length)return signal;
+  if(!signal.length)return tariff;
+  return [...new Set(tariff.flatMap(t=>signal.flatMap(s=>{
+    if(!territoriesOverlap(t,s))return [];
+    if(t==="nacional"||territoryProvince(s)===t)return [s];
+    if(s==="nacional"||territoryProvince(t)===s)return [t];
+    return [t];
+  })))];
+}
 export function nationalTerritoryOrder():string[] {
   const priority=NATIONAL_PROVINCE_PRIORITY.map(territoryKey);
   return [...priority,...directory.filter(p=>p.kind==="province"&&!priority.includes(normalized(p.label))).map(p=>normalized(p.label)).sort((a,b)=>a.localeCompare(b,"es"))];

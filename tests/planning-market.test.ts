@@ -53,7 +53,8 @@ test("curated radio coverage and account prices join only the same station and s
   catalogs.workspaceProducts=[product,{...product,key:"radio:synthetic:other-plaza",priceCents:100,marketKeys:["quito"],location:"Quito"}];
   let bundle=buildStrategyEvidence({...brief,selectedMedia:["radio"]},strategyResearch,catalogs,"2026-11-02");
   let ranked=bundle.candidates.find(c=>c.id.startsWith("radio:"))!;
-  assert.deepEqual(ranked.stationCoverage,["Nacionales","Guayas"]);
+  assert.deepEqual(ranked.stationCoverage,["Guayaquil"]);
+  assert.deepEqual(ranked.coverageKeys,["guayaquil"],"a locally purchased signal cannot satisfy nationwide coverage");
   assert.equal(ranked.market,"Guayaquil");
   assert.equal(ranked.unitPriceUsd,17);
   assert.equal(ranked.metrics.find(m=>m.label==="Rating")?.value,2);

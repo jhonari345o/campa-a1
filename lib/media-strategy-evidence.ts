@@ -1,4 +1,4 @@
-import {planningStudyBrief,radioTariffCoversStationStudy,commercialTerritoryFits} from "./planning-market";
+import {planningStudyBrief,radioTariffCoversStationStudy,commercialTerritoryFits,radioCommercialCoverage,territoryKey} from "./planning-market";
 import type {CatalogProduct} from "./catalog-shopping";
 import {planningProductPrice} from "./catalog-planning";
 import {campaignRentalMonths} from "./catalog-planning";
@@ -17,6 +17,7 @@ import { tgiUsage } from "./tgi";
 import { oohMarketReferences, pressAudienceApplies, pressObservationFor, type AtlAudienceCatalog, type OohMarketReference } from "./atl-audience";
 import { planningDaypart, type PlanningDaypart } from "./planning-broadcast";
 import type { PlanningCaseContext } from "./planning-reference-cases";
+import {coverageFromLabels} from "./geographic-coverage";
 
 export type StrategyBrief = PlanAnalysisInput & { brand?: string; categoryId?: string; referenceYear?: number; clientId?:string|null };
 export type EvidenceUse = "comparable" | "context" | "unavailable";
@@ -64,6 +65,7 @@ const groups: MediaGroup[] = ["television", "radio", "press", "ooh", "digital", 
 const nonnegative = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n >= 0;
 const selected = (brief: StrategyBrief, medium: MediaGroup) => brief.selectedMedia.includes(medium);
 const datesCover = (from: string | null, to: string | null, brief: StrategyBrief) => validDate(from ?? "") && validDate(to ?? "") && validDate(brief.startDate) && validDate(brief.endDate) && from! <= brief.startDate! && to! >= brief.endDate!;
+const coverageLabel=(key:string)=>radioRegions.find(r=>territoryKey(r.key)===territoryKey(key))?.label??coverageFromLabels([key])[0]?.label??key;
 
 /** No fuzzy target matching: an unmeasured segment is a gap, not a synthetic rating. */
 export function tvAudienceApplies(study: TvAudienceObservation, brief: StrategyBrief, asOf: string) {
@@ -160,10 +162,11 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
       for (const {source,row} of rankings) {
         const localBrief={...brief,...planningStudyBrief(source.marketKeys,brief)!};
         const sid = addSource({id:`radio-study:${source.id}`,kind:"ranking",label:source.label,period:`${source.periodStart} – ${source.periodEnd}`,market:source.market,target:source.target,use:"comparable",note:`${source.frequency} · ${source.daypart}. Cohorte independiente; no se mezcla con otras plazas, públicos o franjas.`});
-        const priced = station.profile.tariffs.map(t => ({t,price:radioPrice(t,localBrief)})).filter(x => x.price).sort((a,b) => a.price!.amount-b.price!.amount)[0];
+        const priced = station.profile.tariffs.map(t => ({t,price:radioPrice(t,localBrief),coverage:radioCommercialCoverage(t.market.split(/\s*[·,+]\s*/),station.regionKeys)})).filter(x => x.price&&x.coverage.length).sort((a,b) => a.price!.amount-b.price!.amount)[0];
+        const signalCoverage=priced?.coverage??station.regionKeys;
         const ids=[sid]; if(priced) ids.push(addSource({id:`radio-tariff:${station.id}:${priced.t.id}`,kind:"tariff",label:priced.t.label,period:`${priced.t.validFrom} – ${priced.t.validTo}`,market:priced.t.market,target:priced.t.target,use:"comparable",note:priced.t.conditions}));
         const metrics: StrategyCandidate["metrics"] = []; if(nonnegative(row.rating)) metrics.push({label:"Rating",value:row.rating,unit:"puntos",sourceId:sid}); if(nonnegative(row.share)) metrics.push({label:"Share",value:row.share,unit:"%",sourceId:sid}); if(nonnegative(row.rank)) metrics.push({label:"Posición",value:row.rank,unit:"ranking",sourceId:sid});
-        candidates.push({id:`radio:${station.id}:${source.id}`,medium:"radio",coverageKeys:station.regionKeys,stationId:station.id,marketKeys:source.marketKeys,stationCoverage:station.regionKeys.map(key=>radioRegions.find(r=>r.key===key)?.label??key),provider:station.name,product:`${source.frequency} · ${source.daypart}`,market:source.market,target:source.target,period:`${source.periodStart} – ${source.periodEnd}`,sourceIds:ids,sourceUse:"comparable",unit:priced?.price?.unit ?? "spot por definir",unitPriceUsd:priced?.price?.amount ?? null,referencePriceUsd:priced?.price?.amount ?? null,minimumUnits:1,minimumSpendUsd:priced?.price?.amount ?? null,metrics,note:[priced?.t.conditions ?? "Falta una tarifa compatible para calcular cuñas comprables.",sameMarket(source,brief)?"":"El ranking describe únicamente la plaza indicada dentro de la cobertura seleccionada; no representa toda la provincia ni el país."].filter(Boolean).join(" ")});
+        candidates.push({id:`radio:${station.id}:${source.id}`,medium:"radio",coverageKeys:signalCoverage,stationId:station.id,marketKeys:source.marketKeys,stationCoverage:signalCoverage.map(coverageLabel),provider:station.name,product:`${source.frequency} · ${source.daypart}`,market:source.market,target:source.target,period:`${source.periodStart} – ${source.periodEnd}`,sourceIds:ids,sourceUse:"comparable",unit:priced?.price?.unit ?? "spot por definir",unitPriceUsd:priced?.price?.amount ?? null,referencePriceUsd:priced?.price?.amount ?? null,minimumUnits:1,minimumSpendUsd:priced?.price?.amount ?? null,metrics,note:[priced?.t.conditions ?? "Falta una tarifa compatible para calcular cuñas comprables.",sameMarket(source,brief)?"":"El ranking describe únicamente la plaza indicada dentro de la cobertura seleccionada; no representa toda la provincia ni el país."].filter(Boolean).join(" ")});
       }
     }
     if(!candidates.some(c=>c.medium==="radio")) gaps.push("Radio: no hay una cohorte de ranking homologada para todos los filtros del brief.");
@@ -203,14 +206,17 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
   for(const p of catalogs.workspaceProducts??[]){
     const medium=productMedium(p);if(!selected(brief,medium)||!(p.source.workspaceProductId||p.source.agreementId||p.source.standingPrice))continue;
     const asset = medium === "ooh" && p.source.assetId ? catalogs.ooh.assets.find(asset => asset.id === p.source.assetId) : undefined;
-    const marketFit=asset?territorialFit(asset.city,asset.provinces,brief):p.marketKeys?.length?commercialTerritoryFits(p.marketKeys,brief,medium==="television"):tariffMarket(p.location,brief);
+    const station=medium==="radio"&&p.source.stationId?catalogs.radio.stations.find(s=>s.id===p.source.stationId):undefined;
+    const radioCoverage=station?radioCommercialCoverage(p.marketKeys?.length?p.marketKeys:p.location.split(/\s*[·,+]\s*/),station.regionKeys):undefined;
+    const radioCoverageLabels=radioCoverage?.map(coverageLabel);
+    const marketFit=asset?territorialFit(asset.city,asset.provinces,brief):radioCoverage?commercialTerritoryFits(radioCoverage,brief,true):p.marketKeys?.length?commercialTerritoryFits(p.marketKeys,brief,medium==="television"):tariffMarket(p.location,brief);
     if(!marketFit)continue;
     const priced=planningProductPrice(p,brief.startDate,brief.endDate),referencePrice=p.priceCents??p.referencePriceCents??null;
     const quoted=Boolean(priced),period=p.validTo?`${p.validFrom??""} – ${p.validTo}`:p.validFrom?`Desde ${p.validFrom}`:p.reference;
     const digitalProduction=isDigitalProduction(p)?p.digitalProduction:undefined;
     const digitalMonths=digitalProduction&&/^(month|mes|mensual)$/i.test(p.billingPeriod??p.unit)?campaignRentalMonths(brief.startDate??"",brief.endDate??""):null;
     const sid=addSource({id:`workspace-tariff:${p.key}`,kind:"tariff",label:`${p.provider} · ${p.name}`,period,market:p.location,target:"Tarifa comercial",use:quoted?"comparable":"context",note:p.conditions});
-    candidates.push({id:`workspace:${p.key}`,catalogKey:p.key,medium,coverageKeys:asset?[asset.city,...asset.provinces]:p.marketKeys??p.location.split(/\s*[·,+]\s*/),...(p.source.stationId?{stationId:p.source.stationId}:{}),marketKeys:p.marketKeys??p.location.split(/\s*[·,+]\s*/).map(normalized),provider:p.provider,product:p.name,...(medium==="television"?{planningDaypart:planningDaypart(p.format)}:{}),market:p.location,target:"Tarifa comercial",period,sourceIds:[sid],sourceUse:quoted?"comparable":"context",unit:priced?.unit??p.unit,unitPriceUsd:priced?.priceUsd??null,referencePriceUsd:referencePrice==null?null:referencePrice/100,minimumUnits:1,...(asset?.recordType==="asset"?{maximumUnits:1}:{}),...(digitalProduction?{digitalProduction:{id:digitalProduction.id,rights:digitalProduction.rights}}:{}),...(digitalMonths?{planningMinimumUnits:digitalMonths,maximumUnits:digitalMonths}:{}),minimumSpendUsd:priced?.priceUsd??null,metrics:[],...(asset?.photo?{oohPhoto:{assetId:asset.id,kind:asset.photoKind}}:{}),...(asset?.latitude!=null&&asset.longitude!=null?{geo:{latitude:asset.latitude,longitude:asset.longitude}}:{}),note:[p.format,p.conditions].filter(Boolean).join(" · ")});
+    candidates.push({id:`workspace:${p.key}`,catalogKey:p.key,medium,coverageKeys:asset?[asset.city,...asset.provinces]:radioCoverage??p.marketKeys??p.location.split(/\s*[·,+]\s*/),...(p.source.stationId?{stationId:p.source.stationId}:{}),...(radioCoverageLabels?{stationCoverage:radioCoverageLabels}:{}),marketKeys:radioCoverage??p.marketKeys??p.location.split(/\s*[·,+]\s*/).map(normalized),provider:p.provider,product:p.name,...(medium==="television"?{planningDaypart:planningDaypart(p.format)}:{}),market:radioCoverageLabels?.join(" · ")??p.location,target:"Tarifa comercial",period,sourceIds:[sid],sourceUse:quoted?"comparable":"context",unit:priced?.unit??p.unit,unitPriceUsd:priced?.priceUsd??null,referencePriceUsd:referencePrice==null?null:referencePrice/100,minimumUnits:1,...(asset?.recordType==="asset"?{maximumUnits:1}:{}),...(digitalProduction?{digitalProduction:{id:digitalProduction.id,rights:digitalProduction.rights}}:{}),...(digitalMonths?{planningMinimumUnits:digitalMonths,maximumUnits:digitalMonths}:{}),minimumSpendUsd:priced?.priceUsd??null,metrics:[],...(asset?.photo?{oohPhoto:{assetId:asset.id,kind:asset.photoKind}}:{}),...(asset?.latitude!=null&&asset.longitude!=null?{geo:{latitude:asset.latitude,longitude:asset.longitude}}:{}),note:[p.format,p.conditions].filter(Boolean).join(" · ")});
   }
   for(const c of candidates.filter(c=>c.medium==="television"&&c.catalogKey&&c.id.startsWith("workspace:"))){
     const p=catalogs.workspaceProducts?.find(p=>p.key===c.catalogKey);
@@ -231,7 +237,7 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
     const local=planningStudyBrief(c.marketKeys??[],brief);
     if(!local)continue;
     const price=candidates.filter(p=>p.id.startsWith("workspace:")&&p.medium==="radio"&&p.stationId===c.stationId&&p.unitPriceUsd!=null&&p.unitPriceUsd>0&&(sameMarket({marketKeys:p.marketKeys??[]} as BroadcastSource,local)||radioTariffCoversStationStudy(p.marketKeys??[],c.marketKeys??[],c.stationCoverage??[]))).sort((a,b)=>a.unitPriceUsd!-b.unitPriceUsd!||a.id.localeCompare(b.id))[0];
-    if(price){c.catalogKey=price.catalogKey;c.unitPriceUsd=price.unitPriceUsd;c.referencePriceUsd=price.referencePriceUsd;c.minimumSpendUsd=price.minimumSpendUsd;c.unit=price.unit;c.sourceIds=[...new Set([...c.sourceIds.filter(id=>!id.startsWith("radio-tariff:")),...price.sourceIds])];c.note=[c.note.replace("Falta una tarifa compatible para calcular cuñas comprables.",""),price.note].filter(Boolean).join(" ");}
+    if(price){c.coverageKeys=price.coverageKeys;c.stationCoverage=price.stationCoverage??c.stationCoverage;c.catalogKey=price.catalogKey;c.unitPriceUsd=price.unitPriceUsd;c.referencePriceUsd=price.referencePriceUsd;c.minimumSpendUsd=price.minimumSpendUsd;c.unit=price.unit;c.sourceIds=[...new Set([...c.sourceIds.filter(id=>!id.startsWith("radio-tariff:")),...price.sourceIds])];c.note=[c.note.replace("Falta una tarifa compatible para calcular cuñas comprables.",""),price.note].filter(Boolean).join(" ");}
   }
   for(const c of candidates.filter(c=>c.medium==="press")){
     const s=pressObservationFor(c.provider,`${c.product} ${c.unit}`,pressStudies,brief,asOf);
