@@ -91,3 +91,28 @@ test("failed inference persists only bounded diagnostic metadata, never provider
   assert.equal((await resolveStrategyAi(brief,bundle,"{}",2000,invalid.deps)).state,"rejected");
   assert.equal(code,"OUTPUT_WEIGHT_TOTAL");
 });
+
+test("unsafe explanatory copy is replaced without losing a validated selection or exposing claims",async()=>{
+  for(const unsafe of ["Garantiza las ventas", "Alcanzaremos el 90%", "https://example.com", "<script>alert('x')</script>", "".padEnd(1500,"x")]){
+    let info:Record<string,unknown>={},persisted=0;
+    const {deps}=dependencies({allowRepair:true,invoke:async()=>JSON.stringify({...advice,summary:unsafe,allocations:[{...advice.allocations[0],rationale:unsafe}]}),persist:async(value,diagnostic)=>{assert.ok(value);persisted++;info=diagnostic;return true;}});
+    const result=await resolveStrategyAi(brief,bundle,"{}",19000,deps);
+    assert.equal(result.state,"validated");
+    assert.equal(result.advice?.allocations[0].weight,10000);
+    assert.deepEqual(result.advice?.allocations[0].evidenceIds,["category-investment"]);
+    assert.notEqual(result.advice?.summary,unsafe);
+    assert.notEqual(result.advice?.allocations[0].rationale,unsafe);
+    assert.equal(info.safeTextUsed,true);
+    assert.equal(info.attempts,1);
+    assert.equal(persisted,1);
+    assert.equal(JSON.stringify(result).includes(unsafe),false);
+  }
+});
+
+test("safe copy fallback never rehabilitates forged sources, candidates or budgets",async()=>{
+  for(const patch of [{evidenceIds:["forged"]},{candidateIds:["forged"]},{weight:9999},{medium:"radio"}]){
+    const {deps}=dependencies({invoke:async()=>JSON.stringify({...advice,summary:"Garantiza el 99%",allocations:[{...advice.allocations[0],...patch,rationale:"Garantiza todas las ventas"}]})});
+    const result=await resolveStrategyAi(brief,bundle,"{}",2000,deps);
+    assert.equal(result.state,"rejected");assert.equal(result.advice,null);
+  }
+});
