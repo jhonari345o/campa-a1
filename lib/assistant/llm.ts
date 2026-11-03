@@ -12,9 +12,11 @@ async function providerErrorCode(res: Response): Promise<string> {
   try {
     const data = await res.json() as { error?: { message?: unknown; code?: unknown } };
     const message = typeof data.error?.message === "string" ? data.error.message.toLowerCase() : "";
+    if (/models|fallback/.test(message) && /too many|at most|maximum|limit|length|array/.test(message)) return `${base}_MODEL_COUNT`;
+    if (/sort|partition/.test(message)) return `${base}_ROUTING`;
     if (/reasoning|thinking/.test(message)) return `${base}_REASONING`;
     if (/model/.test(message) && /invalid|not found|not available|unavailable|unknown|not a valid/.test(message)) return `${base}_MODEL`;
-    if (/response_format|json_object|structured output/.test(message)) return `${base}_FORMAT`;
+    if (/response_format|json_object|json_schema|structured output/.test(message)) return `${base}_FORMAT`;
     if (/context|token limit|maximum.*tokens/.test(message)) return `${base}_CONTEXT`;
   } catch { /* Unparseable provider bodies remain a status-only diagnosis. */ }
   return base;
@@ -135,7 +137,7 @@ async function openaiChat(
   let retriedTruncation = false;
   let omitReasoningOption = false;
   const fastFree = Boolean(opts?.fastFreeRouting && provider.openRouter && provider.freeOnly);
-  if (fastFree) models = await availableFreeModels(models, Boolean(opts?.responseSchema || opts?.json), Math.ceil(new TextEncoder().encode(JSON.stringify(messages)).length / 2) + (opts?.maxTokens ?? 1024), signal);
+  if (fastFree) models = await availableFreeModels(models, Boolean(opts?.responseSchema || opts?.json), Math.ceil(new TextEncoder().encode(JSON.stringify(messages)).length / 2) + (opts?.maxTokens ?? 1024), signal, Boolean(opts?.responseSchema));
   const maxAttempts = Math.min(3, models.length) + (fastFree ? 1 : 0);
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const hasRetryTime = () => attempt < maxAttempts - 1 && !signal.aborted && deadline - Date.now() >= 5000;
@@ -157,7 +159,9 @@ async function openaiChat(
         },
         body: JSON.stringify({
           model: models[0],
-          ...(models.length > 1 ? { models } : {}),
+          // Keep each gateway request bounded; the full free pool remains
+          // available to subsequent attempts within the same deadline.
+          ...(models.length > 1 ? { models: models.slice(0, 3) } : {}),
           ...(provider.freeOnly||provider.openRouter&&opts?.responseSchema ? { provider: { ...(provider.freeOnly?{max_price: { prompt: 0, completion: 0 }}:{}),...(opts?.responseSchema?{require_parameters:true}:{}),...(fastFree?{sort:{by:"latency",partition:"none"}}:{}) } } : {}),
           ...(opts?.responseSchema ? {response_format:{type:"json_schema",json_schema:{...opts.responseSchema,strict:true}}} : opts?.json ? { response_format: { type: "json_object" } } : {}),
           ...(!omitReasoningOption && provider.openRouter && opts?.reasoningEnabled===false ? { reasoning: { enabled:false } } : !omitReasoningOption && provider.openRouter && opts?.reasoningEffort ? { reasoning: { effort: opts.reasoningEffort, exclude: true } } : {}),
