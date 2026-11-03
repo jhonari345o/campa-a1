@@ -9,6 +9,7 @@ import { scopeCatalogProducts, type AgreedCatalogRate } from "./catalog-pricing"
 import { mergeTvDefaults, preferNegotiatedTelevision } from "./tv-default-pricing";
 import { radioRatePreference } from "./account-radio-tariffs";
 import { mergeRadioDefaults } from "./radio-default-pricing";
+import { mergeDigitalProductions } from "./digital-productions";
 
 /** Per-request authorization precedes every privileged catalog read. Never cache across users. */
 export const catalogAccess = cache(async () => {
@@ -45,6 +46,9 @@ export async function priceCatalogProducts(products: CatalogProduct[], previewCo
     if(from===19500)throw new Error("RADIO_DEFAULT_PRICING_LIMIT");
   }
   products=mergeRadioDefaults(products,radioProducts);
+  const {data:digitalRows,error:digitalError}=await scope.db.from("catalog_digital_productions").select("product").eq("active",true).order("product_key").limit(1000);
+  if(digitalError)throw new Error("DIGITAL_CATALOG_UNAVAILABLE");
+  products=mergeDigitalProductions(products,(digitalRows??[]).map(row=>row.product as CatalogProduct));
   const rates:AgreedCatalogRate[]=[];
   if((!scope.isAdmin||previewCompanyId)&&companyId){
     for(let from=0;from<20000;from+=500){

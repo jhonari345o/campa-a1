@@ -16,6 +16,7 @@ export type CatalogProduct = {
   source: { standingPrice?: boolean; defaultPrice?: boolean; rateId?: string; profileId?: string; assetId?: string; rate?: OohRate; rateIndex?: number; sourceId?: string; offerId?: string; stationId?: string; tariffId?: string; seconds?: number; publicationId?: string; editionId?: string; publishedTariff?: boolean; platformSlug?: string; digitalGoal?: string; workspaceProductId?: string; agreementId?: string; tvDistribution?: "national" | "local" | "paid" };
   marketKeys?: string[];
   billingPeriod?: string;
+  digitalProduction?: { id: string; network: string; description: string; rights: string[]; programsPerPeriod?: number };
   referenceOnly?:boolean;referenceLabel?:string;
   formatGroup?: "other" | "totem_standard" | "totem_special";
   validFrom?: string | null; validTo?: string | null; referencePriceCents?: number | null;
@@ -122,7 +123,7 @@ export function catalogCartSummary(items: CatalogPick[], products: CatalogProduc
     totalLabel: pendingPrice ? "Subtotal con precio" : taxes.size === 1 && taxes.has(false) ? "Subtotal sin IVA" : taxes.size === 1 && taxes.has(true) ? "Subtotal con IVA" : "Subtotal de catálogo" };
 }
 export function catalogQuoteSignature(items: CatalogPick[], products: CatalogProduct[]) {
-  return JSON.stringify(catalogCartSummary(items, products).lines.map(l => [l.pick.productKey, l.pick.quantity, l.product?.priceCents ?? null, l.product?.taxIncluded ?? null, l.product?.provider ?? null, l.product?.name ?? null, l.product?.format ?? null, l.product?.unit ?? null, l.product?.location ?? null, l.product?.reference ?? null, l.product?.conditions ?? null, l.product?.source.agreementId ?? null, l.product?.validFrom ?? null, l.product?.validTo ?? null, l.product?.referencePriceCents ?? null]));
+  return JSON.stringify(catalogCartSummary(items, products).lines.map(l => [l.pick.productKey, l.pick.quantity, l.product?.priceCents ?? null, l.product?.taxIncluded ?? null, l.product?.provider ?? null, l.product?.name ?? null, l.product?.format ?? null, l.product?.unit ?? null, l.product?.location ?? null, l.product?.reference ?? null, l.product?.conditions ?? null, l.product?.source.agreementId ?? null, l.product?.validFrom ?? null, l.product?.validTo ?? null, l.product?.referencePriceCents ?? null, l.product?.digitalProduction ?? null]));
 }
 export function canonicalCatalogOrder(items: CatalogPick[], products: CatalogProduct[]) {
   const summary = catalogCartSummary(items, products);
@@ -131,6 +132,6 @@ export function canonicalCatalogOrder(items: CatalogPick[], products: CatalogPro
     productKey: pick.productKey, quantity: pick.quantity, kind: product!.kind, provider: product!.provider,
     name: product!.name, format: product!.format, unit: product!.unit,
     unitPriceCents: product!.priceCents, referenceUnitPriceCents: product!.priceCents == null ? product!.referencePriceCents ?? null : null, taxIncluded: product!.taxIncluded,
-    location: product!.location, reference: product!.reference, conditions: product!.conditions, validFrom: product!.validFrom ?? null, validTo: product!.validTo ?? null, source: product!.source,
+    location: product!.location, reference: product!.reference, conditions: product!.conditions, validFrom: product!.validFrom ?? null, validTo: product!.validTo ?? null, source: product!.source, ...(product!.digitalProduction ? { digitalProduction: product!.digitalProduction } : {}),
   })) };
 }
