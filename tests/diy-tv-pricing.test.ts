@@ -32,3 +32,16 @@ test("missing, expired, unpriced or different-market products never reuse a brow
  }
  assert.equal(diyTvPrice("source","forged",brief,[product]),null);
 });
+
+test("DIY can select canonical default programmes without inventing a broadcast source or changing their rates", async () => {
+ const {diyTvProductPrice}=await import("../lib/diy-tv-pricing");
+ const {resolveDiyCatalog}=await import("../lib/diy-catalog");
+ const defaultProgramme:CatalogProduct={...product,key:"tv:default:synthetic-news",name:"Noticiero sintético",source:{defaultPrice:true,standingPrice:true}};
+ assert.equal(diyTvProductPrice(defaultProgramme,brief)?.priceUsd,266);
+ const rows=resolveDiyCatalog([{productKey:defaultProgramme.key,quantity:30}],[defaultProgramme],["television"],brief.startDate,brief.endDate,brief);
+ assert.equal(rows[0].quantity,30);assert.equal(rows[0].unitPriceCents,26600);
+ for(const mismatch of [{...brief,geography:"Cuenca"},{...brief,startDate:"2026-10-01",endDate:"2026-10-30"}]) {
+  assert.equal(diyTvProductPrice(defaultProgramme,mismatch),null);
+  assert.equal(resolveDiyCatalog([{productKey:defaultProgramme.key,quantity:30}],[defaultProgramme],["television"],mismatch.startDate,mismatch.endDate,mismatch)[0].unitPriceCents,null);
+ }
+});

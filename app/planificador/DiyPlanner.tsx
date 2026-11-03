@@ -1,7 +1,8 @@
 "use client";
 import { PlanDeliveryPreview } from "@/components/PlanDeliveryPreview";
 import {WorkspaceDiyCatalog} from "./WorkspaceDiyCatalog";
-import {diyTvResolver,diyTvPrice} from "@/lib/diy-tv-pricing";
+import {diyTvResolver} from "@/lib/diy-tv-pricing";
+import {DiyTelevision,type TvPick} from "./DiyTelevision";
 import {resolveDiyCatalog} from "@/lib/diy-catalog";
 import type {CatalogProduct,CatalogPick} from "@/lib/catalog-shopping";
 
@@ -30,7 +31,6 @@ import { restoreCoverage, coverageFromLabels, coverageLegacyLabels, type Coverag
 import { guardarPlanManual, type ManualPlanDraft } from "./workspace-actions";
 import { CampaignTwin } from "./CampaignTwin";
 
-type TvPick = { sourceId?: string; context?: string; id: string; channel: string; title: string; schedule: string; market: string; unitPrice: number | null; quantity: number };
 type RadioPick = { id?: string; sourceId?: string; context?: string; name: string; spotsPerDay: number; days: number };
 type OohPick = { id: string; name: string; city: string; status: string; rate: number | null; months: number; units?: number; rateIndex?: number; unitLabel?: string; reference?: string };
 type PressPick = PressPlanPick;
@@ -125,7 +125,7 @@ export function DiyPlanner({
   const displayTv = tv.map(pick => { const result = validateBroadcastSelections(broadcast, brief, { tv: [pick] },diyTvResolver(brief,workspaceProducts)); return result.ok ? (result.selections.tv as TvPick[])[0] : { ...pick, unitPrice: null }; });
   const displayPress = press.map(pick => { const result = validatePressPicks(pressCatalog, [pick], { startDate, endDate, geographies }); return result.ok ? result.picks[0] : { ...pick, unitPrice: null, referencePriceUsd: null }; });
   let catalogSelection:ReturnType<typeof resolveDiyCatalog>=[],catalogError="";
-  try {catalogSelection=resolveDiyCatalog(catalogPicks,workspaceProducts,selectedMedia,startDate,endDate)}catch{catalogError="Hay productos que ya no están disponibles. Retíralos de la selección para continuar.";}
+  try {catalogSelection=resolveDiyCatalog(catalogPicks,workspaceProducts,selectedMedia,startDate,endDate,brief)}catch{catalogError="Hay productos que ya no están disponibles. Retíralos de la selección para continuar.";}
   const summary = diySelectionSummary(selectedMedia, { tv: displayTv, radio: radioPicks, ooh, press: displayPress, digital, influencers: creatorPicks, catalog:catalogSelection }, scenario?.allocations.find(item => item.kind === "digital")?.amountUsd ?? 0);
   const signature = JSON.stringify({ name, brand, categoryId, objective, priority, audienceType, audience, targetPeople, interests, budget, geographies, coverage, startDate, endDate, ageRange, sex, selectedMedia, scenarioId, digitalReady, tv, radioPicks, ooh, press, digital, creatorPicks, catalogPicks });
   const savedSignature = useRef(signature);
@@ -191,8 +191,8 @@ export function DiyPlanner({
       {review && <section className={styles.review}><p className={styles.kicker}>Mi selección</p><h2>Revisa y finaliza tu plan</h2><p>{name} · {brand || "Marca por definir"}</p>{!summary.count && <p className={styles.empty}>Todavía no hay productos seleccionados.</p>}{selectedMedia.map(kind => { const rows = summary.rows.filter(row => row.medium === kind); return <section key={kind} className={styles.reviewGroup}><header><h3>{mediaGroupLabel(kind)}</h3><button type="button" onClick={() => openMedium(kind)}>Editar →</button></header>{rows.length ? rows.map(row => <div key={row.key} className={styles.reviewRow}><div><strong>{row.label}</strong><small>{row.detail}</small></div><b>{row.cost == null ? "Tarifa pendiente" : money(row.cost)}</b></div>) : <p className={styles.empty}>Sin productos seleccionados en este medio.</p>}</section>; })}</section>}
       <fieldset disabled={!selectedMedia.includes(activeMedium)} hidden={review} className={styles.configuratorFieldset} aria-label="Configuración del medio activo">
         {catalogError&&<div role="alert" className="mb-4 rounded-xl border border-border bg-white p-4"><p>{catalogError}</p><button type="button" className="btn btn-secondary mt-3" onClick={()=>setCatalogPicks(picks=>picks.filter(p=>workspaceProducts.some(product=>product.key===p.productKey)))}>Retirar productos no disponibles</button></div>}
-        <WorkspaceDiyCatalog products={workspaceProducts} picks={catalogPicks} onChange={setCatalogPicks} medium={activeMedium}/>
-        <div hidden={activeMedium !== "television"}><TvConfigurator catalog={broadcast} brief={brief} picks={tv} onChange={setTv} products={workspaceProducts} /></div>
+        {activeMedium !== "television" && <WorkspaceDiyCatalog products={workspaceProducts} picks={catalogPicks} onChange={setCatalogPicks} medium={activeMedium}/>}
+        <div hidden={activeMedium !== "television"} className="rounded-panel border border-border bg-white p-6 shadow-panel"><DiyTelevision catalog={broadcast} brief={brief} products={workspaceProducts} picks={catalogPicks} onChange={setCatalogPicks} legacy={tv} onLegacyChange={setTv}/></div>
         <div hidden={activeMedium !== "radio"}><RadioConfigurator catalog={broadcast} brief={brief} picks={radioPicks} onChange={setRadioPicks} /></div>
         <div hidden={activeMedium !== "ooh"}><OohConfigurator catalog={oohCatalog} locations={locations} picks={ooh} onChange={setOoh} /></div>
         <div hidden={activeMedium !== "digital"}><DigitalConfigurator picks={digital} onChange={setDigital} ready={digitalReady} onReadyChange={setDigitalReady} /></div>
@@ -207,13 +207,6 @@ export function DiyPlanner({
   </div>;
 }
 
-function TvConfigurator({catalog,brief,picks,onChange,products}:{catalog:BroadcastCatalog;brief:BroadcastBrief;picks:TvPick[];onChange:(v:TvPick[])=>void;products:CatalogProduct[]}) {
- const sources=catalog.sources.filter(s=>s.kind==='tv'); const [sourceId,setSourceId]=useState(sources[0]?.id??''); const source=sources.find(s=>s.id===sourceId);
- const offers=catalog.tv.filter(o=>o.sourceId===sourceId); const [offerId,setOfferId]=useState(''); const offer=offers.find(o=>o.id===offerId)??offers[0];
- const priced=source&&offer?diyTvPrice(source.id,offer.id,brief,products):null; const valid=!!priced;
- function add(){if(!offer||!source||!priced||picks.some(p=>p.id===offer.id))return;onChange([...picks,{id:offer.id,sourceId:source.id,context:priced.product.reference,channel:source.label,title:offer.title,schedule:`${offer.day} · ${offer.schedule}`,market:priced.product.location,unitPrice:priced.priceUsd,quantity:1}]);}
- return <Configurator number="01" eyebrow="Televisión" title="Programas y tarifas"><div className="grid gap-3 lg:grid-cols-2"><Select label="Canal" value={sourceId} onChange={v=>{setSourceId(v);setOfferId('');}} options={sources.map(s=>[s.id,s.label])}/><Select label="Programa" value={offer?.id??''} onChange={setOfferId} options={offers.map(o=>[o.id,`${o.title} · ${o.day} · ${money(diyTvPrice(o.sourceId,o.id,brief,products)?.priceUsd??null)}`])}/></div>{priced?.product.conditions&&<p className="mt-3 text-xs">{priced.product.conditions}</p>}{!valid&&<p className="mt-3 font-bold">Selecciona fechas, plaza y un programa con tarifa disponible para tu cuenta.</p>}<button type="button" disabled={!valid||!offer} onClick={add} className="btn btn-primary mt-4 disabled:opacity-50">Agregar programa</button><PickList items={picks} empty="Selecciona una edición compatible con las fechas de campaña." render={item=><><div><strong>{item.channel} · {item.title}</strong><small>{item.context??item.market} · {(() => { const v=validateBroadcastSelections(catalog,brief,{tv:[item]},diyTvResolver(brief,products)); return !v.ok?v.error:(diyTvPrice(item.sourceId??'',item.id??'',brief,products)?.priceUsd==null?'Selecciona fechas y plaza de la tarifa':money(diyTvPrice(item.sourceId??'',item.id??'',brief,products)!.priceUsd)); })()}</small></div><NumberCompact value={item.quantity} onChange={quantity=>onChange(picks.map(p=>p.id===item.id?{...p,quantity}:p))}/><Remove onClick={()=>onChange(picks.filter(p=>p.id!==item.id))}/></>}/></Configurator>;
-}
 function RadioConfigurator({catalog,brief,picks,onChange}:{catalog:BroadcastCatalog;brief:BroadcastBrief;picks:RadioPick[];onChange:(v:RadioPick[])=>void}) {
  const sources=catalog.sources.filter(s=>s.kind==='radio');const [sourceId,setSourceId]=useState(sources[0]?.id??'');const source=sources.find(s=>s.id===sourceId);const rows=catalog.radio.filter(r=>r.sourceId===sourceId).sort((a,b)=>(b.rating??-1)-(a.rating??-1));const [rowId,setRowId]=useState('');const row=rows.find(r=>r.id===rowId)??rows[0];const mismatch=source?radioCompatibility(source,brief):'No hay estudio disponible';
  function add(){if(!row||!source||mismatch||picks.some(p=>p.id===row.id))return;onChange([...picks,{id:row.id,sourceId,context:sourceDescription(source),name:row.name,spotsPerDay:6,days:20}]);}

@@ -151,7 +151,7 @@ export async function guardarPlanManual(input: ManualPlanDraft): Promise<SaveRes
   const checkedExtras = validateManualExtras({ selectedMedia, selections: { ...checked.selections, press: checkedPress.picks, ooh: rawSelections.ooh, digital: rawSelections.digital, influencers: rawSelections.influencers }, ooh, legacyOoh: legacyOoh.length ? legacyOoh : FALLBACK_OOH, influencers });
   if (!checkedExtras.ok) return checkedExtras;
   let catalogSelection:ReturnType<typeof resolveDiyCatalog>=[];
-  try {const picks=normalizeCatalogPicks(rawSelections.catalog??[]);catalogSelection=resolveDiyCatalog(picks,picks.length?await readShoppingProducts(picks):[],selectedMedia,input.startDate??"",input.endDate??"");}catch{return {ok:false,error:"Selecciona nuevamente los formatos de tu cuenta y revisa sus cantidades."};}
+  try {const picks=normalizeCatalogPicks(rawSelections.catalog??[]);catalogSelection=resolveDiyCatalog(picks,picks.length?await readShoppingProducts(picks):[],selectedMedia,input.startDate??"",input.endDate??"",brief);}catch{return {ok:false,error:"Selecciona nuevamente los formatos de tu cuenta y revisa sus cantidades."};}
   const status = input.submitForReview ? "revision" : "borrador";
   const stage = input.submitForReview ? "personaliza" : "propuesta";
   return savePlanRecord({
