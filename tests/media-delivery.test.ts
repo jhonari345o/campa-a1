@@ -29,6 +29,15 @@ test("curve interpolation is bounded, rejects invalid shapes and models nested c
 const model:PlanningCurveModel={universe:100000,marketKeys:["guayaquil","quito"],marketWeights:{guayaquil:.6,quito:.4},target:{ageMin:18,ageMax:99,sex:"all",nse:"all"},curves:[{medium:"television",points:[{grps:20,reachPct:15},{grps:400,reachPct:80}]},{medium:"radio",points:[{grps:20,reachPct:10},{grps:400,reachPct:50}]}]};
 const brief:BroadcastBrief={startDate:"2026-11-03",endDate:"2026-11-30",geography:"Guayaquil, Quito",audienceType:"B2C",ageRange:"Personas 18+",sex:"Todas las personas",socioeconomic:"Todos los NSE"};
 const line=(medium:"television"|"radio"):RatedDeliveryLine=>({id:medium,medium,quantity:20,amountCents:1000,ratingPct:1,ratingMarketKeys:["guayaquil","quito"],studyEnd:"2026-10-02"});
+test("all measured media add deduplicated reach while contact frequency keeps its own denominator",()=>{
+ const all:DeliverySelection={...selection,media:[...selection.media,{medium:"ooh",items:[{id:"ooh",quantity:1,amountCents:10000}]},{medium:"press",items:[{id:"press",quantity:1,amountCents:2000}]}]};
+ const observations:DeliveryObservation[]=[observation("television",30),observation("radio",40),{...observation("radio",20),medium:"ooh",selectionKey:deliverySelectionKey(all,"ooh"),reach2Pct:undefined,reach3Pct:undefined,impressions:undefined},{...observation("radio",10),medium:"press",selectionKey:deliverySelectionKey(all,"press"),reach2Pct:undefined,reach3Pct:undefined,impressions:undefined}];
+ const result=combineMediaDelivery(all,observations).summary;
+ assert.ok(Math.abs(result.reach1Pct!-(1-.7*.6*.8*.9)*100)<1e-8);
+ assert.equal(result.media.length,4);assert.ok(Math.abs(result.frequency!-200000/58000)<1e-8);
+ assert.deepEqual(result.contactMedia?.map(m=>m.medium),["television","radio"]);
+ assert.equal(result.grps,200);assert.equal(result.reach2Pct,null);
+});
 test("projections use current GRPs and preserve target, measured city scope and incomplete media",()=>{
  const result=projectPlanningDelivery(brief,[line("television"),line("radio")],model)!;
  assert.ok(Math.abs(result.reach1Pct!-23.5)<1e-8);assert.equal(result.grps,40);

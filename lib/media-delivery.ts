@@ -17,6 +17,7 @@ export type DeliverySummary = {
   media: { medium: MediaGroup; reachPct: number; people: number }[];
   reach1Pct: number | null; reach2Pct: number | null; reach3Pct: number | null;
   people: number | null; frequency: number | null; grps: number | null;
+  contactMedia?: {medium:MediaGroup;frequency:number|null;grps:number}[];
   digital: { impressions: number | null; views: number | null; conversations: number | null } | null;
 };
 export type ReachCurve = { medium: MediaGroup; points: { grps: number; reachPct: number }[] };
@@ -118,9 +119,12 @@ export function combineMediaDelivery(selection: DeliverySelection, observations:
     summary.reach2Pct = Math.max(0, 1 - dist[0] - dist[1]) * 100;
     if (matched.every(row => row.reach3Pct != null)) summary.reach3Pct = Math.max(0, 1 - dist[0] - dist[1] - dist[2]) * 100;
   }
-  if (matched.every(row => row.impressions != null)) {
-    const gross = matched.reduce((n, row) => n + row.impressions!, 0);
-    summary.frequency = people > 0 ? gross / people : null;
+  const contacts=matched.filter(row=>["television","radio","digital"].includes(row.medium)&&row.impressions!=null);
+  if (contacts.length) {
+    summary.contactMedia=contacts.map(row=>({medium:row.medium,frequency:row.reach1Pct>0?row.impressions!/(row.universe*row.reach1Pct/100):null,grps:row.impressions!/row.universe*100}));
+    const gross = contacts.reduce((n, row) => n + row.impressions!, 0);
+    const contactPeople=first.universe*(1-contacts.reduce((p,row)=>p*(1-row.reach1Pct/100),1));
+    summary.frequency = contactPeople > 0 ? gross / contactPeople : null;
     summary.grps = gross / first.universe * 100;
   }
   return { summary, issues };

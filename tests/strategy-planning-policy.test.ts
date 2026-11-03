@@ -15,7 +15,7 @@ const evidence=(candidates:StrategyCandidate[]):StrategyEvidenceBundle=>({...bui
 test("all six media start from the approved mix, while evidence may justify a different final allocation",()=>{
   const media=Object.keys(STARTING_MEDIA_MIX) as MediaGroup[];
   const brief=strategyBrief({selectedMedia:media,budgetUsd:100000});
-  const bundle=evidence(media.map(m=>candidate(m,m,1,["Quito"])));
+  const bundle=evidence([...media.map(m=>candidate(m,m,1,["Quito"])),candidate("television-other","television",1,["Quito"],{provider:"television",product:"Segundo programa sintético"})]);
   // No source-derived prior overrides the owner's starting policy.
   const plan={...baseline,plan:[{label:"Televisión",pct:.95,amount:95000},{label:"Digital",pct:.05,amount:5000}]};
   const payload=strategyAiPayload(brief,bundle,plan);
