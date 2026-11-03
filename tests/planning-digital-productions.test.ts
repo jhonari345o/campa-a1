@@ -96,10 +96,10 @@ test("programme selection requires an explicit valid share and cannot forge a di
   invalid.allocations[0].productionWeight=value;
   let code="";
   assert.equal(parseStrategyAdvice(JSON.stringify(invalid),brief,bundle,c=>{code=c;}),null);
-  assert.equal(code,"DIGITAL_SPLIT");
+  assert.match(code,/^DIGITAL_SPLIT_(MISSING|TYPE|RANGE)$/);
  }
  const empty=structuredClone(advice);empty.allocations[0].candidateIds=[];
- assert.equal(parseStrategyAdvice(JSON.stringify(empty),brief,bundle),null);
+ assert.equal(parseStrategyAdvice(JSON.stringify(empty),brief,bundle)?.allocations[0].productionWeight,0,"unspent editorial envelopes stay with platforms");
  empty.allocations[0].productionWeight=0;
  assert.equal(parseStrategyAdvice(JSON.stringify(empty),brief,bundle)?.allocations[0].productionWeight,0);
  const payload=strategyAiPayload(brief,bundle,base);
