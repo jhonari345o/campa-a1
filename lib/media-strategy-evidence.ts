@@ -42,6 +42,7 @@ export type StrategyCandidate = {
   stationId?: string; marketKeys?: string[]; stationCoverage?: string[]; coverageKeys?: string[];
   geo?: { latitude: number; longitude: number };
   oohPhoto?: { assetId: string; kind: "asset" | "format" };
+  physicalAssetId?: string;
   digitalProduction?: {id:string;rights:string[]};
   note: string;
 };
@@ -205,6 +206,10 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
   void competitionSource;
   for(const p of catalogs.workspaceProducts??[]){
     const medium=productMedium(p);if(!selected(brief,medium)||!(p.source.workspaceProductId||p.source.agreementId||p.source.standingPrice))continue;
+    // Additional production/branding charges remain in the commercial catalog,
+    // but are not independent media placements or geographic coverage.
+    const component=normalized(p.source.rate?.component||p.format);
+    if(medium==="ooh"&&/\b(?:branding|produccion|impresion|instalacion|montaje|desmontaje)\b/.test(component)&&!/\b(?:pauta|alquiler|arrendamiento|exhibicion|difusion)\b/.test(component))continue;
     const asset = medium === "ooh" && p.source.assetId ? catalogs.ooh.assets.find(asset => asset.id === p.source.assetId) : undefined;
     const station=medium==="radio"&&p.source.stationId?catalogs.radio.stations.find(s=>s.id===p.source.stationId):undefined;
     const radioCoverage=station?radioCommercialCoverage(p.marketKeys?.length?p.marketKeys:p.location.split(/\s*[·,+]\s*/),station.regionKeys):undefined;
@@ -216,7 +221,7 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
     const digitalProduction=isDigitalProduction(p)?p.digitalProduction:undefined;
     const digitalMonths=digitalProduction&&/^(month|mes|mensual)$/i.test(p.billingPeriod??p.unit)?campaignRentalMonths(brief.startDate??"",brief.endDate??""):null;
     const sid=addSource({id:`workspace-tariff:${p.key}`,kind:"tariff",label:`${p.provider} · ${p.name}`,period,market:p.location,target:"Tarifa comercial",use:quoted?"comparable":"context",note:p.conditions});
-    candidates.push({id:`workspace:${p.key}`,catalogKey:p.key,medium,coverageKeys:asset?[asset.city,...asset.provinces]:radioCoverage??p.marketKeys??p.location.split(/\s*[·,+]\s*/),...(p.source.stationId?{stationId:p.source.stationId}:{}),...(radioCoverageLabels?{stationCoverage:radioCoverageLabels}:{}),marketKeys:radioCoverage??p.marketKeys??p.location.split(/\s*[·,+]\s*/).map(normalized),provider:p.provider,product:p.name,...(medium==="television"?{planningDaypart:planningDaypart(p.format)}:{}),market:radioCoverageLabels?.join(" · ")??p.location,target:"Tarifa comercial",period,sourceIds:[sid],sourceUse:quoted?"comparable":"context",unit:priced?.unit??p.unit,unitPriceUsd:priced?.priceUsd??null,referencePriceUsd:referencePrice==null?null:referencePrice/100,minimumUnits:1,...(asset?.recordType==="asset"?{maximumUnits:1}:{}),...(digitalProduction?{digitalProduction:{id:digitalProduction.id,rights:digitalProduction.rights}}:{}),...(digitalMonths?{planningMinimumUnits:digitalMonths,maximumUnits:digitalMonths}:{}),minimumSpendUsd:priced?.priceUsd??null,metrics:[],...(asset?.photo?{oohPhoto:{assetId:asset.id,kind:asset.photoKind}}:{}),...(asset?.latitude!=null&&asset.longitude!=null?{geo:{latitude:asset.latitude,longitude:asset.longitude}}:{}),note:[p.format,p.conditions].filter(Boolean).join(" · ")});
+    candidates.push({id:`workspace:${p.key}`,catalogKey:p.key,medium,coverageKeys:asset?[asset.city,...asset.provinces]:radioCoverage??p.marketKeys??p.location.split(/\s*[·,+]\s*/),...(p.source.stationId?{stationId:p.source.stationId}:{}),...(radioCoverageLabels?{stationCoverage:radioCoverageLabels}:{}),marketKeys:radioCoverage??p.marketKeys??p.location.split(/\s*[·,+]\s*/).map(normalized),provider:p.provider,product:p.name,...(medium==="television"?{planningDaypart:planningDaypart(p.format)}:{}),market:radioCoverageLabels?.join(" · ")??p.location,target:"Tarifa comercial",period,sourceIds:[sid],sourceUse:quoted?"comparable":"context",unit:priced?.unit??p.unit,unitPriceUsd:priced?.priceUsd??null,referencePriceUsd:referencePrice==null?null:referencePrice/100,minimumUnits:1,...(asset?.recordType==="asset"?{maximumUnits:1,physicalAssetId:asset.id}:{}),...(digitalProduction?{digitalProduction:{id:digitalProduction.id,rights:digitalProduction.rights}}:{}),...(digitalMonths?{planningMinimumUnits:digitalMonths,maximumUnits:digitalMonths}:{}),minimumSpendUsd:priced?.priceUsd??null,metrics:[],...(asset?.photo?{oohPhoto:{assetId:asset.id,kind:asset.photoKind}}:{}),...(asset?.latitude!=null&&asset.longitude!=null?{geo:{latitude:asset.latitude,longitude:asset.longitude}}:{}),note:[p.format,p.conditions].filter(Boolean).join(" · ")});
   }
   for(const c of candidates.filter(c=>c.medium==="television"&&c.catalogKey&&c.id.startsWith("workspace:"))){
     const p=catalogs.workspaceProducts?.find(p=>p.key===c.catalogKey);
