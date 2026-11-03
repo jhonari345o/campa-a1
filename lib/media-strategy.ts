@@ -7,7 +7,7 @@ import { briefMarketKeys } from "./broadcast-catalog";
 import { planningStudyBrief, nationalTerritoryOrder, territoryProvince, territoryKey, territoriesOverlap } from "./planning-market";
 import { coverageFromLabels } from "./geographic-coverage";
 
-export const STRATEGY_VERSION = "2026-11-03.30";
+export const STRATEGY_VERSION = "2026-11-03.31";
 export const MAX_STRATEGY_EXECUTIONS = 25;
 // Planning policy approved by the platform owner; it is not an audience study.
 export const STARTING_MEDIA_MIX: Readonly<Record<MediaGroup, number>> = {
@@ -379,8 +379,13 @@ export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:Strate
     const hasProductions=medium==="digital"&&pool.some(c=>c.digitalProduction&&(r.candidateIds as string[]).includes(c.id));
     // A list of programmes is not permission to spend the entire digital
     // allocation. Their envelope must be an explicit, validated AI decision.
-    if((hasProductions||r.productionWeight!==undefined)&&
-      (medium!=="digital"||!Number.isInteger(r.productionWeight)||Number(r.productionWeight)<0||Number(r.productionWeight)>10_000||!hasProductions&&Number(r.productionWeight)>0))return reject("DIGITAL_SPLIT");
+    const productionWeight=hasProductions&&weight>0?r.productionWeight:0;
+    if(productionWeight===undefined)return reject("DIGITAL_SPLIT_MISSING");
+    if(!Number.isInteger(productionWeight))return reject("DIGITAL_SPLIT_TYPE");
+    if(Number(productionWeight)<0||Number(productionWeight)>10_000)return reject("DIGITAL_SPLIT_RANGE");
+    // Extra fields on other media and an editorial envelope with no selected
+    // programme have no purchase effect. Discard them instead of rejecting
+    // valid television, radio and platform decisions from the same response.
     if(medium==="radio"&&weight>0&&r.candidateIds.length){
       const markets=briefMarketKeys(brief),amount=brief.budgetUsd==null?null:brief.budgetUsd*weight/10000;
       // Enforce a feasible multi-plaza selection, not an impossible national
@@ -402,7 +407,7 @@ export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:Strate
       digital:"Distribuye la inversión digital de acuerdo con el objetivo del brief.",
       influencers:"Selecciona perfiles y productos dentro del catálogo de tu cuenta.",
     };
-    used.add(medium);allocations.push({medium,weight,rationale:safeRationale?String(r.rationale).trim():safeRationales[medium],evidenceIds:r.evidenceIds as string[],candidateIds:[...new Set(r.candidateIds as string[])],...(medium==="digital"?{productionWeight:Number(r.productionWeight??0)}:{})});
+    used.add(medium);allocations.push({medium,weight,rationale:safeRationale?String(r.rationale).trim():safeRationales[medium],evidenceIds:r.evidenceIds as string[],candidateIds:[...new Set(r.candidateIds as string[])],...(medium==="digital"?{productionWeight:Number(productionWeight)}:{})});
   }
   if(allocations.reduce((n,r)=>n+r.weight,0)!==10_000)return reject("WEIGHT_TOTAL");
   if(safeTextUsed)onSafeText?.();

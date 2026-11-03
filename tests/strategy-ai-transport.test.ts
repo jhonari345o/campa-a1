@@ -38,6 +38,9 @@ test("compact IDs restore to the original evidence and cannot select a forged so
   const advice={summary:"Se prioriza una alternativa adecuada al público.",allocations:[{medium:option.medium,weight:10000,rationale:"Combina la cobertura y el costo de la pauta.",evidenceIds:option.evidenceIds.slice(0,2),candidateIds:option.candidateIds.slice(0,1)}],questions:[]};
   const restored=transport.restore(JSON.stringify(advice));
   assert.ok(parseStrategyAdvice(restored,brief,bundle));
+  const extra=JSON.parse(restored);extra.allocations[0].productionWeight=0;
+  assert.ok(parseStrategyAdvice(JSON.stringify(extra),brief,bundle),"an irrelevant editorial field cannot invalidate a television selection");
+  assert.equal(parseStrategyAdvice(JSON.stringify(extra),brief,bundle)?.allocations[0].productionWeight,undefined);
   advice.allocations[0].evidenceIds=["s99999"];
   assert.equal(parseStrategyAdvice(transport.restore(JSON.stringify(advice)),brief,bundle),null);
   assert.equal(transport.restore('{"truncated"'),'{"truncated"');
