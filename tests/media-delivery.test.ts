@@ -36,7 +36,11 @@ test("projections use current GRPs and preserve target, measured city scope and 
  assert.equal(projectPlanningDelivery({...brief,geography:"Cuenca"},[line("television")],model),null);
  assert.equal(projectPlanningDelivery(brief,[{...line("television"),studyEnd:"2026-11-10"}],model),null);
  const partial=projectPlanningDelivery(brief,[line("television"),{...line("radio"),medium:"ooh",ratingPct:null}],model)!;
- assert.equal(partial.media.length,1);assert.equal(partial.reach1Pct,null);
+ assert.equal(partial.media.length,1);assert.ok(Math.abs(partial.reach1Pct!-15)<1e-8);assert.deepEqual(partial.geographicComplements,["ooh"]);
+ const withPress=projectPlanningDelivery(brief,[line("television"),{...line("radio"),medium:"press",ratingPct:null}],model)!;
+ assert.equal(withPress.reach1Pct,partial.reach1Pct);assert.equal(withPress.grps,20);
+ const missingRadio=projectPlanningDelivery(brief,[line("television"),{...line("radio"),ratingPct:null}],model)!;
+ assert.equal(missingRadio.reach1Pct,null);
  const local=projectPlanningDelivery(brief,[{...line("television"),quantity:10000,ratingMarketKeys:["quito"]}],model)!;
  assert.ok(local.reach1Pct!<=40);
  assert.equal(projectPlanningDelivery({...brief,geography:"Guayaquil"},[line("television")],model),null);

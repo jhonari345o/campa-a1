@@ -64,7 +64,8 @@ export async function projectMediaDelivery(input: DeliveryRequest): Promise<Deli
       const compatible=local&&radioCompatibility(source,local)===null;
       lines.push({id:`radio-observation:${row.id}`,medium:"radio",quantity:pick.quantity,amountCents:0,ratingPct:compatible?row.rating:null,ratingMarketKeys:source.marketKeys,studyEnd:source.periodEnd});
     }
-    // A mix with an unquantified medium must not display its measured subset as the whole plan.
+    // Preserve all selected media. OOH/press without a forecast remain geographic
+    // complements and contribute no incremental contacts to the numerical projection.
     for(const medium of input.expectedMedia??[])if(!lines.some(l=>l.medium===medium))lines.push({id:`unquantified:${medium}`,medium,quantity:1,amountCents:0,ratingPct:null,ratingMarketKeys:[],studyEnd:null});
     return projectPlanningDelivery(brief,lines,model);
   } catch { return null; }

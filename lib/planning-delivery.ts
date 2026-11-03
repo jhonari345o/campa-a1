@@ -44,6 +44,6 @@ export function projectPlanningDelivery(brief:BroadcastBrief,lines:RatedDelivery
     if(reach==null||!thresholds)continue;
     observations.push({medium,selectionKey:deliverySelectionKey(selection,medium),universe,universeId:`planning-adults-${geography}`,targetId:"18+|all|all",geographyId:geography,periodId:`${brief.startDate}/${brief.endDate}`,reach1Pct:reach,...thresholds,impressions:grps*universe/100,evidenceId:"owner-authorized-historical-curve-projection",approved:true});
   }
-  const {summary}=combineMediaDelivery(selection,observations);
+  const {summary}=combineMediaDelivery(selection,observations,{allowGeographicComplements:true});
   return summary.media.length?{...summary,scopeLabel:`Personas de 18 años o más · ${keys.map(key=>key==="guayaquil"?"Guayaquil":"Quito").join(" y ")}`}:null;
 }

@@ -3,7 +3,7 @@ import { mediaGroupLabel } from "./plan-optimizer";
 import type { MediaPlan, PlanRow } from "./planner";
 import type { StrategyBrief, StrategyCandidate, StrategyEvidenceBundle } from "./media-strategy-evidence";
 
-export const STRATEGY_VERSION = "2026-11-02.13";
+export const STRATEGY_VERSION = "2026-11-02.14";
 export type StrategyAiState = "validated" | "cached" | "not_configured" | "quota" | "unavailable" | "rejected";
 export type StrategyAdvice = {
   summary: string;
@@ -102,6 +102,10 @@ function candidateSort(a:StrategyCandidate,b:StrategyCandidate,brief?:Pick<Strat
     if(Boolean(a.oohPhoto)!==Boolean(b.oohPhoto))return a.oohPhoto?-1:1;
     return (ap??Infinity)-(bp??Infinity)||a.id.localeCompare(b.id);
   }
+  if(a.medium==="press"&&b.medium==="press"&&a.cohort&&a.cohort===b.cohort&&a.unit===b.unit){
+    const ap=a.metrics.find(m=>m.label==="Alcance de lectura"),bp=b.metrics.find(m=>m.label==="Alcance de lectura");
+    if(ap&&bp&&ap.value!==bp.value)return bp.value-ap.value;
+  }
   const sameCohort=ar&&br&&(ar.sourceId===br.sourceId||a.cohort&&a.cohort===b.cohort)&&ar.unit===br.unit&&a.unit===b.unit;
   if(sameCohort&&ar!.value>0&&br!.value>0){
     if(/eficiencia|costo/.test(normalize(`${brief?.objective??""} ${brief?.priority??""}`))&&a.unitPriceUsd!=null&&b.unitPriceUsd!=null){const difference=a.unitPriceUsd/ar!.value-b.unitPriceUsd/br!.value;if(difference)return difference;}
@@ -123,6 +127,14 @@ export function strategyCandidatePool(bundle:StrategyEvidenceBundle,medium:Media
     for(let i=0;i<Math.max(0,...groups.map(g=>g.length));i++)for(const group of groups)if(group[i])ranked.push(group[i]);
     const priced = all.filter(c=>c.id.startsWith("workspace:")&&c.unitPriceUsd!=null).sort((a,b)=>candidateSort(a,b,brief));
     return [...ranked,...priced];
+  }
+  if(medium==="press"||medium==="ooh"){
+    const publications=new Map<string,StrategyCandidate[]>();
+    for(const c of all){const key=normalize(medium==="press"?c.provider:c.market),rows=publications.get(key)??[];rows.push(c);publications.set(key,rows);}
+    const groups=[...publications.values()].map(rows=>rows.sort((a,b)=>candidateSort(a,b,brief))).sort((a,b)=>candidateSort(a[0],b[0],brief));
+    const ranked:StrategyCandidate[]=[];
+    for(let i=0;i<Math.max(0,...groups.map(g=>g.length));i++)for(const group of groups)if(group[i])ranked.push(group[i]);
+    return ranked;
   }
   if(medium==="television"){
     const measured=all.filter(c=>c.cohort&&c.metrics.some(m=>m.label==="Rating"));
@@ -175,7 +187,7 @@ export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:Strate
     if(r.candidateIds.length>3)return reject("CANDIDATE_COUNT");
     const pool=strategyCandidatePool(bundle,medium,brief).slice(0,8);
     if(!r.candidateIds.every(id=>typeof id==="string"&&pool.some(c=>c.id===id)))return reject("CANDIDATE_UNKNOWN");
-    const relevantSources=new Set(["category-investment",...(bundle.consumption.some(c=>c.medium===medium)?["audience-consumption"]:[]),...pool.flatMap(c=>c.sourceIds),...bundle.audienceReferences.filter(r=>r.medium===medium).map(r=>r.sourceId)]);
+    const relevantSources=new Set(["category-investment",...(bundle.consumption.some(c=>c.medium===medium)?["audience-consumption"]:[]),...pool.flatMap(c=>c.sourceIds),...bundle.audienceReferences.filter(r=>r.medium===medium).map(r=>r.sourceId),...(medium==="ooh"?(bundle.oohMarketReferences??[]).map(r=>r.sourceId):[])]);
     if(!r.evidenceIds.every(id=>relevantSources.has(String(id))))return reject("EVIDENCE_MEDIUM");
     used.add(medium);allocations.push({medium,weight:Number(r.weight),rationale:String(r.rationale).trim(),evidenceIds:r.evidenceIds as string[],candidateIds:[...new Set(r.candidateIds as string[])]});
   }
@@ -185,16 +197,16 @@ export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:Strate
 export function strategyAiPayload(brief:StrategyBrief,bundle:StrategyEvidenceBundle,plan:MediaPlan) {
   const allowed=allowedStrategyMedia(brief,bundle);
   const candidates=allowed.flatMap(m=>strategyCandidatePool(bundle,m,brief).slice(0,8));
-  const wanted=new Set(["category-investment","audience-consumption",...candidates.flatMap(c=>c.sourceIds),...bundle.audienceReferences.map(r=>r.sourceId)]);
+  const wanted=new Set(["category-investment","audience-consumption",...candidates.flatMap(c=>c.sourceIds),...bundle.audienceReferences.map(r=>r.sourceId),...(bundle.oohMarketReferences??[]).map(r=>r.sourceId)]);
   const availableSourceIds=new Set(bundle.sources.filter(s=>s.use!=="unavailable").map(s=>s.id));
   const allocationOptions=allowed.map(medium=>({medium,
-    evidenceIds:[...new Set(["category-investment",...(bundle.consumption.some(c=>c.medium===medium)?["audience-consumption"]:[]),...candidates.filter(c=>c.medium===medium).flatMap(c=>c.sourceIds),...bundle.audienceReferences.filter(r=>r.medium===medium).map(r=>r.sourceId)])].filter(id=>availableSourceIds.has(id)),
+    evidenceIds:[...new Set(["category-investment",...(bundle.consumption.some(c=>c.medium===medium)?["audience-consumption"]:[]),...candidates.filter(c=>c.medium===medium).flatMap(c=>c.sourceIds),...bundle.audienceReferences.filter(r=>r.medium===medium).map(r=>r.sourceId),...(medium==="ooh"?(bundle.oohMarketReferences??[]).map(r=>r.sourceId):[])])].filter(id=>availableSourceIds.has(id)),
     candidateIds:candidates.filter(c=>c.medium===medium).map(c=>c.id),
   }));
   // Use the same integer scale as the response contract, instead of fractional baseline shares.
   const baseline=allocateStrategyBudget(baseWeights(brief,bundle,plan),100).map(r=>({medium:r.medium,weight:Math.round(r.amountUsd!*100)}));
   const outputContract={summary:"Texto breve sin cifras",allocations:[{medium:"Copiar de allocationOptions",weight:"Entero; la suma de todos los pesos debe ser 10000",rationale:"Texto breve sin cifras",evidenceIds:"Entre uno y seis identificadores de evidenceIds del mismo medio",candidateIds:"Entre cero y tres identificadores de candidateIds del mismo medio"}],questions:[]};
-  return {version:STRATEGY_VERSION,brief,allowedMedia:allowed,allocationOptions,outputContract,evidence:{sources:bundle.sources.filter(s=>wanted.has(s.id)),competition:bundle.competition,categoryMix:bundle.categoryMix,consumption:bundle.consumption,candidates,audienceReferences:bundle.audienceReferences,channelShares:bundle.channelShares,gaps:bundle.gaps},baseline,rules:["Las cifras y el presupuesto se calculan en el servidor.","La inversión de competidores no mide efectividad.","Las fuentes contextuales no son mediciones del target.","Un tarifario no es un rating y un ranking no es alcance de campaña.","No declares una mezcla óptima universal; compara solo alternativas respaldadas."]};
+  return {version:STRATEGY_VERSION,brief,allowedMedia:allowed,allocationOptions,outputContract,evidence:{sources:bundle.sources.filter(s=>wanted.has(s.id)),competition:bundle.competition,categoryMix:bundle.categoryMix,consumption:bundle.consumption,candidates,audienceReferences:bundle.audienceReferences,channelShares:bundle.channelShares,oohMarketReferences:bundle.oohMarketReferences,gaps:bundle.gaps},baseline,rules:["Las cifras y el presupuesto se calculan en el servidor.","La inversión de competidores no mide efectividad.","Las fuentes contextuales no son mediciones del target.","Un tarifario no es un rating y un ranking no es alcance de campaña.","No declares una mezcla óptima universal; compara solo alternativas respaldadas."]};
 }
 export function buildStrategyReport(brief:StrategyBrief,bundle:StrategyEvidenceBundle,baseline:MediaPlan,options:{advice?:StrategyAdvice|null;aiState:StrategyAiState;model?:string|null;fingerprint:string;generatedAt:string}):StrategyReport {
   const weights=options.advice?.allocations.map(r=>({medium:r.medium,weight:r.weight}))??baseWeights(brief,bundle,baseline);
