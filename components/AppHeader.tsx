@@ -133,12 +133,12 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
         <Link href="/" className="portal-mobile-brand" aria-label="Ad Mavericks One, página principal"><Wordmark one/></Link>
         <div className="portal-topbar-copy"><p>Ad Mavericks One</p><strong>{displayTitle}</strong></div>
         <div className="portal-topbar-account">
+          {!previewCompanyId && <MaviFloatingAssistant />}
           <span className="portal-license-pill"><i />Licencia activa</span>
           <AccountMenu name={name} isAdmin={isAdmin} workspaceName={workspace?.name} role={workspace?.role} preview={Boolean(previewCompanyId)}/>
         </div>
       </header>
       {workspace && <WorkspaceBanner workspace={workspace}/>}
-      {!previewCompanyId && <MaviFloatingAssistant />}
     </>
   );
 }

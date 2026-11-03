@@ -68,15 +68,15 @@ function OohAssetCard({ asset, references }: { asset: OohAsset; references: OohP
   const hasMap = asset.latitude != null && asset.longitude != null;
   const kind = oohKey(`${asset.format} ${asset.name}`);
   const quotationOnly = /tunel/.test(kind) || (asset.providerSlug === "meglio" && /columna/.test(kind));
-  return <article className="overflow-hidden rounded-card border border-border bg-white shadow-panel">
-    <div className="relative aspect-[4/3] bg-fog">
+  return <article className="media-compact-card ooh-asset-card overflow-hidden rounded-card border border-border shadow-panel">
+    <div className="relative aspect-[16/9] bg-fog">
       {asset.photo && !imageFailed ? <a href={photoUrl} target="_blank" rel="noopener noreferrer" className={`block h-full ${focus}`} aria-label={`Ampliar fotografía de ${asset.name}`}>
         <Image src={photoUrl} alt={`${asset.name}${asset.city ? ` en ${asset.city}` : ""}${asset.photoKind === "format" ? " · imagen de referencia del formato" : ""}`} fill unoptimized sizes="(max-width: 767px) 100vw, (max-width: 1279px) 50vw, 33vw" className="object-contain" onError={() => setImageFailed(true)} />
         <span className="absolute bottom-3 right-3 rounded-lg bg-forest/90 px-3 py-1.5 text-[10px] font-black text-white">Ampliar ↗</span>
       </a> : <div className="grid h-full place-content-center gap-2 text-center text-muted"><span className="mx-auto"><LocationIcon /></span><span className="text-xs">{imageFailed ? "Fotografía no disponible en este momento" : "Sin fotografía incorporada"}</span></div>}
       {asset.photoKind === "format" && asset.photo && <span className="absolute left-3 top-3 rounded-lg bg-white/95 px-3 py-1.5 text-[10px] font-bold text-forest">{asset.photoCaption || "Imagen de referencia del formato"}</span>}
     </div>
-    <div className="p-5"><p className="text-[10px] font-black uppercase tracking-wide text-signal-dark">{[asset.city, asset.brand].filter(Boolean).join(" · ") || asset.provinces.join(" · ")}</p><h3 className="mt-1 text-lg font-black leading-tight">{asset.name}</h3>{asset.code && <p className="mt-1 text-xs text-muted">Código {asset.code}</p>}
+    <div className="p-5"><p className="text-[10px] font-black uppercase tracking-wide text-signal-dark">{[asset.city, asset.providerSlug === "basics" ? null : asset.brand].filter(Boolean).join(" · ") || asset.provinces.join(" · ")}</p><h3 className="mt-1 text-lg font-black leading-tight">{asset.name}</h3>{asset.code && <p className="mt-1 text-xs text-muted">Código {asset.code}</p>}
       <p className="mt-3 text-sm text-muted">{asset.address || "Ubicación exacta no informada"}</p>
       <dl className="mt-4 grid grid-cols-2 gap-3 border-y border-border py-3 text-xs"><div><dt className="text-muted">Formato</dt><dd className="mt-1 font-bold">{asset.format || "No informado"}</dd></div>{asset.dimensions && <div><dt className="text-muted">Medidas</dt><dd className="mt-1 font-bold">{asset.dimensions}</dd></div>}{asset.dailySpots != null && <div><dt className="text-muted">Spots por día</dt><dd className="mt-1 font-bold">{asset.dailySpots}</dd></div>}{asset.spotSeconds != null && <div><dt className="text-muted">Duración del spot</dt><dd className="mt-1 font-bold">{asset.spotSeconds} segundos</dd></div>}</dl>
       {asset.conditions && <p className="mt-4 text-sm leading-relaxed text-muted">{asset.conditions}</p>}

@@ -66,7 +66,7 @@ export function MediaCatalog({
           <p>Medios</p>
           <h1>{canRequest ? "Elige medios, arma tu compra." : "Explora tu catálogo de medios"}</h1>
           <p className="media-portal-header-description">
-              {canRequest ? "Combina cuñas, espacios y formatos de distintos medios en una sola solicitud." : "Consulta formatos, coberturas y tarifas de tu espacio."}
+              {canRequest ? "Combina cuñas, espacios y formatos de distintos medios en una sola compra." : "Consulta formatos, coberturas y tarifas de tu espacio."}
           </p>
         </div>
         {canPlan && <Link href="/planificador?view=planner" className="media-portal-plan-button">Armar plan de medios <span>→</span></Link>}
@@ -199,7 +199,7 @@ function InfluencerSection({ profiles }: { profiles: InfluencerProfile[] }) {
         <EmptyData message="No hay perfiles disponibles en este momento. Vuelve a intentar más tarde." />
       ) : (
         <>
-          <div className="mt-6 grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,290px),1fr))" }}>
+          <div className="mt-6 grid items-start gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,250px),1fr))" }}>
             {shown.map((profile) => <InfluencerCard key={profile.id} profile={profile} />)}
           </div>
           {!expanded && matches.length > shown.length && (
@@ -241,9 +241,9 @@ function InfluencerCard({ profile }: { profile: InfluencerProfile }) {
       </div>
       <dl className="mt-5 grid grid-cols-2 gap-2 text-xs">
         {profile.followers != null && <Metric label="Seguidores" value={compact(profile.followers)} />}
-        {profile.avgViews != null && <Metric label="Views promedio" value={compact(profile.avgViews)} />}
-        {profile.engagementPct != null && <Metric label="Engagement" value={percent(profile.engagementPct)} />}
-        {profile.followerQualityPct != null && <Metric label="Follower quality" value={percent(profile.followerQualityPct)} />}
+        {profile.avgViews != null && <Metric label="Vistas prom." value={compact(profile.avgViews)} />}
+        {profile.engagementPct != null && <Metric label="Interacción" value={percent(profile.engagementPct)} />}
+        {profile.followerQualityPct != null && <Metric label="Calidad" value={percent(profile.followerQualityPct)} />}
       </dl>
       <div className="mt-5 border-t border-white/15 pt-4">
         <strong className="text-sm">Elige tus productos</strong>

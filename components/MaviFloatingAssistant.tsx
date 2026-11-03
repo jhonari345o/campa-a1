@@ -78,8 +78,8 @@ export function MaviFloatingAssistant() {
       }
       if (!response.ok) {
         const gatewayMessage = response.status === 502 || response.status === 504
-          ? "Mavi tardo demasiado en responder. Intenta nuevamente."
-          : `Mavi no pudo responder (codigo ${response.status}).`;
+          ? "Mavi tardó demasiado en responder. Intenta nuevamente."
+          : `Mavi no pudo responder (código ${response.status}).`;
         setError(data.error ?? gatewayMessage);
       }
       else {
@@ -166,8 +166,8 @@ export function MaviFloatingAssistant() {
         </section>
       )}
       <button type="button" className="mavi-floating-trigger" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-label={open ? "Cerrar asistente Mavi" : "Abrir asistente Mavi"}>
-        <MaviAvatar size={54} />
-        <span><strong>Centro Mavi</strong><small>Todos tus procesos aquí</small></span>
+        <MaviAvatar size={32} />
+        <span><strong>Mavi</strong></span>
         <b>{open ? "×" : "+"}</b>
       </button>
     </div>

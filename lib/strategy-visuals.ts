@@ -1,3 +1,4 @@
+import { broadcastLogo } from "./broadcast-logos";
 import type { MediaGroup } from "./media-groups";
 export const MEDIA_COLORS: Record<MediaGroup, string> = { television: "#a5d96c", radio: "#57c7ab", ooh: "#66afe1", press: "#e2c374", digital: "#a79ae8", influencers: "#e6a3b5" };
 export type MixSegment = { key: MediaGroup | "unassigned"; share: number; offset: number; amountUsd: number | null; color: string };
@@ -18,7 +19,8 @@ const LOGOS: Partial<Record<MediaGroup, [string[], string][]>> = {
   ooh: [ [["zazapec", "zaza"], "/providers/ooh/zazapec/logo.png"], [["gran comercio"], "/providers/ooh/gran-comercio/logo.png"], [["duoprint", "grupo duo"], "/providers/ooh/duoprint/logo.png"], [["induvallas"], "/providers/ooh/induvallas/logo.png"] ],
   digital: [ [["meta", "facebook", "instagram"], "/providers/digital/meta.svg"], [["google", "youtube"], "/providers/digital/google-ads.svg"], [["tiktok"], "/providers/digital/tiktok.svg"], [["linkedin"], "/providers/digital/linkedin.svg"], [["spotify"], "/providers/digital/spotify.svg"] ],
 };
-export function providerLogo(provider: string, medium: MediaGroup): string | null {
+export function providerLogo(provider: string, medium: MediaGroup, context=""): string | null {
+  if(medium==="radio"||medium==="television")return broadcastLogo(provider,medium,context);
   const name = normalized(provider);
   return LOGOS[medium]?.find(([aliases]) => aliases.some(alias => name === alias || name.startsWith(alias + " ")))?.[1] ?? null;
 }

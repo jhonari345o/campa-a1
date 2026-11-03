@@ -12,6 +12,7 @@ export type DeliveryObservation = {
   evidenceId: string; approved: boolean;
 };
 export type DeliverySummary = {
+  providers?: {key:string;reachPct:number;grps:number|null;frequency:number|null;scopeLabel:string}[];
   scopeLabel?: string;
   geographicComplements?: MediaGroup[];
   media: { medium: MediaGroup; reachPct: number; people: number }[];

@@ -10,3 +10,5 @@
 .offerTable td:last-child { white-space:normal; }
 .conditions { display:grid; gap:8px; margin-top:20px; color:var(--muted,#6c625a); font-size:12px; line-height:1.7; }
 @media(max-width:600px) { .filters { grid-template-columns:1fr; gap:0; } }
+
+.offerTable{max-height:480px;border-color:#5d594a;background:#302b25;color:#fff9ee}.offerTable thead{background:#24402c;color:#d6ecbf}.offerTable th,.offerTable td{padding:10px 12px;border-color:#ffffff25}.offerTable small{color:#ccc3b3}

@@ -1,3 +1,4 @@
+import { broadcastLogo } from "./broadcast-logos";
 import geography from "./ecuador-geography.json";
 import { projectRadioProfile, type RadioStationProfile } from "./radio-station";
 
@@ -42,7 +43,7 @@ export function projectRadioDirectory(value: unknown): RadioDirectoryEntry[] {
       id, name, regionKeys: keys, city: text(row.city) || null, dial: text(row.dial, 60) || null,
       genres: Array.isArray(row.genres) ? row.genres.slice(0, 8).map((item: unknown) => text(item, 60)).filter(Boolean) : [],
       description: text(row.description, 600),
-      logoPath: /^\/providers\/(?:radio\/[a-z0-9-]+\/logo\.(?:png|jpe?g|webp)|catomedia\/catomedia-logo\.png)$/.test(logo) ? logo : null,
+      logoPath: /^\/providers\/(?:radio\/[a-z0-9-]+\/logo\.(?:png|jpe?g|webp)|catomedia\/catomedia-logo\.png)$/.test(logo) ? logo : broadcastLogo(name,"radio",[text(row.city),...keys].join(" ")),
       reviewedAt: /^\d{4}-\d{2}-\d{2}$/.test(text(row.reviewed_at)) ? row.reviewed_at : null,
       profile: projectRadioProfile(row.profile),
     });

@@ -79,7 +79,7 @@ export function projectResearch(category: InfomediaCategory, payload: unknown, d
         const item = object(value);
         return {
           media: text(item.media), market: text(item.market), grps: numeric(item.grps), activeBrands: numeric(item.activeBrands),
-          topBrands: array(item.brands).slice(0, 5).map((value) => {
+          topBrands: array(item.brands).filter((value,index) => index < 10 || lookupKey(text(object(value).brand)) === focusKey || brands.slice(0,10).some(b => lookupKey(b.brand) === lookupKey(text(object(value).brand)))).slice(0,21).map((value) => {
             const b = object(value);
             return { brand: text(b.brand), grps: numeric(b.grps), sov: numeric(b.sov) };
           }),
@@ -101,9 +101,10 @@ export function restoreResearch(value: unknown): CategoryResearch | undefined {
   if (typeof category.id !== "string" || typeof category.label !== "string" || !Array.isArray(saved.periods)) return undefined;
   const normalized = { periods: saved.periods.map((value) => {
     const period = object(value);
-    return { ...period, brands: period.topBrands, pressureContexts: array(period.pressureContexts).map((value) => ({ ...object(value), brands: object(value).topBrands })) };
+    return { ...period, brands: [...array(period.topBrands),...(period.focusBrand?[period.focusBrand]:[])], pressureContexts: array(period.pressureContexts).map((value) => ({ ...object(value), brands: object(value).topBrands })) };
   }) };
-  const restored = projectResearch({ id: category.id, label: category.label }, normalized, text(saved.dataThrough));
+  const savedFocus=array(saved.periods).map(v=>object(object(v).focusBrand)).find(v=>v.brand);
+  const restored = projectResearch({ id: category.id, label: category.label }, normalized, text(saved.dataThrough),text(savedFocus?.brand));
   restored.tgi = restoreTgi(saved.tgi);
   if (!restored.periods.length) return undefined;
   try { return withReferenceYear(restored, numeric(saved.referenceYear)); } catch { return undefined; }

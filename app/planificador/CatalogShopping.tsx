@@ -136,7 +136,7 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
       const result = await submitCatalogSelection({
         clientId:cart.clientId??null,requestId: submission.current, version: version.current, quote: catalogQuoteSignature(items, products),
         companyId: String(data.get("companyId") ?? "") || null, title: String(data.get("title") ?? ""),
-        desiredStart: String(data.get("desiredStart") ?? ""), notes: String(data.get("notes") ?? ""),
+        desiredStart: String(data.get("desiredStart") ?? ""), notes: [String(data.get("notes") ?? ""), data.get("desiredEnd") ? `Fin de campaña: ${String(data.get("desiredEnd"))}` : ""].filter(Boolean).join("\n").slice(0,2000),
       });
       if (!result.ok) { if (result.products) setProducts(result.products); setError(result.error); return; }
       version.current = result.cart.version; desired.current = result.cart.items;
@@ -175,7 +175,13 @@ export function CatalogProductPicker({ product, emptyPriceLabel = "Por cotizar" 
 }
 export function CatalogProfileProducts({ profileId }: { profileId: string }) {
   const { products } = useShopping(), rows = products.filter(p => p.source.profileId === profileId);
-  return rows.length ? <div className={styles.profileProducts}>{rows.map(p => <CatalogProductPicker product={p} key={p.key} />)}</div> : <p className="mt-3 text-xs text-white/70">Sin formatos publicados.</p>;
+  return rows.length ? <>
+    <div className={styles.profileProducts}>{rows.slice(0, 4).map(p => <CatalogProductPicker product={p} key={p.key} />)}</div>
+    {rows.length > 4 && <details className={styles.moreProducts}>
+      <summary>Ver {rows.length - 4} formatos más</summary>
+      <div className={styles.profileProducts}>{rows.slice(4).map(p => <CatalogProductPicker product={p} key={p.key} />)}</div>
+    </details>}
+  </> : <p className="mt-3 text-xs text-white/70">Sin formatos publicados.</p>;
 }
 export function CatalogOohProducts({ assetId, quotationOnly = false }: { assetId: string; quotationOnly?: boolean }) {
   const { products } = useShopping();
@@ -263,7 +269,7 @@ function CartContents({ compact = false }: { compact?: boolean }) {
       {cart.error && <div className={styles.error} role="alert"><p>{cart.error}</p><button type="button" onClick={cart.retry} disabled={cart.busy || cart.saving}>Reintentar</button><button type="button" onClick={cart.restore} disabled={cart.busy || cart.saving}>Recuperar carrito guardado</button></div>}
       {!compact && <button type="button" className={styles.primary} onClick={() => cart.open(true)} disabled={!summary.lines.length || !!summary.unavailable || cart.saving || cart.busy || !!cart.error || !cart.canRequest}>Revisar selección <span aria-hidden="true">→</span></button>}
       {!cart.canRequest && <p className={styles.note}>Tu rol permite seleccionar productos; el envío requiere un usuario autorizado.</p>}
-      <p className={styles.note}>Las cantidades respetan la unidad de cada producto. La solicitud pasa a revisión comercial.</p>
+      <p className={styles.note}>Las cantidades respetan la unidad de cada producto. </p>
     </div>
   </section>;
 }
@@ -284,32 +290,30 @@ function MobileCartBar() {
 }
 function ShoppingDialog({ mode, orderId, onClose, onReview, onSend }: { mode: "cart" | "review" | null; orderId: string; onClose: () => void; onReview: () => void; onSend: (form: HTMLFormElement) => Promise<void> }) {
   const ref = useRef<HTMLDialogElement>(null), cart = useShopping(), summary = catalogCartSummary(cart.items, cart.products);
+  const [startDate,setStartDate]=useState(""), [endDate,setEndDate]=useState("");
   useEffect(() => { if (mode && !ref.current?.open) ref.current?.showModal(); if (!mode && ref.current?.open) ref.current.close(); }, [mode]);
   return <dialog ref={ref} className={styles.dialog} onClose={onClose} onCancel={event => { if (cart.busy) event.preventDefault(); }}>
     <header className={styles.dialogHeader}><div><p>Catálogo de medios</p><h2>{orderId ? "Solicitud registrada" : mode === "review" ? "Revisa tu selección" : "Tu carrito"}</h2></div><button type="button" aria-label="Cerrar carrito" onClick={onClose} disabled={cart.busy}>×</button></header>
-    {orderId ? <div className={styles.success}><span aria-hidden="true">✓</span><h3>Tu solicitud está en revisión</h3><p>Consulta sus productos y estado en Órdenes.</p><a className={styles.primary} href={`/campanas?catalog=${encodeURIComponent(orderId)}`}>Ver solicitud →</a><button type="button" className={styles.secondary} onClick={onClose}>Seguir explorando</button></div> : <><CartContents compact />{mode && <CartDeliveryProjection/>}
+    {orderId ? <div className={styles.success}><span aria-hidden="true">✓</span><h3>Tu solicitud está en revisión</h3><p>Consulta sus productos y estado en Órdenes.</p><a className={styles.primary} href={`/campanas?catalog=${encodeURIComponent(orderId)}`}>Ver solicitud →</a><button type="button" className={styles.secondary} onClick={onClose}>Seguir explorando</button></div> : <><CartContents compact />{mode && <CartDeliveryProjection startDate={startDate} endDate={endDate} setStartDate={setStartDate} setEndDate={setEndDate}/>}
       {mode === "cart" ? <button type="button" className={styles.primary} onClick={onReview} disabled={!summary.lines.length || !!summary.unavailable || cart.saving || !!cart.error || !cart.canRequest}>Revisar selección →</button> : <form className={styles.requestForm} onSubmit={event => { event.preventDefault(); void onSend(event.currentTarget); }}>
-        <label>Nombre de la solicitud<input name="title" required maxLength={120} defaultValue="Selección del catálogo" placeholder="Marca o referencia de la compra" /></label>
-        {cart.companies.length > 1 || cart.isAdmin ? <label>Espacio de la solicitud<select name="companyId" defaultValue={cart.companies.length === 1 ? cart.companies[0].id : ""}>{cart.isAdmin && <option value="">Ad Mavericks · cuenta propia</option>}{!cart.isAdmin && <option value="" disabled>Selecciona un espacio</option>}{cart.companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label> : <input type="hidden" name="companyId" value={cart.companies[0]?.id ?? ""} />}
-        <DesiredStartField/>
+        <label>Nombre de la compra<input name="title" required maxLength={120} defaultValue="Selección del catálogo" placeholder="Marca o referencia de la compra" /></label>
+        {cart.companies.length > 1 || cart.isAdmin ? <label>Espacio de la compra<select name="companyId" defaultValue={cart.companies.length === 1 ? cart.companies[0].id : ""}>{cart.isAdmin && <option value="">Ad Mavericks · cuenta propia</option>}{!cart.isAdmin && <option value="" disabled>Selecciona un espacio</option>}{cart.companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label> : <input type="hidden" name="companyId" value={cart.companies[0]?.id ?? ""} />}
+        <input type="hidden" name="desiredStart" value={startDate}/>
+        <input type="hidden" name="desiredEnd" value={endDate}/>
         <label>Indicaciones <small>Opcional</small><textarea name="notes" rows={3} maxLength={2000} placeholder="Fechas, ciudad, marca o detalles de los entregables" /></label>
-        <button className={styles.primary} type="submit" disabled={cart.busy || cart.saving || !!cart.error || !!summary.unavailable || !summary.lines.length || !cart.canRequest}>{cart.busy ? "Registrando solicitud…" : "Enviar solicitud →"}</button>
+        <button className={styles.primary} type="submit" disabled={cart.busy || cart.saving || !!cart.error || !!summary.unavailable || !summary.lines.length || !cart.canRequest}>{cart.busy ? "Registrando compra…" : "Comprar Medios →"}</button>
       </form>}</>}
   </dialog>;
 }
-function CartDeliveryProjection() {
+function CartDeliveryProjection({startDate,endDate,setStartDate,setEndDate}:{startDate:string;endDate:string;setStartDate:(v:string)=>void;setEndDate:(v:string)=>void}) {
   const cart=useShopping();
-  const [startDate,setStartDate]=useState(""),[endDate,setEndDate]=useState(""),[geography,setGeography]=useState("Guayaquil, Quito");
+  const [geography,setGeography]=useState("Guayaquil, Quito");
   if(!cart.items.length)return null;
-  return <details className={styles.delivery}><summary>Proyectar alcance del carrito</summary><div className={styles.deliveryFields}>
+  return <section className={styles.delivery} aria-label="Fechas y alcance de la compra"><h3>Fechas y alcance</h3><div className={styles.deliveryFields}>
     <CalendarDateField name="reachStart" label="Inicio de campaña" value={startDate} onChange={setStartDate} max={endDate||undefined} required={false}/>
     <CalendarDateField name="reachEnd" label="Fin de campaña" value={endDate} onChange={setEndDate} min={startDate||undefined} required={false}/>
     <label>Cobertura<select value={geography} onChange={e=>setGeography(e.target.value)}>{["Guayaquil, Quito","Guayaquil","Quito"].map(city=><option key={city}>{city}</option>)}</select></label>
     <p>Público: personas de 18 años o más.</p>
-  </div>{startDate&&endDate&&<PlanDeliveryPreview request={{brief:{startDate,endDate,geography,ageRange:"Personas 18+",sex:"Todas las personas",socioeconomic:"Todos los NSE",audienceType:"B2C"},picks:cart.items,clientId:cart.clientId}}/>}</details>;
-}
-function DesiredStartField() {
-  const [date, setDate] = useState("");
-  return <CalendarDateField name="desiredStart" label="Fecha de inicio deseada · opcional" value={date} onChange={setDate} required={false}/>;
+  </div>{startDate&&endDate&&<PlanDeliveryPreview request={{brief:{startDate,endDate,geography,ageRange:"Personas 18+",sex:"Todas las personas",socioeconomic:"Todos los NSE",audienceType:"B2C"},picks:cart.items,clientId:cart.clientId}}/>}</section>;
 }
 function CartIcon() { return <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 4h2l2.2 11h11.6l2-8H6M8 19h.01M18 19h.01" /><circle cx="8" cy="19" r="1" /><circle cx="18" cy="19" r="1" /></svg>; }

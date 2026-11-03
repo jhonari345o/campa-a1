@@ -1,4 +1,6 @@
 "use server";
+import { televisionStudyMatches, disjointTelevisionStudies } from "@/lib/television-measurement";
+import { televisionProviderKey } from "@/lib/television-directory";
 import { catalogAccess } from "@/lib/catalog-access-server";
 import { readShoppingProducts } from "@/lib/catalog-shopping-server";
 import { normalizeCatalogPicks, type CatalogPick } from "@/lib/catalog-shopping";
@@ -37,13 +39,16 @@ export async function projectMediaDelivery(input: DeliveryRequest): Promise<Deli
       const line: RatedDeliveryLine = {id:p.key,medium:productMedium(p),quantity:pick.quantity,amountCents:(p.priceCents??0)*pick.quantity,ratingPct:null,ratingMarketKeys:[],studyEnd:null};
       if (p.kind === "tv") {
         const studies = tvAudience.filter(s => {
-          if (!s.offerIds.includes(p.key) && !(p.source.offerId && s.offerIds.includes(p.source.offerId))) return false;
+          if (!televisionStudyMatches(p,s)) return false;
           const local = planningStudyBrief(s.marketKeys, brief);
           return local && tvAudienceApplies(s, {...brief,...local} as StrategyBrief, asOf);
         }).sort((a,b) => b.periodEnd.localeCompare(a.periodEnd) || a.id.localeCompare(b.id));
         // For the consolidated projection, a province observation cannot become a city rating.
-        const study = studies.find(s => s.marketKeys.every(k => model.marketKeys.includes(k)));
-        if (study) { line.ratingPct=study.ratingPct;line.ratingMarketKeys=study.marketKeys;line.studyEnd=study.periodEnd; }
+        const measured = disjointTelevisionStudies(studies, model.marketKeys);
+        if (measured.length) {
+          for (const study of measured) lines.push({...line,id:`${p.key}@${study.marketKeys.join(",")}`,ratingPct:study.ratingPct,ratingMarketKeys:study.marketKeys,studyEnd:study.periodEnd});
+          continue;
+        }
       }
       if (p.kind === "radio" && p.source.stationId) {
         const station = radio.stations.find(s => s.id === p.source.stationId);
@@ -67,6 +72,18 @@ export async function projectMediaDelivery(input: DeliveryRequest): Promise<Deli
     // Preserve all selected media. OOH/press without a forecast remain geographic
     // complements and contribute no incremental contacts to the numerical projection.
     for(const medium of input.expectedMedia??[])if(!lines.some(l=>l.medium===medium))lines.push({id:`unquantified:${medium}`,medium,quantity:1,amountCents:0,ratingPct:null,ratingMarketKeys:[],studyEnd:null});
-    return projectPlanningDelivery(brief,lines,model);
+    const summary = projectPlanningDelivery(brief,lines,model);
+    if (!summary) return null;
+    const groups = new Map<string,typeof lines>();
+    for (const p of products) {
+      const key = `${productMedium(p)}:${p.kind==="tv"?televisionProviderKey(p.provider):p.provider}`;
+      const owned = lines.filter(l=>l.id===p.key||l.id.startsWith(`${p.key}@`));
+      groups.set(key,[...(groups.get(key)??[]),...owned]);
+    }
+    summary.providers=[...groups].flatMap(([key,owned])=>{
+      const result=projectPlanningDelivery(brief,owned,model), row=result?.media[0], contact=result?.contactMedia?.[0];
+      return row?[{key,reachPct:row.reachPct,grps:contact?.grps??null,frequency:contact?.frequency??null,scopeLabel:result?.scopeLabel??""}]:[];
+    });
+    return summary;
   } catch { return null; }
 }
