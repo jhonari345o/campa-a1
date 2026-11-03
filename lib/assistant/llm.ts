@@ -2,7 +2,7 @@ import { BedrockRuntimeClient, ConverseCommand } from "@aws-sdk/client-bedrock-r
 import { getLlmConfiguration } from "./llm-config";
 
 export type LlmMessage = { role: "system" | "user" | "assistant"; content: string };
-type CompletionOptions = { maxTokens?: number; temperature?: number; signal?: AbortSignal; json?: boolean; responseSchema?: {name:string;schema:Record<string,unknown>}; timeoutMs?: number; reasoningEffort?: "low" | "medium" | "high"; reasoningEnabled?: boolean };
+type CompletionOptions = { maxTokens?: number; temperature?: number; signal?: AbortSignal; json?: boolean; responseSchema?: {name:string;schema:Record<string,unknown>}; timeoutMs?: number; reasoningEffort?: "low" | "medium" | "high"; reasoningEnabled?: boolean; fastFreeRouting?: boolean };
 
 /** Retain a bounded diagnosis, never the provider's raw account/prompt details. */
 async function providerErrorCode(res: Response): Promise<string> {
@@ -133,9 +133,17 @@ async function openaiChat(
   const deadline = Date.now() + requestTimeoutMs;
   let retriedTruncation = false;
   for (let attempt = 0; attempt < Math.min(3, 1 + fallbackModels.length); attempt++) {
+    const canAdvance = () => provider.openRouter && provider.freeOnly && models.length > 1 && attempt < 2 && !signal.aborted && deadline - Date.now() >= 5000;
+    // Preserve enough of the one request deadline for another free model if a
+    // provider stalls. This never extends the caller's cancellation or lease.
+    const fastFree = Boolean(opts?.fastFreeRouting && provider.openRouter && provider.freeOnly);
+    const remainingMs = Math.max(1, deadline - Date.now());
+    const attemptMs = fastFree && models.length > 1 && remainingMs >= 11_000 ? Math.min(10_000, remainingMs - 6000) : remainingMs;
+    const attemptSignal = fastFree ? AbortSignal.any([signal, AbortSignal.timeout(attemptMs)]) : signal;
     let res: Response;
+    let data: { model?: string; choices?: { finish_reason?: string; message?: { content?: string } }[] } | undefined;
     try {
-      signal.throwIfAborted();
+      attemptSignal.throwIfAborted();
       res = await fetch(`${provider.baseUrl.replace(/\/$/, "")}/chat/completions`, {
         method: "POST",
         headers: {
@@ -146,7 +154,7 @@ async function openaiChat(
         body: JSON.stringify({
           model: models[0],
           ...(models.length > 1 ? { models } : {}),
-          ...(provider.freeOnly||provider.openRouter&&opts?.responseSchema ? { provider: { ...(provider.freeOnly?{max_price: { prompt: 0, completion: 0 }}:{}),...(opts?.responseSchema?{require_parameters:true}:{}) } } : {}),
+          ...(provider.freeOnly||provider.openRouter&&opts?.responseSchema ? { provider: { ...(provider.freeOnly?{max_price: { prompt: 0, completion: 0 }}:{}),...(opts?.responseSchema?{require_parameters:true}:{}),...(fastFree?{sort:{by:"latency",partition:"none"}}:{}) } } : {}),
           ...(opts?.responseSchema ? {response_format:{type:"json_schema",json_schema:{...opts.responseSchema,strict:true}}} : opts?.json ? { response_format: { type: "json_object" } } : {}),
           ...(provider.openRouter && opts?.reasoningEnabled===false ? { reasoning: { enabled:false } } : provider.openRouter && opts?.reasoningEffort ? { reasoning: { effort: opts.reasoningEffort, exclude: true } } : {}),
           messages,
@@ -154,9 +162,12 @@ async function openaiChat(
           temperature: opts?.temperature ?? 0.4,
           stream: false,
         }),
-        signal,
+        signal: attemptSignal,
       });
+      // Body reads use the same per-attempt deadline as the request headers.
+      if (res.ok) data = await res.json();
     } catch (error) {
+      if (fastFree && canAdvance()) { models = models.slice(1); continue; }
       if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
         throw new Error("PROVIDER_TIMEOUT");
       }
@@ -167,14 +178,13 @@ async function openaiChat(
       // A retired model or an unsupported option can be rejected before the
       // gateway applies its models fallback. Advance only within the configured
       // free pool and original deadline. Never retry authentication/access denial.
-      if (res.status === 400 && provider.openRouter && provider.freeOnly && models.length > 1 && attempt < 2 && !signal.aborted && deadline - Date.now() >= 5000) {
+      if ((res.status === 400 || fastFree && (res.status === 429 || res.status >= 500)) && canAdvance()) {
         models = models.slice(1);
         continue;
       }
       throw new Error(code);
     }
-    const data = (await res.json()) as { model?: string; choices?: { finish_reason?: string; message?: { content?: string } }[] };
-    if (data.choices?.[0]?.finish_reason === "length") {
+    if (data?.choices?.[0]?.finish_reason === "length") {
       // HTTP 200 with incomplete content does not trigger OpenRouter's normal
       // error fallback. Retry once within the same deadline, only in the free pool.
       const remaining = models.slice(1).filter(model => model !== data.model);
@@ -185,7 +195,7 @@ async function openaiChat(
       }
       throw new Error("PROVIDER_OUTPUT_TRUNCATED");
     }
-    const reply = data.choices?.[0]?.message?.content;
+    const reply = data?.choices?.[0]?.message?.content;
     if (typeof reply !== "string") throw new Error("Respuesta inesperada del modelo.");
     return reply.trim();
   }
