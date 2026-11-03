@@ -6,6 +6,10 @@ export function validPlanPeriod(start: string, end: string) {
 export function displayPlanDate(iso: string) {
   return validDate(iso) ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : "";
 }
+export function displayCampaignPeriod(start?: string, end?: string): string | null {
+  if (!start || !end || !validPlanPeriod(start, end)) return null;
+  return start === end ? displayPlanDate(start) : `${displayPlanDate(start)} – ${displayPlanDate(end)}`;
+}
 export function parsePlanDate(display: string): string {
   const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(display.trim());
   const iso = match ? `${match[3]}-${match[2]}-${match[1]}` : "";
