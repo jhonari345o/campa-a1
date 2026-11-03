@@ -19,7 +19,13 @@ export async function saveCatalogSelection(items: unknown, expectedVersion: numb
     const { data, error } = await db.rpc("save_catalog_cart", { p_expected_version: expectedVersion, p_items: clean });
     if (error || !data) return { ok: false, error: "No se pudo guardar el carrito. Tu selección sigue aquí; vuelve a intentar." };
     const cart = { version: Number(data.version), items: normalizeCatalogPicks(data.items), expiresAt: data.expiresAt,clientId:data.clientId??null };
-    return data.ok ? { ok: true, cart } : { ok: false, cart, error: data.code === "expired" ? "El carrito venció tras dos horas sin cambios. Recupera la selección actual para continuar." : "El carrito cambió en otra pestaña. Recupera la versión guardada antes de continuar." };
+    if (data.ok) {
+      // Discard prefetched catalogue payloads that still contain the old cart.
+      revalidatePath("/planificador");
+      revalidatePath("/consola/espacios/[id]", "page");
+      return { ok: true, cart };
+    }
+    return { ok: false, cart, error: data.code === "expired" ? "El carrito venció tras dos horas sin cambios. Recupera la selección actual para continuar." : "El carrito cambió en otra pestaña. Recupera la versión guardada antes de continuar." };
   } catch { return { ok: false, error: "Revisa los productos y las cantidades del carrito." }; }
 }
 export type CatalogRequestResult = { ok: true; id: string; cart: CatalogCart } | { ok: false; error: string; products?: CatalogProduct[]; refreshCart?: boolean };

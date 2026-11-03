@@ -59,7 +59,7 @@ export function MediaCatalog({
   purchaseReferences: OohPurchaseReference[];previewCompanyId?:string;previewClientId?:string;
 }) {
   return (
-    <CatalogShoppingProvider products={shoppingProducts} cart={shoppingCart} companies={shoppingCompanies} canRequest={canRequest} isAdmin={isAdmin}><div className="media-portal-shell">
+    <CatalogShoppingProvider key={`${previewCompanyId ?? "workspace"}:${shoppingCart.clientId ?? "account"}`} products={shoppingProducts} cart={shoppingCart} companies={shoppingCompanies} canRequest={canRequest} isAdmin={isAdmin}><div className="media-portal-shell">
       <header className="media-portal-header">
         <div className="media-portal-header-copy">
           <p>Medios</p>
