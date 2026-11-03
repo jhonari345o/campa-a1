@@ -1,4 +1,5 @@
 import { restoreTgi, type TgiResearch } from "@/lib/tgi";
+import geography from "./ecuador-geography.json";
 /** Public contracts only. Licensed observations are stored privately in Supabase. */
 export type InfomediaCategory = { id: string; label: string; periods?: { year: number; label: string }[] };
 export type ResearchBrand = { brand: string; estimatedInvestment: number; notices: number; soi: number; soa: number };
@@ -26,6 +27,11 @@ export type CategoryResearch = {
 };
 export function lookupKey(value: string): string {
   return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim();
+}
+const researchMarkets = new Set([...geography.map(place => lookupKey(place.label)), "NACIONAL", "ECUADOR", "TOTAL ECUADOR", "GYE", "UIO", "GUAYAQUIL QUITO", "QUITO GUAYAQUIL"]);
+/** A channel, station or advertisement description is not a geographic market. */
+function isResearchMarket(value: unknown): boolean {
+  return typeof value === "string" && researchMarkets.has(lookupKey(value));
 }
 export function searchCategories(categories: InfomediaCategory[], query: string): InfomediaCategory[] {
   const terms = lookupKey(query).split(" ").filter(Boolean);
@@ -75,7 +81,7 @@ export function projectResearch(category: InfomediaCategory, payload: unknown, d
       topBrands: brands.sort((a, b) => b.estimatedInvestment - a.estimatedInvestment).slice(0, 10),
       ...(competitorKeys.size ? { declaredBrands: brands.filter(item => competitorKeys.has(lookupKey(item.brand))).slice(0,12) } : {}),
       focusBrand: focusKey ? brands.find((item) => lookupKey(item.brand) === focusKey) ?? null : null,
-      pressureContexts: array(row.pressureContexts).slice(0, 12).map((value) => {
+      pressureContexts: array(row.pressureContexts).filter(value => isResearchMarket(object(value).market)).slice(0, 12).map((value) => {
         const item = object(value);
         return {
           media: text(item.media), market: text(item.market), grps: numeric(item.grps), activeBrands: numeric(item.activeBrands),
