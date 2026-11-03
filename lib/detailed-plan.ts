@@ -7,7 +7,7 @@ import {
   OOH_PROVIDERS,
   PRESS_OUTLETS,
 } from "@/lib/media-catalog";
-import { mediaGroupForLabel, type MediaGroup } from "@/lib/media-groups";
+import { DIGITAL_PRODUCTIONS_LABEL, mediaGroupForLabel, type MediaGroup } from "@/lib/media-groups";
 import { mediaGroupLabel } from "@/lib/plan-optimizer";
 import type { PlanAnalysisInput } from "@/lib/plan-analysis";
 import type { MediaPlan, PlanRow } from "@/lib/planner";
@@ -160,7 +160,7 @@ function strategyExecutions(brief: PlanAnalysisInput, plan: MediaPlan): Detailed
     checks: ["Las fuentes conservan su plaza, público, período y unidad originales.", "Las cantidades calculadas con tarifa compatible no superan la asignación del medio.", "Las partidas sin una tarifa compatible se mantienen como presupuesto pendiente de cotización."],
     channelPlans: plan.plan.map(row => {
       const kind = mediaGroupForLabel(row.label)!;
-      if (kind === "digital") return { kind, label: row.label, budgetUsd: row.amount, objective: channelObjective(kind,brief.objective), rationale: row.rationale ?? "", executions: digitalExecutions(row,brief) };
+      if (kind === "digital" && row.label !== DIGITAL_PRODUCTIONS_LABEL) return { kind, label: row.label, budgetUsd: row.amount, objective: channelObjective(kind,brief.objective), rationale: row.rationale ?? "", executions: digitalExecutions(row,brief) };
       const allocation = strategy.allocations.find(a=>a.medium===kind);
       const executions=(allocation?.executions?.length?allocation.executions:[{candidate:allocation?.candidate,amountUsd:row.amount,units:allocation?.units??null}]).map(pick=>{
       const candidate=pick.candidate;
