@@ -29,7 +29,7 @@ function Precios() {
       <div className="text-center">
         <span className="text-xs font-black uppercase tracking-[0.1em] text-signal-dark">Planes</span>
         <h2 className="mt-2 text-[clamp(1.8rem,3vw,2.8rem)] font-black leading-tight tracking-tight">
-          Elige tu nivel de gestion de medios.
+          Elige tu nivel de gestión de medios.
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-muted">
           Un servicio de central de medios de primer nivel, con Mavi de tu lado.
@@ -88,16 +88,16 @@ function Hero() {
 
 const pilares = [
   {
-    title: "Planificacion clara",
+    title: "Planificación clara",
     body: "Ordenamos la complejidad y entregamos un plan de medios entendible, accionable y listo para avanzar.",
   },
   {
     title: "Compra con criterio",
-    body: "Seleccionamos canales por afinidad, cobertura y eficiencia. La tecnologia acelera; el criterio eleva el resultado.",
+    body: "Seleccionamos canales por afinidad, cobertura y eficiencia. La tecnología acelera; el criterio eleva el resultado.",
   },
   {
     title: "Control multiempresa",
-    body: "Cada cliente entra por invitacion y trabaja dentro de su empresa. Reservas, ordenes y facturas se habilitan solo tras validacion comercial.",
+    body: "Cada cliente entra por invitación y trabaja dentro de su empresa. Reservas, órdenes y facturas se habilitan solo tras validación comercial.",
   },
 ];
 
@@ -114,8 +114,8 @@ function Plataforma() {
           </h2>
         </div>
         <p className="max-w-sm text-muted">
-          Inteligencia operativa, catalogo estructurado y decisiones comerciales
-          mas agiles — en un mismo lugar.
+          Inteligencia operativa, catálogo estructurado y decisiones comerciales
+          más ágiles — en un mismo lugar.
         </p>
       </div>
       <div className="mt-10 grid gap-4 md:grid-cols-3">
@@ -135,11 +135,11 @@ function Plataforma() {
 
 const pasos = [
   { n: "01", t: "Entender el negocio", d: "Objetivos, mercado, presupuesto y resultado esperado: notoriedad, ventas o registros." },
-  { n: "02", t: "Analizar al publico", d: "Edad, ubicacion, intereses, habitos, dispositivos y momentos de exposicion." },
-  { n: "03", t: "Disenar la estrategia", d: "Que canales, que rol tiene cada uno, cuanto presupuesto y por cuanto tiempo." },
-  { n: "04", t: "Planificar la campana", d: "Fechas, formatos, ubicaciones, audiencias, inversion y resultados estimados." },
+  { n: "02", t: "Analizar al público", d: "Edad, ubicación, intereses, hábitos, dispositivos y momentos de exposición." },
+  { n: "03", t: "Diseñar la estrategia", d: "Qué canales, qué rol tiene cada uno, cuánto presupuesto y por cuánto tiempo." },
+  { n: "04", t: "Planificar la campaña", d: "Fechas, formatos, ubicaciones, audiencias, inversión y resultados estimados." },
   { n: "05", t: "Confirmar los espacios", d: "El equipo valida disponibilidad, condiciones y aprobaciones antes de emitir una orden vinculante." },
-  { n: "06", t: "Medir y optimizar", d: "Alcance, frecuencia, conversiones, CPC/CPM/CPA y retorno de inversion." },
+  { n: "06", t: "Medir y optimizar", d: "Alcance, frecuencia, conversiones, CPC/CPM/CPA y retorno de inversión." },
 ];
 
 function ComoFunciona() {
@@ -147,13 +147,13 @@ function ComoFunciona() {
     <section id="como-funciona" className="bg-forest-deep py-20 text-white">
       <div className="mx-auto max-w-6xl px-6">
         <span className="text-xs font-black uppercase tracking-[0.1em] text-signal">
-          Como funciona
+          Cómo funciona
         </span>
         <h2 className="mt-2 max-w-2xl text-[clamp(1.8rem,3vw,2.8rem)] font-black leading-tight tracking-tight">
           Del objetivo de negocio al resultado medible.
         </h2>
         <p className="mt-4 max-w-xl text-white/70">
-          Una central de medios decide donde, cuando, como y ante quien invertir
+          Una central de medios decide dónde, cuándo, cómo y ante quién invertir
           en publicidad — y convierte el presupuesto en resultados.
         </p>
         <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -174,10 +174,10 @@ function ComoFunciona() {
 }
 
 const garantias = [
-  { t: "Aislamiento por cliente", d: "Supabase aplica politicas por empresa; las pruebas de aislamiento forman parte de cada liberacion." },
-  { t: "Recuperacion verificable", d: "La retencion y la restauracion deben comprobarse antes de habilitar operacion comercial." },
-  { t: "Proteccion por capas", d: "HTTPS y cabeceras seguras estan activas; WAF y limites de abuso se validan antes del lanzamiento." },
-  { t: "Datos honestos", d: "Si una fuente o metodologia no esta homologada, se muestra como pendiente y nunca se inventa una cifra." },
+  { t: "Aislamiento por cliente", d: "Supabase aplica políticas por empresa; las pruebas de aislamiento forman parte de cada liberación." },
+  { t: "Recuperación verificable", d: "La retención y la restauración deben comprobarse antes de habilitar operación comercial." },
+  { t: "Protección por capas", d: "HTTPS y cabeceras seguras están activas; WAF y límites de abuso se validan antes del lanzamiento." },
+  { t: "Datos honestos", d: "Si una fuente o metodología no está homologada, se muestra como pendiente y nunca se inventa una cifra." },
 ];
 
 function Seguridad() {
@@ -213,10 +213,10 @@ function Seguridad() {
 }
 
 const fases = [
-  { n: "0", t: "Preparacion", d: "Herramientas y entornos listos; decisiones confirmadas.", dur: "1–2 sem" },
+  { n: "0", t: "Preparación", d: "Herramientas y entornos listos; decisiones confirmadas.", dur: "1–2 sem" },
   { n: "1", t: "Seguridad + Consola", d: "Login, roles, aislamiento y la Consola de Alta de Clientes.", dur: "4–6 sem" },
-  { n: "2", t: "Catalogo y cotizacion", d: "Proveedores, tarifas, cotizaciones y reservas reales.", dur: "5–7 sem" },
-  { n: "3", t: "Ordenes, cobro y movil", d: "Compra vinculante, facturacion, cobro y app movil.", dur: "6–10 sem" },
+  { n: "2", t: "Catálogo y cotización", d: "Proveedores, tarifas, cotizaciones y reservas reales.", dur: "5–7 sem" },
+  { n: "3", t: "Órdenes, cobro y móvil", d: "Compra vinculante, facturación, cobro y app móvil.", dur: "6–10 sem" },
 ];
 
 function Fases() {
@@ -224,14 +224,14 @@ function Fases() {
     <section id="fases" className="bg-fog py-20">
       <div className="mx-auto max-w-6xl px-6">
         <span className="text-xs font-black uppercase tracking-[0.1em] text-signal-dark">
-          Implementacion
+          Implementación
         </span>
         <h2 className="mt-2 max-w-2xl text-[clamp(1.8rem,3vw,2.8rem)] font-black leading-tight tracking-tight">
-          Como lo haremos: cuatro fases.
+          Cómo lo haremos: cuatro fases.
         </h2>
         <p className="mt-4 max-w-xl text-muted">
           Vamos por partes; cada fase entrega algo concreto. Primero los cimientos,
-          despues las compras reales. Total aproximado: 4–6 meses.
+          después las compras reales. Total aproximado: 4–6 meses.
         </p>
         <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {fases.map((f) => (
@@ -248,7 +248,7 @@ function Fases() {
           ))}
         </div>
         <p className="mt-8 rounded-card border border-amber/40 bg-amber/10 px-5 py-4 text-sm font-bold text-forest">
-          Regla de oro: no se abre a clientes externos ni se cobra un solo dolar
+          Regla de oro: no se abre a clientes externos ni se cobra un solo dólar
           hasta tener la seguridad lista.
         </p>
       </div>

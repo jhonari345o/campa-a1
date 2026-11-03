@@ -131,11 +131,11 @@ function ModeloMonetizacion() {
   return (
     <details className="mt-4 rounded-panel border border-forest/30 bg-forest/5 p-5 shadow-panel">
       <summary className="cursor-pointer text-sm font-black text-forest">
-        🔒 Solo equipo · Como ganamos (ejemplo)
+        🔒 Solo equipo · Cómo ganamos (ejemplo)
       </summary>
       <p className="mt-3 text-sm text-muted">
         El cliente recarga lo que quiere invertir en anuncios. Sobre esa recarga cobramos una
-        impuestos y costos regulatorios del <strong className="text-forest">{taxPct}%</strong>, mas
+        impuestos y costos regulatorios del <strong className="text-forest">{taxPct}%</strong>, más
         una comision de servicio del <strong className="text-forest">{pct}%</strong>: esa es la
         ganancia de Ad Mavericks. La recarga completa se acredita a la pauta.
       </p>

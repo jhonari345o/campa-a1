@@ -40,7 +40,7 @@ test("projections use current GRPs and preserve target, measured city scope and 
  const withPress=projectPlanningDelivery(brief,[line("television"),{...line("radio"),medium:"press",ratingPct:null}],model)!;
  assert.equal(withPress.reach1Pct,partial.reach1Pct);assert.equal(withPress.grps,20);
  const missingRadio=projectPlanningDelivery(brief,[line("television"),{...line("radio"),ratingPct:null}],model)!;
- assert.equal(missingRadio.reach1Pct,null);
+ assert.equal(missingRadio.reach1Pct,partial.reach1Pct);
  const local=projectPlanningDelivery(brief,[{...line("television"),quantity:10000,ratingMarketKeys:["quito"]}],model)!;
  assert.ok(local.reach1Pct!<=40);
  assert.equal(projectPlanningDelivery({...brief,geography:"Guayaquil"},[line("television")],model),null);
@@ -58,5 +58,18 @@ test("OOH and unranked press in other cities retain measured reach without widen
  assert.equal(projectPlanningDelivery(wider,extra,model),null);
  // A radio observation outside the calibration still cannot be added to it.
  const outsideRadio={...line("radio"),id:"cuenca-radio",ratingMarketKeys:["cuenca"]};
- assert.equal(projectPlanningDelivery(wider,[...measured,outsideRadio,...extra],model)?.reach1Pct,null);
+ assert.equal(projectPlanningDelivery(wider,[...measured,outsideRadio,...extra],model)?.reach1Pct,base.reach1Pct);
+});
+
+test("national coverage keeps measured cities and unmeasured radio without inventing a national universe",()=>{
+ const measured=[line("television"),line("radio")];
+ const base=projectPlanningDelivery(brief,measured,model)!;
+ const local={...line("radio"),id:"tulcan",ratingPct:null,ratingMarketKeys:["tulcan"]};
+ const national=projectPlanningDelivery({...brief,geography:"Todo Ecuador"},[...measured,local],model)!;
+ assert.equal(national.people,base.people);assert.equal(national.reach1Pct,base.reach1Pct);assert.equal(national.scopeLabel,base.scopeLabel);
+ assert.equal(projectPlanningDelivery(brief,[...measured,{...local,ratingPct:NaN}],model),null);
+ const stale={...line("radio"),studyEnd:"2024-01-01"};
+ assert.ok(Math.abs(projectPlanningDelivery(brief,[line("television"),stale],model)!.reach1Pct!-15)<1e-8);
+ const bad=observation("radio",40);bad.reach1Pct=NaN;
+ assert.equal(combineMediaDelivery(selection,[observation("television",30),bad],{allowGeographicComplements:true}).summary.reach1Pct,null);
 });

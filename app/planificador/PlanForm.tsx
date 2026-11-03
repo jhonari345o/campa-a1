@@ -275,6 +275,7 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
         {state?.ok === false && <p className="rounded-xl border border-coral/40 bg-coral/10 px-4 py-3 text-sm font-bold text-[#a13b31]">{state.error}</p>}
       </form>
 
+      {state?.ok && stage !== "brief" && restoreCoverage(state.brief).length>0 && <GeographicCoveragePicker value={restoreCoverage(state.brief)} readOnly />}
       {state?.ok && stage === "analysis" && <AnalysisStage result={state} onBack={() => setStage("brief")} onContinue={() => setStage("proposal")} />}
       {state?.ok && stage === "proposal" && <ProposalStage result={state} onBack={() => setStage("analysis")} onPersonalize={() => setStage("personalize")} />}
       {state?.ok && stage === "personalize" && <PersonalizeStage canApprove={canApprove} result={state} onBack={() => setStage("proposal")} onApproved={(approved) => { setApprovedPlan(approved); setStage("approved"); }} />}
@@ -448,7 +449,7 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
           {plan.strategySummary}
         </p>
 
-        <h3 className="mt-6 text-sm font-black uppercase tracking-wide text-muted">Distribucion recomendada por canal</h3>
+        <h3 className="mt-6 text-sm font-black uppercase tracking-wide text-muted">Distribución recomendada por canal</h3>
         <ul className="mt-3 space-y-2">
           {plan.plan.map((r: PlanRow) => (
             <li key={r.label}>
@@ -580,7 +581,7 @@ function DetailedPlanView({ result }: { result: Extract<PlanResult, { ok: true }
                   </div>
                   <dl>
                     <div><dt>Ubicación</dt><dd>{execution.location}</dd></div>
-                    <div><dt>Franja / periodo</dt><dd>{execution.schedule}</dd></div>
+                    <div><dt>Franja / período</dt><dd>{execution.schedule}</dd></div>
                     <div><dt>Presupuesto</dt><dd>{money(execution.budgetUsd)}</dd></div>
                     <div><dt>Referencia</dt><dd>{execution.referenceUnitPriceUsd == null ? execution.unit : `${money(execution.referenceUnitPriceUsd)} · ${execution.unit}`}{execution.estimatedUnits != null ? ` · aprox. ${execution.estimatedUnits} unidad${execution.estimatedUnits === 1 ? "" : "es"}` : ""}</dd></div>
                   </dl>
@@ -630,7 +631,7 @@ function CampaignCard({ c }: { c: Campaign }) {
       });
       setSent(
         res.ok
-          ? { ok: true, msg: "Solicitud enviada para revision. Sigue el estado en Campanas." }
+          ? { ok: true, msg: "Solicitud enviada para revisión. Sigue el estado en Campañas." }
           : { ok: false, msg: res.error },
       );
     } catch {
@@ -641,9 +642,9 @@ function CampaignCard({ c }: { c: Campaign }) {
   }
 
   const fullText =
-    `Campana: ${c.platform}\n` +
+    `Campaña: ${c.platform}\n` +
     `Objetivo: ${c.objetivo}\n` +
-    `Publico: ${c.publico}\n` +
+    `Público: ${c.publico}\n` +
     `Formato: ${c.formato}\n` +
     (c.budget != null ? `Presupuesto: ${money(c.budget)}\n` : "") +
     `\n${currentCopy}` +
@@ -671,7 +672,7 @@ function CampaignCard({ c }: { c: Campaign }) {
 
       <dl className="mt-3 space-y-1 text-xs text-muted">
         <div><dt className="inline font-black text-forest">Objetivo: </dt><dd className="inline">{c.objetivo}</dd></div>
-        <div><dt className="inline font-black text-forest">Publico: </dt><dd className="inline">{c.publico}</dd></div>
+        <div><dt className="inline font-black text-forest">Público: </dt><dd className="inline">{c.publico}</dd></div>
         <div><dt className="inline font-black text-forest">Formato: </dt><dd className="inline">{c.formato}</dd></div>
       </dl>
 
@@ -704,7 +705,7 @@ function CampaignCard({ c }: { c: Campaign }) {
           </a>
         )}
         <button onClick={ejecutar} type="button" disabled={sending} className="btn btn-secondary text-xs disabled:opacity-60">
-          {sending ? "Enviando…" : "Enviar a revision 🦎"}
+          {sending ? "Enviando…" : "Enviar a revisión 🦎"}
         </button>
         <button onClick={copy} type="button" className="btn btn-secondary text-xs">
           {copied ? "Copiado ✓" : "Copiar"}

@@ -10,7 +10,7 @@ const SUGERENCIAS = [
   "Tengo una cafeteria y $2000 al mes. ¿En que canales invierto?",
   "Hazme un guion para un reel de Instagram de mi restaurante.",
   "Escribe una cuna de radio de 30s para mi farmacia.",
-  "¿Como armo una campana de WhatsApp para vender mas?",
+  "¿Cómo armo una campaña de WhatsApp para vender más?",
   "¿Qué tendencias de hoy en Ecuador puedo aprovechar para mi marca?",
 ];
 
@@ -32,7 +32,7 @@ export function ChatMavi() {
     const clean = text.trim();
     if (!clean || loading) return;
     if (!consent) {
-      setError("Confirma el aviso de tratamiento antes de enviar informacion a Mavi.");
+      setError("Confirma el aviso de tratamiento antes de enviar información a Mavi.");
       return;
     }
     setError(null);
@@ -53,7 +53,7 @@ export function ChatMavi() {
         setMessages((m) => [...m, { role: "assistant", content: data.reply, sources: data.sources ?? [] }]);
       }
     } catch {
-      setError("Problema de conexion. Intenta de nuevo.");
+      setError("Problema de conexión. Intenta de nuevo.");
     } finally {
       setLoading(false);
       requestAnimationFrame(() => scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight));
@@ -66,7 +66,7 @@ export function ChatMavi() {
         {messages.map((m, i) => (
           <Bubble key={i} role={m.role} content={m.content} sources={m.sources} />
         ))}
-        {loading && <Bubble role="assistant" content="Mavi esta pensando…" muted />}
+        {loading && <Bubble role="assistant" content="Mavi está pensando…" muted />}
         {error && (
           <p className="rounded-xl border border-coral/40 bg-coral/10 px-4 py-3 text-sm font-bold text-[#a13b31]">
             {error}
@@ -106,7 +106,7 @@ export function ChatMavi() {
             Autorizo procesar esta consulta con el proveedor de IA configurado y, cuando pregunte
             por actualidad, inversión, canales o estrategia, consultar fuentes públicas de los
             últimos meses en Internet. No incluiré
-            contrasenas, datos personales, contratos, tarifarios ni informacion licenciada.
+            contrasenas, datos personales, contratos, tarifarios ni información licenciada.
           </span>
         </label>
         <div className="flex items-center gap-3">

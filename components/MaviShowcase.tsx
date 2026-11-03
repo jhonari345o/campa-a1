@@ -9,26 +9,26 @@ const EXAMPLES: Example[] = [
   {
     platform: "Meta — Facebook e Instagram",
     emoji: "📸",
-    objetivo: "Mas visitas a tu local",
+    objetivo: "Más visitas a tu local",
     copy: "\"Este finde, 2x1 en tu antojo favorito 🍩. Te esperamos en el centro de Guayaquil.\"",
   },
   {
     platform: "Google — Busqueda",
     emoji: "🔎",
     objetivo: "Que te encuentren al buscar",
-    copy: "\"Panaderia artesanal cerca de ti — pan calientito todo el dia. Pide ya.\"",
+    copy: "\"Panaderia artesanal cerca de ti — pan calientito todo el día. Pide ya.\"",
   },
   {
     platform: "TikTok",
     emoji: "🎵",
-    objetivo: "Que te conozcan mas personas",
+    objetivo: "Que te conozcan más personas",
     copy: "\"POV: descubriste el mejor postre del barrio 😋 #Guayaquil #Antojos\"",
   },
   {
     platform: "WhatsApp Business",
     emoji: "💚",
     objetivo: "Vender por chat",
-    copy: "\"¡Hola! 👋 Mira nuestro menu del dia y haz tu pedido por aqui mismo.\"",
+    copy: "\"¡Hola! 👋 Mira nuestro menú del día y haz tu pedido por aquí mismo.\"",
   },
 ];
 
@@ -52,7 +52,7 @@ export function MaviShowcase() {
         <MaviScene height={110} motion="bounce" prop="🚀" className="shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="text-xs font-black uppercase tracking-wide text-muted">
-            Mavi te muestra ejemplos de campanas
+            Mavi te muestra ejemplos de campañas
           </p>
           <div key={i} className="mavi-fade mt-2 rounded-xl border border-border bg-white p-4 shadow-panel">
             <div className="flex items-center gap-2">

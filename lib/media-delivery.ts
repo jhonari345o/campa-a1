@@ -97,9 +97,9 @@ export function combineMediaDelivery(selection: DeliverySelection, observations:
   const summary: DeliverySummary = { ...empty, media: matched.map(row => ({ medium: row.medium, reachPct: row.reach1Pct, people: Math.round(row.universe * row.reach1Pct / 100) })) };
   const digital = matched.find(row => row.medium === "digital");
   if (digital) summary.digital = { impressions: digital.impressions ?? null, views: digital.views ?? null, conversations: digital.conversations ?? null };
-  // Owner-approved planning convention: unmeasured OOH/press may add geographic
+  // Owner-approved planning convention: unmeasured media may add geographic
   // presence, but contribute no additional contacts to the numerical projection.
-  const complements=normalized.media.filter(({medium})=>!matched.some(r=>r.medium===medium)&&options.allowGeographicComplements&&["ooh","press"].includes(medium)&&!observations.some(r=>r.medium===medium));
+  const complements=normalized.media.filter(({medium})=>!matched.some(r=>r.medium===medium)&&options.allowGeographicComplements&&!observations.some(r=>r.medium===medium));
   if(complements.length)summary.geographicComplements=complements.map(r=>r.medium);
   if (!matched.length||matched.length+complements.length !== normalized.media.length) return { summary, issues };
   const first = matched[0];

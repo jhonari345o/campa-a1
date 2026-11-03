@@ -33,12 +33,12 @@ export const metadata: Metadata = {
     template: "%s · Ad Mavericks One",
   },
   description:
-    "Ad Mavericks convierte una operacion compleja de medios en una experiencia clara, segura y facil de comprender. Planificacion, compra y control de pauta publicitaria en Ecuador.",
+    "Ad Mavericks convierte una operación compleja de medios en una experiencia clara, segura y fácil de comprender. Planificación, compra y control de pauta publicitaria en Ecuador.",
   metadataBase: new URL(siteUrl),
   openGraph: {
     title: "Ad Mavericks One — Tu central de medios del nuevo siglo",
     description:
-      "Planificacion, catalogo y gestion de medios para Ecuador.",
+      "Planificación, catálogo y gestión de medios para Ecuador.",
     type: "website",
     locale: "es_EC",
     images: [
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Ad Mavericks One — Tu central de medios del nuevo siglo",
-    description: "Planificacion, catalogo y gestion de medios para Ecuador.",
+    description: "Planificación, catálogo y gestión de medios para Ecuador.",
     images: ["/og.png"],
   },
 };

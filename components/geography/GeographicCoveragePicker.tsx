@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyboardEvent, PointerEvent, WheelEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { KeyboardEvent, PointerEvent, WheelEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { geoMercator, geoPath } from "d3-geo";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
 import {
@@ -47,14 +47,15 @@ type MapTransform = {
 
 type GeographicCoveragePickerProps = {
   value: CoverageSelection[];
-  onChange: (value: CoverageSelection[]) => void;
+  onChange?: (value: CoverageSelection[]) => void;
+  readOnly?: boolean;
 };
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(maximum, Math.max(minimum, value));
 }
 
-export function GeographicCoveragePicker({ value, onChange }: GeographicCoveragePickerProps) {
+export function GeographicCoveragePicker({ value, onChange, readOnly=false }: GeographicCoveragePickerProps) {
   const [provinces, setProvinces] = useState<BoundaryFeature[]>([]);
   const [cantons, setCantons] = useState<BoundaryFeature[]>([]);
   const [query, setQuery] = useState("");
@@ -67,7 +68,7 @@ export function GeographicCoveragePicker({ value, onChange }: GeographicCoverage
   const [announcement, setAnnouncement] = useState(() => `Cobertura seleccionada: ${coverageSummary(value)}`);
   const searchRootRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ pointerId: number; clientX: number; clientY: number; originX: number; originY: number } | null>(null);
-  const searchListId = "geographic-coverage-results";
+  const searchListId = useId();
 
   useEffect(() => {
     let mounted = true;
@@ -196,7 +197,8 @@ export function GeographicCoveragePicker({ value, onChange }: GeographicCoverage
   const path = useMemo(() => projection ? geoPath(projection) : null, [projection]);
 
   function changeCoverage(next: CoverageSelection[], message: string) {
-    onChange(next);
+    if(readOnly)return;
+    onChange?.(next);
     setAnnouncement(message);
   }
 
@@ -343,17 +345,18 @@ export function GeographicCoveragePicker({ value, onChange }: GeographicCoverage
   }
 
   return (
-    <div className="geographic-coverage-field full-field">
+    <div className={`geographic-coverage-field full-field ${readOnly?"coverage-readonly":""}`}>
       <div className="coverage-field-heading">
         <div>
           <span>Cobertura geográfica</span>
-          <p>Selecciona todo Ecuador o combina provincias y cantones. El mapa se incorpora al criterio territorial del plan.</p>
+          <p>{readOnly?"Provincias y cantones incluidos en tu plan.":"Selecciona todo Ecuador o combina provincias y cantones."}</p>
         </div>
         <strong>{nationalSelected ? "Cobertura nacional" : `${value.length} ${value.length === 1 ? "zona" : "zonas"}`}</strong>
       </div>
 
       <div className="coverage-picker-shell">
         <div className="coverage-search-panel">
+          {!readOnly && <>
           <button
             type="button"
             className={`coverage-national-toggle ${nationalSelected ? "selected" : ""}`}
@@ -398,16 +401,17 @@ export function GeographicCoveragePicker({ value, onChange }: GeographicCoverage
             )}
           </div>
 
+          </>}
           <div className="coverage-selection-summary">
             <span>Selección activa</span>
             <strong>{coverageSummary(value)}</strong>
           </div>
           <div className="coverage-chips">
             {value.map((selection) => (
-              <button type="button" key={selection.key} onClick={() => removeSelection(selection)} aria-label={`Quitar ${selection.label}`}>
+              <button type="button" key={selection.key} onClick={() => readOnly ? focusOption(options.find(o=>o.key===selection.key)??selection) : removeSelection(selection)} aria-label={`${readOnly?"Ver en el mapa":"Quitar"} ${selection.label}`}>
                 <i className={selection.kind} aria-hidden="true" />
                 <span>{selection.label}<small>{selection.kind === "country" ? "Todo Ecuador" : selection.kind === "province" ? "Provincia" : selection.context ?? "Cantón"}</small></span>
-                <b aria-hidden="true">×</b>
+                {!readOnly&&<b aria-hidden="true">×</b>}
               </button>
             ))}
             {!value.length && <p>Selecciona Nacional o busca una provincia o cantón.</p>}
@@ -416,12 +420,12 @@ export function GeographicCoveragePicker({ value, onChange }: GeographicCoverage
             <span><i className="selected" /> Seleccionado</span>
             <span><i /> Resto del mapa</span>
           </div>
-          <p className="coverage-source">Mapa base: OpenStreetMap. Límites de planificación: geoBoundaries con fuentes INEC/OCHA. Validación comercial y municipal separada.</p>
+
         </div>
 
         <div className="ecuador-map-card">
           <div className="map-card-top">
-            <div><span>Mapa real de Ecuador</span><strong>Busca, selecciona, amplía y arrastra</strong></div>
+            <div><span>Mapa real de Ecuador</span><strong>{readOnly?"Explora la cobertura del plan":"Busca, selecciona, amplía y arrastra"}</strong></div>
             <small>{loadState === "error" ? "Cartografía no disponible" : realMapState === "ready" ? "Calles + límites" : realMapState === "fallback" ? `Respaldo local · ${Math.round(transform.scale * 100)}%` : "Conectando mapa"}</small>
           </div>
           <div className={`map-stage ${realMapState === "ready" ? "real-map-ready" : ""}`}>
@@ -432,7 +436,7 @@ export function GeographicCoveragePicker({ value, onChange }: GeographicCoverage
                 provinces={provinceMapFeatures}
                 cantons={cantonMapFeatures}
                 focusedKey={focusedKey}
-                onSelect={selectFromMap}
+                onSelect={readOnly ? (key)=>{const option=options.find(o=>o.key===key);if(option)focusOption(option);} : selectFromMap}
                 onReadyChange={handleRealMapState}
               />
             )}
@@ -462,14 +466,14 @@ export function GeographicCoveragePicker({ value, onChange }: GeographicCoverage
                         vectorEffect="non-scaling-stroke"
                         role="button"
                         tabIndex={0}
-                        aria-label={`${selected ? "Quitar" : "Seleccionar"} provincia de ${label}`}
+                        aria-label={`${readOnly?"Ver":selected ? "Quitar" : "Seleccionar"} provincia de ${label}`}
                         aria-pressed={selected}
                         key={feature.properties.shapeID}
-                        onClick={() => option && toggleProvince(option)}
+                        onClick={() => option && (readOnly?focusOption(option):toggleProvince(option))}
                         onKeyDown={(event) => {
                           if ((event.key === "Enter" || event.key === " ") && option) {
                             event.preventDefault();
-                            toggleProvince(option);
+                            if(readOnly)focusOption(option);else toggleProvince(option);
                           }
                         }}
                       >

@@ -48,7 +48,7 @@ export default async function MercadoPage() {
           <div>
             <h1 className="text-3xl font-black tracking-tight">Inteligencia de mercado</h1>
             <p className="mt-1 text-muted">
-              Como las principales empresas distribuyen su inversion en medios.
+              Cómo las principales empresas distribuyen su inversión en medios.
             </p>
           </div>
           {profile.is_platform_admin && (
@@ -62,18 +62,18 @@ export default async function MercadoPage() {
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Kpi label="Anunciantes" value={overview.advertisers.toLocaleString("es-EC")} />
           <Kpi label="Medios / canales" value={overview.channels.toLocaleString("es-EC")} />
-          <Kpi label="Inversion registrada" value={money(overview.investmentTotal)} />
+          <Kpi label="Inversión registrada" value={money(overview.investmentTotal)} />
           <Kpi
             label="Datos verificados"
             value={`${Math.round(overview.verifiedShare * 100)}%`}
-            hint={`${overview.investments} registros de inversion`}
+            hint={`${overview.investments} registros de inversión`}
           />
         </div>
 
         <section className="mt-6 rounded-panel border border-border bg-white p-5 shadow-panel"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-wide text-signal-dark">Salud del catálogo</p><h2 className="mt-1 text-lg font-black">Vigencia y nivel comercial</h2><p className="mt-1 text-sm text-muted">Evita que Mavi trate directorios históricos o precios vencidos como inventario comprable.</p></div><div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-5"><Health label="Total" value={catalogHealth.total} /><Health label="Cotizable" value={catalogHealth.cotizable} /><Health label="Por validar" value={catalogHealth.validation} /><Health label="Vencidos 90d" value={catalogHealth.stale} warning={catalogHealth.stale > 0} /><Health label="Sin fecha" value={catalogHealth.withoutDate} warning={catalogHealth.withoutDate > 0} /></div></div>{(catalogHealth.stale > 0 || catalogHealth.withoutDate > 0) && <p className="mt-4 rounded-xl border border-amber/40 bg-amber/10 px-4 py-3 text-xs font-bold text-forest">Hay referencias que deben reconfirmarse antes de mostrarse como cotizables. Permanecen visibles sólo como contexto o directorio.</p>}</section>
 
         {/* Inversion publicitaria */}
-        <Panel title="Inversion publicitaria" subtitle="Ultimos registros por anunciante, medio y periodo.">
+        <Panel title="Inversión publicitaria" subtitle="Últimos registros por anunciante, medio y período.">
           {investments.length === 0 ? (
             <Empty admin={profile.is_platform_admin} />
           ) : (
@@ -110,7 +110,7 @@ export default async function MercadoPage() {
           </Panel>
 
           {/* Metricas digitales */}
-          <Panel title="Metricas digitales" subtitle="Google Ads, Meta Ads y analitica.">
+          <Panel title="Métricas digitales" subtitle="Google Ads, Meta Ads y analitica.">
             {metrics.length === 0 ? (
               <Empty admin={profile.is_platform_admin} />
             ) : (
@@ -186,13 +186,13 @@ function Td({ children, className }: { children: React.ReactNode; className?: st
 function Empty({ admin }: { admin: boolean }) {
   return (
     <p className="rounded-xl border border-border bg-fog px-4 py-6 text-center text-sm text-muted">
-      Aun no hay datos.{" "}
+      Aún no hay datos.{" "}
       {admin ? (
         <Link href="/mercado/cargar" className="font-black text-signal-dark hover:underline">
           Cargar el primero
         </Link>
       ) : (
-        "Pronto habra informacion aqui."
+        "Pronto habrá información aquí."
       )}
     </p>
   );

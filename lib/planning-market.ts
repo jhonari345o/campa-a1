@@ -28,3 +28,36 @@ export function radioTariffCoversStationStudy(tariffMarkets:string[],studyMarket
   const tariff={geography:tariffMarkets.join(", ")} as BroadcastBrief;
   return stationMarkets.every(m=>planningStudyBrief([m],tariff));
 }
+
+
+/** Commercial coverage may contain a requested canton. This must never be used
+ * to change the population denominator of a rating or audience study. */
+export function commercialTerritoryFits(markets:string[],brief:BroadcastBrief):boolean {
+  const requested=briefMarketKeys(brief);
+  return markets.length>0 && markets.every(m=>requested.some(r=>territoriesOverlap(m,r)));
+}
+export const NATIONAL_PROVINCE_PRIORITY=["Guayas","Pichincha","Azuay","Manabí","Tungurahua","El Oro","Los Ríos"];
+export const territoryKey=(value:string)=>{
+  const key=normalized(value).replace(/^provincia de /,"");
+  return ["nacional","nacionales","national","ecuador","todo ecuador"].includes(key)?"nacional":key;
+};
+export function territoryProvince(value:string):string {
+  const key=territoryKey(value);
+  const matches=directory.filter(p=>normalized(p.label)===key);
+  const province=matches.find(p=>p.kind==="province");
+  if(province)return normalized(province.label);
+  const city=matches.length===1?matches[0]:null;
+  return city&&"context" in city?normalized(city.context??""):key;
+}
+export function territoriesOverlap(a:string,b:string):boolean {
+  const x=territoryKey(a),y=territoryKey(b);
+  if(!x||!y)return false;
+  if(x==="nacional"||y==="nacional"||x===y)return true;
+  // Two different cantons in the same province are not interchangeable.
+  return directory.some(p=>p.kind==="province"&&normalized(p.label)===x)&&territoryProvince(y)===x
+    ||directory.some(p=>p.kind==="province"&&normalized(p.label)===y)&&territoryProvince(x)===y;
+}
+export function nationalTerritoryOrder():string[] {
+  const priority=NATIONAL_PROVINCE_PRIORITY.map(territoryKey);
+  return [...priority,...directory.filter(p=>p.kind==="province"&&!priority.includes(normalized(p.label))).map(p=>normalized(p.label)).sort((a,b)=>a.localeCompare(b,"es"))];
+}

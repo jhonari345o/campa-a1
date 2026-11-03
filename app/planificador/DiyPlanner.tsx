@@ -25,7 +25,8 @@ import type { MediaGroup } from "@/lib/media-groups";
 import type { OohLocationOption, SavedMediaPlan } from "@/lib/media-workspace";
 import { buildPlanningScenarios, mediaGroupLabel, type PlanningScenario } from "@/lib/plan-optimizer";
 import { sourceDescription, radioCompatibility, validateBroadcastSelections, type BroadcastCatalog, type BroadcastBrief } from "@/lib/broadcast-catalog";
-import { ECUADOR_PROVINCE_OPTIONS } from "@/lib/form-catalogs";
+import { GeographicCoveragePicker } from "@/components/geography/GeographicCoveragePicker";
+import { restoreCoverage, coverageFromLabels, coverageLegacyLabels, type CoverageSelection } from "@/lib/geographic-coverage";
 import { guardarPlanManual, type ManualPlanDraft } from "./workspace-actions";
 import { CampaignTwin } from "./CampaignTwin";
 
@@ -45,7 +46,7 @@ const MEDIA: Array<{ id: MediaGroup; mark: string; detail: string }> = [
   { id: "influencers", mark: "IN", detail: "Perfiles, entregables y derechos" },
 ];
 
-const CITY_OPTIONS = ["Guayaquil", "Quito", "Cuenca", "Manta", "Samborondón", "Daule", "Durán", "Machala", "Loja", "Ambato", "Todo Ecuador"];
+
 
 
 
@@ -90,7 +91,7 @@ export function DiyPlanner({
   const [geographies, setGeographies] = useState<string[]>(arrayOfStrings(initialBrief.geographies).length
     ? arrayOfStrings(initialBrief.geographies)
     : stringValue(initialBrief.geography) ? [stringValue(initialBrief.geography)] : ["Guayaquil"]);
-  const [geoDraft, setGeoDraft] = useState("");
+  const [coverage,setCoverage]=useState<CoverageSelection[]>(()=>restoreCoverage(initialBrief).length?restoreCoverage(initialBrief):coverageFromLabels(geographies));
   const [selectedMedia, setSelectedMedia] = useState<MediaGroup[]>(mediaArray(initialBrief.selectedMedia).length
     ? mediaArray(initialBrief.selectedMedia)
     : ["television"]);
@@ -120,13 +121,13 @@ export function DiyPlanner({
     digitalReady,
   }), [audienceType, budget, digitalReady, geographies.length, objective, priority, selectedMedia]);
   const scenario = scenarios.find((item) => item.id === scenarioId) ?? scenarios[0];
-  const brief: BroadcastBrief = { startDate, endDate, geography: geographies.join(","), ageRange, sex, socioeconomic: "Todos los NSE", audienceType };
+  const brief: BroadcastBrief = { startDate, endDate, geography: geographies.join(","), coverage, ageRange, sex, socioeconomic: "Todos los NSE", audienceType };
   const displayTv = tv.map(pick => { const result = validateBroadcastSelections(broadcast, brief, { tv: [pick] },diyTvResolver(brief,workspaceProducts)); return result.ok ? (result.selections.tv as TvPick[])[0] : { ...pick, unitPrice: null }; });
   const displayPress = press.map(pick => { const result = validatePressPicks(pressCatalog, [pick], { startDate, endDate, geographies }); return result.ok ? result.picks[0] : { ...pick, unitPrice: null, referencePriceUsd: null }; });
   let catalogSelection:ReturnType<typeof resolveDiyCatalog>=[],catalogError="";
   try {catalogSelection=resolveDiyCatalog(catalogPicks,workspaceProducts,selectedMedia,startDate,endDate)}catch{catalogError="Hay productos que ya no están disponibles. Retíralos de la selección para continuar.";}
   const summary = diySelectionSummary(selectedMedia, { tv: displayTv, radio: radioPicks, ooh, press: displayPress, digital, influencers: creatorPicks, catalog:catalogSelection }, scenario?.allocations.find(item => item.kind === "digital")?.amountUsd ?? 0);
-  const signature = JSON.stringify({ name, brand, categoryId, objective, priority, audienceType, audience, targetPeople, interests, budget, geographies, startDate, endDate, ageRange, sex, selectedMedia, scenarioId, digitalReady, tv, radioPicks, ooh, press, digital, creatorPicks, catalogPicks });
+  const signature = JSON.stringify({ name, brand, categoryId, objective, priority, audienceType, audience, targetPeople, interests, budget, geographies, coverage, startDate, endDate, ageRange, sex, selectedMedia, scenarioId, digitalReady, tv, radioPicks, ooh, press, digital, creatorPicks, catalogPicks });
   const savedSignature = useRef(signature);
   const dirty = savedSignature.current !== signature;
   useEffect(() => { if (!dirty) return; const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); }; window.addEventListener("beforeunload", warn); return () => window.removeEventListener("beforeunload", warn); }, [dirty]);
@@ -138,12 +139,6 @@ export function DiyPlanner({
     setSelectedMedia((current) => current.includes(kind) ? current.filter((item) => item !== kind) : [...current, kind]);
   }
 
-  function addGeography() {
-    const clean = geoDraft.trim();
-    if (!clean || geographies.includes(clean)) return;
-    setGeographies((items) => [...items, clean].slice(0, 20));
-    setGeoDraft("");
-  }
 
   function save(submitForReview: boolean) {
     setMessage(null);
@@ -161,7 +156,7 @@ export function DiyPlanner({
       interests,
       audienceType,
       budgetUsd: budget,
-      geographies, startDate, endDate, ageRange, sex,
+      geographies, coverage, startDate, endDate, ageRange, sex,
       selectedMedia,
       scenarioId: scenario?.id ?? "recommended",
       digitalReady,
@@ -188,7 +183,7 @@ export function DiyPlanner({
       <div className={styles.formGrid}><Field label="Nombre del plan" value={name} onChange={setName} /><Field label="Marca" value={brand} onChange={setBrand} /><InfomediaCategoryPicker categories={categoryCatalog.categories} error={categoryCatalog.error} initialId={stringValue(initialBrief.categoryId)} initialLabel={stringValue(initialBrief.keyword)} onSelect={category => { setKeyword(category?.label ?? ""); setCategoryId(category?.id ?? ""); }} /><BudgetField label="Presupuesto total (USD)" value={budget} onValueChange={value => setBudget(value ?? 0)} required/><Select label="Objetivo" value={objective} onChange={setObjective} options={["Reconocimiento", "Alcance", "Tráfico", "Interacción", "Mensajes", "Leads", "Ventas", "Visitas al local"].map(item => [item, item])} /><Select label="Prioridad" value={priority} onChange={setPriority} options={["Cobertura", "Frecuencia", "Eficiencia", "Conversión", "Afinidad", "Presencia local", "Balance"].map(item => [item, item])} /><Select label="Tipo de audiencia" value={audienceType} onChange={setAudienceType} options={["B2C", "B2B", "Mixta"].map(item => [item, item])} /><NumberField label="Personas a impactar (referencia)" value={targetPeople} onChange={setTargetPeople} min={0} /></div>
       <div className={styles.formGridTwo}><TextArea label="Audiencia" value={audience} onChange={setAudience} placeholder="Personas, necesidades y comportamientos prioritarios" /><TextArea label="Intereses, comportamientos o cargos" value={interests} onChange={setInterests} placeholder="Intereses, cargos y contextos relevantes" /></div>
       <div className={styles.formGrid}><CalendarDateField name="startDate" label="Inicio" value={startDate} onChange={setStartDate} max={endDate || undefined} required={false}/><CalendarDateField name="endDate" label="Fin" value={endDate} onChange={setEndDate} min={startDate || undefined} required={false}/><Select label="Edad" value={ageRange} onChange={setAgeRange} options={["Personas 18+", "18-34", "35+", "25-54"].map(item => [item, item])} /><Select label="Sexo" value={sex} onChange={setSex} options={["Todas las personas", "Mujeres", "Hombres"].map(item => [item, item])} /></div>
-      <div className={styles.geography}><strong>Coberturas del plan</strong><div className={styles.geoChips}>{geographies.map(item => <button key={item} type="button" aria-label={`Quitar cobertura ${item}`} onClick={() => setGeographies(current => current.filter(value => value !== item))}>{item} ×</button>)}</div><div className={styles.geoAdd}><label><span className="sr-only">Agregar ciudad o provincia</span><select value={geoDraft} onChange={event => setGeoDraft(event.target.value)}><option value="">Agregar ciudad o provincia</option>{CITY_OPTIONS.map(item => <option key={item}>{item}</option>)}{ECUADOR_PROVINCE_OPTIONS.map(item => <option key={item.value} value={`Provincia de ${item.label}`}>{item.label}</option>)}</select></label><button type="button" onClick={addGeography} className="btn btn-secondary">Agregar cobertura</button></div></div>
+      <GeographicCoveragePicker value={coverage} onChange={next=>{setCoverage(next);setGeographies(coverageLegacyLabels(next));}} />
     </div></details>
     <nav className={styles.mediumRail} aria-label="Configurar medios del plan">{MEDIA.map(item => { const included = selectedMedia.includes(item.id), active = !review && activeMedium === item.id; return <div key={item.id} className={`${styles.mediumItem} ${active ? styles.mediumActive : ""}`}><button type="button" className={styles.mediumOpen} aria-pressed={active} aria-controls="diy-configurator" onClick={() => openMedium(item.id)}><span className={styles.mediumIcon}><MediaSelectionIcon medium={item.id} /></span><span><strong>{mediaGroupLabel(item.id)}</strong><small>{item.detail}</small></span></button><button type="button" className={styles.includeButton} aria-label={`${included ? "Quitar" : "Añadir"} ${mediaGroupLabel(item.id)} del plan`} aria-pressed={included} onClick={() => toggleMedium(item.id)}>{included ? "✓" : "+"}</button></div>; })}</nav>
     <div className={styles.workspace}><div ref={builder} id="diy-configurator" tabIndex={-1} className={styles.builder}>
@@ -228,13 +223,13 @@ function RadioConfigurator({catalog,brief,picks,onChange}:{catalog:BroadcastCata
 function OohConfigurator({ catalog, locations, picks, onChange }: { catalog: OohCatalog; locations: OohLocationOption[]; picks: OohPick[]; onChange: (value: OohPick[]) => void }) {
   const [provider, setProvider] = useState(""), [province, setProvince] = useState(""), [query, setQuery] = useState(""), [id, setId] = useState(""), [rateIndex, setRateIndex] = useState(0);
   const groups = oohProvinceGroups(catalog.assets);
-  const assets = catalog.assets.filter(asset => (!provider || asset.providerSlug === provider) && (!province || groups.find(group => group.key === province)?.assets.some(item => item.id === asset.id)) && oohMatches(asset, query));
+  const assets = catalog.assets.filter(asset => !asset.purchaseAssetId && (!provider || asset.providerSlug === provider) && (!province || groups.find(group => group.key === province)?.assets.some(item => item.id === asset.id)) && oohMatches(asset, query));
   const asset = assets.find(asset => asset.id === id) ?? assets[0];
   const selectedRate = asset?.rates[rateIndex] ?? asset?.rates[0];
   const effectiveRateIndex = selectedRate ? asset.rates.indexOf(selectedRate) : -1;
   const legacy = locations.find(item => item.id === id) ?? locations[0];
   function add() {
-    const next: OohPick | undefined = asset ? { id: asset.id, name: asset.name, city: asset.city, status: "inventory", rate: selectedRate?.amount ?? null, months: 1, units: 1, rateIndex: effectiveRateIndex, unitLabel: selectedRate ? oohRateUnit(selectedRate) : "Unidad por definir", reference: asset.reference } : !catalog.assets.length && !catalog.error && legacy ? { id: legacy.id, name: legacy.name, city: legacy.city, status: legacy.status, rate: legacy.status === "inventory" ? legacy.monthlyRateUsd : null, months: 1, units: 1, unitLabel: "mes" } : undefined;
+    const next: OohPick | undefined = asset ? { id: asset.id, name: asset.purchaseName || asset.name, city: asset.city, status: "inventory", rate: selectedRate?.amount ?? null, months: 1, units: 1, rateIndex: effectiveRateIndex, unitLabel: selectedRate ? oohRateUnit(selectedRate) : "Unidad por definir", reference: asset.reference } : !catalog.assets.length && !catalog.error && legacy ? { id: legacy.id, name: legacy.name, city: legacy.city, status: legacy.status, rate: legacy.status === "inventory" ? legacy.monthlyRateUsd : null, months: 1, units: 1, unitLabel: "mes" } : undefined;
     if (next && !picks.some(pick => pick.id === next.id)) onChange([...picks, next]);
   }
   return <Configurator number="03" eyebrow="Vía pública" title="Proveedor, provincia y ubicación">

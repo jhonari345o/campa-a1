@@ -82,3 +82,12 @@ test("normal and VIP totems retain different product groups and monthly versus o
  assert.equal(rows[2].unit,"pago único · por unidad");
  assert.equal(new Set(rows.map(r=>r.key)).size,3);
 });
+
+ test("two OOH format cards share one priced package and one cart identity",()=>{
+ const primary=parseOohAsset({id:"synthetic-package",provider_slug:"test",provinces:["Nacional"],details:{name:"Formato A",purchaseName:"Paquete A y B",conditions:"Tres salidas mensuales",taxLabel:"Sin IVA",rates:[{amount:380,period:"month",basis:"package",kind:"user_authorized_2026_11_02"}]}})!;
+ const alias=parseOohAsset({id:"synthetic-alias",provider_slug:"test",details:{name:"Formato B",purchaseAssetId:primary.id,rates:[{amount:380,period:"month",basis:"package"}]}})!;
+ const p=catalogProducts([],{assets:[primary,alias]});
+ assert.equal(p.length,1);assert.equal(p[0].name,"Paquete A y B");assert.equal(p[0].unit,"mes · paquete");assert.equal(p[0].source.standingPrice,true);assert.equal(p[0].conditions,"Tres salidas mensuales");
+ assert.equal(p[0].key,oohProductKey(alias.purchaseAssetId!,primary.rates[0]));
+ assert.equal(catalogCartSummary([{productKey:p[0].key,quantity:1}],p).totalCents,38000);
+ });

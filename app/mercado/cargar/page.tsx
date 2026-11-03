@@ -60,7 +60,7 @@ export default async function CargarPage() {
   const metricaFields: Field[] = [
     { name: "advertiser_id", label: "Anunciante", options: advertiserOptions, required: true, colSpan: 2 },
     { name: "platform", label: "Plataforma", options: platformOptions, required: true },
-    { name: "spend_usd", label: "Inversion (USD)", type: "number", placeholder: "12000" },
+    { name: "spend_usd", label: "Inversión (USD)", type: "number", placeholder: "12000" },
     { name: "period_year", label: "Año", options: PERIOD_YEAR_OPTIONS, required: true },
     { name: "period_month", label: "Mes", options: MONTH_OPTIONS },
     { name: "impressions", label: "Impresiones", type: "number" },
@@ -91,7 +91,7 @@ export default async function CargarPage() {
 
         {advertisers.length === 0 && (
           <p className="mt-6 rounded-xl border border-amber/40 bg-amber/10 px-4 py-3 text-sm font-bold text-forest">
-            Empieza creando un anunciante: las inversiones y metricas se ligan a el.
+            Empieza creando un anunciante: las inversiones y métricas se ligan a él.
           </p>
         )}
 
@@ -111,11 +111,11 @@ export default async function CargarPage() {
             submitLabel="Agregar medio →"
           />
           <EntityForm
-            title="Nueva inversion publicitaria"
-            description="Cuanto invirtio un anunciante en un medio y periodo."
+            title="Nueva inversión publicitaria"
+            description="Cuánto invirtió un anunciante en un medio y período."
             action={crearInversion}
             fields={inversionFields}
-            submitLabel="Registrar inversion →"
+            submitLabel="Registrar inversión →"
           />
           <EntityForm
             title="Nueva metrica digital"

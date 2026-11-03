@@ -36,7 +36,7 @@ test("TV recommendations retain each applicable plaza and study in the bounded A
   assert.deepEqual(pool.slice(0,6).map(c=>c.id),["gye:0","uio:0","prior:0","gye:1","uio:1","prior:1"]);
   const baseline=await buildMediaPlan({...brief,research:strategyResearch});
   const payload=strategyAiPayload(brief,bundle,baseline);
-  assert.equal(payload.evidence.candidates.length,8);
+  assert.equal(payload.evidence.candidates.length,30);
   assert.deepEqual(new Set(payload.evidence.candidates.map(c=>c.market)),new Set(["Guayaquil","Quito","Guayaquil y Quito"]));
   const advice={summary:"Combina las plazas solicitadas.",allocations:[{medium:"television",weight:10000,rationale:"Conserva presencia en ambas ciudades.",evidenceIds:["tv-audience:gye","tv-audience:uio"],candidateIds:["gye:0","uio:0"]}]};
   assert.ok(parseStrategyAdvice(JSON.stringify(advice),brief,bundle));

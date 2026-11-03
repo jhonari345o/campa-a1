@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {planningStudyBrief,radioTariffCoversStationStudy} from "../lib/planning-market";
+import {planningStudyBrief,radioTariffCoversStationStudy,commercialTerritoryFits,territoriesOverlap} from "../lib/planning-market";
 import {sameMarket,radioCompatibility,type BroadcastSource} from "../lib/broadcast-catalog";
 import {strategyCandidatePool,allocateStrategyExecutions,buildStrategyReport} from "../lib/media-strategy";
 import {buildStrategyEvidence} from "../lib/media-strategy-evidence";
@@ -67,7 +67,7 @@ test("radio candidates retain independent plazas and never sort their ratings ag
   const bundle=buildStrategyEvidence(brief,strategyResearch,strategyCatalogs(),"2026-11-02");
   const template=bundle.candidates[0]??{medium:"radio" as const,provider:"Synthetic",product:"Spot",market:"",target:"Personas 18+",period:"2026-10",sourceIds:[],sourceUse:"comparable" as const,unit:"spot",unitPriceUsd:null,referencePriceUsd:null,minimumUnits:1,minimumSpendUsd:null,metrics:[],note:""};
   bundle.sources=[...bundle.sources,...["Guayaquil","Quito"].map((market,i)=>({id:`radio-study:${i}`,kind:"ranking" as const,label:"Synthetic",period:"2026-10",market,target:"Personas 18+",use:"comparable" as const,note:""}))];
-  bundle.candidates=[0,1,2,3].map(i=>({...template,id:`station-${i}`,medium:"radio" as const,market:i<2?"Guayaquil":"Quito",sourceIds:[`radio-study:${i<2?0:1}`],unitPriceUsd:10,minimumSpendUsd:10,metrics:[{label:"Rating",value:[5,4,90,80][i],unit:"puntos",sourceId:`radio-study:${i<2?0:1}`}]}));
+  bundle.candidates=[0,1,2,3].map(i=>({...template,id:`station-${i}`,medium:"radio" as const,coverageKeys:[i<2?"Guayaquil":"Quito"],market:i<2?"Guayaquil":"Quito",sourceIds:[`radio-study:${i<2?0:1}`],unitPriceUsd:10,minimumSpendUsd:10,metrics:[{label:"Rating",value:[5,4,90,80][i],unit:"puntos",sourceId:`radio-study:${i<2?0:1}`}]}));
   assert.deepEqual(strategyCandidatePool(bundle,"radio").map(c=>c.id),["station-0","station-2","station-1","station-3"]);
   const executions=allocateStrategyExecutions([bundle.candidates[0],bundle.candidates[2]],100.01);
   assert.deepEqual(executions.map(e=>e.amountUsd),[50.01,50]);
@@ -89,4 +89,32 @@ test("a station's provincial CNE tariff joins its consolidated ranking without c
  assert.equal(candidate.catalogKey,catalogs.workspaceProducts[0].key);
  const local=buildStrategyEvidence({...b,selectedMedia:[...b.selectedMedia],coverage:brief.coverage!.slice(0,1)},strategyResearch,catalogs,"2026-11-02");
  assert.equal(local.candidates.some(c=>c.id.startsWith("radio:")),false);
+});
+
+test("commercial provincial coverage includes its canton without extrapolating a city study",()=>{
+ const tulcan=strategyBrief({geography:"Tulcán",coverage:[{key:"city:tulcan:carchi",kind:"city",label:"Tulcán",context:"Carchi"}]});
+ assert.equal(commercialTerritoryFits(["Carchi"],tulcan),true);
+ assert.equal(commercialTerritoryFits(["Nacional"],tulcan),true);
+ assert.equal(commercialTerritoryFits(["Ibarra"],tulcan),false);
+ assert.equal(commercialTerritoryFits(["Imbabura"],tulcan),false);
+ assert.equal(planningStudyBrief(["Quito"],tulcan),null);
+ assert.equal(territoriesOverlap("Cuenca","Gualaceo"),false);
+ assert.equal(territoriesOverlap("Azuay","Gualaceo"),true);
+});
+
+test("national radio reserves an effective cadence and expands provinces in the approved order",()=>{
+ const national=strategyBrief({geography:"Todo Ecuador",coverage:[{key:"country:ecuador",kind:"country",label:"Todo Ecuador"}],selectedMedia:["radio"]});
+ const base=buildStrategyEvidence(national,strategyResearch,strategyCatalogs(),"2026-11-02");
+ const candidates=["Nacional","Guayas","Pichincha","Azuay","Manabí","Tungurahua","El Oro","Los Ríos","Carchi"].map((market,i)=>({id:`workspace:synthetic-regional-${i}`,catalogKey:`radio:synthetic-regional-${i}`,stationId:`synthetic-station-${i}`,medium:"radio" as const,provider:`Radio sintética ${i}`,product:"Rotativo",market,coverageKeys:[market],target:"",period:"",sourceIds:[],sourceUse:"comparable" as const,unit:"cuña de 20 s",unitPriceUsd:10,referencePriceUsd:10,minimumUnits:1,minimumSpendUsd:10,metrics:[],note:""}));
+ const bundle={...base,candidates};
+ const run=(budgetUsd:number)=>buildStrategyReport({...national,budgetUsd},bundle,{matched:0,totalRef:0,basis:"infomedia",benchmark:[],profileLabel:"",strategySummary:"",plan:[{label:"Radio",pct:1,amount:budgetUsd}]},{aiState:"unavailable",fingerprint:"synthetic",generatedAt:"2026-11-02"});
+ const low=run(200).allocations[0].executions!;
+ assert.deepEqual(low.map(e=>e.candidate.market),["Nacional"]);assert.equal(low[0].units,20);
+ const medium=run(600).allocations[0].executions!;
+ assert.deepEqual(medium.map(e=>e.candidate.market),["Nacional","Guayas","Pichincha"]);
+ assert.ok(medium.every(e=>e.units!>=20));
+ const high=run(2000).allocations[0].executions!;
+ assert.deepEqual(high.map(e=>e.candidate.market),["Nacional","Guayas","Pichincha","Azuay","Manabí","Tungurahua","El Oro","Los Ríos","Carchi"]);
+ assert.equal(high.reduce((n,e)=>n+Math.round(e.amountUsd!*100),0),200000);
+ assert.ok(high.reduce((n,e)=>n+e.referenceSpendUsd!,0)<=2000);
 });

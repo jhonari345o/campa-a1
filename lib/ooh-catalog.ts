@@ -6,6 +6,7 @@ export type OohAsset = {
   latitude: number | null; longitude: number | null; recordType: string;
   rates: OohRate[]; rateLabel: string; reference: string; taxLabel: string;
   photo: boolean; photoKind: "asset" | "format"; dailySpots: number | null; spotSeconds: number | null;
+  purchaseAssetId?: string; purchaseName?: string; conditions?: string; photoCaption?: string;
 };
 export type OohCatalog = { assets: OohAsset[]; error?: string };
 export const OOH_UNLOCATED = "Ubicación por definir";
@@ -45,6 +46,10 @@ export function parseOohAsset(row: Record<string, unknown>): OohAsset | null {
     name: text(d.name), code: text(d.code), city: text(d.city), address: text(d.address), format: text(d.format), dimensions: text(d.dimensions), brand: text(d.brand),
     latitude: coordinatesValid ? latitude : null, longitude: coordinatesValid ? longitude : null, recordType: text(d.recordType),
     rates, rateLabel: text(d.rateLabel), reference: text(d.reference), taxLabel: text(d.taxLabel),
+    ...(typeof d.purchaseAssetId === "string" && /^[a-z0-9-]{1,150}$/.test(d.purchaseAssetId) ? {purchaseAssetId:d.purchaseAssetId} : {}),
+    ...(text(d.purchaseName) ? {purchaseName:text(d.purchaseName)} : {}),
+    ...(text(d.conditions) ? {conditions:text(d.conditions)} : {}),
+    ...(d.photoCaption === "Visualización del formato" ? {photoCaption:d.photoCaption} : {}),
     photo: (!presentation || presentation.kind === "photo") && typeof row.photo_path === "string" && oohPhotoPathAllowed(row.photo_path), photoKind: d.photoKind === "asset" ? "asset" : "format", dailySpots: number(d.dailySpots), spotSeconds: number(d.spotSeconds) };
 }
 export function oohRateUnit(rate: OohRate) {

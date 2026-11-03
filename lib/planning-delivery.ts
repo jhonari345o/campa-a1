@@ -17,7 +17,7 @@ export function projectPlanningDelivery(brief:BroadcastBrief,lines:RatedDelivery
   const requested=[...new Set(briefMarketKeys(brief).map(key=>key.replace(/^provincia de /, "")).map(key=>key==="guayas"?"guayaquil":key==="pichincha"?"quito":key))].sort();
   // Geographic complements can sit outside the calibrated cities. Keep the
   // measured population and its visible scope label; never expand the universe.
-  const keys=requested.filter(key=>model.marketKeys.includes(key));
+  const keys=requested.includes("nacional")?model.marketKeys.slice().sort():requested.filter(key=>model.marketKeys.includes(key));
   if(!keys.length)return null;
   const scopeWeight=keys.reduce((sum,key)=>sum+(model.marketWeights[key]??0),0);
   if(!Number.isFinite(scopeWeight)||scopeWeight<=0||scopeWeight>1.000001)return null;
@@ -28,8 +28,12 @@ export function projectPlanningDelivery(brief:BroadcastBrief,lines:RatedDelivery
   const selection:DeliverySelection={context:{startDate:brief.startDate,endDate:brief.endDate,geography,audience:"18+|all|all"},media:media.map(medium=>({medium,items:lines.filter(l=>l.medium===medium).map(({id,quantity,amountCents})=>({id,quantity,amountCents}))}))};
   const observations:DeliveryObservation[]=[];
   for(const medium of media){
-    const curve=model.curves.find(c=>c.medium===medium),selected=lines.filter(l=>l.medium===medium);
-    if(!curve||selected.some(l=>l.ratingPct==null||!Number.isFinite(l.ratingPct)||l.ratingPct<0||l.ratingPct>100||!Number.isSafeInteger(l.quantity)||l.quantity<1||!validDate(l.studyEnd??"")||l.studyEnd!>brief.startDate!||Date.parse(brief.startDate!)-Date.parse(l.studyEnd!)>366*86400000))continue;
+    const curve=model.curves.find(c=>c.medium===medium),all=lines.filter(l=>l.medium===medium);
+    // Keep geographic purchases in the plan, without attributing contacts to
+    // unsupported territories. A corrupt numeric observation is never a complement.
+    if(all.some(l=>l.ratingPct!=null&&(!Number.isFinite(l.ratingPct)||l.ratingPct<0||l.ratingPct>100)))return null;
+    const selected=all.filter(l=>l.ratingPct!=null&&l.ratingMarketKeys.length>0&&l.ratingMarketKeys.map(normalized).every(k=>keys.includes(k))&&validDate(l.studyEnd??"")&&l.studyEnd!<=brief.startDate!&&Date.parse(brief.startDate!)-Date.parse(l.studyEnd!)<=366*86400000);
+    if(!curve||!selected.length||selected.some(l=>!Number.isSafeInteger(l.quantity)||l.quantity<1))continue;
     let grps=0,compatible=true;const covered=new Set<string>();
     for(const line of selected){
       const scope=[...new Set(line.ratingMarketKeys.map(normalized))].sort();
