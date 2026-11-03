@@ -1,7 +1,9 @@
+import { broadcastLogo } from "./broadcast-logos";
 import { TV_CHANNELS } from "./media-catalog";
 import { normalized, type BroadcastCatalog } from "./broadcast-catalog";
 import type { CatalogProduct } from "./catalog-shopping";
 import geography from "./ecuador-geography.json";
+import { televisionStartMinute } from "./broadcast-time";
 
 export type TelevisionDistribution = "national" | "local" | "paid";
 export type TelevisionChannel = { key: string; name: string; logo: string | null; products: CatalogProduct[]; distribution: TelevisionDistribution };
@@ -23,7 +25,7 @@ export function televisionChannels(products: CatalogProduct[]): TelevisionChanne
     const provider = televisionProviderKey(product.provider);
     // Pricing keeps RTS and TVC independent; navigation nests both in their commercial group.
     const key = provider === "rts" || provider === "tvc" ? "red-comercial" : provider;
-    if (!groups.has(key)) groups.set(key, { key, name: product.provider, logo: product.image, products: [], distribution: nationalOrder.includes(key) ? "national" : product.source.tvDistribution ?? (["directv", "xtrim"].includes(key) ? "paid" : "local") });
+    if (!groups.has(key)) groups.set(key, { key, name: product.provider, logo: product.image ?? broadcastLogo(product.provider,"television"), products: [], distribution: nationalOrder.includes(key) ? "national" : product.source.tvDistribution ?? (["directv", "xtrim"].includes(key) ? "paid" : "local") });
     groups.get(key)!.products.push(product);
   }
   const order = {national:0,local:1,paid:2};
@@ -76,7 +78,7 @@ export function televisionPrograms(products: CatalogProduct[], catalog: Broadcas
   return products.filter(product => product.kind === "tv" && televisionMarkets(product).includes(market)
     && (edition === "all" || televisionEdition(product, catalog).key === edition)
     && normalized(`${product.name} ${product.format} ${product.unit}`).includes(needle))
-    .sort((a,b) => a.name.localeCompare(b.name,"es",{numeric:true}) || a.format.localeCompare(b.format,"es",{numeric:true}));
+    .sort((a,b) => televisionStartMinute(a.format)-televisionStartMinute(b.format) || a.format.localeCompare(b.format,"es",{numeric:true}) || a.name.localeCompare(b.name,"es",{numeric:true}));
 }
 
 /** An expired archive edition must not hide current negotiated programmes or

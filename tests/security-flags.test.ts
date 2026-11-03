@@ -342,7 +342,8 @@ test("Laboratorio y el centro de procesos Mavi permanecen visibles en la navegac
   const llm = readFileSync(resolve("lib/assistant/llm.ts"), "utf8");
   assert.match(header, /label: "Laboratorio creativo"/);
   assert.match(header, /label: "Centro Mavi"/);
-  assert.match(assistant, /Todos tus procesos aquí/);
+  assert.match(assistant, /Abrir asistente Mavi/);
+  assert.match(header, /<MaviFloatingAssistant\s*\/>/);
   assert.match(assistant, /Crear plan guiado/);
   assert.match(assistant, /Revisar creatividad/);
   assert.match(assistant, /Preparar pauta/);

@@ -1,0 +1,73 @@
+{
+  "checkedOn": "2026-11-03",
+  "assets": [
+    {
+      "asset": "/providers/tv/zaracay-tv.png",
+      "source": "https://zaracaytv.com/wp-content/uploads/2026/05/unnamed-icon-ztv-300x300.png"
+    },
+    {
+      "asset": "/providers/tv/nortvision.png",
+      "source": "https://nortvision.tv/logo-light.png"
+    },
+    {
+      "asset": "/providers/tv/unsion-tv.png",
+      "source": "https://unsion.tv/brand/classic/logo-horizontal.png"
+    },
+    {
+      "asset": "/providers/tv/rts.png",
+      "source": "https://alba-ec-rts.cdn.mediatiquepress.com/wp-content/uploads/2023/07/logo-favicon-4.png"
+    },
+    {
+      "asset": "/providers/tv/tvc.png",
+      "source": "https://alba-ec-tvc.cdn.mediatiquepress.com/wp-content/uploads/2023/07/cropped-logo-192x192.png"
+    },
+    {
+      "asset": "/providers/radio/radio-centro/logo.png",
+      "source": "https://radiocentro.com.ec/wp-content/uploads/2022/05/cropped-iconocentrofm-192x192.png"
+    },
+    {
+      "asset": "/providers/radio/galaxia/logo.png",
+      "source": "https://alba-ec-galaxia.cdn.mediatiquepress.com/wp-content/uploads/2021/11/15134048/logo-galaxia.png"
+    },
+    {
+      "asset": "/providers/radio/tropicalida/logo.png",
+      "source": "https://alba-ec-tropicalida.cdn.mediatiquepress.com/wp-content/uploads/2022/02/22173451/circulo.png"
+    },
+    {
+      "asset": "/providers/radio/diblu/logo.webp",
+      "source": "https://diblu.ec/wp-content/uploads/2026/05/logo-diblu-radio.webp"
+    },
+    {
+      "asset": "/providers/radio/sonorama/logo.png",
+      "source": "https://www.sonorama.com.ec/assets/logo-sonoramasss.png"
+    },
+    {
+      "asset": "/providers/radio/rumba/logo.png",
+      "source": "https://radiorumba.fm/radiorumba/wp-content/uploads/2014/06/rumba.png"
+    },
+    {
+      "asset": "/providers/radio/caravana/logo.webp",
+      "source": "https://radiocaravana.com/wp-content/uploads/2026/07/favi-caravana.webp"
+    },
+    {
+      "asset": "/providers/radio/sucre/logo.png",
+      "source": "https://radiosucre.com.ec/wp-content/uploads/2020/07/cropped-icono-sucre-300x300.png"
+    },
+    {
+      "asset": "/providers/radio/antena-3/logo.png",
+      "source": "https://radioantena3.com/wp-content/uploads/2023/06/LogoAntena3-1.png"
+    },
+    {
+      "asset": "/providers/radio/la-red/logo.png",
+      "source": "https://www.lared.com.ec/wp-content/uploads/2022/11/LaRedLogov2-e1668527750634.png"
+    },
+    {
+      "asset": "/providers/tv/uv-television.png",
+      "source": "https://uvtelevision.com.ec/wp-content/uploads/2024/11/uvtelevision-logo-web.png"
+    },
+    {
+      "asset": "/providers/tv/cocavision.png",
+      "source": "https://grupococavision.com/img/favicon.png"
+    }
+  ]
+}

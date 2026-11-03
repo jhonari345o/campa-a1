@@ -103,3 +103,4 @@
   .radar :global(.infomedia-metrics) { grid-template-columns: 1fr; }
   .radar :global(.infomedia-metrics) article { padding: 16px; }
 }
+.radar:global(.infomedia-research){padding:20px;border-radius:18px;background:linear-gradient(135deg,#302b27,#203c2e);box-shadow:none}.radar h2{font-size:26px;margin:6px 0}.radar>header span{font-size:11px}.radar :global(.infomedia-metrics) article{padding:14px}.radar :global(.infomedia-metrics) strong{font-size:24px}.radar :global(.infomedia-bar-row){margin-bottom:12px}.radar :global(.infomedia-note){font-size:12px}.radar select{min-height:38px;font-size:12px}.radar :global(.infomedia-columns){gap:12px}.radar :global(.infomedia-columns)>article{padding:16px;font-size:13px}

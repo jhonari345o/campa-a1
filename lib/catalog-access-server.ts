@@ -1,3 +1,4 @@
+import { broadcastLogo } from "./broadcast-logos";
 import "server-only";
 import { cache } from "react";
 import {catalogClientContext} from "./catalog-client-server";
@@ -80,5 +81,5 @@ export async function priceCatalogProducts(products: CatalogProduct[], previewCo
     }
     for(const rate of rates)if(rate.productKey.startsWith("radio:"))rate.radioPreference=radioRatePreference(evidence.get(rate.agreementId),Boolean(rate.clientSpecific));
   }
-  return preferNegotiatedTelevision(scopeCatalogProducts(products,rates,day,scope.isAdmin&&!previewCompanyId));
+  return preferNegotiatedTelevision(scopeCatalogProducts(products,rates,day,scope.isAdmin&&!previewCompanyId)).map(p=>({...p,...((p.kind==="tv"||p.kind==="radio")&&!p.image?{image:broadcastLogo(p.provider,p.kind==="tv"?"television":"radio",[p.location,...(p.marketKeys??[])].join(" "))}:{}),...(p.source.providerSlug==="basics"?{provider:"Imprescindibles en cobertura"}:{})}));
 }

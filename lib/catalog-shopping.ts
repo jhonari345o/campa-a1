@@ -13,7 +13,7 @@ export type CatalogProduct = {
   key: string; kind: "influencer" | "ooh" | "tv" | "radio" | "press" | "digital"; provider: string; name: string;
   format: string; unit: string; priceCents: number | null; taxIncluded: boolean | null;
   location: string; reference: string; image: string | null; conditions: string;
-  source: { standingPrice?: boolean; defaultPrice?: boolean; rateId?: string; profileId?: string; assetId?: string; rate?: OohRate; rateIndex?: number; sourceId?: string; offerId?: string; stationId?: string; tariffId?: string; seconds?: number; publicationId?: string; editionId?: string; publishedTariff?: boolean; platformSlug?: string; digitalGoal?: string; workspaceProductId?: string; agreementId?: string; tvDistribution?: "national" | "local" | "paid" };
+  source: { providerSlug?: string; standingPrice?: boolean; defaultPrice?: boolean; rateId?: string; profileId?: string; assetId?: string; rate?: OohRate; rateIndex?: number; sourceId?: string; offerId?: string; stationId?: string; tariffId?: string; seconds?: number; publicationId?: string; editionId?: string; publishedTariff?: boolean; platformSlug?: string; digitalGoal?: string; workspaceProductId?: string; agreementId?: string; tvDistribution?: "national" | "local" | "paid" };
   marketKeys?: string[];
   billingPeriod?: string;
   digitalProduction?: { id: string; network: string; description: string; rights: string[]; programsPerPeriod?: number };
@@ -50,7 +50,7 @@ export function catalogProducts(profiles: InfluencerProfile[], ooh: OohCatalog, 
       if (key.length > 2048) continue;
       const normalizedTax = asset.taxLabel.toLowerCase();
       products.push({
-        key, kind: "ooh", provider: asset.brand || OOH_PROVIDERS.find(p => p.slug === asset.providerSlug)?.name || asset.providerSlug, name: asset.purchaseName || asset.name,
+        key, kind: "ooh", provider: asset.providerSlug === "basics" ? "Imprescindibles en cobertura" : asset.brand || OOH_PROVIDERS.find(p => p.slug === asset.providerSlug)?.name || asset.providerSlug, name: asset.purchaseName || asset.name,
         format: rate?.component || asset.format || "Espacio publicitario",
         unit: rate ? oohRateUnit(rate) : "unidad por cotizar", priceCents: rate ? price(rate.amount) : null,
         taxIncluded: /sin iva|no incluy/.test(normalizedTax) ? false : /iva incluid|incluye iva/.test(normalizedTax) ? true : null,
@@ -60,7 +60,7 @@ export function catalogProducts(profiles: InfluencerProfile[], ooh: OohCatalog, 
         marketKeys: asset.provinces, billingPeriod: rate?.period,
         ...(rate?.authorizedFrom ? {validFrom: rate.authorizedFrom, validTo: null} : {}),
         formatGroup: /t[oó]tem/i.test(asset.name) ? /vip|especial/i.test(asset.name) ? "totem_special" : "totem_standard" : "other",
-        source: { assetId: asset.id, ...(rate?.authorizedFrom ? {standingPrice: true} : {}), ...(rate ? { rate, rateIndex } : {}) },
+        source: { assetId: asset.id, providerSlug: asset.providerSlug, ...(rate?.authorizedFrom ? {standingPrice: true} : {}), ...(rate ? { rate, rateIndex } : {}) },
       });
     }
   }

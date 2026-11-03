@@ -3,6 +3,7 @@ import { useState, useTransition } from "react";
 import type { CategoryResearch } from "@/lib/infomedia";
 import type { ResearchAdvice } from "@/lib/infomedia-ai";
 import { interpretarCategoria } from "@/app/planificador/research-actions";
+import { CompetitiveShareChart } from "./CompetitiveShareChart";
 import { ResearchBrandExplorer } from "@/components/ResearchBrandExplorer";
 import styles from "./InfomediaResearchPanel.module.css";
 const money = (n: number) => new Intl.NumberFormat("es-EC", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
@@ -23,14 +24,15 @@ export function InfomediaResearchPanel({ research, brand = "", objective = "", h
       <article><small>Avisos registrados</small><strong>{period.totals.notices.toLocaleString("es-EC")}</strong></article>
       <article><small>Marcas activas</small><strong>{period.totals.activeBrands}</strong></article>
     </div>
-    <p className="infomedia-note">Referencia de mercado para {period.periodLabel.toLowerCase()}. No representa la ejecución del cliente ni el costo de compra. Los períodos se consultan por separado. La propuesta utiliza: {research.periods.find((item) => item.year === research.referenceYear)?.periodLabel ?? research.periods[0].periodLabel}.</p>
+    <p className="infomedia-note">Inversión estimada · {period.periodLabel}.</p>
+    <CompetitiveShareChart period={period} brand={brand}/>
     <div className="infomedia-columns">
       <article><h3>Mezcla de medios observada</h3>{period.mediaMix.map((item) => <div className="infomedia-bar-row" key={item.media}>
         <div><span>{item.media}</span><strong>{percent(item.share)}</strong></div><meter min={0} max={1} value={item.share} aria-label={item.media} /><small>{money(item.estimatedInvestment)}</small>
       </div>)}</article>
       <ResearchBrandExplorer key={`${research.category.id}-${period.year}-${research.dataThrough}`} categoryId={research.category.id} dataThrough={research.dataThrough} period={period} />
     </div>
-    {brand && <p className="infomedia-note">{period.focusBrand ? `${period.focusBrand.brand}: ${money(period.focusBrand.estimatedInvestment)} · SOI ${percent(period.focusBrand.soi)} · SOA ${percent(period.focusBrand.soa)}.` : `No hay coincidencia exacta para “${brand}” en este período. No se asignan datos de otras marcas.`}</p>}
+    {brand && <p className="infomedia-note">{period.focusBrand ? `${period.focusBrand.brand}: ${money(period.focusBrand.estimatedInvestment)} · SOI ${percent(period.focusBrand.soi)}.` : `No hay coincidencia exacta para “${brand}” en este período. No se asignan datos de otras marcas.`}</p>}
     {period.pressureContexts.length > 0 && <details><summary>Presión publicitaria por medio y mercado</summary><p className="infomedia-note">Cada contexto conserva su target y plaza. No se suman GRP entre medios o mercados.</p><div className="infomedia-table-wrap"><table><thead><tr><th>Medio</th><th>Mercado</th><th>GRP del contexto</th><th>Marcas</th></tr></thead><tbody>{period.pressureContexts.map((item) => <tr key={`${item.media}-${item.market}`}><th>{item.media}</th><td>{item.market}</td><td>{item.grps.toLocaleString("es-EC", { maximumFractionDigits: 1 })}</td><td>{item.activeBrands}</td></tr>)}</tbody></table></div></details>}
     {!hideInterpretation && <div className="infomedia-ai"><div><h3>Lectura estratégica de Mavi</h3><p>La IA interpreta el período elegido para la propuesta. Las cifras y el presupuesto se conservan calculados por la plataforma.</p></div>
       <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => {

@@ -1,3 +1,4 @@
+import { televisionStudyMatches } from "./television-measurement";
 import {planningStudyBrief,radioTariffCoversStationStudy,commercialTerritoryFits,radioCommercialCoverage,territoryKey} from "./planning-market";
 import type {CatalogProduct} from "./catalog-shopping";
 import {planningProductPrice} from "./catalog-planning";
@@ -163,6 +164,7 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
       for (const {source,row} of rankings) {
         const localBrief={...brief,...planningStudyBrief(source.marketKeys,brief)!};
         const sid = addSource({id:`radio-study:${source.id}`,kind:"ranking",label:source.label,period:`${source.periodStart} – ${source.periodEnd}`,market:source.market,target:source.target,use:"comparable",note:`${source.frequency} · ${source.daypart}. Cohorte independiente; no se mezcla con otras plazas, públicos o franjas.`});
+        if(!audienceReferences.some(r=>r.sourceId===sid&&r.provider===station.name)) audienceReferences.push({sourceId:sid,medium:"radio",provider:station.name,product:source.daypart,rating:row.rating,rank:row.rank??undefined});
         const priced = station.profile.tariffs.map(t => ({t,price:radioPrice(t,localBrief),coverage:radioCommercialCoverage(t.market.split(/\s*[·,+]\s*/),station.regionKeys)})).filter(x => x.price&&x.coverage.length).sort((a,b) => a.price!.amount-b.price!.amount)[0];
         const signalCoverage=priced?.coverage??station.regionKeys;
         const ids=[sid]; if(priced) ids.push(addSource({id:`radio-tariff:${station.id}:${priced.t.id}`,kind:"tariff",label:priced.t.label,period:`${priced.t.validFrom} – ${priced.t.validTo}`,market:priced.t.market,target:priced.t.target,use:"comparable",note:priced.t.conditions}));
@@ -232,7 +234,7 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
     const study=catalogs.tvAudience.filter(s=>{
       // Most studies belong to another programme. Reject those before resolving
       // the Ecuador territory hierarchy for every account-product/study pair.
-      if(!s.offerIds.includes(p.key)&&!(p.source.offerId&&s.offerIds.includes(p.source.offerId)))return false;
+      if(!televisionStudyMatches(p,s))return false;
       const local=planningStudyBrief(s.marketKeys,brief);
       return local&&tvAudienceApplies(s,{...brief,...local},asOf);
     }).sort((a,b)=>b.periodEnd.localeCompare(a.periodEnd))[0];
