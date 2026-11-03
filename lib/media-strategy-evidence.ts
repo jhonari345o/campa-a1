@@ -257,10 +257,16 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
     const sorted=candidates.filter(c=>c.medium===m).sort((a,b)=>Number(b.unitPriceUsd!=null)-Number(a.unitPriceUsd!=null)||Number(Boolean(b.metrics.length))-Number(Boolean(a.metrics.length))||Number(Boolean(b.oohPhoto))-Number(Boolean(a.oohPhoto)));
     if(sorted.length<=100||!["television","radio","press","ooh"].includes(m))return sorted.slice(0,100);
     // Large tariffs must preserve other requested cities and publications.
-    const markets=new Map<string,StrategyCandidate[]>();
-    for(const candidate of sorted){const key=normalized(m==="press"?candidate.provider:m==="radio"&&candidate.stationCoverage?.length?candidate.stationCoverage.slice().sort().join(" · "):candidate.market);const rows=markets.get(key)??[];rows.push(candidate);markets.set(key,rows);}
     const balanced:StrategyCandidate[]=[];
-    for(let i=0;balanced.length<100;i++)for(const market of markets.values())if(market[i]&&balanced.length<100)balanced.push(market[i]);
+    // Preserve current purchasable products before contextual inventory. Many
+    // unpriced addresses must not crowd out priced assets grouped in one city.
+    // Within each tier, keep the geographic/publication round-robin.
+    for(const tier of [sorted.filter(c=>c.unitPriceUsd!=null),sorted.filter(c=>c.unitPriceUsd==null)]){
+      const markets=new Map<string,StrategyCandidate[]>();
+      for(const candidate of tier){const key=normalized(m==="press"?candidate.provider:m==="radio"&&candidate.stationCoverage?.length?candidate.stationCoverage.slice().sort().join(" · "):candidate.market);const rows=markets.get(key)??[];rows.push(candidate);markets.set(key,rows);}
+      const maxRows=Math.max(0,...[...markets.values()].map(rows=>rows.length));
+      for(let i=0;i<maxRows&&balanced.length<100;i++)for(const market of markets.values())if(market[i]&&balanced.length<100)balanced.push(market[i]);
+    }
     return balanced;
   });
   const needed=new Set(["category-investment","audience-consumption",...audienceReferences.map(r=>r.sourceId),...oohReferences.map(r=>r.sourceId),...boundedCandidates.flatMap(c=>c.sourceIds)]);

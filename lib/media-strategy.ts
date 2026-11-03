@@ -7,7 +7,7 @@ import { briefMarketKeys } from "./broadcast-catalog";
 import { planningStudyBrief, nationalTerritoryOrder, territoryProvince, territoryKey, territoriesOverlap } from "./planning-market";
 import { coverageFromLabels } from "./geographic-coverage";
 
-export const STRATEGY_VERSION = "2026-11-03.32";
+export const STRATEGY_VERSION = "2026-11-03.33";
 export const MAX_STRATEGY_EXECUTIONS = 25;
 // Planning policy approved by the platform owner; it is not an audience study.
 export const STARTING_MEDIA_MIX: Readonly<Record<MediaGroup, number>> = {
@@ -310,12 +310,16 @@ function territorialChoices(pool:StrategyCandidate[],preferred:StrategyCandidate
   }
   if(amount!=null&&selected.length){
     const spend=(rows:StrategyCandidate[])=>allocateStrategyExecutions(rows,amount).reduce((n,e)=>n+(e.referenceSpendUsd??e.amountUsd??0),0);
-    // Spend remaining capacity on additional affordable assets/stations. Never
-    // duplicate a physical asset or add a row that reduces the executable plan.
+    // A repeatable outing can otherwise absorb the whole remainder and prevent
+    // every additional physical location. Broaden OOH with current priced
+    // assets before repeating that format; retain a transparent cash remainder.
+    // Other media still require the extra row to improve executable spend.
     let used=spend(selected);
     for(const raw of ranked){
       const c=planned(raw,targets[0]);
       if(!canAdd(c))continue;
+      const broadenOoh=c.medium==="ooh"&&c.maximumUnits===1&&selected.some(s=>s.medium==="ooh"&&s.maximumUnits!==1&&s.unitPriceUsd!=null);
+      if(broadenOoh&&add(c)){used=spend(selected);continue;}
       const minimum=Math.max(c.minimumSpendUsd??c.unitPriceUsd??0,(c.unitPriceUsd??0)*cadence(c));
       if(amount-used<minimum-.005)continue;
       const next=spend([...selected,c]);
