@@ -1,5 +1,5 @@
 import { diversifyRadio, diversifyTelevision } from "./planning-broadcast";
-import { mediaGroupForLabel, type MediaGroup } from "./media-groups";
+import { DIGITAL_PRODUCTIONS_LABEL, mediaGroupForLabel, type MediaGroup } from "./media-groups";
 import { mediaGroupLabel } from "./plan-optimizer";
 import type { MediaPlan, PlanRow } from "./planner";
 import type { StrategyBrief, StrategyCandidate, StrategyEvidenceBundle } from "./media-strategy-evidence";
@@ -7,7 +7,7 @@ import { briefMarketKeys } from "./broadcast-catalog";
 import { planningStudyBrief, nationalTerritoryOrder, territoryProvince, territoryKey, territoriesOverlap } from "./planning-market";
 import { coverageFromLabels } from "./geographic-coverage";
 
-export const STRATEGY_VERSION = "2026-11-03.26";
+export const STRATEGY_VERSION = "2026-11-03.27";
 export const MAX_STRATEGY_EXECUTIONS = 25;
 // Planning policy approved by the platform owner; it is not an audience study.
 export const STARTING_MEDIA_MIX: Readonly<Record<MediaGroup, number>> = {
@@ -120,6 +120,33 @@ export function allocateStrategyExecutions(candidates:StrategyCandidate[],amount
     const purchase=referenceQuantity(candidate,budget);
     return {candidate,amountUsd:budget,units:purchase.units,referenceSpendUsd:purchase.spend,remainderUsd:purchase.remainder};
   });
+}
+
+/** Programmes are explicit AI choices, never an automatic replacement for platform media. */
+function digitalProductions(candidates:StrategyCandidate[],amount:number|null):StrategyExecution[] {
+  const seen=new Set<string>();
+  const selected=candidates.filter(c=>{
+    const id=c.digitalProduction?.id;
+    if(!id||seen.has(id)||c.unitPriceUsd==null||c.sourceUse!=="comparable")return false;
+    seen.add(id);return true;
+  });
+  return allocateStrategyExecutions(selected,amount).filter(e=>e.units!=null&&e.units>0).map(e=>({...e,amountUsd:e.referenceSpendUsd,remainderUsd:0}));
+}
+export function digitalProductionSpend(allocation:StrategyAllocation) {
+  return Math.round((allocation.executions??[]).filter(e=>e.candidate.digitalProduction).reduce((n,e)=>n+(e.referenceSpendUsd??0),0)*100)/100;
+}
+function digitalPlanRows(platforms:PlanRow[],allocation:StrategyAllocation,budget:number|null):PlanRow[] {
+  const productionSpend=digitalProductionSpend(allocation),rows:PlanRow[]=[];
+  if(productionSpend>0)rows.push({label:DIGITAL_PRODUCTIONS_LABEL,amount:productionSpend,pct:budget?productionSpend/budget:0,rationale:allocation.rationale});
+  const cents=allocation.amountUsd==null?null:Math.max(0,Math.round((allocation.amountUsd-productionSpend)*100));
+  if(cents===0)return rows;
+  const eligible=platforms.filter(r=>mediaGroupForLabel(r.label)==="digital"&&r.label!==DIGITAL_PRODUCTIONS_LABEL&&!/whatsapp/i.test(r.label)&&r.pct>0);
+  const digital=eligible.length?eligible:[{label:"Digital",pct:1,amount:null}],total=digital.reduce((n,r)=>n+r.pct,0);let assigned=0;
+  for(const [i,r] of digital.entries()){
+    const amountCents=cents==null?null:i===digital.length-1?cents-assigned:Math.floor(cents*r.pct/total);assigned+=amountCents??0;
+    rows.push({label:r.label,pct:budget&&amountCents!=null?amountCents/100/budget:allocation.pct*r.pct/total,amount:amountCents==null?null:amountCents/100,rationale:allocation.rationale});
+  }
+  return rows;
 }
 
 function baseWeights(brief:StrategyBrief,bundle:StrategyEvidenceBundle,plan:MediaPlan) {
@@ -301,7 +328,7 @@ function affordableWeights(weights:{medium:MediaGroup;weight:number}[],bundle:St
   for(let i=0;i<ALL.length;i++) {
     const allocations=allocateStrategyBudget(result,budget);
     const blocked=new Set(allocations.filter(a=>{
-      if(a.amountUsd==null)return false;
+      if(a.amountUsd==null||a.medium==="digital")return false;
       const pool=strategyCandidatePool(bundle,a.medium),priced=pool.filter(c=>c.unitPriceUsd!=null&&c.unitPriceUsd>0);
       return priced.length>0&&!priced.some(c=>(c.minimumSpendUsd??c.unitPriceUsd!)<=a.amountUsd!);
     }).map(a=>a.medium));
@@ -403,13 +430,13 @@ export function buildStrategyReport(brief:StrategyBrief,bundle:StrategyEvidenceB
     const advice=options.advice?.allocations.find(a=>a.medium===row.medium),pool=strategyCandidatePool(bundle,row.medium,brief);
     const preferred=advice?.candidateIds.map(id=>pool.find(c=>c.id===id)!).filter(Boolean)??[];
     const candidate=[...preferred,...pool].find(c=>row.amountUsd==null||c.unitPriceUsd==null||(c.minimumSpendUsd??c.unitPriceUsd)<=row.amountUsd)??null;
-    const seeds=territorialChoices(pool,preferred,brief,row.amountUsd);
+    const seeds=row.medium==="digital"?[]:territorialChoices(pool,preferred,brief,row.amountUsd);
     const choices=row.medium==="television"?diversifyTelevision(pool,preferred,brief,row.amountUsd,bundle.channelShares,MAX_STRATEGY_EXECUTIONS):row.medium==="radio"?diversifyRadio(pool,seeds,brief,row.amountUsd,MAX_STRATEGY_EXECUTIONS):seeds;
-    let executions=allocateStrategyExecutions(choices,row.amountUsd);
-    if(!executions.length&&candidate&&!["television","radio"].includes(row.medium))executions=allocateStrategyExecutions([candidate],row.amountUsd);
+    let executions=row.medium==="digital"?digitalProductions(preferred,row.amountUsd):allocateStrategyExecutions(choices,row.amountUsd);
+    if(!executions.length&&candidate&&!["television","radio","digital"].includes(row.medium))executions=allocateStrategyExecutions([candidate],row.amountUsd);
     const first=executions[0],purchase=first?{units:first.units,spend:first.referenceSpendUsd,remainder:first.remainderUsd}:referenceQuantity(candidate,row.amountUsd);
-    const amountUsd=row.amountUsd==null?null:executions.length?Math.round(executions.reduce((n,e)=>n+(e.amountUsd??0),0)*100)/100:["television","radio"].includes(row.medium)?0:row.amountUsd;
-    return {...row,amountUsd,pct:brief.budgetUsd&&amountUsd!=null?amountUsd/brief.budgetUsd:row.pct,executions,rationale:advice?.rationale??baseline.plan.find(r=>mediaGroupForLabel(r.label)===row.medium)?.rationale??"Alternativa documentada para evaluar con el objetivo del brief.",sourceIds:advice?.evidenceIds??[...(bundle.categoryMix.some(c=>c.medium===row.medium)?["category-investment"]:[]),...executions.flatMap(e=>e.candidate.sourceIds)],readiness:row.medium==="digital"?"platform_budget":candidate?.unitPriceUsd!=null?"reference":"needs_quote",candidate:first?.candidate??(["television","radio"].includes(row.medium)?null:candidate),units:first?.units??(["television","radio"].includes(row.medium)?null:purchase.units),referenceSpendUsd:purchase.spend,remainderUsd:purchase.remainder};
+    const amountUsd=row.amountUsd==null?null:row.medium==="digital"?row.amountUsd:executions.length?Math.round(executions.reduce((n,e)=>n+(e.amountUsd??0),0)*100)/100:["television","radio"].includes(row.medium)?0:row.amountUsd;
+    return {...row,amountUsd,pct:brief.budgetUsd&&amountUsd!=null?amountUsd/brief.budgetUsd:row.pct,executions,rationale:advice?.rationale??baseline.plan.find(r=>mediaGroupForLabel(r.label)===row.medium)?.rationale??"Alternativa documentada para evaluar con el objetivo del brief.",sourceIds:advice?.evidenceIds??[...(bundle.categoryMix.some(c=>c.medium===row.medium)?["category-investment"]:[]),...executions.flatMap(e=>e.candidate.sourceIds)],readiness:row.medium==="digital"?"platform_budget":candidate?.unitPriceUsd!=null?"reference":"needs_quote",candidate:first?.candidate??(["television","radio","digital"].includes(row.medium)?null:candidate),units:first?.units??(["television","radio","digital"].includes(row.medium)?null:purchase.units),referenceSpendUsd:row.medium==="digital"&&!first?null:purchase.spend,remainderUsd:row.medium==="digital"&&!first?null:purchase.remainder};
   });
   const assigned=allocations.reduce((n,a)=>n+(a.amountUsd??0),0),budget=brief.budgetUsd;
   const alternatives=[{id:"evidence",label:"Distribución inicial",weights:baseWeights(brief,bundle,baseline)},{id:"concentrated",label:"Concentración en medios con tarifa compatible",weights:weights.map(w=>({...w,weight:w.weight*(bundle.candidates.some(c=>c.medium===w.medium&&c.unitPriceUsd!=null)?1.5:.65)}))}].map(a=>({id:a.id,label:a.label,allocations:allocateStrategyBudget(affordableWeights(a.weights,bundle,budget),budget)}));
@@ -426,9 +453,7 @@ export function applyStrategyPlan(base:MediaPlan,report:StrategyReport,brief:Str
       const platformRows:Record<string,string>={meta:"Meta — Facebook e Instagram","google ads":"Google Ads",youtube:"Google — YouTube",tiktok:"TikTok","programmatic dv360":"Programmatic — Ad Mavericks DSP","retail media":"Retail media — plataforma por definir"};
       digital=[...new Set(brief.digitalPlatforms.map(p=>platformRows[normalize(p)]).filter(Boolean))].map(label=>({label,pct:1,amount:null}));
     }
-    if(!digital.length)digital=[{label:"Digital",pct:1,amount:null}];
-    const total=digital.reduce((n,r)=>n+r.pct,0)||1,cents=a.amountUsd==null?null:Math.round(a.amountUsd*100);let assigned=0;
-    for(const [i,r] of digital.entries()){const amountCents=cents==null?null:i===digital.length-1?cents-assigned:Math.floor(cents*r.pct/total);assigned+=amountCents??0;rows.push({label:r.label,pct:a.pct*r.pct/total,amount:amountCents==null?null:amountCents/100,rationale:a.rationale});}
+    rows.push(...digitalPlanRows(digital,a,brief.budgetUsd));
   }
   return {...base,plan:rows.sort((a,b)=>b.pct-a.pct),strategySummary:report.summary,strategy:report};
 }
@@ -445,12 +470,14 @@ export function customizeStrategyPlan(base:MediaPlan,requested:PlanRow[],budget:
   if(!base.strategy)return {...base,plan:rows};
   const allocations=base.strategy.allocations.map(a=>{
     const selected=rows.filter(r=>mediaGroupForLabel(r.label)===a.medium),requestedAmount=budget==null?null:Math.round(selected.reduce((n,r)=>n+(r.amount??0),0)*100)/100;
-    const executions=a.executions?allocateStrategyExecutions(a.executions.map(e=>e.candidate),requestedAmount):undefined;
-    const amountUsd=requestedAmount==null?null:a.executions?.length?Math.round((executions??[]).reduce((n,e)=>n+(e.amountUsd??0),0)*100)/100:requestedAmount;
-    const first=executions?.[0],purchase=first?{units:first.units,spend:first.referenceSpendUsd,remainder:first.remainderUsd}:referenceQuantity(a.candidate,amountUsd);
-    return {...a,...(executions?{executions}:{}),pct:budget&&amountUsd!=null?amountUsd/budget:selected.reduce((n,r)=>n+r.pct,0),amountUsd,units:purchase.units,referenceSpendUsd:purchase.spend,remainderUsd:purchase.remainder};
+    const requestedProduction=budget==null?null:Math.round(selected.filter(r=>r.label===DIGITAL_PRODUCTIONS_LABEL).reduce((n,r)=>n+(r.amount??0),0)*100)/100;
+    const executions=a.executions?(a.medium==="digital"?digitalProductions(a.executions.map(e=>e.candidate),requestedProduction):allocateStrategyExecutions(a.executions.map(e=>e.candidate),requestedAmount)):undefined;
+    const amountUsd=requestedAmount==null?null:a.medium==="digital"?requestedAmount:a.executions?.length?Math.round((executions??[]).reduce((n,e)=>n+(e.amountUsd??0),0)*100)/100:requestedAmount;
+    const first=executions?.[0],candidate=a.medium==="digital"?first?.candidate??null:a.candidate,purchase=first?{units:first.units,spend:first.referenceSpendUsd,remainder:first.remainderUsd}:referenceQuantity(candidate,amountUsd);
+    return {...a,candidate,...(executions?{executions}:{}),pct:budget&&amountUsd!=null?amountUsd/budget:selected.reduce((n,r)=>n+r.pct,0),amountUsd,units:purchase.units,referenceSpendUsd:purchase.spend,remainderUsd:purchase.remainder};
   });
   for(const allocation of allocations){
+    if(allocation.medium==="digital")continue;
     const group=rows.filter(r=>mediaGroupForLabel(r.label)===allocation.medium),totalPct=group.reduce((n,r)=>n+r.pct,0);let assigned=0;
     for(const [i,row] of group.entries()){
       const cents=allocation.amountUsd==null?null:Math.round(allocation.amountUsd*100);
@@ -461,5 +488,7 @@ export function customizeStrategyPlan(base:MediaPlan,requested:PlanRow[],budget:
   }
   const customized=rows.some(r=>Math.abs((base.plan.find(p=>p.label===r.label)?.pct??0)-r.pct)>.000001);
   const assigned=allocations.reduce((n,a)=>n+(a.amountUsd??0),0),reserveUsd=budget==null?null:Math.max(0,Math.round((budget-assigned)*100)/100);
-  return {...base,plan:rows,strategy:{...base.strategy,customized,allocations,budgetUsd:budget,reserveUsd,evaluation:{...base.strategy.evaluation,budgetConserved:budget==null||Math.abs(assigned+(reserveUsd??0)-budget)<.005},...(customized?{summary:"Distribución personalizada sobre las fuentes y productos documentados del brief."}:{})}};
+  const digital=allocations.find(a=>a.medium==="digital");
+  const finalRows=digital?[...rows.filter(r=>mediaGroupForLabel(r.label)!=="digital"),...digitalPlanRows(rows,digital,budget)].sort((a,b)=>b.pct-a.pct):rows;
+  return {...base,plan:finalRows,strategy:{...base.strategy,customized,allocations,budgetUsd:budget,reserveUsd,evaluation:{...base.strategy.evaluation,budgetConserved:budget==null||Math.abs(assigned+(reserveUsd??0)-budget)<.005},...(customized?{summary:"Distribución personalizada sobre las fuentes y productos documentados del brief."}:{})}};
 }

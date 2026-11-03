@@ -1,6 +1,8 @@
 import {planningStudyBrief,radioTariffCoversStationStudy,commercialTerritoryFits} from "./planning-market";
 import type {CatalogProduct} from "./catalog-shopping";
 import {planningProductPrice} from "./catalog-planning";
+import {campaignRentalMonths} from "./catalog-planning";
+import {isDigitalProduction} from "./digital-productions";
 import {productMedium} from "./diy-catalog";
 import { briefMarketKeys, normalized, radioCompatibility, sameMarket, tvValidity, validDate, type BroadcastCatalog, type BroadcastSource } from "./broadcast-catalog";
 import { pressValidity, type PressCatalog } from "./press-catalog";
@@ -39,6 +41,7 @@ export type StrategyCandidate = {
   stationId?: string; marketKeys?: string[]; stationCoverage?: string[]; coverageKeys?: string[];
   geo?: { latitude: number; longitude: number };
   oohPhoto?: { assetId: string; kind: "asset" | "format" };
+  digitalProduction?: {id:string;rights:string[]};
   note: string;
 };
 export type StrategyEvidenceBundle = {
@@ -204,8 +207,10 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
     if(!marketFit)continue;
     const priced=planningProductPrice(p,brief.startDate,brief.endDate),referencePrice=p.priceCents??p.referencePriceCents??null;
     const quoted=Boolean(priced),period=p.validTo?`${p.validFrom??""} – ${p.validTo}`:p.validFrom?`Desde ${p.validFrom}`:p.reference;
+    const digitalProduction=isDigitalProduction(p)?p.digitalProduction:undefined;
+    const digitalMonths=digitalProduction&&/^(month|mes|mensual)$/i.test(p.billingPeriod??p.unit)?campaignRentalMonths(brief.startDate??"",brief.endDate??""):null;
     const sid=addSource({id:`workspace-tariff:${p.key}`,kind:"tariff",label:`${p.provider} · ${p.name}`,period,market:p.location,target:"Tarifa comercial",use:quoted?"comparable":"context",note:p.conditions});
-    candidates.push({id:`workspace:${p.key}`,catalogKey:p.key,medium,coverageKeys:asset?[asset.city,...asset.provinces]:p.marketKeys??p.location.split(/\s*[·,+]\s*/),...(p.source.stationId?{stationId:p.source.stationId}:{}),marketKeys:p.marketKeys??p.location.split(/\s*[·,+]\s*/).map(normalized),provider:p.provider,product:p.name,...(medium==="television"?{planningDaypart:planningDaypart(p.format)}:{}),market:p.location,target:"Tarifa comercial",period,sourceIds:[sid],sourceUse:quoted?"comparable":"context",unit:priced?.unit??p.unit,unitPriceUsd:priced?.priceUsd??null,referencePriceUsd:referencePrice==null?null:referencePrice/100,minimumUnits:1,...(asset?.recordType==="asset"?{maximumUnits:1}:{}),minimumSpendUsd:priced?.priceUsd??null,metrics:[],...(asset?.photo?{oohPhoto:{assetId:asset.id,kind:asset.photoKind}}:{}),...(asset?.latitude!=null&&asset.longitude!=null?{geo:{latitude:asset.latitude,longitude:asset.longitude}}:{}),note:[p.format,p.conditions].filter(Boolean).join(" · ")});
+    candidates.push({id:`workspace:${p.key}`,catalogKey:p.key,medium,coverageKeys:asset?[asset.city,...asset.provinces]:p.marketKeys??p.location.split(/\s*[·,+]\s*/),...(p.source.stationId?{stationId:p.source.stationId}:{}),marketKeys:p.marketKeys??p.location.split(/\s*[·,+]\s*/).map(normalized),provider:p.provider,product:p.name,...(medium==="television"?{planningDaypart:planningDaypart(p.format)}:{}),market:p.location,target:"Tarifa comercial",period,sourceIds:[sid],sourceUse:quoted?"comparable":"context",unit:priced?.unit??p.unit,unitPriceUsd:priced?.priceUsd??null,referencePriceUsd:referencePrice==null?null:referencePrice/100,minimumUnits:1,...(asset?.recordType==="asset"?{maximumUnits:1}:{}),...(digitalProduction?{digitalProduction:{id:digitalProduction.id,rights:digitalProduction.rights}}:{}),...(digitalMonths?{planningMinimumUnits:digitalMonths,maximumUnits:digitalMonths}:{}),minimumSpendUsd:priced?.priceUsd??null,metrics:[],...(asset?.photo?{oohPhoto:{assetId:asset.id,kind:asset.photoKind}}:{}),...(asset?.latitude!=null&&asset.longitude!=null?{geo:{latitude:asset.latitude,longitude:asset.longitude}}:{}),note:[p.format,p.conditions].filter(Boolean).join(" · ")});
   }
   for(const c of candidates.filter(c=>c.medium==="television"&&c.catalogKey&&c.id.startsWith("workspace:"))){
     const p=catalogs.workspaceProducts?.find(p=>p.key===c.catalogKey);

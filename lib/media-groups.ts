@@ -1,4 +1,5 @@
 export type MediaGroup = "television" | "radio" | "ooh" | "press" | "digital" | "influencers";
+export const DIGITAL_PRODUCTIONS_LABEL = "Medios digitales";
 
 function comparable(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -21,7 +22,7 @@ export function mediaGroupForLabel(label: string): MediaGroup | null {
     "streaming",
     "sitios y apps",
   ];
-  if (value === "digital" || value === "internet") return "digital";
+  if (value === "digital" || value === "internet" || value === comparable(DIGITAL_PRODUCTIONS_LABEL)) return "digital";
   if (value === "vp") return "ooh";
   if (value === "suplemento") return "press";
   if (digitalTerms.some((key) => value.includes(key))) return "digital";

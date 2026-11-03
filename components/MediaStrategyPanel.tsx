@@ -1,6 +1,6 @@
 "use client";
 import { useState, type CSSProperties } from "react";
-import type { StrategyReport } from "@/lib/media-strategy";
+import { digitalProductionSpend, type StrategyReport } from "@/lib/media-strategy";
 import type { CategoryResearch } from "@/lib/infomedia";
 import type { MediaGroup } from "@/lib/media-groups";
 import { mediaGroupLabel } from "@/lib/plan-optimizer";
@@ -59,14 +59,16 @@ export function MediaStrategyPanel({ report, research, brief, brand = "", object
         <header className={styles.decisionHeading}><span className={styles.mediumIcon}><MediaSelectionIcon medium={active.medium}/></span><div><p>Medio seleccionado</p><h3>{mediaGroupLabel(active.medium)}</h3></div><b>{share(active.pct)}</b></header>
         <div className={styles.decisionBudget}><strong>{money(active.amountUsd)}</strong><span>{active.readiness === "reference" ? "Tarifa compatible" : active.readiness === "platform_budget" ? "Presupuesto de plataforma" : "Asignación de inversión"}</span></div>
         <p className={styles.rationale}>{active.rationale}</p>
+        {active.medium === "digital" && active.amountUsd != null && <div className={styles.unitSummary}><strong>Plataformas digitales</strong><span>{money(Math.max(0,active.amountUsd-digitalProductionSpend(active)))}</span></div>}
         {active.candidate ? (active.executions?.length ? active.executions : [{candidate:active.candidate,amountUsd:active.amountUsd,units:active.units,referenceSpendUsd:active.referenceSpendUsd,remainderUsd:active.remainderUsd}]).map(execution=><div key={execution.candidate.id} className={styles.candidate}>
           <div className={styles.provider}><MediaProviderMark provider={execution.candidate.provider} medium={active.medium}/><div><span>Selección del plan</span><strong>{execution.candidate.provider}</strong><p>{execution.candidate.product}</p></div></div>
           {execution.candidate.oohPhoto && <OohPlanPhoto photo={execution.candidate.oohPhoto} title={execution.candidate.product}/>}
+          {execution.candidate.digitalProduction && <ul className={styles.productionRights}>{execution.candidate.digitalProduction.rights.map((right,index)=><li key={index}>{right}</li>)}</ul>}
           {execution.candidate.stationCoverage?.length ? <p>Cobertura de la emisora: {execution.candidate.stationCoverage.join(", ")}</p> : null}
           <dl><div><dt>Plaza</dt><dd>{execution.candidate.market || "No declarada"}</dd></div><div><dt>Público</dt><dd>{execution.candidate.target}</dd></div><div><dt>Período</dt><dd>{execution.candidate.period}</dd></div><div><dt>Formato / unidad</dt><dd>{execution.candidate.unit}</dd></div></dl>
           {execution.units != null && execution.units > 0 && <div className={styles.unitSummary}><strong>{number(execution.units)} {execution.candidate.unit}</strong><span>{money(execution.referenceSpendUsd)}{execution.remainderUsd ? ` · saldo ${money(execution.remainderUsd)}` : ""}</span></div>}
           {execution.candidate.metrics.length > 0 && <div className={styles.evidenceMetrics}>{execution.candidate.metrics.map((metric, index) => { const source = sources.get(metric.sourceId); return <div key={`${metric.sourceId}-${index}`}><span>{metric.label}</span><strong>{number(metric.value)} {metric.unit}</strong>{source && <small>{source.period} · {source.market}<br/>{source.target}</small>}</div>; })}</div>}
-        </div>) : <div className={styles.empty}>No hay una opción comercial documentada para este medio en el corte del análisis.</div>}
+        </div>) : active.medium === "digital" ? <p className={styles.rationale}>La propuesta distribuye este presupuesto entre las plataformas del plan.</p> : <div className={styles.empty}>No hay una opción comercial documentada para este medio en el corte del análisis.</div>}
 
       </article> : <div className={styles.empty}>Completa las fuentes del brief para construir la distribución de medios.</div>}
       <div className={styles.mediaRail}>{report.allocations.map(row => <button type="button" key={row.medium} aria-pressed={selectedMedium === row.medium} onClick={() => setSelectedMedium(row.medium)}>
