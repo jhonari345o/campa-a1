@@ -584,13 +584,14 @@ function DetailedPlanView({ result }: { result: Extract<PlanResult, { ok: true }
                     <div><dt>Ubicación</dt><dd>{execution.location}</dd></div>
                     <div><dt>Franja / período</dt><dd>{execution.schedule}</dd></div>
                     <div><dt>Presupuesto</dt><dd>{money(execution.budgetUsd)}</dd></div>
-                    <div><dt>Referencia</dt><dd>{execution.referenceUnitPriceUsd == null ? execution.unit : `${money(execution.referenceUnitPriceUsd)} · ${execution.unit}`}{execution.estimatedUnits != null ? ` · aprox. ${execution.estimatedUnits} unidad${execution.estimatedUnits === 1 ? "" : "es"}` : ""}</dd></div>
+                    <div><dt>Tarifa y cantidad</dt><dd>{execution.referenceUnitPriceUsd == null ? execution.unit : `${money(execution.referenceUnitPriceUsd)} · ${execution.unit}`}{execution.estimatedUnits != null ? ` · ${execution.estimatedUnits} unidad${execution.estimatedUnits === 1 ? "" : "es"}` : ""}</dd></div>
                   </dl>
                   {execution.oohPhoto && <OohPlanPhoto photo={execution.oohPhoto} title={execution.product}/>}
                   {execution.geo && <OohLocationPreview title={execution.location} geo={execution.geo} />}
                 </div>
               ))}
             </div>
+            {Boolean(channel.unallocatedUsd) && <p className="planner-detailed-rationale">Saldo disponible: <strong>{money(channel.unallocatedUsd!)}</strong></p>}
           </article>
         ))}
       </div>

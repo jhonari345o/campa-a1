@@ -71,3 +71,20 @@ test("large repeated commercial conditions are compressed losslessly, including 
   const expanded=expandTexts(compact.evidence,compact.textReferences) as typeof payload.evidence;
   assert.deepEqual(expanded.candidates.map(c=>[c.note,c.unitPriceUsd,c.period,c.market,c.target]),payload.evidence.candidates.map(c=>[c.note,c.unitPriceUsd,c.period,c.market,c.target]));
 });
+
+test("the provider schema and restored advice preserve the explicit editorial share",async()=>{
+ const brief=strategyBrief({selectedMedia:["television","digital"]});
+ const bundle=buildStrategyEvidence(brief,strategyResearch,strategyCatalogs(),"2026-11-03");
+ bundle.candidates.push({...bundle.candidates[0],id:"synthetic-editorial",medium:"digital",digitalProduction:{id:"synthetic-editorial",rights:["Paquete sintético"]}});
+ const transport=strategyAiTransport(strategyAiPayload(brief,bundle,await buildMediaPlan({...brief,research:strategyResearch})));
+ const schema=transport.responseSchema.schema as {properties:{allocations:{items:{anyOf:{required:string[];properties:{medium:{enum:string[]};productionWeight?:unknown}}[]}}}};
+ const variants=schema.properties.allocations.items.anyOf;
+ const digital=variants.find(v=>v.properties.medium.enum[0]==="digital")!;
+ assert.ok(digital.required.includes("productionWeight"));
+ assert.ok(digital.properties.productionWeight);
+ assert.ok(variants.filter(v=>v!==digital).every(v=>!v.properties.productionWeight));
+ const compact=JSON.parse(transport.content),expanded=expandTexts(compact,compact.textReferences??{}) as {allocationOptions:{medium:string;evidenceIds:string[];candidateIds:string[]}[]};
+ const option=expanded.allocationOptions.find(o=>o.medium==="digital")!;
+ const raw={summary:"Combina pauta y contenido editorial.",allocations:[{medium:"digital",weight:10000,productionWeight:2500,rationale:"La pauta responde al objetivo de la campaña.",evidenceIds:option.evidenceIds.slice(0,1),candidateIds:option.candidateIds}],questions:[]};
+ assert.equal(parseStrategyAdvice(transport.restore(JSON.stringify(raw)),brief,bundle)?.allocations[0].productionWeight,2500);
+});
