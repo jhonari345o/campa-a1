@@ -12,5 +12,8 @@ export const readPlanningDeliveryModel = cache(async (): Promise<PlanningCurveMo
   const { data, error } = await access.db.from("planning_delivery_models").select("definition").eq("id", "atl-curve-reference-2022").eq("active", true).maybeSingle();
   if (error || !data) return null;
   const model = data.definition as PlanningCurveModel;
-  return model && Array.isArray(model.curves) && model.target && model.marketWeights ? model : null;
+  if(!model || !Array.isArray(model.curves) || !model.target || !model.marketWeights)return null;
+  // The supplied OTV workbook is a cumulative multi-channel campaign, not a
+  // programme reach curve. Preserve that scope even for older stored definitions.
+  return {...model,curves:model.curves.map(curve=>curve.medium==="television"?{...curve,scope:"multi_channel" as const}:curve)};
 });

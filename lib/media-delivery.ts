@@ -12,16 +12,16 @@ export type DeliveryObservation = {
   evidenceId: string; approved: boolean;
 };
 export type DeliverySummary = {
-  providers?: {key:string;reachPct:number;grps:number|null;frequency:number|null;scopeLabel:string}[];
+  providers?: {key:string;reachPct:number|null;grps:number|null;frequency:number|null;scopeLabel:string}[];
   scopeLabel?: string;
   geographicComplements?: MediaGroup[];
   media: { medium: MediaGroup; reachPct: number; people: number }[];
   reach1Pct: number | null; reach2Pct: number | null; reach3Pct: number | null;
   people: number | null; frequency: number | null; grps: number | null;
-  contactMedia?: {medium:MediaGroup;frequency:number|null;grps:number}[];
+  contactMedia?: {medium:MediaGroup;frequency:number|null;grps:number;impressions?:number}[];
   digital: { impressions: number | null; views: number | null; conversations: number | null } | null;
 };
-export type ReachCurve = { medium: MediaGroup; points: { grps: number; reachPct: number }[] };
+export type ReachCurve = { medium: MediaGroup; scope?: "multi_channel"; points: { grps: number; reachPct: number }[] };
 /** Historical curve used as an explicit planning model; never a current measured result. */
 export function reachAtGrps(curve: ReachCurve, grps: number): number | null {
   if (!count(grps) || !curve.points.length) return null;

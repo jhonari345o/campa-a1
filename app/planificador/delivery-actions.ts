@@ -38,6 +38,8 @@ export async function projectMediaDelivery(input: DeliveryRequest): Promise<Deli
       if (!p) return null;
       const line: RatedDeliveryLine = {id:p.key,medium:productMedium(p),quantity:pick.quantity,amountCents:(p.priceCents??0)*pick.quantity,ratingPct:null,ratingMarketKeys:[],studyEnd:null};
       if (p.kind === "tv") {
+        line.providerKey=televisionProviderKey(p.provider);
+        line.programmeKey=p.name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
         const studies = tvAudience.filter(s => {
           if (!televisionStudyMatches(p,s)) return false;
           const local = planningStudyBrief(s.marketKeys, brief);
@@ -82,7 +84,7 @@ export async function projectMediaDelivery(input: DeliveryRequest): Promise<Deli
     }
     summary.providers=[...groups].flatMap(([key,owned])=>{
       const result=projectPlanningDelivery(brief,owned,model), row=result?.media[0], contact=result?.contactMedia?.[0];
-      return row?[{key,reachPct:row.reachPct,grps:contact?.grps??null,frequency:contact?.frequency??null,scopeLabel:result?.scopeLabel??""}]:[];
+      return row||contact?[{key,reachPct:row?.reachPct??null,grps:contact?.grps??null,frequency:contact?.frequency??null,scopeLabel:result?.scopeLabel??""}]:[];
     });
     return summary;
   } catch { return null; }
