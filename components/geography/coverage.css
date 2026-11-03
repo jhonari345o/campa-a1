@@ -1,4 +1,4 @@
-.geographic-coverage-field { --forest:#22392f; --forest-deep:#17281f; --signal:#00a100; --signal-dark:#007d00; --signal-soft:#eaf6e8; --muted:#69716d; --white:#fff; --border:#d7ddd8; --concrete:#dfe3dd; --coral:#ff735c; }
+.geographic-coverage-field { --forest:#22392f; --forest-deep:#17281f; --signal:#00a100; --signal-dark:#007d00; --signal-soft:#eaf6e8; --muted:#69716d; --white:#fff; --border:#d7ddd8; --concrete:#dfe3dd; --coverage-selected:#56c877; --coverage-outline:#185c38; --coverage-unselected:#aeb7b2; }
 .geographic-coverage-field {
   background:
     radial-gradient(circle at 8% 7%, rgba(0, 161, 0, .09), transparent 29%),
@@ -229,9 +229,9 @@
   text-align: left;
 }
 
-.geographic-coverage-field .coverage-chips > button:hover { border-color: var(--coral); transform: translateY(-1px); }
-.geographic-coverage-field .coverage-chips > button > i { background: var(--coral); border-radius: 50%; display: block; height: 8px; width: 8px; }
-.geographic-coverage-field .coverage-chips > button > i.city { box-shadow: 0 0 0 3px rgba(255, 115, 92, .18); }
+.geographic-coverage-field .coverage-chips > button:hover { border-color: var(--coverage-outline); transform: translateY(-1px); }
+.geographic-coverage-field .coverage-chips > button > i { background: var(--coverage-selected); border: 1px solid var(--coverage-outline); border-radius: 50%; display: block; height: 8px; width: 8px; }
+.geographic-coverage-field .coverage-chips > button > i.city { box-shadow: 0 0 0 3px rgb(86 200 119 / 18%); }
 .geographic-coverage-field .coverage-chips span,
 .geographic-coverage-field .coverage-chips small { display: block; }
 .geographic-coverage-field .coverage-chips span { font-size: 11px; font-weight: 850; }
@@ -241,8 +241,8 @@
 
 .geographic-coverage-field .coverage-map-legend { display: flex; gap: 15px; margin-top: 16px; }
 .geographic-coverage-field .coverage-map-legend span { align-items: center; display: flex; gap: 6px; }
-.geographic-coverage-field .coverage-map-legend i { background: #bcc3bf; border-radius: 3px; display: block; height: 10px; width: 16px; }
-.geographic-coverage-field .coverage-map-legend i.selected { background: var(--coral); }
+.geographic-coverage-field .coverage-map-legend i { background: var(--coverage-unselected); border-radius: 3px; display: block; height: 10px; width: 16px; }
+.geographic-coverage-field .coverage-map-legend i.selected { background: var(--coverage-selected); border: 1px solid var(--coverage-outline); }
 .geographic-coverage-field .coverage-source { color: var(--muted); font-size: 7px; line-height: 1.5; margin: 12px 0 0; }
 
 .geographic-coverage-field .ecuador-map-card {
@@ -321,11 +321,11 @@
 
 .geographic-coverage-field .ecuador-map.is-zoomed { touch-action: none; }
 .geographic-coverage-field .ecuador-map:active { cursor: grabbing; }
-.geographic-coverage-field .province-shape { fill: #bcc3bf; stroke: #ffffff; stroke-width: 1.2; transition: fill 180ms ease, filter 180ms ease; }
+.geographic-coverage-field .province-shape { fill: var(--coverage-unselected); stroke: #ffffff; stroke-width: 1.2; transition: fill 180ms ease, filter 180ms ease; }
 .geographic-coverage-field .province-shape:hover,
 .geographic-coverage-field .province-shape:focus { fill: #a8b0ac; filter: drop-shadow(0 2px 2px rgba(23, 40, 31, .2)); outline: none; }
-.geographic-coverage-field .province-shape.selected { fill: var(--coral); }
-.geographic-coverage-field .canton-shape.selected { fill: #ef4135; pointer-events: none; stroke: #8f201a; stroke-width: 1.3; }
+.geographic-coverage-field .province-shape.selected { fill: var(--coverage-selected); stroke: var(--coverage-outline); }
+.geographic-coverage-field .canton-shape.selected { fill: var(--coverage-selected); pointer-events: none; stroke: var(--coverage-outline); stroke-width: 1.3; }
 
 .geographic-coverage-field .map-controls {
   display: grid;
