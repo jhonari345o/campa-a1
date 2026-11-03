@@ -16,11 +16,13 @@ import { getCategoryResearch } from "@/lib/infomedia-server";
 import { withReferenceYear, type CategoryResearch } from "@/lib/infomedia";
 import { normalizeCoverageBrief, type CoverageSelection } from "@/lib/geographic-coverage";
 import {catalogClientContext} from "@/lib/catalog-client-server";
-import { buildResearchRecommendation,prepareResearchRecommendation,completeResearchRecommendation,type PreparedRecommendation } from "@/lib/media-strategy-server";
+import { assertStrategyBrief,buildResearchRecommendation,prepareResearchRecommendation,completeResearchRecommendation,type PreparedRecommendation } from "@/lib/media-strategy-server";
 import { customizeStrategyPlan } from "@/lib/media-strategy";
 import { validPlanPeriod } from "@/lib/brief-inputs";
 import {sealPlanningPreparation,openPlanningPreparation} from "@/lib/planning-preparation";
 import {PlanningSourcesUnavailable,type PlanningPreparationResult} from "@/lib/planning-source-loading";
+import { withRequestScope } from "@/lib/request-scope";
+import type { SavePlanInput, SavePlanResult } from "@/lib/planning-save-request";
 
 export type PlanBrief = {
   clientId?:string|null;clientName?:string;
@@ -227,11 +229,17 @@ export async function completarPlan(preparation:string):Promise<PlanResult> {
   }
 }
 
-export async function guardarPlan(input: Extract<PlanResult, { ok: true }>): Promise<
-  { ok: true; id: string } | { ok: false; error: string }
-> {
+export async function guardarPlan(input: SavePlanInput): Promise<SavePlanResult> {
+  return withRequestScope(() => guardarBorradorVerificado(input));
+}
+
+async function guardarBorradorVerificado(request: SavePlanInput): Promise<SavePlanResult> {
   const profile = await getSessionProfile();
   if (!profile) return { ok: false, error: "Debes iniciar sesión." };
+  try {
+    if (!request || typeof request.fingerprint !== "string" || !/^[a-f0-9]{64}$/.test(request.fingerprint) || typeof request.requireAi !== "boolean") throw new Error("INVALID_SAVE");
+    assertStrategyBrief(request.brief);
+  } catch { return { ok: false, error: "Genera la recomendación antes de guardar el plan." }; }
 
   const companies = await getMyCompanies(profile.id);
   const company = companies.find(
@@ -241,16 +249,22 @@ export async function guardarPlan(input: Extract<PlanResult, { ok: true }>): Pro
     return { ok: false, error: "Tu rol no permite guardar planes." };
   }
 
+  let brief = { ...request.brief, ...normalizeCoverageBrief(request.brief) };
+  let research: CategoryResearch;
   try {
-    const research = withReferenceYear(await getCategoryResearch(input.brief.categoryId || "", input.brief.brand, input.brief, input.brief.competitors), input.brief.referenceYear || 0);
-    input = { ...input, research, keyword: research.category.label, brief: { ...input.brief, keyword: research.category.label } };
+    research = withReferenceYear(await getCategoryResearch(brief.categoryId || "", brief.brand, brief, brief.competitors), brief.referenceYear || 0);
+    brief = { ...brief, keyword: research.category.label };
   } catch { return { ok: false, error: "No se pudo validar la investigación antes de guardar." }; }
-  input = { ...input, brief: { ...input.brief, ...normalizeCoverageBrief(input.brief) } };
+  let input: Extract<PlanResult, { ok: true }>;
   try {
-    const plan = await buildResearchRecommendation(input.brief, input.research, { allowAi: false });
-    if (["validated","cached"].includes(input.plan.strategy?.aiState??"") && !["validated","cached"].includes(plan.strategy?.aiState??"")) return { ok: false, error: "La interpretación guardada venció o no está disponible. Genera nuevamente el análisis antes de guardar." };
-    if (input.plan.strategy?.fingerprint && input.plan.strategy.fingerprint !== plan.strategy?.fingerprint) return { ok: false, error: "Las fuentes o el brief cambiaron. Genera nuevamente el análisis antes de guardar." };
-    input = { ...input, plan, analysis: buildPlanAnalysis(input.brief, plan), detail: await buildDetailedMediaRecommendation(input.brief, plan), campaigns: input.brief.selectedMedia.includes("digital") ? await buildCurrentCampaigns({ ...input.brief }, plan) : [] };
+    const plan = await buildResearchRecommendation(brief, research, { allowAi: false, profile });
+    if (request.requireAi && !["validated","cached"].includes(plan.strategy?.aiState??"")) return { ok: false, error: "La interpretación guardada venció o no está disponible. Genera nuevamente el análisis antes de guardar." };
+    if (request.fingerprint !== plan.strategy?.fingerprint) return { ok: false, error: "Las fuentes o el brief cambiaron. Genera nuevamente el análisis antes de guardar." };
+    const [detail, campaigns] = await Promise.all([
+      buildDetailedMediaRecommendation(brief, plan),
+      brief.selectedMedia.includes("digital") ? buildCurrentCampaigns(brief, plan) : Promise.resolve([]),
+    ]);
+    input = { ok: true, brief, research, plan, keyword: brief.keyword, objective: brief.objective, audience: brief.audience, analysis: buildPlanAnalysis(brief, plan), detail, campaigns };
   } catch { return { ok: false, error: "No se pudo validar la recomendación antes de guardar." }; }
   const db = await createClient();
   const name = (input.brief.brand || input.keyword || "Plan sin marca").slice(0, 120);

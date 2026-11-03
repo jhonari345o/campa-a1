@@ -15,7 +15,8 @@ import { formatBudgetInput } from "@/lib/brief-inputs";
 import { restoreResearch } from "@/lib/infomedia";
 import type { CategoryCatalog } from "@/lib/infomedia-server";
 import type { ReactNode } from "react";
-import { enviarPlanParaRevision, aprobarPlan, guardarPlan, type PlanResult } from "./actions";
+import { enviarPlanParaRevision, aprobarPlan, type PlanResult } from "./actions";
+import type { SavePlanResult } from "@/lib/planning-save-request";
 import type { PlanRow } from "@/lib/planner";
 import { mediaGroupForLabel } from "@/lib/media-groups";
 import type { Campaign } from "@/lib/campaigns";
@@ -424,19 +425,24 @@ function SavePlanControl({ result }: { result: Extract<PlanResult, { ok: true }>
     setSaving(true);
     setSaved(null);
     try {
-      const response = await guardarPlan(result);
+      const request = await fetch("/api/planning/save", {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", cache: "no-store",
+        body: JSON.stringify({ brief: result.brief, fingerprint: result.plan.strategy?.fingerprint ?? "", requireAi: ["validated", "cached"].includes(result.plan.strategy?.aiState ?? "") }),
+      });
+      if (!request.headers.get("content-type")?.includes("application/json")) throw new Error("SAVE_TRANSPORT");
+      const response = await request.json() as SavePlanResult;
       setSaved(response.ok
         ? { ok: true, id: response.id, message: "Plan guardado como borrador privado." }
         : { ok: false, message: response.error });
     } catch {
-      setSaved({ ok: false, message: "No se pudo guardar el plan." });
+      setSaved({ ok: false, message: "No se pudo confirmar el guardado. Revisa tus planes antes de intentarlo nuevamente." });
     } finally {
       setSaving(false);
     }
   }
 
   return <div className="flex flex-wrap items-center gap-3">
-    <button type="button" onClick={saveDraft} disabled={saving} className="btn btn-primary disabled:opacity-60">{saving ? "Guardando…" : "Guardar plan"}</button>
+    <button type="button" onClick={saveDraft} disabled={saving || saved?.ok} className="btn btn-primary disabled:opacity-60">{saving ? "Guardando…" : saved?.ok ? "Plan guardado" : "Guardar plan"}</button>
     {saved?.ok && <a href="/planificador?view=plans" className="btn btn-secondary">Ver mis planes →</a>}
     {saved && <p role="status" className={`text-sm font-bold ${saved.ok ? "text-signal-dark" : "text-[#a13b31]"}`}>{saved.message}</p>}
   </div>;
