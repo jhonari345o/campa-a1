@@ -9,7 +9,7 @@ const contentSecurityPolicy = [
   "font-src 'self' data:",
   "img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org",
   "frame-src 'self' https://www.openstreetmap.org https://*.openstreetmap.org https://www.google.com https://maps.google.com https://paybox.pagoplux.com https://sandbox-paybox.pagoplux.com",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://paybox.pagoplux.com https://sandbox-paybox.pagoplux.com",
+  "connect-src 'self' https://tiles.openfreemap.org https://*.supabase.co wss://*.supabase.co https://paybox.pagoplux.com https://sandbox-paybox.pagoplux.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "upgrade-insecure-requests",

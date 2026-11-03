@@ -16,7 +16,7 @@ import { ProviderPlanCards } from "./ProviderPlanCards";
 import type { DeliverySummary } from "@/lib/media-delivery";
 import { PlanDeliveryPreview } from "./PlanDeliveryPreview";
 import type { BroadcastBrief } from "@/lib/broadcast-catalog";
-import type { CatalogPick } from "@/lib/catalog-shopping";
+import { strategyDeliveryPicks } from "@/lib/strategy-delivery-picks";
 import styles from "./MediaStrategyPanel.module.css";
 
 const money = (value: number | null) => value == null ? "Por definir" : `$ ${formatBudgetInput(value)}`;
@@ -40,12 +40,7 @@ export function MediaStrategyPanel({ report, research, brief, brand = "", object
   const competition = [...report.competition].sort((a, b) => b.estimatedInvestment - a.estimatedInvestment).slice(0, brandLimit);
   const competitionScale = Math.max(.01, ...report.competition.map(row => row.soi));
   const tgi = research?.tgi, audienceRows = tgi?.values.filter(row => row.role === audienceKind && (audienceKind === "behavior" || tgiIndicatorApplies(row.id, selectedMedia))) ?? [];
-  const quantities = new Map<string,number>();
-  for (const allocation of report.allocations) for (const execution of allocation.executions ?? (allocation.candidate ? [{candidate:allocation.candidate,units:allocation.units}] : [])) {
-    const key=execution.candidate.catalogKey;
-    if(key&&execution.units&&Number.isSafeInteger(execution.units)) quantities.set(key,(quantities.get(key)??0)+execution.units);
-  }
-  const deliveryPicks:CatalogPick[]=[...quantities].map(([productKey,quantity])=>({productKey,quantity}));
+  const deliveryPicks = strategyDeliveryPicks(report);
   return <section className={styles.root} aria-label="Análisis y recomendación de medios">
     <header className={styles.header}><div><p className={styles.kicker}>Análisis del plan</p><h2>La estrategia de tu plan</h2><p>{report.summary}</p></div><span className={styles.badge}>{report.customized ? "Mix personalizado" : ai ? "Datos + IA de Mavi" : "Motor de datos"}</span></header>
 

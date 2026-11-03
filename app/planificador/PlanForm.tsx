@@ -4,6 +4,7 @@ import { startTransition, useActionState, useEffect, useId, useRef, useState, us
 import { InfomediaCategoryPicker } from "@/components/InfomediaCategoryPicker";
 import { TgiResearchPanel } from "@/components/TgiResearchPanel";
 import { InfomediaResearchPanel } from "@/components/InfomediaResearchPanel";
+import { PlanningProposal } from "@/components/PlanningProposal";
 import { MediaStrategyPanel } from "@/components/MediaStrategyPanel";
 import { MediaSelectionIcon } from "@/components/MediaSelectionIcon";
 import { MediaProviderMark } from "@/components/MediaProviderMark";
@@ -278,7 +279,7 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
         {state?.ok === false && <p className="rounded-xl border border-coral/40 bg-coral/10 px-4 py-3 text-sm font-bold text-[#a13b31]">{state.error}</p>}
       </form>
 
-      {state?.ok && stage !== "brief" && restoreCoverage(state.brief).length>0 && <GeographicCoveragePicker value={restoreCoverage(state.brief)} readOnly />}
+      {state?.ok && stage === "analysis" && restoreCoverage(state.brief).length > 0 && <details className="planner-analysis-detail"><summary>Ver cobertura de la campaña</summary><GeographicCoveragePicker value={restoreCoverage(state.brief)} readOnly /></details>}
       {state?.ok && stage === "analysis" && <AnalysisStage result={state} onBack={() => setStage("brief")} onContinue={() => setStage("proposal")} />}
       {state?.ok && stage === "proposal" && <ProposalStage result={state} onBack={() => setStage("analysis")} onPersonalize={() => setStage("personalize")} />}
       {state?.ok && stage === "personalize" && <PersonalizeStage canApprove={canApprove} result={state} onBack={() => setStage("proposal")} onApproved={(approved) => { setApprovedPlan(approved); setStage("approved"); }} />}
@@ -340,9 +341,9 @@ function AnalysisStage({ result, onBack, onContinue }: { result: Extract<PlanRes
 
 function ProposalStage({ result, onBack, onPersonalize }: { result: Extract<PlanResult, { ok: true }>; onBack: () => void; onPersonalize: () => void }) {
   return <section className="planner-result">
-    <div className="planner-stage-actions"><button type="button" onClick={onBack} className="btn btn-secondary">← Volver al análisis</button><span>La selección granular ocurre en el siguiente paso.</span></div>
-    <PlanResultView result={result} />
-    <div className="planner-submit-bar"><div><small>Siguiente etapa</small><strong>Personaliza programas, plataformas, emisoras, ubicaciones y pesos</strong></div><button type="button" onClick={onPersonalize} className="btn btn-primary">Personalizar propuesta →</button></div>
+    <div className="planner-stage-actions"><button type="button" onClick={onBack} className="btn btn-secondary">← Volver al análisis</button><span>Estrategia, inversión y pauta en una sola propuesta.</span></div>
+    {result.plan.strategy ? <PlanningProposal key={result.plan.strategy.fingerprint} report={result.plan.strategy} brief={result.brief} targetLabel={result.analysis.targetLabel} saveControl={<SavePlanControl result={result}/>} /> : <PlanResultView result={result} />}
+    <div className="planner-submit-bar"><div><small>Siguiente etapa</small><strong>Ajusta la distribución y guarda tu versión</strong></div><button type="button" onClick={onPersonalize} className="btn btn-primary">Personalizar propuesta →</button></div>
   </section>;
 }
 
@@ -415,8 +416,7 @@ function catalogSection(group: string) {
   return group === "television" ? "tv" : group === "ooh" ? "ooh" : group === "influencers" ? "influencers" : group;
 }
 
-function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> }) {
-  const { plan, keyword } = result;
+function SavePlanControl({ result }: { result: Extract<PlanResult, { ok: true }> }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<null | { ok: boolean; message: string; id?: string }>(null);
 
@@ -434,6 +434,16 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
       setSaving(false);
     }
   }
+
+  return <div className="flex flex-wrap items-center gap-3">
+    <button type="button" onClick={saveDraft} disabled={saving} className="btn btn-primary disabled:opacity-60">{saving ? "Guardando…" : "Guardar plan"}</button>
+    {saved?.ok && <a href="/planificador?view=plans" className="btn btn-secondary">Ver mis planes →</a>}
+    {saved && <p role="status" className={`text-sm font-bold ${saved.ok ? "text-signal-dark" : "text-[#a13b31]"}`}>{saved.message}</p>}
+  </div>;
+}
+
+function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> }) {
+  const { plan, keyword } = result;
 
   return (
     <div className="space-y-6">
@@ -470,13 +480,7 @@ function PlanResultView({ result }: { result: Extract<PlanResult, { ok: true }> 
             </li>
           ))}
         </ul>
-        <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-4">
-          <button type="button" onClick={saveDraft} disabled={saving} className="btn btn-primary disabled:opacity-60">
-            {saving ? "Guardando…" : "Guardar plan privado"}
-          </button>
-          {saved?.ok && <a href="/planificador?view=plans" className="btn btn-secondary">Ver planes guardados →</a>}
-          {saved && <p className={`text-sm font-bold ${saved.ok ? "text-signal-dark" : "text-[#a13b31]"}`}>{saved.message}</p>}
-        </div>
+        <SavePlanControl result={result}/>
       </div>
 
       <DetailedPlanView result={result} />
