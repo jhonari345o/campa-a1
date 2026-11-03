@@ -55,7 +55,7 @@ export const CATALOG_SECTIONS: { id: CatalogSection; label: string; description:
   { id: "radio", label: "Radio", description: "Cobertura y rankings" },
   { id: "ooh", label: "Vía pública", description: "Proveedores e inventario" },
   { id: "press", label: "Prensa", description: "Medios por cobertura" },
-  { id: "digital", label: "Digital", description: "Plataformas y objetivos" },
+  { id: "digital", label: "Digital", description: "Plataformas y programas" },
   { id: "influencers", label: "Influenciadores", description: "Perfiles por categoría" },
 ];
 

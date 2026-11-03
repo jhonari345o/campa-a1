@@ -34,7 +34,7 @@ export function PressDirectoryPanel({ catalog }: { catalog: PressCatalog }) {
   </section>;
 }
 function Logo({ entry, large = false }: { entry: PressEntry; large?: boolean }) {
-  return <div className={large ? common.detailLogo : common.logo}>{entry.logoPath ? <Image src={entry.logoPath} alt={large ? `Logo de ${entry.name}` : ""} fill sizes={large ? "140px" : "72px"} className="object-contain p-3" /> : <><PressIcon />{large && <small>Logo pendiente</small>}</>}</div>;
+  return <div className={large ? common.detailLogo : common.logo}>{entry.logoPath ? <Image src={entry.logoPath} alt={large ? `Logo de ${entry.name}` : ""} fill sizes={large ? "140px" : "72px"} className="object-contain p-3" /> : <PressIcon />}</div>;
 }
 function PressProfile({ entry, asOf }: { entry: PressEntry; asOf: string }) {
   const [editionId, setEditionId] = useState(entry.editions[0]?.id ?? ""), [family, setFamily] = useState(""), [market, setMarket] = useState(""), [query, setQuery] = useState(""), [limit, setLimit] = useState(24);
