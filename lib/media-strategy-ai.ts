@@ -2,6 +2,11 @@ import { optionalWithinBudget } from "./optional-task";
 import { parseStrategyAdvice, type StrategyAdvice, type StrategyAiState } from "./media-strategy";
 import type { StrategyBrief, StrategyEvidenceBundle } from "./media-strategy-evidence";
 
+// Expanded television and digital catalogues can exceed the original 96 KB
+// envelope after lossless compression. Keep a finite request ceiling; the
+// shared free router also checks the model's context before sending inference.
+export const MAX_STRATEGY_INPUT_BYTES = 192_000;
+
 type AiDependencies = {
   enabled: boolean; allowRequest: boolean; cacheAvailable: boolean; cached: unknown;
   claim: () => Promise<boolean>;
@@ -24,7 +29,7 @@ export async function resolveStrategyAi(brief:StrategyBrief,bundle:StrategyEvide
   if(deps.cached){const advice=parseStrategyAdvice(JSON.stringify(deps.cached),brief,bundle);if(advice)return result("cached",advice);}
   if(!deps.enabled)return result("not_configured");
   if(!deps.allowRequest||!deps.cacheAvailable||timeoutMs<1000)return result("unavailable");
-  if(new TextEncoder().encode(payload).length>96_000)return result("rejected");
+  if(new TextEncoder().encode(payload).length>MAX_STRATEGY_INPUT_BYTES)return result("rejected");
   const deadline=Date.now()+Math.min(23_500,timeoutMs);
   let claimed=false;try{claimed=await optionalWithinBudget(()=>deps.claim(),()=>false,Math.min(5000,Math.max(1,timeoutMs-2000)));}catch{return result("unavailable");}
   if(!claimed)return result("quota");

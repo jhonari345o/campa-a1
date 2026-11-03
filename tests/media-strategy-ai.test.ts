@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveStrategyAi } from "../lib/media-strategy-ai";
+import { MAX_STRATEGY_INPUT_BYTES, resolveStrategyAi } from "../lib/media-strategy-ai";
 import { buildStrategyEvidence } from "../lib/media-strategy-evidence";
 import { strategyBrief,strategyCatalogs,strategyResearch } from "./media-strategy-fixture";
 const brief=strategyBrief({selectedMedia:["digital"]}),bundle=buildStrategyEvidence(brief,strategyResearch,strategyCatalogs(),"2026-10-31");
@@ -73,10 +73,23 @@ test("invalid or failed provider output falls back to data, with no retry or alt
   const result=await resolveStrategyAi(brief,bundle,"{}",2000,failure.deps);assert.equal(result.state,"unavailable");assert.equal(result.advice,null);assert.equal(calls,1);
 });
 test("oversized prompts, insufficient time and forged cached sources are rejected before paid inference",async()=>{
-  const large=dependencies();assert.equal((await resolveStrategyAi(brief,bundle,"a".repeat(96001),2000,large.deps)).state,"rejected");assert.equal(large.count.claim,0);
+  for(const payload of ["a".repeat(MAX_STRATEGY_INPUT_BYTES+1),"á".repeat(MAX_STRATEGY_INPUT_BYTES/2+1)]){
+    const large=dependencies();assert.equal((await resolveStrategyAi(brief,bundle,payload,2000,large.deps)).state,"rejected");assert.equal(large.count.claim,0);assert.equal(large.count.invoke,0);
+  }
   const time=dependencies();assert.equal((await resolveStrategyAi(brief,bundle,"{}",999,time.deps)).state,"unavailable");assert.equal(time.count.invoke,0);
   const cached=structuredClone(advice);cached.allocations[0].evidenceIds=["forged-source"];
   const forged=dependencies({cached,allowRequest:false});assert.equal((await resolveStrategyAi(brief,bundle,"{}",2000,forged.deps)).advice,null);
+});
+test("expanded catalogues reach inference without truncation and retain response validation",async()=>{
+  const payload=JSON.stringify({catalogue:"é".repeat(60_000),currentPriceUsd:17,coverage:["guayas","pichincha"]});
+  const bytes=new TextEncoder().encode(payload).length;
+  assert.ok(bytes>96_000&&bytes<MAX_STRATEGY_INPUT_BYTES);
+  let inputBytes=0;
+  const {deps,count}=dependencies({invoke:async(content)=>{assert.equal(content,payload);count.invoke++;return JSON.stringify(advice);},persist:async(value,info)=>{assert.ok(value);inputBytes=info.inputBytes;return true;}});
+  assert.equal((await resolveStrategyAi(brief,bundle,payload,2000,deps)).state,"validated");
+  assert.equal(count.invoke,1);assert.equal(inputBytes,bytes);
+  const invalid=dependencies({invoke:async()=>JSON.stringify({...advice,allocations:[{...advice.allocations[0],evidenceIds:["invented"]}]})});
+  assert.equal((await resolveStrategyAi(brief,bundle,payload,2000,invalid.deps)).state,"rejected");
 });
 test("failed inference persists only bounded diagnostic metadata, never provider detail or raw output",async()=>{
   for(const [message,expected] of [["PROVIDER_HTTP_429","PROVIDER_HTTP_429"],["PROVIDER_HTTP_400_MODEL_COUNT","PROVIDER_HTTP_400_MODEL_COUNT"],["PROVIDER_HTTP_400_ROUTING","PROVIDER_HTTP_400_ROUTING"],["account-private-secret","PROVIDER_UNAVAILABLE"]]){

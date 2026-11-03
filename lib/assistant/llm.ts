@@ -137,7 +137,12 @@ async function openaiChat(
   let retriedTruncation = false;
   let omitReasoningOption = false;
   const fastFree = Boolean(opts?.fastFreeRouting && provider.openRouter && provider.freeOnly);
-  if (fastFree) models = await availableFreeModels(models, Boolean(opts?.responseSchema || opts?.json), Math.ceil(new TextEncoder().encode(JSON.stringify(messages)).length / 2) + (opts?.maxTokens ?? 1024), signal, Boolean(opts?.responseSchema));
+  if (fastFree) {
+    // Structured-output enums also occupy context. Count them alongside the
+    // full messages so a larger catalogue cannot select an undersized model.
+    const contextBytes = new TextEncoder().encode(JSON.stringify({messages,responseSchema:opts?.responseSchema})).length;
+    models = await availableFreeModels(models, Boolean(opts?.responseSchema || opts?.json), Math.ceil(contextBytes / 2) + (opts?.maxTokens ?? 1024), signal, Boolean(opts?.responseSchema));
+  }
   const maxAttempts = Math.min(3, models.length) + (fastFree ? 1 : 0);
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const hasRetryTime = () => attempt < maxAttempts - 1 && !signal.aborted && deadline - Date.now() >= 5000;
