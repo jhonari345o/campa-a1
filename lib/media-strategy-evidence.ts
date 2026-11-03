@@ -3,7 +3,7 @@ import type {CatalogProduct} from "./catalog-shopping";
 import {planningProductPrice} from "./catalog-planning";
 import {productMedium} from "./diy-catalog";
 import { briefMarketKeys, normalized, radioCompatibility, sameMarket, tvValidity, validDate, type BroadcastCatalog, type BroadcastSource } from "./broadcast-catalog";
-import { pressMarketMatches, pressValidity, type PressCatalog } from "./press-catalog";
+import { pressValidity, type PressCatalog } from "./press-catalog";
 import { radioStationRankings, type RadioTariff } from "./radio-station";
 import {radioRegions, type RadioDirectoryCatalog } from "./radio-directory";
 import { oohRateUnit, type OohCatalog } from "./ooh-catalog";
@@ -160,7 +160,9 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
     if(!candidates.some(c=>c.medium==="radio"&&c.unitPriceUsd!=null)) gaps.push("Radio: no hay una tarifa vigente y compatible para cuantificar la pauta.");
   }
   if (selected(brief,"press")) for (const entry of catalogs.press.entries) for (const edition of entry.editions) for (const offer of edition.offers) {
-    if (!pressMarketMatches(offer,briefMarketKeys(brief))) continue;
+    // A documented city offer belongs inside its province, while an unknown
+    // or wider package must not inherit geography from the publication name.
+    if (!offer.marketOptions.some(markets=>planningStudyBrief(markets,brief))) continue;
     const valid = pressValidity(edition,brief.startDate,brief.endDate);
     if(edition.validFrom&&edition.validTo&&!valid)continue;
     const sid = addSource({id:`press:${entry.id}:${edition.id}`,kind:"tariff",label:`${entry.name} · ${edition.label}`,period:edition.period,market:offer.market,target:offer.target,use:valid ? "comparable" : "context",note:edition.conditions.join(" · ")});
@@ -237,7 +239,7 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
     if(sorted.length<=100||!["television","radio","press","ooh"].includes(m))return sorted.slice(0,100);
     // Large tariffs must preserve other requested cities and publications.
     const markets=new Map<string,StrategyCandidate[]>();
-    for(const candidate of sorted){const key=normalized(m==="press"?candidate.provider:candidate.market);const rows=markets.get(key)??[];rows.push(candidate);markets.set(key,rows);}
+    for(const candidate of sorted){const key=normalized(m==="press"?candidate.provider:m==="radio"&&candidate.stationCoverage?.length?candidate.stationCoverage.slice().sort().join(" · "):candidate.market);const rows=markets.get(key)??[];rows.push(candidate);markets.set(key,rows);}
     const balanced:StrategyCandidate[]=[];
     for(let i=0;balanced.length<100;i++)for(const market of markets.values())if(market[i]&&balanced.length<100)balanced.push(market[i]);
     return balanced;
