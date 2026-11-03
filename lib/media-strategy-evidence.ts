@@ -234,10 +234,10 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
   // Preserve account-priced options even when a large source catalog is loaded first.
   const boundedCandidates=groups.flatMap(m=>{
     const sorted=candidates.filter(c=>c.medium===m).sort((a,b)=>Number(b.unitPriceUsd!=null)-Number(a.unitPriceUsd!=null)||Number(Boolean(b.metrics.length))-Number(Boolean(a.metrics.length))||Number(Boolean(b.oohPhoto))-Number(Boolean(a.oohPhoto)));
-    if(sorted.length<=100||!["television","radio"].includes(m))return sorted.slice(0,100);
-    // A large tariff from one city must not crowd out every other requested city.
+    if(sorted.length<=100||!["television","radio","press","ooh"].includes(m))return sorted.slice(0,100);
+    // Large tariffs must preserve other requested cities and publications.
     const markets=new Map<string,StrategyCandidate[]>();
-    for(const candidate of sorted){const key=normalized(candidate.market);markets.set(key,[...(markets.get(key)??[]),candidate]);}
+    for(const candidate of sorted){const key=normalized(m==="press"?candidate.provider:candidate.market);const rows=markets.get(key)??[];rows.push(candidate);markets.set(key,rows);}
     const balanced:StrategyCandidate[]=[];
     for(let i=0;balanced.length<100;i++)for(const market of markets.values())if(market[i]&&balanced.length<100)balanced.push(market[i]);
     return balanced;

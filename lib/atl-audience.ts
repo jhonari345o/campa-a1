@@ -53,7 +53,7 @@ export function oohMarketReferences(rows:OohObservation[],brief:StrategyBrief,as
  const markets=new Map<string,OohObservation[]>();
  for(const r of rows){
   if(!planningStudyBrief([normalized(r.city)],brief)||r.observedOn&&r.observedOn>asOf)continue;
-  const city=normalized(r.city);markets.set(city,[...(markets.get(city)??[]),r]);
+  const city=normalized(r.city),observations=markets.get(city)??[];observations.push(r);markets.set(city,observations);
  }
  const result:OohObservation[]=[];
  for(const city of [...markets.keys()].sort()){

@@ -128,9 +128,9 @@ export function strategyCandidatePool(bundle:StrategyEvidenceBundle,medium:Media
     const priced = all.filter(c=>c.id.startsWith("workspace:")&&c.unitPriceUsd!=null).sort((a,b)=>candidateSort(a,b,brief));
     return [...ranked,...priced];
   }
-  if(medium==="press"){
+  if(medium==="press"||medium==="ooh"){
     const publications=new Map<string,StrategyCandidate[]>();
-    for(const c of all)publications.set(normalize(c.provider),[...(publications.get(normalize(c.provider))??[]),c]);
+    for(const c of all){const key=normalize(medium==="press"?c.provider:c.market),rows=publications.get(key)??[];rows.push(c);publications.set(key,rows);}
     const groups=[...publications.values()].map(rows=>rows.sort((a,b)=>candidateSort(a,b,brief))).sort((a,b)=>candidateSort(a[0],b[0],brief));
     const ranked:StrategyCandidate[]=[];
     for(let i=0;i<Math.max(0,...groups.map(g=>g.length));i++)for(const group of groups)if(group[i])ranked.push(group[i]);

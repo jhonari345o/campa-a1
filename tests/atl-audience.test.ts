@@ -49,10 +49,19 @@ test("AI receives press reach and OOH research without turning the study rows in
 });
 test("unranked press remains selectable and publication variety survives a large tariff",()=>{
  const c=strategyCatalogs();c.atlAudience={press:[press],ooh:[]};
- c.workspaceProducts=Array.from({length:20},(_,i)=>({key:`press:synthetic-${i}`,kind:"press" as const,provider:i<18?press.provider:"Diario fuera del estudio",name:`Formato ${i}`,format:"Página impresa",formatGroup:"other" as const,unit:"inserción",priceCents:10000+i,location:"Guayaquil, Quito",marketKeys:["guayaquil","quito"],reference:"",conditions:"",image:null,taxIncluded:false,validFrom:"2026-01-01",validTo:"2026-12-31",source:{workspaceProductId:`synthetic-${i}`}}));
+ c.workspaceProducts=Array.from({length:150},(_,i)=>({key:`press:synthetic-${i}`,kind:"press" as const,provider:i<148?press.provider:"Diario fuera del estudio",name:`Formato ${i}`,format:"Página impresa",formatGroup:"other" as const,unit:"inserción",priceCents:10000+i,location:"Guayaquil, Quito",marketKeys:["guayaquil","quito"],reference:"",conditions:"",image:null,taxIncluded:false,validFrom:"2026-01-01",validTo:"2026-12-31",source:{workspaceProductId:`synthetic-${i}`}}));
  const bundle=buildStrategyEvidence(brief(),strategyResearch,c,date);
  assert.ok(bundle.candidates.some(c=>c.provider==="Diario fuera del estudio"&&!c.metrics.length));
  const pool=strategyCandidatePool(bundle,"press",brief()).slice(0,8);
  assert.ok(pool.some(c=>c.provider==="Diario fuera del estudio"));
  assert.ok(pool.some(c=>c.metrics.some(m=>m.label==="Alcance de lectura"&&m.value===12)));
+});
+test("outdoor inventory outside the studied cities survives large catalogs for geographic coverage",()=>{
+ const c=strategyCatalogs();c.atlAudience={press:[],ooh:[ooh]};
+ c.workspaceProducts=Array.from({length:150},(_,i)=>({key:`ooh:synthetic-${i}`,kind:"ooh" as const,provider:"Inventario sintético",name:`Valla ${i}`,format:"Valla fija",unit:"mes",priceCents:100000+i,location:i<148?"Guayaquil":"Cuenca",marketKeys:[i<148?"guayaquil":"cuenca"],reference:"",conditions:"",image:null,taxIncluded:false,validFrom:"2026-01-01",validTo:"2026-12-31",source:{workspaceProductId:`synthetic-${i}`}}));
+ const b={...brief(),coverage:undefined,geography:"Guayaquil, Cuenca"};
+ const bundle=buildStrategyEvidence(b,strategyResearch,c,date),pool=strategyCandidatePool(bundle,"ooh",b).slice(0,8);
+ assert.ok(pool.some(c=>c.market.includes("Cuenca")&&!c.metrics.length));
+ assert.ok(pool.some(c=>c.market.includes("Guayaquil")));
+ assert.equal(bundle.oohMarketReferences?.length,0);
 });
