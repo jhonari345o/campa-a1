@@ -51,3 +51,31 @@ test("schema requests exclude JSON-mode-only models while ordinary JSON mode kee
   assert.deepEqual(selectAvailableFreeModels([],rows,true,40_000,true),["strict/model:free","openrouter/free"]);
   assert.deepEqual(selectAvailableFreeModels([],rows,true,40_000),["json-only/model:free","strict/model:free","openrouter/free"]);
 });
+
+test("catalogue schemas count toward model context and keep the zero-price routing cap",async()=>{
+  const originalFetch=globalThis.fetch;
+  const keys=["AI_PROVIDER","OPENROUTER_API_KEY","OPENROUTER_MODEL","OPENROUTER_FALLBACK_MODELS"];
+  const previous=keys.map(key=>process.env[key]);
+  Object.assign(process.env,{AI_PROVIDER:"openrouter",OPENROUTER_API_KEY:"synthetic-test-key",OPENROUTER_MODEL:"live/preferred:free",OPENROUTER_FALLBACK_MODELS:"live/other:free"});
+  const content="x".repeat(180_000),schema={type:"string",enum:["y".repeat(32_000)]};
+  let calls=0;
+  globalThis.fetch=async(url,options)=>{
+    if(String(url).endsWith("/models"))return new Response(JSON.stringify({data:[row("live/preferred:free"),row("live/other:free")]}),{status:200});
+    calls++;
+    const body=JSON.parse(String(options?.body));
+    assert.equal(body.model,"openrouter/free");
+    assert.equal(body.models,undefined);
+    assert.deepEqual(body.provider.max_price,{prompt:0,completion:0});
+    assert.equal(body.provider.require_parameters,true);
+    assert.equal(body.messages[0].content,content);
+    assert.deepEqual(body.response_format.json_schema.schema,schema);
+    return new Response(JSON.stringify({model:"large-context/model:free",choices:[{finish_reason:"stop",message:{content:'{"ok":true}'}}]}),{status:200});
+  };
+  try {
+    assert.equal(await chatCompletion([{role:"user",content}],{fastFreeRouting:true,responseSchema:{name:"catalogue",schema},maxTokens:3200}),'{"ok":true}');
+    assert.equal(calls,1);
+  }finally{
+    globalThis.fetch=originalFetch;
+    keys.forEach((key,index)=>{if(previous[index]===undefined)delete process.env[key];else process.env[key]=previous[index];});
+  }
+});
