@@ -30,7 +30,7 @@ export type StrategyCandidate = {
   id: string; catalogKey?: string; medium: MediaGroup; provider: string; product: string; market: string; target: string;
   period: string; sourceIds: string[]; sourceUse: EvidenceUse;
   unit: string; unitPriceUsd: number | null; referencePriceUsd: number | null;
-  minimumUnits: number; planningMinimumUnits?:number; maximumUnits?: number; minimumSpendUsd: number | null;
+  minimumUnits: number; planningMinimumUnits?:number; maximumUnits?: number; planningMaximumUnits?: number; planningTerritory?: string; minimumSpendUsd: number | null;
   metrics: { label: string; value: number; unit: string; sourceId: string }[];
   cohort?: string;
   stationId?: string; marketKeys?: string[]; stationCoverage?: string[]; coverageKeys?: string[];
@@ -79,6 +79,9 @@ function radioPrice(tariff: RadioTariff, brief: StrategyBrief) {
   return rates.map(r => ({ label: r.label, amount: tariff.unit === "second" ? cents(r.amountUsd! * r.seconds!) : r.amountUsd!, unit: r.seconds ? `spot ${r.seconds} s` : "spot" })).sort((a,b) => a.amount - b.amount)[0] ?? null;
 }
 function territorialFit(city: string, provinces: string[], brief: StrategyBrief) {
+  // Nationwide availability also permits delivery in a requested canton. It
+  // does not turn a single movable format into nationwide campaign coverage.
+  if (provinces.some(p => ["nacional", "nacionales", "ecuador"].includes(normalized(p)))) return true;
   const scope = brief.coverage ?? [];
   if (scope.length) return scope.some(c => c.kind === "country" || (c.kind === "city" && normalized(c.label) === normalized(city)) || (c.kind === "province" && provinces.some(p => normalized(p) === normalized(c.label))));
   const keys = briefMarketKeys(brief);

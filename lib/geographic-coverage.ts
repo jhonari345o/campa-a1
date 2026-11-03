@@ -13,6 +13,16 @@ const geographyLabelCorrections: Record<string, string> = {
   Manabi: "Manabí",
   Sucumbios: "Sucumbíos",
   Samborondon: "Samborondón",
+  Alausi: "Alausí", Biblian: "Biblián", Bolivar: "Bolívar",
+  "Camilo Ponce Enriquez": "Camilo Ponce Enríquez", "Centinela del Condor": "Centinela del Cóndor",
+  Cumanda: "Cumandá", Deleg: "Déleg", Duran: "Durán", Echeandia: "Echeandía",
+  Espindola: "Espíndola", Giron: "Girón", Gonzanama: "Gonzanamá", Jaramijo: "Jaramijó", Junin: "Junín",
+  "La Mana": "La Maná", "Limon Indanza": "Limón Indanza", Macara: "Macará", Marcabeli: "Marcabelí",
+  Mejia: "Mejía", Montufar: "Montúfar", Nabon: "Nabón", Pajan: "Paján", Pucara: "Pucará",
+  "Puerto Lopez": "Puerto López", Pujili: "Pujilí", Quininde: "Quinindé", "San Cristobal": "San Cristóbal",
+  "San Miguel de Urcuqui": "San Miguel de Urcuquí", "Santa Lucia": "Santa Lucía",
+  "Santiago de Pillaro": "Santiago de Píllaro", Saquisili: "Saquisilí", Sigsig: "Sígsig",
+  "Simon Bolivar": "Simón Bolívar", Sucua: "Sucúa", Tulcan: "Tulcán",
 };
 
 export function geographyLabel(sourceName: string) {
@@ -51,9 +61,9 @@ export function coverageSummary(coverage: CoverageSelection[]) {
 }
 
 // IDs and display names are canonicalized against the same versioned boundaries as the map.
-const selections = directory.map((item): CoverageSelection => ({ key: item.key, kind: item.kind as CoverageKind, label: item.label, ...("context" in item ? { context: item.context } : {}) }));
+const selections = directory.map((item): CoverageSelection => ({ key: item.key, kind: item.kind as CoverageKind, label: geographyLabel(item.label), ...("context" in item ? { context: geographyLabel(item.context??"") } : {}) }));
 const byKey = new Map([nationalCoverage, ...selections].map((item) => [item.key, item]));
-const byShape = new Map(directory.map(({ shapeId, ...item }) => [shapeId, item as CoverageSelection]));
+const byShape = new Map(directory.map((item,index) => [item.shapeId, selections[index]]));
 
 export function coverageForBoundary(shapeId: string): CoverageSelection | undefined {
   return byShape.get(shapeId);
