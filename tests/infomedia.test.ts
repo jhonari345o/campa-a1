@@ -29,6 +29,14 @@ test("research preserves independent periods, bounds brands and still finds the 
   assert.equal(JSON.stringify(research).includes("never expose"), false);
   assert.equal(projectResearch(category, { periods: [makePeriod(2026)] }, "", "Marca ausente").periods[0].focusBrand, null);
 });
+test("advertising share keeps geographic markets and rejects shifted channel or advertisement fields", () => {
+  const context = (market:string) => ({media:"TV",market,grps:20,activeBrands:1,brands:[{brand:"Marca 0",grps:5,sov:.25}]});
+  const payload={periods:[{...makePeriod(2026),pressureContexts:[...Array.from({length:12},()=>context("Canal de prueba")),context("Guayaquil"),context("Quito"),context("Manabí"),context("Nacional"),context("Promoción de temporada"),context("Emisora de prueba")]}]};
+  const projected=projectResearch(category,payload,"2026-07-31");
+  assert.deepEqual(projected.periods[0].pressureContexts.map(row=>row.market),["Guayaquil","Quito","Manabí","Nacional"]);
+  assert.equal(projected.periods[0].pressureContexts[0].topBrands[0].sov,.25);
+  assert.deepEqual(restoreResearch(projected)?.periods[0].pressureContexts,projected.periods[0].pressureContexts);
+});
 test("brand browsing returns all brands in bounded pages within the selected period", () => {
   const older = { ...makePeriod(2025), brands: [{ brand: "Histórica", estimatedInvestment: 900, soi: .4, soa: .2 }] };
   const payload = { periods: [older, makePeriod(2026)] };

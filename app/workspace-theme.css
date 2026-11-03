@@ -28,7 +28,7 @@
 .planner-map-card,.planner-details,.planner-personalize-grid label {background:#f5f0e9;border-color:#dad1c6;}
 .mavi-floating-trigger {border-color:#edceab;background:#322d2a;}
 .mavi-floating-trigger > b {background:#00a100;color:#142510;}
-.planner-submit-bar {bottom:94px;}
+.planner-submit-bar {bottom:calc(12px + env(safe-area-inset-bottom));}
 /* Opaque status surfaces keep the same contrast on dark heroes and white cards. */
 .catalog-status {display:inline-flex;align-items:center;border:1px solid;border-radius:999px;padding:4px 12px;font-size:10px;font-weight:900;line-height:1.4;letter-spacing:.025em;text-transform:uppercase;}
 .catalog-status--cotizable {background:#e4f2df;color:#235c2f;border-color:#b8d0af;}
