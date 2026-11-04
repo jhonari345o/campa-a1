@@ -4,6 +4,7 @@ import { strategyProviderGroups, strategyRadioMonths, strategyRentalBreakdown } 
 import { formatBudgetInput } from "@/lib/brief-inputs";
 import { MediaProviderMark } from "./MediaProviderMark";
 import { OohPlanPhoto } from "./OohPlanPhoto";
+import { RadioMonthlySchedule } from "./RadioMonthlySchedule";
 import styles from "./ProviderPlanCards.module.css";
 const number=(n:number)=>new Intl.NumberFormat("es-EC",{maximumFractionDigits:1}).format(n);
 const money=(n:number)=>`$ ${formatBudgetInput(n)}`;
@@ -12,7 +13,7 @@ const monthLabel=(value:string)=>new Intl.DateTimeFormat("es-EC",{month:"short",
 export function ProviderPlanCards({allocation,delivery,campaignPeriod}:{allocation:StrategyAllocation;delivery:DeliverySummary|null;campaignPeriod:string|null}) {
   const broadcast=allocation.medium==="television"||allocation.medium==="radio";
   const months=allocation.medium==="radio"?strategyRadioMonths(allocation):[];
-  return <>{months.length>0&&<section className={styles.flightOverview} aria-label="Pauta mensual de radio"><h4>Pauta mensual</h4><div>{months.map(m=><article key={m.month}><strong>{monthLabel(m.month)}</strong><span>{m.stations} emisoras · {m.units} cuñas</span><b>{money(m.spend)}</b></article>)}</div></section>}<div className={styles.grid}>{strategyProviderGroups(allocation).map(group=>{
+  return <>{months.length>0&&<RadioMonthlySchedule allocation={allocation}/>}<div className={styles.grid}>{strategyProviderGroups(allocation).map(group=>{
     const measurement=delivery?.providers?.find(p=>p.key===group.key);
     const programs=[...new Set(group.rows.map(r=>r.candidate.product))];
     return <details className={styles.card} key={group.key}>
