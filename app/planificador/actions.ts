@@ -262,6 +262,11 @@ async function guardarBorradorVerificado(request: SavePlanInput): Promise<SavePl
   // Persist the exact server-built draft. Approval and purchase still rebuild current prices.
   const name = (input.brief.brand || input.keyword || "Plan sin marca").slice(0, 120);
   const snapshot = {
+    name,
+    status: "borrador",
+    mode: "guiado",
+    stage: "propuesta",
+    progress: 60,
     brief: input.brief,
     research: input.research,
     plan: input.plan,
