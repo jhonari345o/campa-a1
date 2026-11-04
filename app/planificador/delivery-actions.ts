@@ -10,6 +10,7 @@ import { getRadioDirectory } from "@/lib/radio-directory-server";
 import { readTvAudience } from "@/lib/tv-audience-server";
 import { readAtlAudience } from "@/lib/atl-audience-server";
 import { pressReachForProduct } from "@/lib/press-delivery";
+import { oohReachForProduct } from "@/lib/ooh-delivery";
 import { readPlanningDeliveryModel } from "@/lib/planning-delivery-server";
 import { planningStudyBrief } from "@/lib/planning-market";
 import { tvAudienceApplies, type StrategyBrief } from "@/lib/media-strategy-evidence";
@@ -41,6 +42,7 @@ export async function projectMediaDelivery(input: DeliveryRequest): Promise<Deli
       if (!p) return null;
       const line: RatedDeliveryLine = {id:p.key,medium:productMedium(p),quantity:pick.quantity,amountCents:(p.priceCents??0)*pick.quantity,ratingPct:null,ratingMarketKeys:[],studyEnd:null};
       if(p.kind==="press")line.pressReach=pressReachForProduct(p,atlAudience.press,brief,asOf);
+      if(p.kind==="ooh")line.oohReach=oohReachForProduct(p,model.oohEstimates,brief.startDate??"",brief.endDate??"");
       if (p.kind === "tv") {
         line.providerKey=televisionProviderKey(p.provider);
         line.programmeKey=p.name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();

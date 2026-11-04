@@ -1,6 +1,7 @@
 import { briefMarketKeys, normalized, validDate, type BroadcastBrief } from "./broadcast-catalog";
 import type { MediaGroup } from "./media-groups";
 import { projectPressEditionReach, type PressEditionReach } from "./press-delivery";
+import { projectOohSectorReach, type OohSectorReachEstimate } from "./ooh-delivery";
 import { combineMediaDelivery, deliverySelectionKey, projectContactThresholds, reachAtGrps, type DeliveryObservation, type DeliverySelection, type DeliverySummary, type ReachCurve } from "./media-delivery";
 
 export type PlanningCurveModel = {
@@ -8,8 +9,9 @@ export type PlanningCurveModel = {
   target: {ageMin:number;ageMax:number;sex:string;nse:string}; curves: ReachCurve[];
   programs?: {key:string;provider:string;program:string;hour:string;ratings:Record<string,number>;productKeys:string[];offerIds:string[]}[];
   channelShares?: {channel:string;sharePct:number;periodStart:string;periodEnd:string}[];
+  oohEstimates?: OohSectorReachEstimate[];
 };
-export type RatedDeliveryLine = {id:string;medium:MediaGroup;quantity:number;amountCents:number;ratingPct:number|null;ratingMarketKeys:string[];studyEnd:string|null;providerKey?:string;programmeKey?:string;pressReach?:PressEditionReach};
+export type RatedDeliveryLine = {id:string;medium:MediaGroup;quantity:number;amountCents:number;ratingPct:number|null;ratingMarketKeys:string[];studyEnd:string|null;providerKey?:string;programmeKey?:string;pressReach?:PressEditionReach;oohReach?:OohSectorReachEstimate};
 
 /** A campaign-wide curve cannot establish a single channel's or programme's reach.
  * Requiring a varied schedule is an applicability guard, not a duplication model. */
@@ -46,6 +48,11 @@ export function projectPlanningDelivery(brief:BroadcastBrief,lines:RatedDelivery
   const contactsWithoutReach:NonNullable<DeliverySummary["contactMedia"]>=[];
   for(const medium of media){
     const curve=model.curves.find(c=>c.medium===medium),all=lines.filter(l=>l.medium===medium);
+    if(medium==="ooh"){
+      const reach=projectOohSectorReach(all,keys,model.marketWeights,model.universe,brief.startDate,brief.endDate);
+      if(reach!=null)observations.push({medium,selectionKey:deliverySelectionKey(selection,medium),universe,universeId:`planning-adults-${geography}`,targetId:"18+|all|all",geographyId:geography,periodId:`${brief.startDate}/${brief.endDate}`,reach1Pct:reach,evidenceId:"owner-defined-ooh-proximity-projection",approved:true});
+      continue;
+    }
     if(medium==="press"){
       const reach=projectPressEditionReach(all,keys,model.marketWeights,brief.startDate);
       if(reach!=null)observations.push({medium,selectionKey:deliverySelectionKey(selection,medium),universe,universeId:`planning-adults-${geography}`,targetId:"18+|all|all",geographyId:geography,periodId:`${brief.startDate}/${brief.endDate}`,reach1Pct:reach,evidenceId:"press-per-edition-shared-universe-projection",approved:true});

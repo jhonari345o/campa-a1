@@ -19,7 +19,7 @@ export function MediaDeliveryChart({ summary }: { summary: DeliverySummary | nul
     { label: "Conversaciones", value: summary.digital.conversations },
   ].filter(metric => metric.value != null) : [];
   return <section className={styles.root} aria-label="Proyección de resultados">
-    <header className={styles.heading}><span>Proyección de resultados</span><h3>{summary.media.length ? "El alcance de tu plan" : "Resultados de tu pauta"}</h3>{summary.scopeLabel && <p>{summary.scopeLabel}</p>}</header>
+    <header className={styles.heading}><span>{summary.media.some(row => row.medium === "ooh") ? "Alcance estimado" : "Proyección de resultados"}</span><h3>{summary.media.length ? "El alcance de tu plan" : "Resultados de tu pauta"}</h3>{summary.scopeLabel && <p>{summary.scopeLabel}</p>}</header>
     {summary.media.length > 0 && <div className={styles.main}>
       <div className={styles.byMedium}><h4>Alcance por medio</h4><div className={styles.axis} aria-hidden="true"><span>0%</span><span>50%</span><span>100%</span></div>
         {summary.media.map(row => <div key={row.medium} className={styles.medium}>
