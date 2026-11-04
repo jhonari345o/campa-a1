@@ -26,8 +26,12 @@ export function PlanVersions({ plan, versions, comments, approvals, canApprove =
         {versions.length === 0 ? <p className="mt-4 text-sm text-muted">Este plan todavía no tiene instantáneas disponibles.</p> : <ol className="mt-5 grid gap-3">{versions.map((version) => {
           const snapshot = version.snapshot;
           const brief = objectValue(snapshot.brief);
+          // Older generated proposals stored the full plan without stage metadata.
+          const legacyProposal = snapshot.stage == null && Array.isArray(objectValue(snapshot.plan).plan);
+          const stage = snapshot.stage ?? (legacyProposal ? "propuesta" : "brief");
+          const progress = snapshot.progress ?? (legacyProposal ? 60 : 0);
           const media = Array.isArray(brief.selectedMedia) ? brief.selectedMedia.length : 0;
-          return <li key={version.id} className="rounded-card border border-border bg-fog p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><strong>Versión {version.version}</strong><span className="ml-2 rounded-full bg-white px-2 py-1 text-[10px] font-black uppercase text-muted">{String(snapshot.status ?? "borrador")}</span></div><time className="text-xs text-muted">{formatDate(version.created_at)}</time></div><dl className="mt-3 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4"><Metric label="Etapa" value={String(snapshot.stage ?? "brief")} /><Metric label="Progreso" value={`${Number(snapshot.progress ?? 0)}%`} /><Metric label="Presupuesto" value={money(Number(brief.budgetUsd ?? brief.budget ?? 0))} /><Metric label="Medios" value={media ? String(media) : "Por definir"} /></dl></li>;
+          return <li key={version.id} className="rounded-card border border-border bg-fog p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><strong>Versión {version.version}</strong><span className="ml-2 rounded-full bg-white px-2 py-1 text-[10px] font-black uppercase text-muted">{String(snapshot.status ?? "borrador")}</span></div><time className="text-xs text-muted">{formatDate(version.created_at)}</time></div><dl className="mt-3 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4"><Metric label="Etapa" value={String(stage)} /><Metric label="Progreso" value={`${Number(progress)}%`} /><Metric label="Presupuesto" value={money(Number(brief.budgetUsd ?? brief.budget ?? 0))} /><Metric label="Medios" value={media ? String(media) : "Por definir"} /></dl></li>;
         })}</ol>}
       </section>
       <section className="rounded-panel border border-border bg-white p-6 shadow-panel">
