@@ -6,7 +6,9 @@ import { computeCharge, money, SERVICE_FEE_PCT, TAX_PCT } from "@/lib/pricing";
 import { isCommercialPaymentsEnabled } from "@/lib/commercial";
 import { isDlocalConfigured } from "@/lib/payments/dlocal";
 import { getPaymentProvider, isPagoPluxConfigured } from "@/lib/payments/pagoplux";
-import { isMetaConfigured } from "@/lib/ads/meta";
+import { metaClientConfig } from "@/lib/ads/meta-client-config";
+import { currentCampaignScope } from "@/lib/ads/campaign-scope";
+import { getMyCompanies } from "@/lib/company";
 
 export const metadata = { title: "Pautar con Mavi" };
 
@@ -43,7 +45,12 @@ export default async function PautarPage({
   const paymentProvider = getPaymentProvider();
   const paymentConnected = paymentProvider === "pagoplux" ? isPagoPluxConfigured() : isDlocalConfigured();
   const paymentLabel = paymentProvider === "pagoplux" ? "PagoPlux" : "dLocal Go";
-  const metaConectada = isMetaConfigured();
+  let metaConectada = false;
+  try {
+    const { scope } = await currentCampaignScope(profile, await getMyCompanies(profile.id));
+    const config = await metaClientConfig(scope);
+    metaConectada = initialRed !== "instagram" || Boolean(config.instagramUserId);
+  } catch { /* The selected client must have its own complete connection. */ }
 
   return (
     <div className="min-h-screen">

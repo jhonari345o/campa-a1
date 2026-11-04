@@ -10,6 +10,8 @@ import {
 } from "@/lib/ads/meta";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isMetaPausedDraftsEnabled, isMetaRealSpendEnabled } from "@/lib/commercial";
+import { metaClientConfig } from "@/lib/ads/meta-client-config";
+import { assertMetaBindingSnapshot, metaScopeFromJob, snapshotMetaBinding } from "@/lib/ads/meta-client-binding";
 
 type DeliveryRow = {
   id: string;
@@ -28,7 +30,9 @@ export async function preparePaidMetaJob(jobId: string) {
   }
   const admin = createAdminClient();
   const context = await loadPaidJob(admin, jobId);
+  const config = await configForJob(context.job);
   const delivery = await getOrCreateDelivery(admin, context.job.id, context.job.company_id);
+  assertDeliveryBinding(config.binding, delivery);
 
   if (delivery.status === "active") return { status: "active" as const };
   if (delivery.status === "paused" && delivery.provider_ad_id) return { status: "paused" as const };
@@ -49,10 +53,17 @@ export async function preparePaidMetaJob(jobId: string) {
     throw new Error("La orden no contiene una publicacion o geolocalizacion valida.");
   }
 
-  await admin
+  const bindingMetadata = { ...asRecord(delivery.metadata), meta_binding: snapshotMetaBinding(config.binding) };
+  // Persist the exact identity before the first provider write, and claim the
+  // current row atomically so two requests cannot create the same draft twice.
+  const claim = await admin
     .from("campaign_deliveries")
-    .update({ status: "creating", error: null })
-    .eq("id", delivery.id);
+    .update({ status: "creating", error: null, metadata: bindingMetadata })
+    .eq("id", delivery.id)
+    .eq("updated_at", delivery.updated_at)
+    .select("id")
+    .single();
+  if (claim.error || !claim.data) throw new Error("La orden cambió durante la preparación. Vuelve a consultar su estado.");
   await admin
     .from("campaign_jobs")
     .update({ status: "publicando", log: "Creando borrador pausado en Meta..." })
@@ -61,6 +72,7 @@ export async function preparePaidMetaJob(jobId: string) {
   const existing = deliveryToMetaIds(delivery);
   try {
     const ids = await createPausedMetaCampaign(
+      config,
       {
         jobId,
         red,
@@ -75,7 +87,7 @@ export async function preparePaidMetaJob(jobId: string) {
       {
         existing,
         onProgress: async (progress) => {
-          await saveMetaProgress(admin, delivery.id, progress);
+          await saveMetaProgress(admin, delivery.id, progress, bindingMetadata);
         },
       },
     );
@@ -90,7 +102,7 @@ export async function preparePaidMetaJob(jobId: string) {
           provider_adset_id: ids.adsetId,
           provider_creative_id: ids.creativeId,
           provider_ad_id: ids.adId,
-          metadata: { source_post_id: ids.sourcePostId, safety: "created_paused" },
+          metadata: { ...bindingMetadata, source_post_id: ids.sourcePostId, safety: "created_paused" },
         })
         .eq("id", delivery.id),
       admin
@@ -124,11 +136,13 @@ export async function activatePaidMetaJob(jobId: string) {
   }
   const admin = createAdminClient();
   const context = await loadPaidJob(admin, jobId);
+  const config = await configForJob(context.job);
   const maxCents = Math.round(getMaxMetaBudgetUsd() * 100);
   if (context.payment.base_cents > maxCents) {
     throw new Error(`El presupuesto supera el tope de activacion de $${(maxCents / 100).toFixed(2)}.`);
   }
   const delivery = await getDelivery(admin, jobId);
+  assertDeliveryBinding(config.binding, delivery);
   const ids = requireDeliveryIds(delivery);
   if (delivery.status === "active") return;
   if (delivery.status !== "paused") {
@@ -141,7 +155,7 @@ export async function activatePaidMetaJob(jobId: string) {
     .update({ status: "publicando", log: "Activando pauta en Meta..." })
     .eq("id", jobId);
   try {
-    await activateMetaCampaign(ids);
+    await activateMetaCampaign(config, ids);
     await Promise.all([
       admin.from("campaign_deliveries").update({ status: "active", error: null }).eq("id", delivery.id),
       admin
@@ -150,7 +164,7 @@ export async function activatePaidMetaJob(jobId: string) {
         .eq("id", jobId),
     ]);
   } catch (error) {
-    await pauseMetaCampaign(ids).catch(() => undefined);
+    await pauseMetaCampaign(config, ids).catch(() => undefined);
     const message = error instanceof Error ? error.message : "Meta no pudo activar la pauta.";
     await Promise.all([
       admin.from("campaign_deliveries").update({ status: "error", error: message.slice(0, 1000) }).eq("id", delivery.id),
@@ -162,9 +176,12 @@ export async function activatePaidMetaJob(jobId: string) {
 
 export async function pausePaidMetaJob(jobId: string) {
   const admin = createAdminClient();
+  const job = await loadMetaJob(admin, jobId);
+  const config = await configForJob(job, true);
   const delivery = await getDelivery(admin, jobId);
+  assertDeliveryBinding(config.binding, delivery);
   const ids = requireDeliveryIds(delivery);
-  await pauseMetaCampaign(ids);
+  await pauseMetaCampaign(config, ids);
   await Promise.all([
     admin.from("campaign_deliveries").update({ status: "paused", error: null }).eq("id", delivery.id),
     admin
@@ -176,15 +193,35 @@ export async function pausePaidMetaJob(jobId: string) {
 
 export async function syncPaidMetaJobMetrics(jobId: string) {
   const admin = createAdminClient();
+  const job = await loadMetaJob(admin, jobId);
+  const config = await configForJob(job, true);
   const delivery = await getDelivery(admin, jobId);
+  assertDeliveryBinding(config.binding, delivery);
   const ids = requireDeliveryIds(delivery);
-  const metrics = await getMetaAdInsights(ids.adId);
-  const { data: job } = await admin.from("campaign_jobs").select("spec").eq("id", jobId).single();
+  const metrics = await getMetaAdInsights(config, ids.adId);
   await admin
     .from("campaign_jobs")
     .update({ spec: { ...asRecord(job?.spec), metrics, metrics_actualizadas_at: new Date().toISOString() } })
     .eq("id", jobId);
   return metrics;
+}
+
+async function loadMetaJob(admin: ReturnType<typeof createAdminClient>, jobId: string) {
+  const { data: job, error } = await admin.from("campaign_jobs").select("id, company_id, platform, spec").eq("id", jobId).single();
+  if (error || !job || job.platform !== "meta") throw new Error("La orden de Meta no existe.");
+  return job;
+}
+
+async function configForJob(job: { company_id: string; spec: unknown }, allowInactive = false) {
+  const spec = asRecord(job.spec);
+  const config = await metaClientConfig(metaScopeFromJob(job.company_id, spec), allowInactive);
+  assertMetaBindingSnapshot(config.binding, spec.meta_binding, false);
+  return config;
+}
+
+function assertDeliveryBinding(binding: Parameters<typeof assertMetaBindingSnapshot>[0], delivery: DeliveryRow) {
+  const hasProviderObjects = Boolean(delivery.provider_campaign_id || delivery.provider_adset_id || delivery.provider_creative_id || delivery.provider_ad_id);
+  assertMetaBindingSnapshot(binding, delivery.metadata?.meta_binding, hasProviderObjects);
 }
 
 async function loadPaidJob(admin: ReturnType<typeof createAdminClient>, jobId: string) {
@@ -237,14 +274,16 @@ async function saveMetaProgress(
   admin: ReturnType<typeof createAdminClient>,
   deliveryId: string,
   progress: Partial<MetaCampaignIds>,
+  bindingMetadata: Record<string, unknown>,
 ) {
   const update: Record<string, unknown> = { status: "creating" };
   if (progress.campaignId) update.provider_campaign_id = progress.campaignId;
   if (progress.adsetId) update.provider_adset_id = progress.adsetId;
   if (progress.creativeId) update.provider_creative_id = progress.creativeId;
   if (progress.adId) update.provider_ad_id = progress.adId;
-  if (progress.sourcePostId) update.metadata = { source_post_id: progress.sourcePostId };
-  await admin.from("campaign_deliveries").update(update).eq("id", deliveryId);
+  if (progress.sourcePostId) update.metadata = { ...bindingMetadata, source_post_id: progress.sourcePostId };
+  const result = await admin.from("campaign_deliveries").update(update).eq("id", deliveryId);
+  if (result.error) throw new Error("No se pudo guardar el progreso del borrador de Meta.");
 }
 
 function deliveryToMetaIds(delivery: DeliveryRow): Partial<MetaCampaignIds> {

@@ -10,7 +10,7 @@ import { CrearAdministradorForm } from "./CrearAdministradorForm";
 import { cerrarSesion } from "./actions";
 import { isDlocalConfigured } from "@/lib/payments/dlocal";
 import { getPaymentProvider, isPagoPluxConfigured } from "@/lib/payments/pagoplux";
-import { isMetaConfigured } from "@/lib/ads/meta";
+import { configuredMetaClientBindings, hasConfiguredMetaClients } from "@/lib/ads/meta-client-config";
 import { isAiAssistantEnabled, isAiWebTrendsEnabled, isCommercialPaymentsEnabled, isMetaPausedDraftsEnabled, isMetaRealSpendEnabled } from "@/lib/commercial";
 import { BILLING_EMAIL } from "@/lib/legal";
 
@@ -80,36 +80,33 @@ function PagoPluxConnectionCenter() {
 }
 
 function MetaConnectionCenter() {
-  const configured = isMetaConfigured();
-  const creditConfirmed = process.env.META_CREDIT_LINE_CONFIRMED === "true";
-  const accountId = maskMetaId(process.env.META_AD_ACCOUNT_ID);
-  const pageId = maskMetaId(process.env.META_PAGE_ID);
-  const instagramId = maskMetaId(process.env.META_INSTAGRAM_USER_ID);
+  const configured = hasConfiguredMetaClients();
+  let clients: { id: string; name: string; active: boolean }[] = [];
+  try { clients = configuredMetaClientBindings().map(({ id, name, active }) => ({ id, name, active })); }
+  catch { /* Configuration errors never fall back to an agency identity. */ }
   const steps = [
-    { number: "01", title: "Autorizar", detail: "Pegar un token de sistema o larga duración. Nunca se muestra después." },
-    { number: "02", title: "Elegir activos", detail: "Descubrir y seleccionar cuenta publicitaria, página e Instagram." },
-    { number: "03", title: "Confirmar crédito", detail: "Verificar en Meta la línea de crédito o método de pago de esa cuenta." },
-    { number: "04", title: "Validar y desplegar", detail: "Comprobar permisos en solo lectura y publicar la conexión en Amplify." },
+    { number: "01", title: "Cliente", detail: "Vincular el espacio y, para agencias, el cliente seleccionado." },
+    { number: "02", title: "Activos", detail: "Asignar la cuenta publicitaria, Facebook e Instagram de ese cliente." },
+    { number: "03", title: "Credencial", detail: "Guardar el token exclusivamente en el servidor y comprobar sus permisos." },
+    { number: "04", title: "Prueba", detail: "Verificar la conexión y revisar un borrador pausado antes de activar anuncios." },
   ];
   return <section className="mt-8 overflow-hidden rounded-panel border border-forest/20 bg-white shadow-panel">
     <div className="grid gap-7 bg-forest p-7 text-white lg:grid-cols-[1.25fr_.75fr]">
       <div>
-        <p className="text-xs font-black uppercase tracking-[.16em] text-[#edceab]">Conexión financiera y publicitaria</p>
-        <h2 className="mt-2 text-2xl font-black">Meta Ads y línea de crédito</h2>
+        <p className="text-xs font-black uppercase tracking-[.16em] text-[#edceab]">Conexiones por cliente</p>
+        <h2 className="mt-2 text-2xl font-black">Meta Ads</h2>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/65">
-          La línea de crédito pertenece a la cuenta publicitaria de Meta, no al token. El asistente seguro permite elegir la cuenta correcta, validar la página e Instagram y desplegarla sin guardar secretos en Supabase.
+          Cada cliente utiliza sus propios activos. Las campañas y sus métricas conservan esa vinculación, aunque cambies de cliente en el catálogo.
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
-          <a href="http://127.0.0.1:4177" target="_blank" rel="noreferrer" className="btn btn-primary">Abrir asistente seguro →</a>
+          <Link href="/campanas" className="btn btn-primary">Comprobar conexiones →</Link>
           <a href="https://business.facebook.com/settings/ad-accounts" target="_blank" rel="noreferrer" className="btn border-white/20 bg-white/10 text-white hover:bg-white/15">Revisar crédito en Meta ↗</a>
         </div>
-        <p className="mt-3 text-[10px] text-white/75">Disponible únicamente cuando la consola local está ejecutándose con <b className="text-white">npm run admin:dev</b>.</p>
+        <p className="mt-3 text-xs text-white/75">La configuración se administra en el servidor. Los clientes no pueden intercambiar cuentas ni credenciales.</p>
       </div>
       <div className="grid gap-2 self-start">
-        <MetaStatus label="Conexión base" ready={configured} value={configured ? "Token y activos presentes" : "Faltan credenciales"} />
-        <MetaStatus label="Cuenta publicitaria" ready={Boolean(accountId)} value={accountId || "Sin seleccionar"} />
-        <MetaStatus label="Página / Instagram" ready={Boolean(pageId && instagramId)} value={pageId && instagramId ? `${pageId} · ${instagramId}` : "Vinculación incompleta"} />
-        <MetaStatus label="Línea de crédito" ready={creditConfirmed} value={creditConfirmed ? "Confirmada por el operador" : "Requiere confirmación en Meta"} />
+        <MetaStatus label="Configuración" ready={configured} value={configured ? "Activos y credencial presentes; comprobar conexión" : "Sin conexiones de clientes habilitadas"} />
+        {clients.map((client) => <MetaStatus key={client.id} label={client.name} ready={false} value={client.active ? "Configurada · requiere prueba de conexión" : "Deshabilitada"} />)}
       </div>
     </div>
     <div className="grid gap-3 p-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -127,7 +124,7 @@ function LaunchChecklist() {
   const paymentProvider = getPaymentProvider();
   const paymentReady = paymentProvider === "pagoplux" ? isPagoPluxConfigured() && process.env.NEXT_PUBLIC_PAGOPLUX_ENV === "live" : isDlocalConfigured() && process.env.DLOCALGO_ENV === "live";
   const items = [
-    { priority: "P0", label: "Conexión Meta validada", ready: isMetaConfigured(), detail: "Token, cuenta publicitaria, página e Instagram." },
+    { priority: "P0", label: "Conexión Meta validada por cliente", ready: false, detail: hasConfiguredMetaClients() ? "Configuración presente. Comprobar cada conexión desde Campañas." : "Falta configurar la cuenta y los activos de cada cliente." },
     { priority: "P0", label: "Línea de crédito confirmada", ready: process.env.META_CREDIT_LINE_CONFIRMED === "true", detail: "La cuenta elegida factura a la empresa correcta." },
     { priority: "P0", label: "Borrador Meta en PAUSED", ready: isMetaPausedDraftsEnabled(), detail: "Prueba sin gasto antes de activar campañas." },
     { priority: "P0", label: `${paymentProvider === "pagoplux" ? "PagoPlux" : "dLocal Go"} productivo`, ready: paymentReady, detail: "Credenciales live, webhook y conciliación controlada." },
@@ -146,12 +143,6 @@ function LaunchChecklist() {
   </section>;
 }
 
-function maskMetaId(value?: string) {
-  const clean = value?.trim();
-  if (!clean) return "";
-  return clean.length <= 8 ? clean : `${clean.slice(0, 4)}…${clean.slice(-4)}`;
-}
-
 function IntegrationReadiness() {
   const paymentProvider = getPaymentProvider();
   const paymentReady = paymentProvider === "pagoplux" ? isPagoPluxConfigured() : isDlocalConfigured();
@@ -161,7 +152,7 @@ function IntegrationReadiness() {
     { label: "Mapas", ready: true, detail: process.env.NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY ? "OpenStreetMap + Google Maps configurado" : "OpenStreetMap activo; Google satélite/360 sin clave embebida" },
     { label: paymentProvider === "pagoplux" ? "PagoPlux" : "dLocal Go", ready: paymentReady, detail: paymentReady ? `${paymentProvider === "pagoplux" ? (process.env.NEXT_PUBLIC_PAGOPLUX_ENV === "live" ? "Producción" : "Sandbox") : (process.env.DLOCALGO_ENV === "live" ? "Producción" : "Sandbox")} configurado` : "Faltan credenciales y conciliación" },
     { label: "Cobros reales", ready: isCommercialPaymentsEnabled(), detail: isCommercialPaymentsEnabled() ? "Interruptor activo" : "Interruptor bloqueado" },
-    { label: "Meta Marketing API", ready: isMetaConfigured(), detail: isMetaConfigured() ? "Credenciales base presentes" : "Faltan token, cuenta publicitaria o página" },
+    { label: "Meta Marketing API", ready: hasConfiguredMetaClients(), detail: hasConfiguredMetaClients() ? "Configuración por cliente presente; comprobar conexión" : "Falta configurar las conexiones por cliente" },
     { label: "Facturación Meta", ready: process.env.META_CREDIT_LINE_CONFIRMED === "true", detail: process.env.META_CREDIT_LINE_CONFIRMED === "true" ? "Cuenta publicitaria y línea de crédito confirmadas" : "Falta confirmar la facturación de la cuenta elegida" },
     { label: "Borrador Meta en pausa", ready: isMetaPausedDraftsEnabled(), detail: isMetaPausedDraftsEnabled() ? "Prueba pausada habilitada" : "Bloqueado" },
     { label: "Gasto real Meta", ready: isMetaRealSpendEnabled(), detail: isMetaRealSpendEnabled() ? "Gasto habilitado" : "Bloqueado hasta aprobación final" },
