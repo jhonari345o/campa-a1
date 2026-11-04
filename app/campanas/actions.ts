@@ -148,15 +148,15 @@ export async function verificarConexionMeta(): Promise<void> {
   if (!profile?.is_platform_admin) redirect("/campanas?meta=no_autorizado");
 
   let result = "conexion_error";
-  let detail = "Meta no pudo validar la credencial y los activos configurados. Revisa el token, la cuenta publicitaria y la pagina.";
+  let detail = "Meta no pudo verificar la credencial y los activos configurados. Revisa el token, la cuenta publicitaria y la página.";
   try {
     const status = await validateMetaConnection();
     if (status.connected) {
       result = "conexion_lista";
-      detail = `Meta respondio correctamente con ${status.apiVersion}: Facebook${status.instagramReady ? " e Instagram" : ""} estan listos para una prueba pausada.`;
+      detail = `Conexión verificada con ${status.apiVersion}: cuenta activa en USD y acceso a Facebook${status.instagramReady ? " e Instagram vinculado" : ""}. El siguiente paso es probar un borrador pausado.`;
     } else {
       result = "conexion_permisos";
-      detail = `La credencial responde, pero faltan permisos otorgados: ${status.missingPermissions.join(", ") || "activos de Instagram"}.`;
+      detail = [...status.issues, ...(status.missingPermissions.length ? [`Faltan permisos otorgados: ${status.missingPermissions.join(", ")}.`] : [])].join(" ");
     }
   } catch {
     // El detalle del proveedor no se envia por URL ni al navegador.

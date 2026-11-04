@@ -1,6 +1,8 @@
 import "server-only";
 
 import { getMetaCampaignDurationDays } from "@/lib/ads/config";
+import { assertMetaConnectionReady, inspectMetaConnection, type MetaConnectionStatus } from "@/lib/ads/meta-connection";
+export type { MetaConnectionStatus } from "@/lib/ads/meta-connection";
 
 type MetaConfig = {
   accessToken: string;
@@ -13,15 +15,6 @@ type MetaConfig = {
 type MetaIdResponse = { id: string };
 type MetaListResponse<T> = { data?: T[]; paging?: { next?: string } };
 type MetaPost = { id: string; permalink?: string; permalink_url?: string };
-type MetaPermission = { permission: string; status: string };
-
-const REQUIRED_META_PERMISSIONS = [
-  "ads_management",
-  "ads_read",
-  "business_management",
-  "pages_read_engagement",
-  "pages_show_list",
-] as const;
 
 export type MetaCampaignInput = {
   jobId: string;
@@ -55,14 +48,6 @@ export type MetaInsights = {
   gasto_usd: number;
 };
 
-export type MetaConnectionStatus = {
-  connected: boolean;
-  apiVersion: string;
-  facebookReady: boolean;
-  instagramReady: boolean;
-  missingPermissions: string[];
-};
-
 export function isMetaConfigured(): boolean {
   return Boolean(
     process.env.META_ACCESS_TOKEN &&
@@ -77,41 +62,7 @@ export function isMetaConfigured(): boolean {
  */
 export async function validateMetaConnection(): Promise<MetaConnectionStatus> {
   const config = getConfig();
-  const [actor, account, page, permissionResult] = await Promise.all([
-    metaGet<{ id: string }>(config, "me", { fields: "id" }),
-    metaGet<{ id: string }>(config, config.adAccountId, { fields: "id,account_status,currency" }),
-    metaGet<{ id: string }>(config, config.pageId, { fields: "id" }),
-    metaGet<MetaListResponse<MetaPermission>>(config, "me/permissions", { fields: "permission,status" }),
-  ]);
-  if (!actor.id || !account.id || !page.id) {
-    throw new Error("Meta no devolvio todos los activos configurados.");
-  }
-
-  const granted = new Set(
-    (permissionResult.data ?? [])
-      .filter((permission) => permission.status === "granted")
-      .map((permission) => permission.permission),
-  );
-  const requiredPermissions = [
-    ...REQUIRED_META_PERMISSIONS,
-    ...(config.instagramUserId ? ["instagram_basic"] : []),
-  ];
-  const missingPermissions = requiredPermissions.filter((permission) => !granted.has(permission));
-
-  let instagramReady = false;
-  if (config.instagramUserId) {
-    const instagram = await metaGet<{ id: string }>(config, config.instagramUserId, { fields: "id,username" });
-    instagramReady = Boolean(instagram.id) && granted.has("instagram_basic");
-  }
-
-  const facebookReady = REQUIRED_META_PERMISSIONS.every((permission) => granted.has(permission));
-  return {
-    connected: facebookReady && (!config.instagramUserId || instagramReady),
-    apiVersion: config.apiVersion,
-    facebookReady,
-    instagramReady,
-    missingPermissions,
-  };
+  return inspectMetaConnection(config, (path, params) => metaGet(config, path, params));
 }
 
 /**
@@ -124,6 +75,7 @@ export async function createPausedMetaCampaign(
   options: MetaCreateOptions = {},
 ): Promise<MetaCampaignIds> {
   const config = getConfig(input.red);
+  assertMetaConnectionReady(await validateMetaConnection());
   const progress: Partial<MetaCampaignIds> = { ...options.existing };
   const save = async (update: Partial<MetaCampaignIds>) => {
     Object.assign(progress, update);
@@ -231,6 +183,7 @@ export async function createPausedMetaCampaign(
 /** Activa el anuncio de abajo hacia arriba; la campaña se activa al final. */
 export async function activateMetaCampaign(ids: Pick<MetaCampaignIds, "campaignId" | "adsetId" | "adId">) {
   const config = getConfig();
+  assertMetaConnectionReady(await validateMetaConnection());
   await metaPost(config, ids.adId, { status: "ACTIVE" });
   await metaPost(config, ids.adsetId, { status: "ACTIVE" });
   await metaPost(config, ids.campaignId, { status: "ACTIVE" });
