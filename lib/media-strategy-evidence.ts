@@ -1,6 +1,6 @@
 import { televisionStudyMatches } from "./television-measurement";
 import {planningStudyBrief,radioTariffCoversStationStudy,commercialTerritoryFits,radioCommercialCoverage,territoryKey} from "./planning-market";
-import type {CatalogProduct} from "./catalog-shopping";
+import {catalogProducts, type CatalogProduct} from "./catalog-shopping";
 import {planningProductPrice} from "./catalog-planning";
 import {campaignRentalMonths} from "./catalog-planning";
 import {isDigitalProduction} from "./digital-productions";
@@ -15,7 +15,8 @@ import { lookupKey, type CategoryResearch } from "./infomedia";
 import type { PlanAnalysisInput } from "./plan-analysis";
 import { mediaGroupForLabel, type MediaGroup } from "./media-groups";
 import { tgiUsage } from "./tgi";
-import { oohMarketReferences, pressAudienceApplies, pressObservationFor, type AtlAudienceCatalog, type OohMarketReference } from "./atl-audience";
+import { oohMarketReferences, pressAudienceApplies, type AtlAudienceCatalog, type OohMarketReference } from "./atl-audience";
+import { pressReachForProduct } from "./press-delivery";
 import { planningDaypart, type PlanningDaypart } from "./planning-broadcast";
 import type { PlanningCaseContext } from "./planning-reference-cases";
 import {coverageFromLabels} from "./geographic-coverage";
@@ -107,8 +108,8 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
   const audienceReferences:StrategyEvidenceBundle["audienceReferences"]=[];
   const addSource = (source: StrategySource) => { sources.set(source.id, source); return source.id; };
   const pressStudies=(catalogs.atlAudience?.press??[]).filter(s=>selected(brief,"press")&&pressAudienceApplies(s,brief,asOf));
-  const pressSource=(s:typeof pressStudies[number])=>addSource({id:`press-study:${s.periodStart}:${s.periodEnd}:${s.sex}:${s.marketKeys.join("-")}`,kind:"ranking",label:"Ranking y alcance de lectura de prensa",period:`${s.periodStart} – ${s.periodEnd}`,market:s.marketKeys.join(" · "),target:`${s.sex==="all"?"Personas":s.sex==="male"?"Hombres":"Mujeres"} ${s.ageMin}–${s.ageMax} · todos los NSE`,use:"comparable",note:"Alcance de lectura del medio en el universo completo del estudio. No es alcance de una inserción ni se multiplica por compras. La posición se ordena por alcance; personas combina los dos universos por sus tamaños."});
-  for(const s of pressStudies)audienceReferences.push({sourceId:pressSource(s),medium:"press",provider:s.provider,product:"Lectura de la publicación",rating:null,reachPct:s.reachPct,audience:s.audience,rank:s.rank});
+  const pressSource=(s:typeof pressStudies[number])=>addSource({id:`press-study:${s.periodStart}:${s.periodEnd}:${s.sex}:${s.marketKeys.join("-")}`,kind:"ranking",label:"Ranking y alcance por edición de prensa",period:`${s.periodStart} – ${s.periodEnd}`,market:s.marketKeys.join(" · "),target:`${s.sex==="all"?"Personas":s.sex==="male"?"Hombres":"Mujeres"} ${s.ageMin}–${s.ageMax} · todos los NSE`,use:"comparable",note:"Alcance por edición del medio en el universo completo del estudio, según la unidad confirmada. Las inserciones repetidas conservan esa audiencia sin multiplicarla como personas nuevas. El cálculo conjunto normaliza los porcentajes al mismo universo objetivo."});
+  for(const s of pressStudies)audienceReferences.push({sourceId:pressSource(s),medium:"press",provider:s.provider,product:"Alcance por edición",rating:null,reachPct:s.reachPct,audience:s.audience,rank:s.rank});
   const oohReferences:OohMarketReference[]=selected(brief,"ooh")?oohMarketReferences(catalogs.atlAudience?.ooh??[],brief,asOf).map(r=>{
     const sourceId=addSource({id:`ooh-study:${normalized(r.city)}`,kind:"ranking",label:"Optimiza VP · referencia territorial",period:r.observedOn??"Corte no declarado",market:r.city,target:"Público y universo no declarados",use:"context",note:"Última base disponible, histórica. Ranking, circulación e impactos del soporte observado; no son personas únicas ni mediciones actuales del inventario. No extrapolar a otro elemento, público o período."});
     return {sourceId,city:r.city,location:[r.street,r.intersection].filter(Boolean).join(" / "),format:r.format,rank:r.rank,score:r.score,estimatedImpacts:r.estimatedImpacts,impactPeriod:r.impactPeriod,observedOn:r.observedOn};
@@ -250,12 +251,14 @@ export function buildStrategyEvidence(brief: StrategyBrief, research: CategoryRe
     const price=candidates.filter(p=>p.id.startsWith("workspace:")&&p.medium==="radio"&&p.stationId===c.stationId&&p.unitPriceUsd!=null&&p.unitPriceUsd>0&&(sameMarket({marketKeys:p.marketKeys??[]} as BroadcastSource,local)||radioTariffCoversStationStudy(p.marketKeys??[],c.marketKeys??[],c.stationCoverage??[]))).sort((a,b)=>a.unitPriceUsd!-b.unitPriceUsd!||a.id.localeCompare(b.id))[0];
     if(price){c.coverageKeys=price.coverageKeys;c.stationCoverage=price.stationCoverage??c.stationCoverage;c.catalogKey=price.catalogKey;c.unitPriceUsd=price.unitPriceUsd;c.referencePriceUsd=price.referencePriceUsd;c.minimumSpendUsd=price.minimumSpendUsd;c.unit=price.unit;c.sourceIds=[...new Set([...c.sourceIds.filter(id=>!id.startsWith("radio-tariff:")),...price.sourceIds])];c.note=[c.note.replace("Falta una tarifa compatible para calcular cuñas comprables.",""),price.note].filter(Boolean).join(" ");}
   }
+  const pressProducts=new Map([...catalogProducts([],{assets:[]},{broadcast:{sources:[],tv:[],radio:[]},radio:{stations:[]},press:catalogs.press}).filter(p=>p.kind==="press"),...(catalogs.workspaceProducts??[]).filter(p=>p.kind==="press")].map(p=>[p.key,p]));
   for(const c of candidates.filter(c=>c.medium==="press")){
-    const s=pressObservationFor(c.provider,`${c.product} ${c.unit}`,pressStudies,brief,asOf);
+    const product=pressProducts.get(c.catalogKey??""),reach=product?pressReachForProduct(product,pressStudies,brief,asOf):undefined;
+    const s=reach?pressStudies.find(s=>s.id===reach.evidenceId):undefined;
     if(!s)continue;
     const sid=pressSource(s);
     c.sourceIds=[...new Set([...c.sourceIds,sid])];c.cohort=sid;
-    c.metrics.push({label:"Alcance de lectura",value:s.reachPct,unit:"%",sourceId:sid},{label:"Posición por lectura",value:s.rank,unit:"ranking",sourceId:sid});
+    c.metrics.push({label:"Alcance por edición",value:s.reachPct,unit:"%",sourceId:sid},{label:"Posición por lectura",value:s.rank,unit:"ranking",sourceId:sid});
   }
   const resolvedTariffGaps:Partial<Record<MediaGroup,string>>={television:"TV: no hay tarifas compatibles con todas las fechas, plaza y condiciones del brief.",radio:"Radio: no hay una tarifa vigente y compatible para cuantificar la pauta.",press:"Prensa: faltan tarifas con vigencia y plaza compatibles con la campaña."};
   for(const [medium,gap] of Object.entries(resolvedTariffGaps))if(candidates.some(c=>c.medium===medium&&c.id.startsWith("workspace:")&&c.unitPriceUsd!=null)){const i=gaps.indexOf(gap);if(i>=0)gaps.splice(i,1);}

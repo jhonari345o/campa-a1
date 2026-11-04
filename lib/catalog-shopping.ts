@@ -15,6 +15,7 @@ export type CatalogProduct = {
   location: string; reference: string; image: string | null; conditions: string;
   source: { providerSlug?: string; standingPrice?: boolean; defaultPrice?: boolean; rateId?: string; profileId?: string; assetId?: string; rate?: OohRate; rateIndex?: number; sourceId?: string; offerId?: string; stationId?: string; tariffId?: string; seconds?: number; publicationId?: string; editionId?: string; publishedTariff?: boolean; platformSlug?: string; digitalGoal?: string; workspaceProductId?: string; agreementId?: string; tvDistribution?: "national" | "local" | "paid" };
   marketKeys?: string[];
+  marketOptions?: string[][];
   billingPeriod?: string;
   digitalProduction?: { id: string; network: string; description: string; rights: string[]; programsPerPeriod?: number };
   referenceOnly?:boolean;referenceLabel?:string;
@@ -78,7 +79,7 @@ export function catalogProducts(profiles: InfluencerProfile[], ooh: OohCatalog, 
     for (const publication of extra.press.entries) for (const edition of publication.editions) for (const offer of edition.offers) products.push({
       key: `press:${publication.id}:${edition.id}:${offer.id}`, kind: "press", provider: publication.name, name: offer.name, format: offer.group, unit: offer.unit === "CPM" ? "1.000 impresiones" : offer.unit, priceCents: edition.publishedTariff ? null : price(offer.priceUsd), taxIncluded: edition.taxIncluded,
       ...(edition.publishedTariff ? { referencePriceCents: price(offer.priceUsd), referenceLabel: `Tarifa publicada${edition.validFrom ? ` · desde ${edition.validFrom.split("-").reverse().join("/")}` : ""}` } : {}),
-      location: offer.market, reference: `${edition.period} · ${offer.target}`, image: publication.logoPath, conditions: [...edition.conditions, offer.notes].filter(Boolean).join(" · "), validFrom: edition.validFrom, validTo: edition.validTo, source: { publicationId: publication.id, editionId: edition.id, offerId: offer.id, ...(edition.publishedTariff ? { publishedTariff: true } : {}) },
+      location: offer.market, marketOptions: offer.marketOptions, reference: `${edition.period} · ${offer.target}`, image: publication.logoPath, conditions: [...edition.conditions, offer.notes].filter(Boolean).join(" · "), validFrom: edition.validFrom, validTo: edition.validTo, source: { publicationId: publication.id, editionId: edition.id, offerId: offer.id, ...(edition.publishedTariff ? { publishedTariff: true } : {}) },
     });
     for (const station of extra.radio.stations.filter(s=>!s.profile.tariffs.some(t=>t.rates.length))) products.push({ key:`radio:${station.id}:quote`,kind:"radio",provider:station.name,name:"Cuñas de radio",format:"Cuña",unit:"cuña · duración por definir",priceCents:null,taxIncluded:null,location:station.city??"",reference:"",image:station.logoPath,conditions:"",source:{stationId:station.id} });
     for (const publication of extra.press.entries.filter(p=>!p.editions.some(e=>e.offers.length))) products.push({ key:`press:${publication.id}:quote`,kind:"press",provider:publication.name,name:"Espacio de prensa",format:"Formato por definir",unit:"inserción",priceCents:null,taxIncluded:null,location:publication.city??"",reference:"",image:publication.logoPath,conditions:"",source:{publicationId:publication.id} });
