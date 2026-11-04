@@ -10,7 +10,7 @@ import { MaviFloatingAssistant } from "./MaviFloatingAssistant";
 import { AccountMenu } from "./AccountMenu";
 import { WorkspaceBanner } from "./WorkspaceBanner";
 
-type ActivePage = "mercado" | "consola" | "panel" | "asistente" | "planificador" | "campanas" | "pautar" | "reportes" | "laboratorio" | "clientes" | "configuracion";
+type ActivePage = "mercado" | "consola" | "panel" | "asistente" | "planificador" | "campanas" | "pautar" | "reportes" | "laboratorio" | "clientes" | "configuracion" | "social-media";
 
 type AppHeaderProps = {
   workspace?: WorkspaceIdentity | null;
@@ -51,6 +51,7 @@ const PAGE_TITLES: Record<ActivePage, string> = {
   laboratorio: "Laboratorio creativo",
   clientes: "Clientes y campañas",
   configuracion: "Mi configuración",
+  "social-media": "Social Media",
 };
 
 export function AppHeader({ name, isAdmin, active = "panel", title, catalogSection, workspace, previewCompanyId,previewClientId }: AppHeaderProps) {
@@ -73,6 +74,7 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
 
         <div className="portal-sidebar-scroll">
           <nav className="portal-nav" aria-label="Creación y gestión">
+            {kind !== "provider" && !previewCompanyId && <Link href="/social-media" onClick={close} className={`portal-nav-item ${active === "social-media" ? "is-active" : ""}`}><span>SM</span><strong>Social Media</strong></Link>}
             {capabilities.reports && <Link href={link(kind === "client" ? "/reportes" : "/clientes")} onClick={close} className={`portal-nav-item ${active === "clientes" ? "is-active" : ""}`}><span>↗</span><strong>{kind === "client" ? "Mis campañas" : "Clientes y campañas"}</strong></Link>}
             {CREATION.filter(item => item.id === "panel" || capabilities.plan).map((item) => {
               const showingSavedPlans = Boolean(title?.toLocaleLowerCase("es").includes("guardado"));

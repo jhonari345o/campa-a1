@@ -44,6 +44,8 @@ const privateRoutes = [
   "/consentimiento",
   "/cuenta/configuracion",
   "/api/account",
+  "/social-media",
+  "/api/social-media",
 ];
 
 /** @type {import('next').NextConfig} */
