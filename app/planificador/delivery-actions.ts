@@ -8,6 +8,8 @@ import { productMedium } from "@/lib/diy-catalog";
 import { getBroadcastCatalog } from "@/lib/broadcast-server";
 import { getRadioDirectory } from "@/lib/radio-directory-server";
 import { readTvAudience } from "@/lib/tv-audience-server";
+import { readAtlAudience } from "@/lib/atl-audience-server";
+import { pressReachForProduct } from "@/lib/press-delivery";
 import { readPlanningDeliveryModel } from "@/lib/planning-delivery-server";
 import { planningStudyBrief } from "@/lib/planning-market";
 import { tvAudienceApplies, type StrategyBrief } from "@/lib/media-strategy-evidence";
@@ -29,14 +31,16 @@ export async function projectMediaDelivery(input: DeliveryRequest): Promise<Deli
     if (input.clientId !== undefined && (access.clientContext?.selected?.id ?? null) !== input.clientId) return null;
     const model = await readPlanningDeliveryModel();
     if (!model) return null;
-    const [products, broadcast, radio, tvAudience] = await Promise.all([
+    const [products, broadcast, radio, tvAudience, atlAudience] = await Promise.all([
       readShoppingProducts(picks), getBroadcastCatalog(), getRadioDirectory(), readTvAudience(),
+      picks.some(p=>p.productKey.startsWith("press:")) ? readAtlAudience(["press"]) : Promise.resolve({press:[],ooh:[]}),
     ]);
     const brief = input.brief, asOf = new Date().toISOString().slice(0,10), lines: RatedDeliveryLine[] = [];
     for (const pick of picks) {
       const p = products.find(p => p.key === pick.productKey);
       if (!p) return null;
       const line: RatedDeliveryLine = {id:p.key,medium:productMedium(p),quantity:pick.quantity,amountCents:(p.priceCents??0)*pick.quantity,ratingPct:null,ratingMarketKeys:[],studyEnd:null};
+      if(p.kind==="press")line.pressReach=pressReachForProduct(p,atlAudience.press,brief,asOf);
       if (p.kind === "tv") {
         line.providerKey=televisionProviderKey(p.provider);
         line.programmeKey=p.name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
@@ -71,7 +75,7 @@ export async function projectMediaDelivery(input: DeliveryRequest): Promise<Deli
       const compatible=local&&radioCompatibility(source,local)===null;
       lines.push({id:`radio-observation:${row.id}`,medium:"radio",quantity:pick.quantity,amountCents:0,ratingPct:compatible?row.rating:null,ratingMarketKeys:source.marketKeys,studyEnd:source.periodEnd});
     }
-    // Preserve all selected media. OOH/press without a forecast remain geographic
+    // Preserve all selected media. Items without a compatible forecast remain geographic
     // complements and contribute no incremental contacts to the numerical projection.
     for(const medium of input.expectedMedia??[])if(!lines.some(l=>l.medium===medium))lines.push({id:`unquantified:${medium}`,medium,quantity:1,amountCents:0,ratingPct:null,ratingMarketKeys:[],studyEnd:null});
     const summary = projectPlanningDelivery(brief,lines,model);

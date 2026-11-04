@@ -1,5 +1,6 @@
 import { briefMarketKeys, normalized, validDate, type BroadcastBrief } from "./broadcast-catalog";
 import type { MediaGroup } from "./media-groups";
+import { projectPressEditionReach, type PressEditionReach } from "./press-delivery";
 import { combineMediaDelivery, deliverySelectionKey, projectContactThresholds, reachAtGrps, type DeliveryObservation, type DeliverySelection, type DeliverySummary, type ReachCurve } from "./media-delivery";
 
 export type PlanningCurveModel = {
@@ -8,7 +9,7 @@ export type PlanningCurveModel = {
   programs?: {key:string;provider:string;program:string;hour:string;ratings:Record<string,number>;productKeys:string[];offerIds:string[]}[];
   channelShares?: {channel:string;sharePct:number;periodStart:string;periodEnd:string}[];
 };
-export type RatedDeliveryLine = {id:string;medium:MediaGroup;quantity:number;amountCents:number;ratingPct:number|null;ratingMarketKeys:string[];studyEnd:string|null;providerKey?:string;programmeKey?:string};
+export type RatedDeliveryLine = {id:string;medium:MediaGroup;quantity:number;amountCents:number;ratingPct:number|null;ratingMarketKeys:string[];studyEnd:string|null;providerKey?:string;programmeKey?:string;pressReach?:PressEditionReach};
 
 /** A campaign-wide curve cannot establish a single channel's or programme's reach.
  * Requiring a varied schedule is an applicability guard, not a duplication model. */
@@ -45,6 +46,11 @@ export function projectPlanningDelivery(brief:BroadcastBrief,lines:RatedDelivery
   const contactsWithoutReach:NonNullable<DeliverySummary["contactMedia"]>=[];
   for(const medium of media){
     const curve=model.curves.find(c=>c.medium===medium),all=lines.filter(l=>l.medium===medium);
+    if(medium==="press"){
+      const reach=projectPressEditionReach(all,keys,model.marketWeights,brief.startDate);
+      if(reach!=null)observations.push({medium,selectionKey:deliverySelectionKey(selection,medium),universe,universeId:`planning-adults-${geography}`,targetId:"18+|all|all",geographyId:geography,periodId:`${brief.startDate}/${brief.endDate}`,reach1Pct:reach,evidenceId:"press-per-edition-shared-universe-projection",approved:true});
+      continue;
+    }
     // Keep geographic purchases in the plan, without attributing contacts to
     // unsupported territories. A corrupt numeric observation is never a complement.
     if(all.some(l=>l.ratingPct!=null&&(!Number.isFinite(l.ratingPct)||l.ratingPct<0||l.ratingPct>100)))return null;

@@ -43,9 +43,10 @@ export function pressAudienceApplies(s:PressAudience,brief:StrategyBrief,asOf:st
 }
 const publicationAliases:Record<string,string>={"metro ecuador":"metro","diario el universo":"el universo","diario expreso":"expreso","diario extra":"extra"};
 export const pressPublicationKey=(name:string)=>publicationAliases[normalized(name)]??normalized(name);
-/** The publication's readership is not the reach delivered by an insertion. */
+/** Per-edition readership; additional insertions do not imply new readers. */
 export function pressObservationFor(provider:string,format:string,rows:PressAudience[],brief:StrategyBrief,asOf:string){
- if(/\bcpm\b|digital|\bweb\b|banner|\bvideo\b|\bstory\b|\bstories\b|facebook|instagram/.test(normalized(format)))return undefined;
+ const kind=normalized(format);
+ if(/\bcpm\b|digital|\bweb\b|\bvideo\b|\bstory\b|\bstories\b|facebook|instagram/.test(kind)||/banner/.test(kind)&&!/impres|portada|pagina/.test(kind))return undefined;
  return rows.filter(s=>pressPublicationKey(s.provider)===pressPublicationKey(provider)&&pressAudienceApplies(s,brief,asOf)).sort((a,b)=>b.periodEnd.localeCompare(a.periodEnd)||a.id.localeCompare(b.id))[0];
 }
 /** Historical traffic studies inform territory research, never current inventory reach. */

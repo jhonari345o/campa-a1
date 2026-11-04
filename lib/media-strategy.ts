@@ -7,7 +7,7 @@ import { briefMarketKeys } from "./broadcast-catalog";
 import { planningStudyBrief, nationalTerritoryOrder, territoryProvince, territoryKey, territoriesOverlap } from "./planning-market";
 import { coverageFromLabels } from "./geographic-coverage";
 
-export const STRATEGY_VERSION = "2026-11-03.37";
+export const STRATEGY_VERSION = "2026-11-03.38";
 export const MAX_STRATEGY_EXECUTIONS = 25;
 // Planning policy approved by the platform owner; it is not an audience study.
 export const STARTING_MEDIA_MIX: Readonly<Record<MediaGroup, number>> = {
@@ -174,7 +174,7 @@ function candidateSort(a:StrategyCandidate,b:StrategyCandidate,brief?:TerritoryB
     return (ap??Infinity)-(bp??Infinity)||a.id.localeCompare(b.id);
   }
   if(a.medium==="press"&&b.medium==="press"&&a.cohort&&a.cohort===b.cohort&&a.unit===b.unit){
-    const ap=a.metrics.find(m=>m.label==="Alcance de lectura"),bp=b.metrics.find(m=>m.label==="Alcance de lectura");
+    const ap=a.metrics.find(m=>m.label==="Alcance por edición"),bp=b.metrics.find(m=>m.label==="Alcance por edición");
     if(ap&&bp&&ap.value!==bp.value)return bp.value-ap.value;
   }
   const sameCohort=ar&&br&&(ar.sourceId===br.sourceId||a.cohort&&a.cohort===b.cohort)&&ar.unit===br.unit&&a.unit===b.unit;

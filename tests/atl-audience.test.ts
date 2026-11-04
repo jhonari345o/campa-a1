@@ -54,7 +54,7 @@ test("unranked press remains selectable and publication variety survives a large
  assert.ok(bundle.candidates.some(c=>c.provider==="Diario fuera del estudio"&&!c.metrics.length));
  const pool=strategyCandidatePool(bundle,"press",brief()).slice(0,8);
  assert.ok(pool.some(c=>c.provider==="Diario fuera del estudio"));
- assert.ok(pool.some(c=>c.metrics.some(m=>m.label==="Alcance de lectura"&&m.value===12)));
+ assert.ok(pool.some(c=>c.metrics.some(m=>m.label==="Alcance por edición"&&m.value===12)));
 });
 test("outdoor inventory outside the studied cities survives large catalogs for geographic coverage",()=>{
  const c=strategyCatalogs();c.atlAudience={press:[],ooh:[ooh]};
