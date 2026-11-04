@@ -6,8 +6,9 @@ import type { StrategyBrief, StrategyCandidate, StrategyEvidenceBundle } from ".
 import { briefMarketKeys } from "./broadcast-catalog";
 import { planningStudyBrief, nationalTerritoryOrder, territoryProvince, territoryKey, territoriesOverlap } from "./planning-market";
 import { coverageFromLabels } from "./geographic-coverage";
+import { makeRadioDailySpots, type RadioDailySpots } from "./radio-schedule";
 
-export const STRATEGY_VERSION = "2026-11-04.39";
+export const STRATEGY_VERSION = "2026-11-04.40";
 export const MAX_STRATEGY_EXECUTIONS = 25;
 // Planning policy approved by the platform owner; it is not an audience study.
 export const STARTING_MEDIA_MIX: Readonly<Record<MediaGroup, number>> = {
@@ -21,7 +22,7 @@ export type StrategyAdvice = {
   allocations: { medium: MediaGroup; weight: number; rationale: string; evidenceIds: string[]; candidateIds: string[]; productionWeight?: number }[];
   questions: string[];
 };
-export type StrategyExecution = {candidate:StrategyCandidate;amountUsd:number|null;units:number|null;referenceSpendUsd:number|null;remainderUsd:number|null;radioFlights?:(RadioFlight&{units:number;spendUsd:number})[]};
+export type StrategyExecution = {candidate:StrategyCandidate;amountUsd:number|null;units:number|null;referenceSpendUsd:number|null;remainderUsd:number|null;radioFlights?:(RadioFlight&{units:number;spendUsd:number;dailySpots?:RadioDailySpots[]})[]};
 export type StrategyAllocation = {
   medium: MediaGroup; pct: number; amountUsd: number | null; rationale: string; sourceIds: string[];
   readiness: "reference" | "needs_quote" | "platform_budget";
@@ -173,7 +174,7 @@ export function allocateRadioFlights(pool:StrategyCandidate[],seeds:StrategyCand
     const rows=allocateStrategyExecutions(choices,monthly).filter(e=>e.units!=null&&e.units>0);
     for(const row of rows){
       const key=radioCandidateIdentity(row.candidate),prior=merged.get(key);
-      const dated={...flight,units:row.units!,spendUsd:row.referenceSpendUsd!};
+      const dated={...flight,units:row.units!,spendUsd:row.referenceSpendUsd!,dailySpots:makeRadioDailySpots(flight,row.units!)};
       if(prior){
         prior.units!+=row.units!;
         prior.amountUsd=Math.round((prior.amountUsd!+row.amountUsd!)*100)/100;
