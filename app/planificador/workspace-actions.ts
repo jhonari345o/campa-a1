@@ -16,13 +16,14 @@ import { validateManualExtras } from "@/lib/diy-workspace";
 import { FALLBACK_OOH } from "@/lib/diy-zones";
 import { validateBroadcastSelections } from "@/lib/broadcast-catalog";
 import { revalidatePath } from "next/cache";
-import { normalizeCoverageBrief, normalizeCoverage, coverageLegacyLabels, type CoverageSelection } from "@/lib/geographic-coverage";
+import { normalizeCoverage, coverageLegacyLabels, type CoverageSelection } from "@/lib/geographic-coverage";
 import { getSessionProfile } from "@/lib/auth";
 import { getMyCompanies } from "@/lib/company";
 import { canWorkspaceRole } from "@/lib/permissions";
 import { buildPlanningScenarios, type PlanningScenario } from "@/lib/plan-optimizer";
 import type { MediaGroup } from "@/lib/media-groups";
 import { createClient } from "@/lib/supabase/server";
+import { restorePlanBrief, shouldCopySavedBrief } from "@/lib/planning-restore";
 
 export type SaveProgressInput = {
   planId?: string | null;
@@ -59,7 +60,7 @@ type SaveResult = { ok: true; id: string; version: number; message: string } | {
 export async function guardarProgresoBrief(input: SaveProgressInput): Promise<SaveResult> {
   const access = await planAccess();
   if (!access.ok) return access;
-  const brief: Record<string, unknown> = { ...cleanObject(input.brief), ...normalizeCoverageBrief(input.brief) };
+  const brief: Record<string, unknown> = { ...restorePlanBrief(cleanObject(input.brief)) };
   if (brief.categoryId) {
     const catalog = await getInfomediaCatalog();
     const category = catalog.categories.find((item) => item.id === brief.categoryId);
@@ -289,13 +290,17 @@ async function savePlanRecord(input: {
   if (planId) {
     const { data: current, error: currentError } = await db
       .from("media_plans")
-      .select("id, owner_id, version,brief")
+      .select("id, owner_id, version, brief, status, proposal, analysis")
       .eq("id", planId)
       .eq("owner_id", input.ownerId)
       .maybeSingle();
     if (currentError || !current) return { ok: false, error: "No se encontró el borrador que quieres actualizar." };
     if(current.brief?.clientId&&current.brief.clientId!==input.brief.clientId)return {ok:false,error:"Este plan pertenece a otro cliente. Selecciónalo antes de editarlo."};
-    version = Number(current.version) + 1;
+    if (input.mode === "guiado" && input.stage === "brief" && shouldCopySavedBrief(current)) {
+      planId = null;
+    } else version = Number(current.version) + 1;
+  }
+  if (planId) {
     const { error } = await db.from("media_plans").update({
       name: input.name,
       status: input.status,

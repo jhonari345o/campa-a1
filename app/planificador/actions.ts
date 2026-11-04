@@ -293,7 +293,7 @@ async function guardarBorradorVerificado(request: SavePlanInput): Promise<SavePl
         benchmark: input.plan.benchmark,
         strategySummary: input.plan.strategySummary,
       },
-      proposal: { plan: input.plan.plan, campaigns: input.campaigns, detail: input.detail },
+      proposal: { ...input.plan, campaigns: input.campaigns, detail: input.detail },
     });
   if (error && error.code !== "23505") return { ok: false, error: "No se pudo guardar el borrador." };
   if (error?.code === "23505") {
@@ -329,6 +329,9 @@ async function registrarDistribucion(
   const company = companies.find((item) => item.status === "activa" && canWorkspaceRole(item, "plan")
     && (!approval || canWorkspaceRole(item, "campaign:approve")));
   if (!profile.is_platform_admin && !company) return { ok: false, error: "Tu rol no permite registrar esta decisión." };
+
+  const context = await catalogClientContext();
+  if (context?.clients.length && (!context.selected || input.brief.clientId !== context.selected.id)) return { ok: false, error: "Vuelve al cliente de este plan antes de registrar la distribución." };
 
   input = { ...input, brief: { ...input.brief, ...normalizeCoverageBrief(input.brief) } };
   let canonicalPlan: MediaPlan;
@@ -390,7 +393,7 @@ async function registrarDistribucion(
     progress: approval ? 100 : 85,
     brief: input.brief,
     analysis: { ...analysis, research: input.research },
-    proposal: { plan: rows, campaigns, detail, ...(approval ? { approved_at: new Date().toISOString() } : {}) },
+    proposal: { ...personalizedPlan, campaigns, detail, ...(approval ? { approved_at: new Date().toISOString() } : {}) },
   }).select("id").single();
   if (error || !data) return { ok: false, error: "No se pudo guardar la distribución del plan." };
   await db.from("media_plan_versions").insert({ plan_id: data.id, version: 1, actor_id: profile.id, snapshot });

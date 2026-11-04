@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
+import { createContext, startTransition, useActionState, useContext, useEffect, useId, useRef, useState, useTransition } from "react";
 import { InfomediaCategoryPicker } from "@/components/InfomediaCategoryPicker";
 import { TgiResearchPanel } from "@/components/TgiResearchPanel";
 import { InfomediaResearchPanel } from "@/components/InfomediaResearchPanel";
@@ -37,14 +37,17 @@ import { guardarProgresoBrief } from "./workspace-actions";
 import { PlanOrderButton } from "./PlanOrderButton";
 import {prepareWithSourceRetry,type PlanningPreparationResult} from "@/lib/planning-source-loading";
 import {completeWithFreeAiRetry} from "@/lib/planning-ai-retry";
+import {restorePlanBrief, restoreSavedPlanningResult} from "@/lib/planning-restore";
 
 const money = (n: number | null) =>
   n == null ? "—" : `$ ${formatBudgetInput(n)}`;
 const pct = (n: number) => `${(n * 100).toFixed(0)}%`;
+const BriefDefaults = createContext<Record<string, unknown>>({});
 
 export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, workspaceName = "Ad Mavericks" }: { initialPlan?: SavedMediaPlan | null; categoryCatalog: CategoryCatalog; canApprove?: boolean; workspaceName?: string }) {
   const savedResearch = restoreResearch(initialPlan?.analysis?.research);
-  const initialBrief = initialPlan?.brief ?? {};
+  const [initialBrief] = useState(() => restorePlanBrief(initialPlan?.brief));
+  const [restoredResult] = useState(() => restoreSavedPlanningResult(initialPlan));
   const [state, formAction, pending] = useActionState<PlanResult | null, FormData>(async (_previous, data) => {
     try {
       const send=async<T,>(body:unknown):Promise<T>=>{
@@ -57,24 +60,24 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
     } catch {
       return { ok: false, error: "La conexión con el servidor se interrumpió. Tu brief sigue aquí; vuelve a intentarlo en unos momentos." };
     }
-  }, null);
+  }, restoredResult);
   const formRef = useRef<HTMLFormElement>(null);
   const [planId, setPlanId] = useState(initialPlan?.id ?? "");
   const [saveMessage, setSaveMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [savingProgress, startSavingProgress] = useTransition();
   const [coverage, setCoverage] = useState<CoverageSelection[]>(() => restoreCoverage(initialBrief));
   const [coverageChanged, setCoverageChanged] = useState(false);
-  const [stage, setStage] = useState<"brief" | "analysis" | "proposal" | "personalize" | "approved">("brief");
+  const [stage, setStage] = useState<"brief" | "analysis" | "proposal" | "personalize" | "approved">(restoredResult ? "proposal" : "brief");
   const [approvedPlan, setApprovedPlan] = useState<{ id: string; rows: PlanRow[] } | null>(null);
   const [productMatrixApplies, setProductMatrixApplies] = useState(Boolean(initialBrief.productMatrixApplies));
-  const [productRows, setProductRows] = useState([0]);
+  const [productRows, setProductRows] = useState(() => initialBrief.products.length ? initialBrief.products.map((_, index) => index) : [0]);
   const [wowEnabled, setWowEnabled] = useState(Boolean(initialBrief.wowEnabled));
   useEffect(() => {
-    if (state?.ok) {
+    if (state?.ok && state !== restoredResult) {
       setStage("analysis");
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
-  }, [state]);
+  }, [state, restoredResult]);
   const legacyGeography = !restoreCoverage(initialBrief).length ? stringValue(initialBrief.geography) : "";
   const geography = coverage.length ? coverageDescription(coverage) : !coverageChanged ? legacyGeography : "";
   const initialSelectedMedia = Array.isArray(initialBrief.selectedMedia) ? initialBrief.selectedMedia.map(String) : [];
@@ -106,13 +109,16 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
     });
   }
 
+  const savedResultId = state === restoredResult ? initialPlan?.id : undefined;
   return (
+    <BriefDefaults.Provider value={initialBrief}>
     <div className="planner-portal-shell">
       <nav className="planner-progress" aria-label="Progreso del plan">
         {[["01", "Brief"], ["02", "Análisis"], ["03", "Propuesta"], ["04", "Personaliza"], ["05", canApprove ? "Aprobado" : "En revisión"]].map(([number, label], index) => (
           <div key={number} className={index === stageIndex ? "is-active" : index < stageIndex ? "is-complete" : ""}><span>{index < stageIndex ? "✓" : number}</span><strong>{label}</strong></div>
         ))}
-        <button type="button" onClick={saveProgress} disabled={savingProgress}>{savingProgress ? "Guardando…" : "Guardar progreso"}</button>
+        {stage === "brief" ? <button type="button" onClick={saveProgress} disabled={savingProgress}>{savingProgress ? "Guardando…" : "Guardar progreso"}</button>
+          : state?.ok && <SavePlanControl key={state.draftToken ?? savedResultId} result={state} savedId={savedResultId} />}
       </nav>
       {saveMessage && <p className={`mb-4 rounded-xl border px-4 py-3 text-sm font-bold ${saveMessage.ok ? "border-signal/30 bg-signal/10 text-forest" : "border-coral/30 bg-coral/10 text-[#a13b31]"}`}>{saveMessage.text}</p>}
 
@@ -185,7 +191,7 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
           {wowEnabled && <div className="planner-optional-panel">
             <div className="planner-fields planner-fields-two">
               <TextArea name="wowIdea" label="Descripción de la idea" placeholder="Ej. mapping, corpóreo, intervención urbana o formato especial" />
-              <BudgetField name="wowBudget" label="Presupuesto independiente (USD)" placeholder="0,00" />
+              <BudgetField name="wowBudget" initialValue={numberOrNull(initialBrief.wowBudget)} label="Presupuesto independiente (USD)" placeholder="0,00" />
               <Field name="wowMunicipality" label="Municipio o ciudad" placeholder="Ej. Guayaquil" />
               <Field name="wowExactLocation" label="Ubicación exacta o coordenadas" placeholder="Dirección, edificio o punto propuesto" />
               <SelectField name="wowFormat" label="Tipo de formato" defaultValue=""><option value="">Seleccionar formato</option><CatalogOptions options={WOW_FORMAT_OPTIONS} /></SelectField>
@@ -210,7 +216,7 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
                 <SelectField name="commercialGoalType" label="Meta comercial" defaultValue=""><option value="">No declarada</option><option value="units">En unidades</option><option value="currency">En valor (USD)</option></SelectField>
                 <Field name="commercialGoalAmount" label="Cantidad o valor objetivo" placeholder="Ej. 250000" type="number" />
                 <SelectField name="commercialGoalUnit" label="Unidad de medida" defaultValue=""><option value="">Seleccionar unidad</option><CatalogOptions options={COMMERCIAL_GOAL_UNIT_OPTIONS} /></SelectField>
-                <BudgetField name="averageTicket" label="Ticket promedio o valor por lead (USD)" placeholder="85,00" />
+                <BudgetField name="averageTicket" initialValue={numberOrNull(initialBrief.averageTicket)} label="Ticket promedio o valor por lead (USD)" placeholder="85,00" />
                 <Field name="grossMargin" label="Margen bruto o comisión (%)" placeholder="Ej. 32" type="number" />
                 <SelectField name="operationalCapacity" label="Capacidad operativa" defaultValue=""><option value="">Seleccionar</option><option>Alta</option><option>Media</option><option>Limitada</option><option>Por confirmar</option></SelectField>
                 <SelectField name="commercialKpi" label="KPI comercial prioritario" defaultValue=""><option value="">Seleccionar KPI</option><CatalogOptions options={COMMERCIAL_KPI_OPTIONS} /></SelectField>
@@ -235,15 +241,15 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
                 {productRows.map((row, index) => <div key={row} className="planner-product-row">
                   <div className="planner-product-row-head"><strong>Producto o servicio {index + 1}</strong><button type="button" disabled={productRows.length === 1} onClick={() => setProductRows((rows) => rows.filter((item) => item !== row))}>Quitar fila</button></div>
                   <div className="planner-fields planner-fields-three">
-                    <Field name="productName" label="Nombre" placeholder="Ej. Detergente líquido 1 L" />
-                    <BudgetField name="productPrice" label="Precio (USD)" placeholder="0,00" />
-                    <Field name="productMargin" label="Margen (%)" placeholder="0" type="number" />
-                    <Field name="productCapacity" label="Stock o capacidad" placeholder="Ej. 5.000 unidades o 80 cupos" />
-                    <SelectField name="productSeason" label="Temporada" defaultValue=""><option value="">Seleccionar temporada</option><CatalogOptions options={PRODUCT_SEASON_OPTIONS} /></SelectField>
-                    <Field name="productNotes" label="Notas" placeholder="Prioridad, promoción o condición especial" />
+                    <Field name="productName" defaultValue={initialBrief.products[row]?.name} label="Nombre" placeholder="Ej. Detergente líquido 1 L" />
+                    <BudgetField name="productPrice" initialValue={numberOrNull(initialBrief.products[row]?.price)} label="Precio (USD)" placeholder="0,00" />
+                    <Field name="productMargin" defaultValue={initialBrief.products[row]?.margin} label="Margen (%)" placeholder="0" type="number" />
+                    <Field name="productCapacity" defaultValue={initialBrief.products[row]?.capacity} label="Stock o capacidad" placeholder="Ej. 5.000 unidades o 80 cupos" />
+                    <SelectField name="productSeason" label="Temporada" defaultValue={initialBrief.products[row]?.season ?? ""}><option value="">Seleccionar temporada</option><CatalogOptions options={PRODUCT_SEASON_OPTIONS} /></SelectField>
+                    <Field name="productNotes" defaultValue={initialBrief.products[row]?.notes} label="Notas" placeholder="Prioridad, promoción o condición especial" />
                   </div>
                 </div>)}
-                <button type="button" className="btn btn-secondary w-full" onClick={() => setProductRows((rows) => [...rows, Math.max(...rows) + 1])}>+ Agregar otro producto o servicio</button>
+                <button type="button" className="btn btn-secondary w-full" onClick={() => setProductRows((rows) => [...rows, Math.max(initialBrief.products.length - 1, ...rows) + 1])}>+ Agregar otro producto o servicio</button>
               </div>}
             </div>
           </details>
@@ -282,10 +288,11 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
 
       {state?.ok && stage === "analysis" && restoreCoverage(state.brief).length > 0 && <details className="planner-analysis-detail"><summary>Ver cobertura de la campaña</summary><GeographicCoveragePicker value={restoreCoverage(state.brief)} readOnly /></details>}
       {state?.ok && stage === "analysis" && <AnalysisStage result={state} onBack={() => setStage("brief")} onContinue={() => setStage("proposal")} />}
-      {state?.ok && stage === "proposal" && <ProposalStage result={state} onBack={() => setStage("analysis")} onPersonalize={() => setStage("personalize")} />}
+      {state?.ok && stage === "proposal" && <ProposalStage result={state} savedId={savedResultId} onBack={() => setStage("analysis")} onPersonalize={() => setStage("personalize")} />}
       {state?.ok && stage === "personalize" && <PersonalizeStage canApprove={canApprove} result={state} onBack={() => setStage("proposal")} onApproved={(approved) => { setApprovedPlan(approved); setStage("approved"); }} />}
       {state?.ok && stage === "approved" && approvedPlan && <ApprovedStage canApprove={canApprove} result={state} approved={approvedPlan} />}
     </div>
+    </BriefDefaults.Provider>
   );
 }
 
@@ -340,10 +347,10 @@ function AnalysisStage({ result, onBack, onContinue }: { result: Extract<PlanRes
   </section>;
 }
 
-function ProposalStage({ result, onBack, onPersonalize }: { result: Extract<PlanResult, { ok: true }>; onBack: () => void; onPersonalize: () => void }) {
+function ProposalStage({ result, savedId, onBack, onPersonalize }: { result: Extract<PlanResult, { ok: true }>; savedId?: string; onBack: () => void; onPersonalize: () => void }) {
   return <section className="planner-result">
     <div className="planner-stage-actions"><button type="button" onClick={onBack} className="btn btn-secondary">← Volver al análisis</button><span>Estrategia, inversión y pauta en una sola propuesta.</span></div>
-    {result.plan.strategy ? <PlanningProposal key={result.plan.strategy.fingerprint} report={result.plan.strategy} brief={result.brief} targetLabel={result.analysis.targetLabel} saveControl={<SavePlanControl result={result}/>} /> : <PlanResultView result={result} />}
+    {result.plan.strategy ? <PlanningProposal key={result.plan.strategy.fingerprint} report={result.plan.strategy} brief={result.brief} targetLabel={result.analysis.targetLabel} saveControl={<SavePlanControl result={result} savedId={savedId}/>} /> : <PlanResultView result={result} />}
     <div className="planner-submit-bar"><div><small>Siguiente etapa</small><strong>Ajusta la distribución y guarda tu versión</strong></div><button type="button" onClick={onPersonalize} className="btn btn-primary">Personalizar propuesta →</button></div>
   </section>;
 }
@@ -417,9 +424,9 @@ function catalogSection(group: string) {
   return group === "television" ? "tv" : group === "ooh" ? "ooh" : group === "influencers" ? "influencers" : group;
 }
 
-function SavePlanControl({ result }: { result: Extract<PlanResult, { ok: true }> }) {
+function SavePlanControl({ result, savedId }: { result: Extract<PlanResult, { ok: true }>; savedId?: string }) {
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState<null | { ok: boolean; message: string; id?: string }>(null);
+  const [saved, setSaved] = useState<null | { ok: boolean; message: string; id?: string }>(savedId ? { ok: true, id: savedId, message: "" } : null);
 
   async function saveDraft() {
     setSaving(true);
@@ -444,7 +451,7 @@ function SavePlanControl({ result }: { result: Extract<PlanResult, { ok: true }>
   return <div className="flex flex-wrap items-center gap-3">
     <button type="button" onClick={saveDraft} disabled={saving || saved?.ok} className="btn btn-primary disabled:opacity-60">{saving ? "Guardando…" : saved?.ok ? "Plan guardado" : "Guardar plan"}</button>
     {saved?.ok && <a href="/planificador?view=plans" className="btn btn-secondary">Ver mis planes →</a>}
-    {saved && <p role="status" className={`text-sm font-bold ${saved.ok ? "text-signal-dark" : "text-[#a13b31]"}`}>{saved.message}</p>}
+    {saved?.message && <p role="status" className={`text-sm font-bold ${saved.ok ? "text-signal-dark" : "text-[#a13b31]"}`}>{saved.message}</p>}
   </div>;
 }
 
@@ -755,6 +762,7 @@ function Field({
   defaultValue?: string;
 }) {
   const fieldId = useId();
+  const defaults = useContext(BriefDefaults);
   return (
     <div>
       <label htmlFor={fieldId} className="block text-sm font-black text-forest">
@@ -765,7 +773,7 @@ function Field({
         name={name}
         type={type}
         required={required}
-        defaultValue={defaultValue}
+        defaultValue={defaultValue ?? stringValue(defaults[name])}
         placeholder={placeholder}
         className="mt-1 w-full rounded-xl border border-border bg-fog px-4 py-3 outline-none focus:border-signal focus:ring-2 focus:ring-signal/30"
       />
@@ -787,13 +795,14 @@ function SelectField({
   children: ReactNode;
 }) {
   const fieldId = useId();
+  const defaults = useContext(BriefDefaults);
   return (
     <div>
       <label htmlFor={fieldId} className="block text-sm font-black text-forest">{label}</label>
       <select
         id={fieldId}
         name={name}
-        defaultValue={defaultValue}
+        defaultValue={stringValue(defaults[name]) || defaultValue}
         required={required}
         className="mt-1 w-full rounded-xl border border-border bg-fog px-4 py-3 outline-none focus:border-signal focus:ring-2 focus:ring-signal/30"
       >
@@ -809,7 +818,8 @@ function CatalogOptions({ options }: { options: readonly CatalogOption[] }) {
 
 function TextArea({ name, label, placeholder, defaultValue }: { name: string; label: string; placeholder?: string; defaultValue?: string }) {
   const fieldId = useId();
-  return <div><label htmlFor={fieldId} className="block text-sm font-black text-forest">{label}</label><textarea id={fieldId} name={name} rows={3} placeholder={placeholder} defaultValue={defaultValue} className="mt-1 w-full resize-y rounded-xl border border-border bg-fog px-4 py-3 outline-none focus:border-signal focus:ring-2 focus:ring-signal/30" /></div>;
+  const defaults = useContext(BriefDefaults);
+  return <div><label htmlFor={fieldId} className="block text-sm font-black text-forest">{label}</label><textarea id={fieldId} name={name} rows={3} placeholder={placeholder} defaultValue={defaultValue ?? stringValue(defaults[name])} className="mt-1 w-full resize-y rounded-xl border border-border bg-fog px-4 py-3 outline-none focus:border-signal focus:ring-2 focus:ring-signal/30" /></div>;
 }
 
 function formDataRecord(formData: FormData): Record<string, unknown> {
@@ -828,5 +838,7 @@ function numberOrNull(value: unknown) { const number = Number(value); return Num
 
 function Checklist({ name, label, options }: { name: string; label: string; options: string[] }) {
   const baseId = useId();
-  return <fieldset className="planner-checklist"><legend>{label}</legend><div>{options.map((option, index) => <label key={option} htmlFor={`${baseId}-${index}`}><input id={`${baseId}-${index}`} type="checkbox" name={name} value={option} /><span>✓</span>{option}</label>)}</div></fieldset>;
+  const defaults = useContext(BriefDefaults);
+  const selected = Array.isArray(defaults[name]) ? defaults[name] as unknown[] : [];
+  return <fieldset className="planner-checklist"><legend>{label}</legend><div>{options.map((option, index) => <label key={option} htmlFor={`${baseId}-${index}`}><input id={`${baseId}-${index}`} type="checkbox" name={name} value={option} defaultChecked={selected.includes(option)} /><span>✓</span>{option}</label>)}</div></fieldset>;
 }
