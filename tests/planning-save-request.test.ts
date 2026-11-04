@@ -3,10 +3,10 @@ import test from "node:test";
 import { handlePlanSaveRequest } from "../lib/planning-save-request";
 
 const url = "https://one.example/api/planning/save";
-const body = { brief: { brand: "Synthetic", selectedMedia: ["radio"], budgetUsd: 1000 }, fingerprint: "a".repeat(64), requireAi: true };
+const body = { draftToken: "a".repeat(64) };
 const request = (value: unknown = body, origin: string | null = "https://one.example") => new Request(url, { method: "POST", headers: { "content-type": "application/json", ...(origin ? { origin } : {}) }, body: JSON.stringify(value) });
 
-test("save sends only brief and expected revision to authenticated reconstruction", async () => {
+test("save sends only the sealed draft to authenticated persistence", async () => {
   let calls = 0;
   const response = await handlePlanSaveRequest(request(), async input => {
     calls++; assert.deepEqual(input, body);
@@ -20,10 +20,10 @@ test("save sends only brief and expected revision to authenticated reconstructio
 test("cross-origin, oversized and browser-supplied financial results cannot invoke persistence", async () => {
   const save = async () => assert.fail("Persistence must not be invoked");
   for (const origin of [null, "https://attacker.example"]) assert.equal((await handlePlanSaveRequest(request(body, origin), save)).status, 403);
-  for (const value of [null, [], { ...body, plan: { amount: 1 } }, { ...body, fingerprint: "" }, { ...body, requireAi: "false" }, { ...body, brief: null }]) {
+  for (const value of [null, [], { ...body, plan: { amount: 1 } }, { draftToken: "" }, { draftToken: 42 }, { ...body, brief: { amount: 1 } }, { draftToken: "not.a.token" }, { draftToken: "a".repeat(600_001) }]) {
     assert.equal((await handlePlanSaveRequest(request(value), save)).status, 400);
   }
-  assert.equal((await handlePlanSaveRequest(request({ ...body, brief: { brand: "x".repeat(33_000) } }), save)).status, 413);
+  assert.equal((await handlePlanSaveRequest(request({ draftToken: "x".repeat(611_000) }), save)).status, 413);
   const invalidType = new Request(url, { method: "POST", headers: { origin: "https://one.example", "content-type": "text/plain" }, body: "ignored" });
   assert.equal((await handlePlanSaveRequest(invalidType, save)).status, 415);
 });

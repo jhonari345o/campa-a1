@@ -427,7 +427,7 @@ function SavePlanControl({ result }: { result: Extract<PlanResult, { ok: true }>
     try {
       const request = await fetch("/api/planning/save", {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", cache: "no-store",
-        body: JSON.stringify({ brief: result.brief, fingerprint: result.plan.strategy?.fingerprint ?? "", requireAi: ["validated", "cached"].includes(result.plan.strategy?.aiState ?? "") }),
+        body: JSON.stringify({ draftToken: result.draftToken ?? "" }),
       });
       if (!request.headers.get("content-type")?.includes("application/json")) throw new Error("SAVE_TRANSPORT");
       const response = await request.json() as SavePlanResult;
