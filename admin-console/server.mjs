@@ -517,8 +517,14 @@ async function validateSelectedMetaAssets(updates) {
   if (Number(account.account_status) !== 1) {
     throw clientError(`La cuenta publicitaria ${account.name || accountId} no está activa en Meta.`);
   }
+  if (String(account.id) !== accountId || String(page.id) !== String(updates.META_PAGE_ID) || String(instagram.id) !== String(updates.META_INSTAGRAM_USER_ID)) {
+    throw clientError("Los activos que devolvió Meta no coinciden con los configurados.");
+  }
+  if (account.currency !== "USD") {
+    throw clientError("One maneja presupuestos en dólares. Selecciona una cuenta publicitaria en USD.");
+  }
   const linkedInstagramId = String(page.instagram_business_account?.id || "");
-  if (linkedInstagramId && linkedInstagramId !== String(instagram.id)) {
+  if (!linkedInstagramId || linkedInstagramId !== String(instagram.id)) {
     throw clientError("La cuenta de Instagram elegida no coincide con la cuenta profesional vinculada a la página.");
   }
   const granted = new Set((permissionsResult.data || [])
