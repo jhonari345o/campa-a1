@@ -12,7 +12,7 @@ export type DeliveryObservation = {
   evidenceId: string; approved: boolean;
 };
 export type DeliverySummary = {
-  providers?: {key:string;reachPct:number|null;grps:number|null;frequency:number|null;scopeLabel:string}[];
+  providers?: {key:string;reachPct:number|null;reachKind?:"mix_contribution";grps:number|null;frequency:number|null;scopeLabel:string}[];
   scopeLabel?: string;
   geographicComplements?: MediaGroup[];
   media: { medium: MediaGroup; reachPct: number; people: number }[];

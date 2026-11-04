@@ -16,6 +16,7 @@ import { planningStudyBrief } from "@/lib/planning-market";
 import { tvAudienceApplies, type StrategyBrief } from "@/lib/media-strategy-evidence";
 import { radioCompatibility, type BroadcastBrief } from "@/lib/broadcast-catalog";
 import { radioStationRankings } from "@/lib/radio-station";
+import { radioReachContributions } from "@/lib/radio-reach";
 import { projectPlanningDelivery, type RatedDeliveryLine } from "@/lib/planning-delivery";
 import type { DeliverySummary } from "@/lib/media-delivery";
 import type { MediaGroup } from "@/lib/media-groups";
@@ -92,6 +93,15 @@ export async function projectMediaDelivery(input: DeliveryRequest): Promise<Deli
       const result=projectPlanningDelivery(brief,owned,model), row=result?.media[0], contact=result?.contactMedia?.[0];
       return row||contact?[{key,reachPct:row?.reachPct??null,grps:contact?.grps??null,frequency:contact?.frequency??null,scopeLabel:result?.scopeLabel??""}]:[];
     });
+    const radioCurve=model.curves.find(c=>c.medium==="radio"), radioTotal=summary.media.find(m=>m.medium==="radio");
+    const radioGroups=summary.providers.filter(p=>p.key.startsWith("radio:")&&p.grps!=null);
+    const contributions=radioCurve&&radioTotal?radioReachContributions(radioCurve,radioGroups.map(p=>({key:p.key,grps:p.grps!})),radioTotal.reachPct):null;
+    // A campaign curve is not station cume. Keep total radio unchanged and
+    // label only the attributed contribution; do not derive frequency from it.
+    summary.providers=summary.providers.map(p=>p.key.startsWith("radio:")?{...p,
+      reachPct:contributions?.find(c=>c.key===p.key)?.contributionPct??null,
+      reachKind:"mix_contribution",frequency:null,
+    }:p);
     return summary;
   } catch { return null; }
 }

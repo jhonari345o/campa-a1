@@ -18,7 +18,29 @@ export function broadcastPlanningMonths(brief: StrategyBrief) {
     ? (Date.parse(brief.endDate) - Date.parse(brief.startDate)) / 86400000 + 1 : 30;
   return { days, months: days / 30 };
 }
-const identity = (c: StrategyCandidate) => c.stationId ?? JSON.stringify([normalized(c.provider),(c.stationCoverage??c.coverageKeys??c.marketKeys??[c.market]).map(normalized).sort()]);
+export type RadioFlightBrief = Pick<StrategyBrief,"startDate"|"endDate"|"geography"|"coverage">;
+export type RadioFlight = { month: string; startDate: string; endDate: string; activeDays: number };
+/** Up to twenty working days per calendar month. A short campaign cannot buy
+ * a full month's frequency, and adding months does not add unique listeners. */
+export function radioFlightMonths(brief: RadioFlightBrief): RadioFlight[] {
+  if(!validDate(brief.startDate)||!validDate(brief.endDate)||brief.endDate<brief.startDate)return [];
+  const first=new Date(`${brief.startDate}T00:00:00Z`), last=Date.parse(brief.endDate);
+  const flights:RadioFlight[]=[];
+  for(let month=Date.UTC(first.getUTCFullYear(),first.getUTCMonth(),1);month<=last;){
+    if(flights.length>=120)return [];
+    const date=new Date(month), next=Date.UTC(date.getUTCFullYear(),date.getUTCMonth()+1,1);
+    const start=Math.max(month,first.getTime()),end=Math.min(next-86400000,last);
+    let weekdays=0;
+    for(let d=start;d<=end;d+=86400000){const day=new Date(d).getUTCDay();if(day!==0&&day!==6)weekdays++;}
+    // Weekend-only briefs still support a small, explicitly dated flight.
+    const activeDays=Math.min(20,weekdays||Math.floor((end-start)/86400000)+1);
+    flights.push({month:new Date(month).toISOString().slice(0,7),startDate:new Date(start).toISOString().slice(0,10),endDate:new Date(end).toISOString().slice(0,10),activeDays});
+    month=next;
+  }
+  return flights;
+}
+export const radioCandidateIdentity = (c: StrategyCandidate) => c.stationId ?? JSON.stringify([normalized(c.provider),(c.stationCoverage??c.coverageKeys??c.marketKeys??[c.market]).map(normalized).sort()]);
+const identity = radioCandidateIdentity;
 const price = (c: StrategyCandidate) => c.unitPriceUsd != null && Number.isFinite(c.unitPriceUsd) && c.unitPriceUsd > 0;
 const minimum = (c: StrategyCandidate) => Math.max(c.minimumSpendUsd ?? 0, (c.unitPriceUsd ?? 0) * (c.planningMinimumUnits ?? c.minimumUnits));
 
@@ -26,12 +48,13 @@ const minimum = (c: StrategyCandidate) => Math.max(c.minimumSpendUsd ?? 0, (c.un
  * Budgets are monthly planning limits, not commercial supplier minimums. */
 export function diversifyRadio(pool: StrategyCandidate[], seeds: StrategyCandidate[], brief: StrategyBrief, amount: number | null, limit: number) {
   if (amount == null || amount <= 0) return seeds;
-  const { days, months } = broadcastPlanningMonths(brief), ceiling = 2000 * months, target = 1500 * months;
+  const days=radioFlightMonths(brief).reduce((sum,f)=>sum+f.activeDays,0)||20;
+  const months=days/20, ceiling = 2000 * months, target = 1500 * months;
   const candidates = [...new Map([...seeds, ...pool].filter(price).map(c => [identity(c), c])).values()];
   // Map construction must not replace the geographically chosen signal with a
   // later study/format for the same station.
   const ordered = candidates.map(c => seeds.find(s => identity(s) === identity(c)) ?? [...pool].find(s => identity(s) === identity(c)) ?? c);
-  const desired = Math.min(limit, Math.max(seeds.length, Math.ceil(amount / target)));
+  const desired = Math.min(limit, Math.max(6,seeds.length, Math.ceil(amount / target)));
   const chosen: StrategyCandidate[] = [];
   let remaining = amount;
   for (const c of ordered) {
