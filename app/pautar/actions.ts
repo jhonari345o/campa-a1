@@ -12,6 +12,9 @@ import { getMaxMetaBudgetUsd } from "@/lib/ads/config";
 import { isCommercialPaymentsEnabled } from "@/lib/commercial";
 import { canWorkspaceRole } from "@/lib/permissions";
 import { LEGAL_VERSIONS } from "@/lib/legal";
+import { currentCampaignScope } from "@/lib/ads/campaign-scope";
+import { metaClientConfig } from "@/lib/ads/meta-client-config";
+import { snapshotMetaBinding } from "@/lib/ads/meta-client-binding";
 
 export type PautaInput = {
   red: string; // instagram | facebook | tiktok
@@ -54,12 +57,23 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
   }
 
   const companies = await getMyCompanies(profile.id);
-  const company = companies[0];
-  if (!company || company.status !== "activa") {
-    return { ok: false, error: "Solo una cuenta de empresa puede pautar." };
+  let context: Awaited<ReturnType<typeof currentCampaignScope>>;
+  try { context = await currentCampaignScope(profile, companies); }
+  catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "No se pudo identificar el cliente de la campaña." };
   }
+  const { company, scope } = context;
   if (!canWorkspaceRole(company, "campaign:create")) {
     return { ok: false, error: "Tu rol no permite crear una orden de pauta." };
+  }
+  // A checkout may not silently inherit the agency's global advertising account.
+  let metaBinding: ReturnType<typeof snapshotMetaBinding>;
+  try {
+    const config = await metaClientConfig(scope);
+    if (input.red.toLowerCase() === "instagram" && !config.instagramUserId) throw new Error("Sin Instagram del cliente.");
+    metaBinding = snapshotMetaBinding(config.binding);
+  } catch {
+    return { ok: false, error: "La cuenta publicitaria de este cliente todavía no está conectada." };
   }
   if (input.commercialAcceptance !== true) {
     return { ok: false, error: "Debes aceptar las condiciones de pago, devolución y contracargos." };
@@ -151,6 +165,8 @@ export async function crearPauta(input: PautaInput): Promise<PautaResult> {
       status: "esperando_pago",
       created_by: profile.id,
       spec: {
+        client_id: scope.clientId,
+        meta_binding: metaBinding,
         tipo: "pauta",
         red,
         post_url: input.postUrl.trim(),

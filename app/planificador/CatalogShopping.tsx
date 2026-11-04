@@ -10,7 +10,8 @@ import { radioProviderKey } from "@/lib/account-radio-tariffs";
 import { digitalBudgetKey, digitalBudgetProduct, digitalGoalsForPlatform } from "@/lib/digital-budget";
 import { formatBudgetInput, parseBudgetInput } from "@/lib/brief-inputs";
 import { CalendarDateField } from "@/components/PlanScheduleFields";
-import { loadCatalogSelection, saveCatalogSelection, submitCatalogSelection } from "./catalog-actions";
+import { submitCatalogSelection } from "./catalog-actions";
+import { persistCatalogCart, recoverCatalogCart } from "@/lib/catalog-cart-client";
 import styles from "./CatalogShopping.module.css";
 
 export type ShoppingCompany = { id: string; name: string };
@@ -76,7 +77,7 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
     try {
       while (JSON.stringify(desired.current) !== persisted.current) {
         const snapshot = desired.current;
-        const result = await saveCatalogSelection(snapshot, version.current,cart.clientId??null);
+        const result = await persistCatalogCart(snapshot, version.current,cart.clientId??null);
         if (!result.ok) { if (mounted.current) setError(result.error); return false; }
         version.current = result.cart.version;
         persisted.current = JSON.stringify(result.cart.items);
@@ -119,7 +120,7 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
     if (busy || running.current) return;
     setSaving(true);
     try {
-      const result = await loadCatalogSelection();
+      const result = await recoverCatalogCart();
       if (result.error) { setError(result.error); return; }
       if((result.clientId??null)!==(cart.clientId??null)){setError("El cliente cambió. Recarga la página para usar su catálogo.");return;}
       version.current = result.version; desired.current = result.items;

@@ -18,6 +18,8 @@ import {
 } from "@/lib/commercial";
 import { canWorkspaceRole } from "@/lib/permissions";
 import { validateMetaConnection } from "@/lib/ads/meta";
+import { configuredMetaClientBindings, metaClientConfig } from "@/lib/ads/meta-client-config";
+import { currentCampaignScope } from "@/lib/ads/campaign-scope";
 
 export type JobInput = {
   platform: string;
@@ -39,10 +41,12 @@ export async function ejecutarCampana(input: JobInput): Promise<JobResult> {
   if (!profile) return { ok: false, error: "Debes iniciar sesion." };
 
   const companies = await getMyCompanies(profile.id);
-  const company = companies[0];
-  if (!company || company.status !== "activa") {
-    return { ok: false, error: "Solo una cuenta de empresa puede ejecutar campanas." };
+  let context: Awaited<ReturnType<typeof currentCampaignScope>>;
+  try { context = await currentCampaignScope(profile, companies); }
+  catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "No se pudo identificar el cliente de la campaña." };
   }
+  const { company, scope } = context;
   if (!canWorkspaceRole(company, "campaign:create")) {
     return { ok: false, error: "Tu rol no permite solicitar una campana." };
   }
@@ -56,6 +60,7 @@ export async function ejecutarCampana(input: JobInput): Promise<JobResult> {
       status: "pendiente",
       created_by: profile.id,
       spec: {
+        client_id: scope.clientId,
         objetivo: input.objetivo,
         publico: input.publico,
         formato: input.formato ?? null,
@@ -143,17 +148,21 @@ export async function actualizarMetricasMeta(formData: FormData): Promise<void> 
   redirect("/campanas?meta=metricas_actualizadas");
 }
 
-export async function verificarConexionMeta(): Promise<void> {
+export async function verificarConexionMeta(formData: FormData): Promise<void> {
   const profile = await getSessionProfile();
   if (!profile?.is_platform_admin) redirect("/campanas?meta=no_autorizado");
 
   let result = "conexion_error";
   let detail = "Meta no pudo verificar la credencial y los activos configurados. Revisa el token, la cuenta publicitaria y la página.";
   try {
-    const status = await validateMetaConnection();
+    const bindingId = String(formData.get("connection_id") ?? "");
+    const binding = configuredMetaClientBindings().find((candidate) => candidate.id === bindingId && candidate.active);
+    if (!binding) throw new Error("Conexión de cliente no encontrada.");
+    const config = await metaClientConfig(binding);
+    const status = await validateMetaConnection(config);
     if (status.connected) {
       result = "conexion_lista";
-      detail = `Conexión verificada con ${status.apiVersion}: cuenta activa en USD y acceso a Facebook${status.instagramReady ? " e Instagram vinculado" : ""}. El siguiente paso es probar un borrador pausado.`;
+      detail = `${binding.name}: conexión verificada con ${status.apiVersion}, cuenta activa en USD y acceso a Facebook${status.instagramReady ? " e Instagram vinculado" : ""}. El siguiente paso es probar un borrador pausado.`;
     } else {
       result = "conexion_permisos";
       detail = [...status.issues, ...(status.missingPermissions.length ? [`Faltan permisos otorgados: ${status.missingPermissions.join(", ")}.`] : [])].join(" ");

@@ -2,15 +2,10 @@ import "server-only";
 
 import { getMetaCampaignDurationDays } from "@/lib/ads/config";
 import { assertMetaConnectionReady, inspectMetaConnection, type MetaConnectionStatus } from "@/lib/ads/meta-connection";
+import type { MetaClientConfig } from "@/lib/ads/meta-client-config";
 export type { MetaConnectionStatus } from "@/lib/ads/meta-connection";
 
-type MetaConfig = {
-  accessToken: string;
-  adAccountId: string;
-  pageId: string;
-  instagramUserId?: string;
-  apiVersion: string;
-};
+type MetaConfig = MetaClientConfig;
 
 type MetaIdResponse = { id: string };
 type MetaListResponse<T> = { data?: T[]; paging?: { next?: string } };
@@ -48,20 +43,11 @@ export type MetaInsights = {
   gasto_usd: number;
 };
 
-export function isMetaConfigured(): boolean {
-  return Boolean(
-    process.env.META_ACCESS_TOKEN &&
-      process.env.META_AD_ACCOUNT_ID &&
-      process.env.META_PAGE_ID,
-  );
-}
-
 /**
  * Verifica la credencial y los activos sin crear, modificar ni activar anuncios.
  * Nunca devuelve el token ni identificadores al navegador.
  */
-export async function validateMetaConnection(): Promise<MetaConnectionStatus> {
-  const config = getConfig();
+export async function validateMetaConnection(config: MetaConfig): Promise<MetaConnectionStatus> {
   return inspectMetaConnection(config, (path, params) => metaGet(config, path, params));
 }
 
@@ -71,11 +57,14 @@ export async function validateMetaConnection(): Promise<MetaConnectionStatus> {
  * anuncio mediante la accion separada.
  */
 export async function createPausedMetaCampaign(
+  config: MetaConfig,
   input: MetaCampaignInput,
   options: MetaCreateOptions = {},
 ): Promise<MetaCampaignIds> {
-  const config = getConfig(input.red);
-  assertMetaConnectionReady(await validateMetaConnection());
+  if (input.red === "instagram" && !config.instagramUserId) {
+    throw new Error("Este cliente no tiene una cuenta de Instagram vinculada.");
+  }
+  assertMetaConnectionReady(await validateMetaConnection(config));
   const progress: Partial<MetaCampaignIds> = { ...options.existing };
   const save = async (update: Partial<MetaCampaignIds>) => {
     Object.assign(progress, update);
@@ -181,16 +170,14 @@ export async function createPausedMetaCampaign(
 }
 
 /** Activa el anuncio de abajo hacia arriba; la campaña se activa al final. */
-export async function activateMetaCampaign(ids: Pick<MetaCampaignIds, "campaignId" | "adsetId" | "adId">) {
-  const config = getConfig();
-  assertMetaConnectionReady(await validateMetaConnection());
+export async function activateMetaCampaign(config: MetaConfig, ids: Pick<MetaCampaignIds, "campaignId" | "adsetId" | "adId">) {
+  assertMetaConnectionReady(await validateMetaConnection(config));
   await metaPost(config, ids.adId, { status: "ACTIVE" });
   await metaPost(config, ids.adsetId, { status: "ACTIVE" });
   await metaPost(config, ids.campaignId, { status: "ACTIVE" });
 }
 
-export async function pauseMetaCampaign(ids: Pick<MetaCampaignIds, "campaignId" | "adsetId" | "adId">) {
-  const config = getConfig();
+export async function pauseMetaCampaign(config: MetaConfig, ids: Pick<MetaCampaignIds, "campaignId" | "adsetId" | "adId">) {
   // Pausar la campaña primero corta la entrega aunque otro cambio falle.
   await metaPost(config, ids.campaignId, { status: "PAUSED" });
   await Promise.allSettled([
@@ -199,8 +186,7 @@ export async function pauseMetaCampaign(ids: Pick<MetaCampaignIds, "campaignId" 
   ]);
 }
 
-export async function getMetaAdInsights(adId: string): Promise<MetaInsights> {
-  const config = getConfig();
+export async function getMetaAdInsights(config: MetaConfig, adId: string): Promise<MetaInsights> {
   const result = await metaGet<MetaListResponse<Record<string, string>>>(config, `${adId}/insights`, {
     fields: "impressions,reach,clicks,spend",
     date_preset: "maximum",
@@ -268,30 +254,6 @@ async function readMetaPages<T>(
   return rows;
 }
 
-function getConfig(red?: "facebook" | "instagram"): MetaConfig {
-  const accessToken = process.env.META_ACCESS_TOKEN?.trim();
-  const rawAccount = process.env.META_AD_ACCOUNT_ID?.trim();
-  const pageId = process.env.META_PAGE_ID?.trim();
-  const instagramUserId = process.env.META_INSTAGRAM_USER_ID?.trim();
-  if (!accessToken || !rawAccount || !pageId) {
-    throw new Error("Meta no esta configurado: faltan token, cuenta publicitaria o pagina.");
-  }
-  if (red === "instagram" && !instagramUserId) {
-    throw new Error("Falta META_INSTAGRAM_USER_ID para pautar publicaciones de Instagram.");
-  }
-  const accountDigits = rawAccount.replace(/^act_/, "");
-  if (!/^\d+$/.test(accountDigits) || !/^\d+$/.test(pageId)) {
-    throw new Error("Los identificadores de Meta configurados no son validos.");
-  }
-  return {
-    accessToken,
-    adAccountId: `act_${accountDigits}`,
-    pageId,
-    instagramUserId,
-    apiVersion: process.env.META_GRAPH_API_VERSION?.trim() || "v25.0",
-  };
-}
-
 async function metaPost<T = unknown>(config: MetaConfig, path: string, body: Record<string, unknown>): Promise<T> {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(body)) {
@@ -339,7 +301,8 @@ async function metaFetchUrl<T>(
   };
   if (!response.ok || result.error) {
     const code = [result.error?.code, result.error?.error_subcode].filter(Boolean).join("/");
-    throw new Error(`Meta rechazo la operacion${code ? ` (${code})` : ""}: ${result.error?.message ?? "error desconocido"}`);
+    // Provider messages can echo submitted values. Persist only safe error codes.
+    throw new Error(`Meta rechazó la operación${code ? ` (${code})` : ""}.`);
   }
   return result;
 }

@@ -8,6 +8,7 @@ import { MaviScene } from "@/components/Mavi";
 import { MaviShowcase } from "@/components/MaviShowcase";
 import { CatalogOrdersPanel, type CatalogOrder } from "@/components/CatalogOrdersPanel";
 import { isMetaPausedDraftsEnabled, isMetaRealSpendEnabled } from "@/lib/commercial";
+import { configuredMetaClientBindings } from "@/lib/ads/meta-client-config";
 import {
   activarPautaMeta,
   actualizarMetricasMeta,
@@ -78,6 +79,11 @@ export default async function CampanasPage({
   const isAdmin = profile.is_platform_admin;
   const metaDraftsEnabled = isMetaPausedDraftsEnabled();
   const metaSpendEnabled = isMetaRealSpendEnabled();
+  let metaConnections: { id: string; name: string }[] = [];
+  if (isAdmin) {
+    try { metaConnections = configuredMetaClientBindings().filter((binding) => binding.active).map(({ id, name }) => ({ id, name })); }
+    catch { /* Invalid server configuration stays closed; no global account fallback. */ }
+  }
 
   const supabase = await createClient();
   const [{ data }, { data: orderData }, { data: catalogData }] = await Promise.all([
@@ -151,11 +157,16 @@ export default async function CampanasPage({
 
         {isAdmin && (
           <form action={verificarConexionMeta} className="mt-4">
-            <button type="submit" className="btn btn-secondary text-xs">
+            <label htmlFor="meta-client-connection" className="mb-2 block text-sm font-bold">Conexión del cliente</label>
+            <select id="meta-client-connection" name="connection_id" required disabled={!metaConnections.length} className="mr-3 rounded-xl border border-border bg-white px-3 py-2 text-sm" defaultValue="">
+              <option value="" disabled>Selecciona el cliente</option>
+              {metaConnections.map((connection) => <option key={connection.id} value={connection.id}>{connection.name}</option>)}
+            </select>
+            <button type="submit" disabled={!metaConnections.length} className="btn btn-secondary text-xs disabled:opacity-50">
               Verificar conexión con Meta
             </button>
             <p className="mt-1 text-xs text-muted">
-              Prueba token, cuenta publicitaria, página, Instagram y permisos sin crear anuncios ni iniciar gasto.
+              {metaConnections.length ? "Comprueba los activos y permisos de ese cliente sin crear anuncios ni iniciar gasto." : "Aún no hay conexiones de clientes habilitadas."}
             </p>
           </form>
         )}

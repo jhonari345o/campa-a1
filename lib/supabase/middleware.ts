@@ -7,6 +7,7 @@ const CONSENT_PROTECTED_ROUTES = [
   "/campanas", "/pautar", "/reportes", "/laboratorio", "/clientes", "/creditos", "/proveedores",
   "/cuenta/configuracion",
   "/api/planning",
+  "/api/catalog",
   "/social-media", "/api/social-media",
 ];
 
