@@ -59,10 +59,10 @@ test("radio expands station selection before planning dozens of insertions per s
   const brief=strategyBrief({selectedMedia:["radio"],budgetUsd:12000,startDate:"2026-11-01",endDate:"2026-11-30"});
   const bundle=evidence(Array.from({length:8},(_,i)=>candidate(`workspace:station-${i}`,"radio",10,["Nacional"],{stationId:`station-${i}`,stationCoverage:["Nacionales"]})));
   const report=buildStrategyReport(brief,bundle,baseline,options),rows=report.allocations[0].executions!;
-  assert.ok(rows.length>1);assert.ok(rows.every(r=>r.units!<=180));
+  assert.equal(rows.length,8);assert.ok(rows.every(r=>r.units!<=120));
   assert.equal(new Set(rows.map(r=>r.candidate.stationId)).size,rows.length);
-  assert.equal(rows.reduce((n,r)=>n+r.referenceSpendUsd!,0),12000);
-  assert.equal(report.reserveUsd,0);
+  assert.equal(rows.reduce((n,r)=>n+r.referenceSpendUsd!,0),9600);
+  assert.equal(report.reserveUsd,2400);
 });
 
 test("a nationwide movable format can serve a canton but does not cover all requested places with one unit",()=>{

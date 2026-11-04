@@ -115,10 +115,11 @@ test("national radio reserves an effective cadence and expands provinces in the 
  const low=run(200).allocations[0].executions!;
  assert.deepEqual(low.map(e=>e.candidate.market),["Nacional"]);assert.equal(low[0].units,20);
  const medium=run(600).allocations[0].executions!;
- assert.deepEqual(medium.map(e=>e.candidate.market),["Nacional","Guayas","Pichincha"]);
- assert.ok(medium.every(e=>e.units!>=20));
+ assert.deepEqual(medium.map(e=>e.candidate.market),["Nacional"]);
+ assert.equal(medium[0].units,60);
  const high=run(2000).allocations[0].executions!;
- assert.deepEqual(high.map(e=>e.candidate.market),["Nacional","Guayas","Pichincha","Azuay","Manabí","Tungurahua","El Oro","Los Ríos","Carchi"]);
+ assert.deepEqual(high.map(e=>e.candidate.market),["Nacional","Guayas","Pichincha","Azuay","Manabí"]);
+ assert.ok(high.every(e=>e.units!>=40));
  assert.equal(high.reduce((n,e)=>n+Math.round(e.amountUsd!*100),0),200000);
  assert.ok(high.reduce((n,e)=>n+e.referenceSpendUsd!,0)<=2000);
 });

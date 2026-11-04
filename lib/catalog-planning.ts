@@ -28,15 +28,17 @@ export function planningProductPrice(product: CatalogProduct, start?: string, en
   const cents = product.priceCents;
   if (product.referenceOnly || cents == null || !Number.isSafeInteger(cents) || cents <= 0 || !catalogPriceCoversDates(product, start, end)) return null;
   let periods = 1, unit = product.unit;
+  let rental: { monthlyPriceUsd: number; months: number } | undefined;
   if (product.kind === "ooh" && start && end) {
     const period = product.billingPeriod ?? product.unit.toLowerCase();
     const monthsPerPeriod = /12_months|año|anual|year/.test(period) ? 12 : /6_months|6 meses|semestr/.test(period) ? 6 : /3_months|3 meses|trimestr|quarter/.test(period) ? 3 : /month|mes|mensual/.test(period) ? 1 : null;
     if (monthsPerPeriod) {
       periods = Math.ceil(campaignRentalMonths(start, end)! / monthsPerPeriod);
       const months = periods * monthsPerPeriod;
+      rental = { monthlyPriceUsd: cents / 100 / monthsPerPeriod, months };
       unit = `contratación de ${months} ${months === 1 ? "mes" : "meses"}${product.unit.includes(" · ") ? ` · ${product.unit.split(" · ").slice(1).join(" · ")}` : ""}`;
     }
   }
   if (!Number.isSafeInteger(cents * periods)) return null;
-  return { priceUsd: cents * periods / 100, unit, periods };
+  return { priceUsd: cents * periods / 100, unit, periods, ...(rental ? { rental } : {}) };
 }
