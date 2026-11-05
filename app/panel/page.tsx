@@ -1,4 +1,5 @@
 import { WorkspaceWelcome } from "@/components/WorkspaceWelcome";
+import { getCampaignLibrary } from "@/lib/campaign-library-server";
 import { WorkspaceHome } from "@/components/WorkspaceHome";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -25,7 +26,10 @@ export default async function PanelPage() {
   const teams = await Promise.all(companies.map((c) => getCompanyTeam(c.id)));
   const name = profile.full_name ?? profile.email ?? "Ad Mavericks";
 
-  if (!profile.is_platform_admin && profile.workspace) return <div className="min-h-screen"><AppHeader name={name} isAdmin={false} workspace={profile.workspace} active="panel" /><WorkspaceHome workspace={profile.workspace} name={name} /></div>;
+  if (!profile.is_platform_admin && profile.workspace) {
+    const library = profile.workspace.kind === "agency" ? await getCampaignLibrary(profile.workspace.companyId) : null;
+    return <div className="min-h-screen"><AppHeader name={name} isAdmin={false} workspace={profile.workspace} active="panel" /><WorkspaceHome workspace={profile.workspace} name={name} clients={library?.library.clients} /></div>;
+  }
 
   return (
     <div className="min-h-screen">

@@ -4,8 +4,10 @@ import { MaviScene } from "./Mavi";
 import { PORTAL_LABELS, portalCapabilities } from "@/lib/portal-access";
 import type { WorkspaceIdentity } from "@/lib/workspace-brand";
 import styles from "./WorkspaceHome.module.css";
+import type { LibraryClient } from "@/lib/campaign-library";
+import { clientPlanningHref } from "@/lib/client-navigation";
 import { personalGreeting } from "@/lib/personal-greeting";
-export function WorkspaceHome({workspace,name,previewCompanyId}:{workspace:WorkspaceIdentity;name:string;previewCompanyId?:string}) {
+export function WorkspaceHome({workspace,name,previewCompanyId,clients=[]}:{workspace:WorkspaceIdentity;name:string;previewCompanyId?:string;clients?:LibraryClient[]}) {
  const kind=workspace.kind??"agency",cap=portalCapabilities(kind,workspace.role,false,workspace.clientPlanning);
  const tiles=kind==="agency"?[
  {href:"/planificador?view=planner",title:"Crea tu próximo plan",copy:"Define el brief y construye una recomendación para tu cliente.",icon:"↗",primary:true,show:cap.plan},
@@ -23,5 +25,6 @@ export function WorkspaceHome({workspace,name,previewCompanyId}:{workspace:Works
  ];
  return <main id="workspace-content" className="portal-page"><section className={styles.hero}><div><p>{PORTAL_LABELS[kind]} · Ad Mavericks One</p><h1>{personalGreeting(name,workspace.name)}</h1><span>{kind==="agency"?"Tu próxima campaña empieza aquí.":kind==="client"?"Tus medios y resultados, en un lugar.":"Todo lo que necesitan conocer de tus medios."}</span></div><MaviScene height={176} motion="float" className={styles.mavi}/></section>
  <section className={styles.tiles} aria-label="Accesos de tu espacio">{tiles.filter(t=>t.show).map(t=><Link key={t.href} href={previewCompanyId?workspacePreviewHref(previewCompanyId,t.href):t.href} className={t.primary?styles.primary:styles.tile}><span aria-hidden>{t.icon}</span><h2>{t.title}</h2><p>{t.copy}</p><strong>Explorar <span aria-hidden>→</span></strong></Link>)}</section>
+ {kind==="agency"&&clients.length>0&&<section className={styles.clients} aria-label="Tus clientes"><header><div><p>Tu portafolio</p><h2>Elige con qué marca trabajar</h2></div><Link href={previewCompanyId?workspacePreviewHref(previewCompanyId,"/clientes"):"/clientes"}>Ver campañas →</Link></header><div className={styles.clientGrid}>{clients.map(client=><article key={client.id}><span className={styles.monogram} aria-hidden>{client.name.split(" ").slice(0,2).map(word=>word[0]).join("")}</span><div><h3>{client.name}</h3><p>{client.category}</p></div><nav aria-label={`Acciones de ${client.name}`}><Link href={previewCompanyId?workspacePreviewHref(previewCompanyId,"/clientes",client.id):`/clientes#client=${encodeURIComponent(client.id)}`}>Campañas y reportes</Link>{cap.plan&&!previewCompanyId&&<Link href={clientPlanningHref(client.id)}>Crear plan ↗</Link>}</nav></article>)}</div></section>}
  <aside className={styles.help}><strong>Trabaja con claridad.</strong><p>{kind==="client"?"Tu agencia coordina las solicitudes y contrataciones. Aquí puedes consultar tu catálogo y tus resultados.":kind==="provider"?"La información que publiques pertenece a tus medios. Cada actualización conserva su vigencia y condiciones.":"Los planes, acuerdos y reportes se organizan dentro del espacio de tu agencia."}</p></aside></main>;
 }

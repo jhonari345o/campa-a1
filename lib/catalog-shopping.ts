@@ -1,4 +1,4 @@
-import { INFLUENCER_IMAGE_SLUGS, OOH_PROVIDERS, DIGITAL_PLATFORMS, type InfluencerProfile } from "./media-catalog";
+import { influencerPhoto, OOH_PROVIDERS, DIGITAL_PLATFORMS, type InfluencerProfile } from "./media-catalog";
 import type { BroadcastCatalog } from "./broadcast-catalog";
 import type { RadioDirectoryCatalog } from "./radio-directory";
 import type { PressCatalog } from "./press-catalog";
@@ -38,7 +38,7 @@ export function catalogProducts(profiles: InfluencerProfile[], ooh: OohCatalog, 
       name: rate.format, format: rate.format, unit: "entregable", priceCents: price(rate.amountUsd),
       taxIncluded: rate.taxIncluded ?? false, location: profile.platform ?? "",
       reference: "Tarifa del catálogo", conditions: rate.conditions ?? "",
-      image: INFLUENCER_IMAGE_SLUGS.has(profile.slug) ? `/providers/influencers/${profile.slug}.webp` : null,
+      image: influencerPhoto(profile.slug),
       source: { profileId: profile.id, rateId: rate.id },
     });
   }

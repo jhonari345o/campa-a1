@@ -1,3 +1,4 @@
+import { influencerPhoto } from "./media-catalog";
 import { broadcastLogo } from "./broadcast-logos";
 import "server-only";
 import { cache } from "react";
@@ -65,10 +66,10 @@ export async function priceCatalogProducts(products: CatalogProduct[], previewCo
       if((data??[]).length<500)break;
     }
     for(let from=0;from<20000;from+=500){
-      let q=caller.from("workspace_catalog_products").select("id,medium,provider,name,format,format_group,unit,market_keys,location,reference,conditions,radio_station_id,publication_id,asset_id,reference_only,reference_label").eq("company_id",companyId).eq("active",true).order("id").range(from,from+499);
+      let q=caller.from("workspace_catalog_products").select("id,medium,provider,name,format,format_group,unit,market_keys,location,reference,conditions,radio_station_id,publication_id,asset_id,reference_only,reference_label,influencer_profile_id,influencer_profiles(slug)").eq("company_id",companyId).eq("active",true).order("id").range(from,from+499);
       q=clientId?q.or(`client_id.is.null,client_id.eq.${clientId}`):q.is("client_id",null);
       const {data,error}=await q;if(error)throw new Error("WORKSPACE_CATALOG_UNAVAILABLE");
-      products.push(...(data??[]).map(p=>({key:`${p.medium==="influencer"?"creator":p.medium}:workspace:${p.id}`,kind:p.medium as CatalogProduct["kind"],provider:p.provider,name:p.name,format:p.format,formatGroup:p.format_group as CatalogProduct["formatGroup"],marketKeys:p.market_keys,unit:p.unit,priceCents:null,taxIncluded:null,location:p.location,reference:p.reference,referenceOnly:p.reference_only,referenceLabel:p.reference_label,image:null,conditions:p.conditions,source:{workspaceProductId:p.id,...(p.radio_station_id?{stationId:p.radio_station_id}:{}),...(p.publication_id?{publicationId:p.publication_id}:{}),...(p.asset_id?{assetId:p.asset_id}:{})}})));
+      products.push(...(data??[]).map(p=>({key:`${p.medium==="influencer"?"creator":p.medium}:workspace:${p.id}`,kind:p.medium as CatalogProduct["kind"],provider:p.provider,name:p.name,format:p.format,formatGroup:p.format_group as CatalogProduct["formatGroup"],marketKeys:p.market_keys,unit:p.unit,priceCents:null,taxIncluded:null,location:p.location,reference:p.reference,referenceOnly:p.reference_only,referenceLabel:p.reference_label,image:p.influencer_profiles?influencerPhoto((p.influencer_profiles as unknown as {slug:string}).slug):null,conditions:p.conditions,source:{workspaceProductId:p.id,...(p.influencer_profile_id?{profileId:p.influencer_profile_id}:{}),...(p.radio_station_id?{stationId:p.radio_station_id}:{}),...(p.publication_id?{publicationId:p.publication_id}:{}),...(p.asset_id?{assetId:p.asset_id}:{})}})));
       if((data??[]).length<500)break;
     }
     // Only IDs from the caller's authorized agreement query can reach this privileged read.

@@ -21,7 +21,7 @@ import { pressEntriesForRegion, pressRegions, validatePressPicks, type PressCata
 import { oohProvinceGroups, oohRateUnit, oohMatches, type OohCatalog } from "@/lib/ooh-catalog";
 import styles from "./DiyPlanner.module.css";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { DIGITAL_PLATFORMS, OOH_PROVIDERS, type InfluencerProfile } from "@/lib/media-catalog";
+import { DIGITAL_PLATFORMS, OOH_PROVIDERS, influencerPhoto, type InfluencerProfile } from "@/lib/media-catalog";
 import type { MediaGroup } from "@/lib/media-groups";
 import type { OohLocationOption, SavedMediaPlan } from "@/lib/media-workspace";
 import { buildPlanningScenarios, mediaGroupLabel, type PlanningScenario } from "@/lib/plan-optimizer";
@@ -57,6 +57,7 @@ export function DiyPlanner({
   influencers,
   oohLocations,
   initialPlan,
+  initialClientName = "",
   categoryCatalog,
   workspaceProducts=[],
 }: {
@@ -68,6 +69,7 @@ export function DiyPlanner({
   influencers: InfluencerProfile[];
   oohLocations: OohLocationOption[];
   initialPlan?: SavedMediaPlan | null;
+  initialClientName?: string;
 }) {
   const initialBrief = initialPlan?.brief ?? {};
   const initialSelection = initialPlan?.selection ?? {};
@@ -77,7 +79,7 @@ export function DiyPlanner({
   const [sex,setSex]=useState(stringValue(initialBrief.sex)||"Todas las personas");
   const [planId, setPlanId] = useState(initialPlan?.id ?? "");
   const [name, setName] = useState(stringValue(initialPlan?.name) || "Plan multimedia personalizado");
-  const [brand, setBrand] = useState(stringValue(initialBrief.brand));
+  const [brand, setBrand] = useState(stringValue(initialBrief.brand) || (!initialPlan ? initialClientName : ""));
   const initialCategory = resolveCategory(categoryCatalog.categories, stringValue(initialBrief.categoryId), stringValue(initialBrief.keyword));
   const [keyword, setKeyword] = useState(initialCategory?.label ?? "");
   const [categoryId, setCategoryId] = useState(initialCategory?.id ?? "");
@@ -269,12 +271,12 @@ function PressConfigurator({ catalog, brief, picks, onChange }: { catalog: Press
 }
 
 function InfluencerConfigurator({ profiles, picks, onChange }: { profiles: InfluencerProfile[]; picks: InfluencerPick[]; onChange: (value: InfluencerPick[]) => void }) {
-  const [category, setCategory] = useState<InfluencerProfile["category"]>("foodie");
-  const available = profiles.filter((item) => item.category === category);
+  const [category, setCategory] = useState<InfluencerProfile["category"] | "all">("all");
+  const available = profiles.filter((item) => (category === "all" || item.category === category));
   const [profileId, setProfileId] = useState("");
   const [deliverable, setDeliverable] = useState("Reel colaborativo");
   function add() { const profile = available.find((item) => item.id === profileId) ?? available[0]; if (!profile) return; const rate = influencerRateFor(profile, deliverable); onChange([...picks, { id: `${profile.id}-${deliverable}-${picks.length}`, profileId: profile.id, name: profile.name, deliverable, rate, quantity: 1 }]); }
-  return <Configurator number="06" eyebrow="Influenciadores" title="Arma el roster y sus entregables"><div className="grid gap-3 xl:grid-cols-[.8fr_1.2fr_1fr_auto]"><Select label="Categoría" value={category} onChange={(value) => { setCategory(value as InfluencerProfile["category"]); setProfileId(""); }} options={[["deportes", "Deportes"], ["foodie", "Foodie"], ["beauty", "Beauty"]]} /><Select label="Perfil" value={profileId || available[0]?.id || ""} onChange={setProfileId} options={available.map((item) => [item.id, `${item.name}${item.handle ? ` · @${item.handle.replace(/^@/, "")}` : ""}`])} /><Select label="Entregable" value={deliverable} onChange={setDeliverable} options={["Reel colaborativo", "TikTok", "Historia", "Derecho de pauta"].map((item) => [item, item])} /><button type="button" onClick={add} className="btn btn-primary self-end">Agregar</button></div><PickList items={picks} empty="Selecciona una categoría antes de mezclar perfiles sin relación con la campaña." render={(item) => <><div><strong>{item.name} · {item.deliverable}</strong><small>{item.rate == null ? "Tarifa pendiente" : `${money(item.rate)} referencial sin IVA`} · derechos y disponibilidad por reconfirmar</small></div><NumberCompact value={item.quantity} onChange={(quantity) => onChange(picks.map((pick) => pick.id === item.id ? { ...pick, quantity } : pick))} /><Remove onClick={() => onChange(picks.filter((pick) => pick.id !== item.id))} /></>} /></Configurator>;
+  return <Configurator number="06" eyebrow="Influenciadores" title="Arma el roster y sus entregables"><div className="grid gap-3 xl:grid-cols-[.8fr_1.2fr_1fr_auto]"><Select label="Categoría" value={category} onChange={(value) => { setCategory(value as InfluencerProfile["category"]); setProfileId(""); }} options={[["all", "Todos"], ["deportes", "Deportes"], ["foodie", "Foodie"], ["beauty", "Beauty"]]} /><Select label="Perfil" value={profileId || available[0]?.id || ""} onChange={setProfileId} options={available.map((item) => [item.id, `${item.name}${item.handle ? ` · @${item.handle.replace(/^@/, "")}` : ""}`])} /><Select label="Entregable" value={deliverable} onChange={setDeliverable} options={["Reel colaborativo", "TikTok", "Historia", "Derecho de pauta"].map((item) => [item, item])} /><button type="button" onClick={add} className="btn btn-primary self-end">Agregar</button></div><PickList items={picks} empty="Selecciona una categoría antes de mezclar perfiles sin relación con la campaña." render={(item) => <><div>{influencerPhoto(profiles.find(p=>p.id===item.profileId)?.slug??"")&&<Image src={influencerPhoto(profiles.find(p=>p.id===item.profileId)?.slug??"")!} alt={`Foto de ${item.name}`} width={40} height={40} className="mb-2 rounded-xl object-cover"/>}<strong>{item.name} · {item.deliverable}</strong><small>{item.rate == null ? "Tarifa pendiente" : `${money(item.rate)} referencial sin IVA`} · derechos y disponibilidad por reconfirmar</small></div><NumberCompact value={item.quantity} onChange={(quantity) => onChange(picks.map((pick) => pick.id === item.id ? { ...pick, quantity } : pick))} /><Remove onClick={() => onChange(picks.filter((pick) => pick.id !== item.id))} /></>} /></Configurator>;
 }
 
 function Configurator({ number, eyebrow, title, children }: { number: string; eyebrow: string; title: string; children: React.ReactNode }) { return <section className="rounded-panel border border-border bg-white p-6 shadow-panel"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-forest text-sm font-black text-signal">{number}</span><div><p className="text-xs font-black uppercase tracking-wide text-signal-dark">{eyebrow}</p><h2 className="text-xl font-black">{title}</h2></div></div><div className="mt-6">{children}</div></section>; }
