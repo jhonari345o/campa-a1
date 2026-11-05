@@ -15,7 +15,7 @@ export default async function ClientsPage() {
   return <div className="min-h-screen">
     <AppHeader name={profile.full_name ?? profile.email ?? ""} isAdmin={profile.is_platform_admin} workspace={profile.workspace} active="clientes" />
     <main id="workspace-content" className="portal-page library-page">
-      <ClientCampaignLibrary library={library} workspaceName={profile.workspace?.name ?? "Clientes"} brand={profile.workspace?.brand ?? "one"} available={available} />
+      <ClientCampaignLibrary planClientContext={!profile.is_platform_admin} library={library} workspaceName={profile.workspace?.name ?? "Clientes"} brand={profile.workspace?.brand ?? "one"} available={available} />
     </main>
   </div>;
 }

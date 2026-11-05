@@ -7,7 +7,8 @@ import { getPressCatalog } from "@/lib/press-server";
 import { getInfomediaCatalog } from "@/lib/infomedia-server";
 import { getMyCompanies } from "@/lib/company";
 import { canWorkspaceRole } from "@/lib/permissions";
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
+import { requestedWorkspaceClient } from "@/lib/client-navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { getSessionProfile } from "@/lib/auth";
 import {
@@ -38,7 +39,7 @@ const supabaseConfigured = Boolean(
 export default async function PlanificadorPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; section?: string; plan?: string }>;
+  searchParams: Promise<{ view?: string; section?: string; plan?: string; client?: string }>;
 }) {
   if (!supabaseConfigured) redirect("/consola");
   const profile = await getSessionProfile();
@@ -56,13 +57,16 @@ export default async function PlanificadorPage({
   const section = allowedSections.has(params.section as CatalogSection)
     ? params.section as CatalogSection
     : "digital";
+  const clientContext = await catalogClientContext();
+  const requestedClient = requestedWorkspaceClient(clientContext?.clients ?? [], params.client);
+  if (params.client && !requestedClient) notFound();
 
   const categoryCatalog = view === "planner" || view === "diy" ? await getInfomediaCatalog() : { categories: [] };
   const catalogNeeded = view === "media" || view === "diy";
   const selectedPlanNeeded = (view === "planner" || view === "diy" || view === "versions") && Boolean(params.plan);
   const [influencers, plans, selectedPlan, versions, oohLocations, collaboration, catalogHealth, broadcast, ooh, radioDirectory, press, shoppingCart, purchaseReferences] = await Promise.all([
     catalogNeeded ? getInfluencerCatalog() : Promise.resolve([]),
-    view === "plans" ? getMySavedPlans(profile.id) : Promise.resolve([]),
+    view === "plans" ? getMySavedPlans(profile.id, requestedClient?.id ?? clientContext?.selected?.id) : Promise.resolve([]),
     selectedPlanNeeded ? getMySavedPlan(profile.id, params.plan!) : Promise.resolve(null),
     view === "versions" && params.plan ? getMyPlanVersions(profile.id, params.plan) : Promise.resolve([]),
     view === "diy" ? getOohLocationCatalog() : Promise.resolve([]),
@@ -76,7 +80,13 @@ export default async function PlanificadorPage({
     view === "media" && section === "ooh" && profile.is_platform_admin ? readOohPurchaseReferences() : Promise.resolve([]),
   ]);
 
-  const clientContext=await catalogClientContext();
+  if (selectedPlanNeeded && !selectedPlan) notFound();
+  const savedClientId = typeof selectedPlan?.brief.clientId === "string" ? selectedPlan.brief.clientId : undefined;
+  const savedClient = requestedWorkspaceClient(clientContext?.clients ?? [], savedClientId);
+  if (clientContext && savedClientId && !savedClient) notFound();
+  if (requestedClient && savedClientId && requestedClient.id !== savedClientId) notFound();
+  const desiredClient = savedClient ?? requestedClient;
+  const needsClient = Boolean(clientContext?.clients.length && (!clientContext.selected || (desiredClient && desiredClient.id !== clientContext.selected.id)));
   const shoppingProducts = catalogNeeded ? await priceCatalogProducts(catalogProducts(influencers, ooh, { broadcast, radio: radioDirectory, press })) : [];
   return (
     <div className="min-h-screen">
@@ -93,13 +103,15 @@ export default async function PlanificadorPage({
                 : "Planificador de medios"}
       />
       <main id="workspace-content" className={`portal-page ${view === "media" ? "portal-page-wide" : "portal-page-planner"}`}>
-        {clientContext&&<CatalogClientSwitcher {...clientContext}/>}
-        {view === "media" ? (
+        {clientContext&&<CatalogClientSwitcher key={desiredClient?.id ?? clientContext.selected?.id ?? "choose"} {...clientContext} requestedClientId={desiredClient?.id}/>}
+        {needsClient && view !== "plans" && view !== "versions" ? (
+          <section className="rounded-2xl bg-forest p-6 text-white"><h1 className="text-xl font-bold">{desiredClient ? `Prepara tu plan para ${desiredClient.name}` : "Elige tu cliente"}</h1><p className="mt-2">Continúa con el cliente seleccionado para trabajar con sus tarifas y guardar el plan en su espacio.</p></section>
+        ) : view === "media" ? (
           <MediaCatalog broadcast={broadcast} ooh={ooh} radioDirectory={radioDirectory} press={press} section={section} influencers={influencers} health={catalogHealth} shoppingProducts={shoppingProducts} shoppingCart={shoppingCart} shoppingCompanies={companies.filter(c => c.status === "activa" && canWorkspaceRole(c, "campaign:create")).map(c => ({ id: c.id, name: c.name }))} canPlan={profile.is_platform_admin || companies.some(c=>c.status==="activa"&&canWorkspaceRole(c,"plan"))} canRequest={profile.is_platform_admin || companies.some(c => c.status === "activa" && canWorkspaceRole(c, "campaign:create"))} isAdmin={profile.is_platform_admin} purchaseReferences={purchaseReferences} />
         ) : view === "plans" ? (
           <SavedPlans plans={plans} />
         ) : view === "diy" ? (
-          <DiyPlanner key={selectedPlan?.id ?? "new"} workspaceProducts={shoppingProducts} broadcast={broadcast} pressCatalog={press} oohCatalog={ooh} categoryCatalog={categoryCatalog} influencers={influencers} oohLocations={oohLocations} initialPlan={selectedPlan} />
+          <DiyPlanner key={selectedPlan?.id ?? clientContext?.selected?.id ?? "new"} initialClientName={clientContext?.selected?.name} workspaceProducts={shoppingProducts} broadcast={broadcast} pressCatalog={press} oohCatalog={ooh} categoryCatalog={categoryCatalog} influencers={influencers} oohLocations={oohLocations} initialPlan={selectedPlan} />
         ) : view === "versions" ? (
           <PlanVersions canApprove={profile.is_platform_admin || companies.some(c => c.id === selectedPlan?.companyId && c.status === "activa" && canWorkspaceRole(c, "campaign:approve"))} plan={selectedPlan} versions={versions} comments={collaboration.comments} approvals={collaboration.approvals} />
         ) : (
@@ -109,7 +121,7 @@ export default async function PlanificadorPage({
               Completa el brief, revisa la recomendación y guarda un borrador privado.
               La plataforma recomienda; tu equipo conserva el control.
             </p>
-            <div className="mt-8"><PlanForm key={selectedPlan?.id ?? "new"} categoryCatalog={categoryCatalog} workspaceName={profile.workspace?.name} canApprove={canApprove} initialPlan={selectedPlan} /></div>
+            <div className="mt-8"><PlanForm key={selectedPlan?.id ?? clientContext?.selected?.id ?? "new"} initialClientName={clientContext?.selected?.name} categoryCatalog={categoryCatalog} workspaceName={profile.workspace?.name} canApprove={canApprove} initialPlan={selectedPlan} /></div>
           </>
         )}
       </main>

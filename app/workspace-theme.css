@@ -72,3 +72,8 @@
  .workspace-banner--ucsg .workspace-client-brand-image,.workspace-banner--mobil .workspace-client-brand-image{height:24px;max-width:108px;}
  .workspace-welcome{margin-top:0;}.workspace-welcome .btn{width:100%;}
 }
+
+.workspace-banner--breinjart{border-color:#824747;background:linear-gradient(112deg,#302b29 0%,#482d31 65%,#763b43 100%)}
+.workspace-banner--breinjart::before{border-color:#ff888855;box-shadow:0 0 0 32px #f6666610,0 0 0 66px #f6666608}
+.workspace-banner--breinjart .workspace-banner-copy p,.workspace-banner--breinjart .workspace-banner-copy>span{color:#ffd5cf}
+.workspace-banner--breinjart .workspace-client-brand-image{width:190px;height:auto}

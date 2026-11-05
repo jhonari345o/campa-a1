@@ -38,7 +38,7 @@ export type InfluencerRate = { id?: string; format: string; amountUsd: number | 
 export type InfluencerProfile = {
   id: string;
   slug: string;
-  category: "deportes" | "foodie" | "beauty";
+  category: "deportes" | "foodie" | "beauty" | "general";
   name: string;
   handle: string | null;
   platform: string | null;
@@ -162,7 +162,7 @@ export const STATUS_LABELS: Record<CatalogStatus, string> = {
   directorio: "Solo directorio",
 };
 
-/** El portal fuente solo tiene fotografía para estos 30 perfiles. */
+/** Legacy assets retained so saved catalog selections keep their photos. */
 export const INFLUENCER_IMAGE_SLUGS = new Set([
   "gabriela-gomez", "raquel-ochoa", "tono-valencia", "joel-arrobo", "jamil-faour",
   "lucho-bresciani", "andrea-cobo", "yerson-palma", "gray-martinez", "ricardo-pino",
@@ -171,3 +171,49 @@ export const INFLUENCER_IMAGE_SLUGS = new Set([
   "melissa-pergola", "carla-bruno", "sofi-reynes", "andrea-heras", "cris-torres",
   "mare-cevallos", "nicole-delgado", "domenica-espinoza", "debora-delgado", "gene-campuzano",
 ]);
+
+/** Reviewed photographs. No URL or filename is accepted from user input. */
+export const INFLUENCER_PHOTOS: Readonly<Record<string,string>> = Object.freeze({
+  ...Object.fromEntries([...INFLUENCER_IMAGE_SLUGS].map(slug=>[slug,`/providers/influencers/${slug}.webp`])),
+  "hector-javier":"/providers/influencers/hector-javier.jpg",
+  "alicia-abad":"/providers/influencers/alicia-abad.jpg",
+  "andrea-sabando":"/providers/influencers/andrea-sabando.jpg",
+  "anahi-salas":"/providers/influencers/anahi-salas.jpg",
+  "camilo-villareal":"/providers/influencers/camilo-villareal.jpg",
+  "sara-anahi":"/providers/influencers/sara-anahi.jpg",
+  "tego":"/providers/influencers/tego.jpg",
+  "martin-munoz":"/providers/influencers/martin-munoz.jpg",
+  "majo-jimenez":"/providers/influencers/majo-jimenez.jpg",
+  "elky-ortiz":"/providers/influencers/elky-ortiz.jpg",
+  "melanie-franco":"/providers/influencers/melanie-franco.jpg",
+  "raul-wav":"/providers/influencers/raul-wav.jpg",
+  "nayelly-rodas":"/providers/influencers/nayelly-rodas.jpg",
+  "aida-matute":"/providers/influencers/aida-matute.jpg",
+  "esteban-hidalgo":"/providers/influencers/esteban-hidalgo.jpg",
+  "maylyng-norka":"/providers/influencers/maylyng-norka.jpg",
+  "daniel-galindo":"/providers/influencers/daniel-galindo.jpg",
+  "valentin-carvajal":"/providers/influencers/valentin-carvajal.jpg",
+  "david-luzuriaga":"/providers/influencers/david-luzuriaga.jpg",
+  "jonathan-ortiz":"/providers/influencers/jonathan-ortiz.jpg",
+  "marco-guadalupe":"/providers/influencers/marco-guadalupe.jpg",
+  "mathias-vallejo":"/providers/influencers/mathias-vallejo.jpg",
+  "lili":"/providers/influencers/lili.jpg",
+  "ivan-pareja":"/providers/influencers/ivan-pareja.jpg",
+  "belen-montero":"/providers/influencers/belen-montero.jpg",
+  "katherine-veliz":"/providers/influencers/katherine-veliz.jpg",
+  "genesis-casanova":"/providers/influencers/genesis-casanova.jpg",
+  "marco-cedeno":"/providers/influencers/marco-cedeno.jpg",
+  "irene-suarez":"/providers/influencers/irene-suarez.jpg",
+  "franchesca-carvache":"/providers/influencers/franchesca-carvache.jpg",
+  "ariana-miranda":"/providers/influencers/ariana-miranda.jpg",
+  "mateo-balseca":"/providers/influencers/mateo-balseca.jpg",
+  "steven-rivera":"/providers/influencers/steven-rivera.jpg",
+  "arleth-perez":"/providers/influencers/arleth-perez.jpg",
+  "luis-mariscal":"/providers/influencers/luis-mariscal.jpg",
+  "valeska-kristina":"/providers/influencers/valeska-kristina.jpg",
+  "paola-briceno":"/providers/influencers/paola-briceno.jpg",
+  "montserrat-leight":"/providers/influencers/montserrat-leight.jpg",
+  "xavier-argudo":"/providers/influencers/xavier-argudo.jpg",
+  "la-hueca-virtual":"/providers/influencers/la-hueca-virtual.jpg",
+});
+export function influencerPhoto(slug:string):string|null { return Object.hasOwn(INFLUENCER_PHOTOS,slug)?INFLUENCER_PHOTOS[slug]:null; }

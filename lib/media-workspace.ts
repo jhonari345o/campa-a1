@@ -137,12 +137,14 @@ export async function getInfluencerCatalog(): Promise<InfluencerProfile[]> {
   }));
 }
 
-export async function getMySavedPlans(userId: string): Promise<SavedMediaPlan[]> {
+export async function getMySavedPlans(userId: string, clientId?: string): Promise<SavedMediaPlan[]> {
   void userId;
   const db = await createClient();
-  const { data, error } = await db
+  let query = db
     .from("media_plans")
-    .select("id, company_id, name, status, mode, stage, version, progress, brief, analysis, proposal, selection, updated_at")
+    .select("id, company_id, name, status, mode, stage, version, progress, brief, analysis, proposal, selection, updated_at");
+  if (clientId) query = query.eq("brief->>clientId", clientId);
+  const { data, error } = await query
     .order("updated_at", { ascending: false })
     .limit(50);
   if (error) return [];

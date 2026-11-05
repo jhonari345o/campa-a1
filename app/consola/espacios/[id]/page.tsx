@@ -5,6 +5,8 @@ import {createClient} from "@/lib/supabase/server";
 import {workspaceIdentity} from "@/lib/workspace-brand";
 import {AppHeader} from "@/components/AppHeader";
 import {WorkspaceHome} from "@/components/WorkspaceHome";
+import {getCampaignLibrary} from "@/lib/campaign-library-server";
+import {ClientCampaignLibrary} from "@/components/ClientCampaignLibrary";
 import {ClientReports} from "@/components/ClientReports";
 import {getBroadcastCatalog} from "@/lib/broadcast-server";
 import {getRadioDirectory} from "@/lib/radio-directory-server";
@@ -24,10 +26,12 @@ export default async function WorkspacePreview({params,searchParams}:{params:Pro
  const workspace=workspaceIdentity([{...c,role:"viewer"}],false)!;
  const p=await searchParams,sections=new Set(["tv","radio","ooh","press","digital","influencers"]),section=(sections.has(p.section??"")?p.section:"tv") as CatalogSection;
  const {data:clients}=await db.from("workspace_clients").select("id,name").eq("company_id",id).order("name");
+ const library=workspace.kind==="agency"?await getCampaignLibrary(id):null;
  const selectedClient=(clients??[]).find(c=>c.id===p.client);
  const banner=<aside className="workspace-preview-banner border-b border-border bg-white px-6 py-3 text-sm text-muted">Vista previa de consulta · {c.name}. <Link href="/consola" className="font-bold text-signal-dark">Volver a administración →</Link>{(clients??[]).length>0&&<nav className="mt-3 flex flex-wrap gap-2" aria-label="Cliente de la vista previa">{clients!.map(client=><Link className={`rounded-lg border border-border px-3 py-2 ${selectedClient?.id===client.id?"bg-forest text-white":""}`} key={client.id} href={`/consola/espacios/${id}?view=media&section=${section}&client=${client.id}`}>{client.name}</Link>)}</nav>}</aside>;
+ if(p.view==="reports"&&library)return <><AppHeader name="Vista previa" isAdmin={false} workspace={workspace} previewCompanyId={id} active="clientes"/>{banner}<main id="workspace-content" className="portal-page library-page"><ClientCampaignLibrary preview initialClientId={selectedClient?.id} library={library.library} available={library.available} workspaceName={workspace.name} brand={workspace.brand}/></main></>;
  if(p.view==="reports")return <>{banner}<ClientReports previewCompanyId={id} profile={{...actor,is_platform_admin:false,full_name:"Vista previa",workspace}}/></>;
- if(p.view!=="media")return <><AppHeader name="Vista previa" isAdmin={false} workspace={workspace} previewCompanyId={id}/>{banner}<WorkspaceHome workspace={workspace} name={actor.full_name??""} previewCompanyId={id}/></>;
+ if(p.view!=="media")return <><AppHeader name="Vista previa" isAdmin={false} workspace={workspace} previewCompanyId={id}/>{banner}<WorkspaceHome clients={library?.library.clients} workspace={workspace} name={actor.full_name??""} previewCompanyId={id}/></>;
  const [rawBroadcast,rawRadio,rawPress,rawOoh,rawInfluencers]=await Promise.all([getBroadcastCatalog(),getRadioDirectory(),getPressCatalog(),getOohCatalog(),getInfluencerCatalog()]);
  // The preview uses the same customer projection. No supplier acquisition price is displayed.
  const broadcast={...rawBroadcast,sources:rawBroadcast.sources.map(s=>({...s,conditions:""})),tv:rawBroadcast.tv.map(o=>({...o,priceUsd:null,note:""}))};

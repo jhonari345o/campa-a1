@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
 import {
   CATALOG_SECTIONS,
   DIGITAL_PLATFORMS,
-  INFLUENCER_IMAGE_SLUGS,
+  influencerPhoto,
   type CatalogItem,
   type CatalogSection,
   type DigitalPlatform,
@@ -145,13 +145,13 @@ function DigitalCard({ item }: { item: DigitalPlatform }) {
 }
 
 function InfluencerSection({ profiles }: { profiles: InfluencerProfile[] }) {
-  const [category, setCategory] = useState<InfluencerProfile["category"]>("foodie");
+  const [category, setCategory] = useState<InfluencerProfile["category"] | "all">("all");
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
   const matches = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase("es");
     return profiles.filter((profile) =>
-      profile.category === category
+      (category === "all" || profile.category === category)
       && (!needle || `${profile.name} ${profile.handle ?? ""}`.toLocaleLowerCase("es").includes(needle)),
     );
   }, [category, profiles, query]);
@@ -167,6 +167,7 @@ function InfluencerSection({ profiles }: { profiles: InfluencerProfile[] }) {
       />
       <div className="mt-6 grid gap-3 sm:grid-cols-3" role="group" aria-label="Categorías de influenciadores">
         {([
+          ["all", "Todos", "Explora todos los perfiles del catálogo"],
           ["deportes", "Deportes", "Fútbol, actualidad deportiva, conversación y entretenimiento"],
           ["foodie", "Foodie", "Gastronomía, recorridos, recetas y experiencias de consumo"],
           ["beauty", "Beauty", "Belleza, estilo, maquillaje y cuidado personal"],
@@ -214,14 +215,14 @@ function InfluencerSection({ profiles }: { profiles: InfluencerProfile[] }) {
 }
 
 function InfluencerCard({ profile }: { profile: InfluencerProfile }) {
-  const hasImage = INFLUENCER_IMAGE_SLUGS.has(profile.slug);
+  const photo = influencerPhoto(profile.slug);
   return (
     <article className="media-portal-influencer-card flex flex-col text-white">
       <div className="flex items-start gap-3">
         <div className="relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-2xl border-2 border-signal bg-white text-lg font-black text-forest shadow-sm">
-          {hasImage ? (
+          {photo ? (
             <Image
-              src={`/providers/influencers/${profile.slug}.webp`}
+              src={photo}
               alt={`Foto de ${profile.name}`}
               fill
               sizes="64px"
@@ -230,7 +231,7 @@ function InfluencerCard({ profile }: { profile: InfluencerProfile }) {
           ) : initials(profile.name)}
         </div>
         <div className="min-w-0">
-          <span className="text-[10px] font-black uppercase tracking-wide text-[#91f58d]">{profile.category}</span>
+          <span className="text-[10px] font-black uppercase tracking-wide text-[#91f58d]">{profile.category === "general" ? "Creador de contenido" : profile.category}</span>
           <h3 className="mt-1 text-lg font-black leading-tight [overflow-wrap:break-word]">{profile.name}</h3>
           {profile.profileUrl && profile.handle ? (
             <a href={profile.profileUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block break-all text-xs font-bold text-[#9bd6fa] hover:underline">
@@ -275,7 +276,7 @@ function percent(value: number | null) { return value == null ? "—" : `${new I
 
 function WorkspaceRateCards({products,section}:{products:CatalogProduct[];section:CatalogSection}){
  const [query,setQuery]=useState(""),[limit,setLimit]=useState(6),[formatGroup,setFormatGroup]=useState("all");
- const medium=section==="influencers"?"influencer":section,rows=products.filter(p=>p.source.workspaceProductId&&p.kind===medium);
+ const medium=section==="influencers"?"influencer":section,rows=products.filter(p=>p.source.workspaceProductId&&!p.source.profileId&&p.kind===medium);
  const normalize=(s:string)=>s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
  const filtered=rows.filter(p=>(formatGroup==="all"||p.formatGroup===formatGroup)&&normalize(`${p.provider} ${p.name} ${p.format} ${p.location}`).includes(normalize(query)));
  const groups=section==="radio"?accountRadioGroups(filtered):filtered.map(p=>[p]);

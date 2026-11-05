@@ -2,6 +2,8 @@
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import type { WorkspaceIdentity } from "@/lib/workspace-brand";
+import { clientPlanningHref } from "@/lib/client-navigation";
 import { metricDifference, metricValue, type CampaignLibrary, type LibraryDocument, type LibraryMetricValue } from "@/lib/campaign-library";
 
 type View = "overview" | "plan" | "report" | "compare";
@@ -11,8 +13,8 @@ const VIEWS: { id: View; label: string }[] = [{ id: "overview", label: "Resumen"
 const countLabel = (n: number, singular: string, plural: string) => `${n} ${n === 1 ? singular : plural}`;
 const STATUS = { planning: "Con plan", running: "En campaña", reported: "Con reportes" };
 
-export function ClientCampaignLibrary({ library, workspaceName, brand = "one", available = true }: { library: CampaignLibrary; workspaceName: string; brand?: "one" | "lettera" | "ucsg" | "mobil"; available?: boolean }) {
-  const [selection, setSelection] = useState<Selection>(INITIAL);
+export function ClientCampaignLibrary({ library, workspaceName, brand = "one", available = true, preview = false, initialClientId = "", planClientContext = true }: { planClientContext?: boolean; preview?: boolean; initialClientId?: string; library: CampaignLibrary; workspaceName: string; brand?: WorkspaceIdentity["brand"]; available?: boolean }) {
+  const [selection, setSelection] = useState<Selection>({...INITIAL,client:initialClientId});
   const [query, setQuery] = useState("");
   const [catalog, setCatalog] = useState<"reported" | "planning">("reported");
   const title = useRef<HTMLHeadingElement>(null);
@@ -20,11 +22,11 @@ export function ClientCampaignLibrary({ library, workspaceName, brand = "one", a
     const read = () => {
       const p = new URLSearchParams(window.location.hash.slice(1));
       const view = p.get("view") as View;
-      setSelection({ client: p.get("client") || "", campaign: p.get("campaign") || "", view: VIEWS.some(v => v.id === view) ? view : "overview" });
+      setSelection({ client: p.get("client") || initialClientId, campaign: p.get("campaign") || "", view: VIEWS.some(v => v.id === view) ? view : "overview" });
     };
     read(); window.addEventListener("popstate", read); window.addEventListener("hashchange", read);
     return () => { window.removeEventListener("popstate", read); window.removeEventListener("hashchange", read); };
-  }, []);
+  }, [initialClientId]);
   const client = library.clients.find(c => c.id === selection.client);
   const campaign = client && library.campaigns.find(c => c.id === selection.campaign && c.clientId === client.id);
   const campaigns = client ? library.campaigns.filter(c => c.clientId === client.id) : [];
@@ -56,11 +58,11 @@ export function ClientCampaignLibrary({ library, workspaceName, brand = "one", a
         <p className="library-description">{campaign?.summary ?? (client ? "Ejecución, respaldos y planes, reunidos por " + (films ? "película." : "campaña.") : "Consulta lo ejecutado por cliente y campaña, con sus reportes y planes de medios.")}</p>
         <div className="library-hero-bottom">
           <span>{campaign ? campaign.period : client ? countLabel(campaigns.length, films ? "película" : "campaña", films ? "películas" : "campañas") : library.clients.length + " clientes"}</span>
-          {campaign ? <span className="library-pill">{STATUS[campaign.status]}</span> : <Link href="/planificador?view=planner">Crear un plan <span aria-hidden>↗</span></Link>}
+          {campaign ? <span className="library-pill">{STATUS[campaign.status]}</span> : !preview && <Link href={client && planClientContext ? clientPlanningHref(client.id) : "/planificador?view=planner"}>Crear un plan <span aria-hidden>↗</span></Link>}
         </div>
       </div>
       {campaign?.poster && /^\/postbuy\/warner\/posters\/[a-z0-9-]+\.jpg$/.test(campaign.poster) && <img src={campaign.poster} alt="" className="library-hero-poster" />}
-      {!campaign && <div className="library-brand-art" aria-hidden>{brand === "lettera" ? <><img src="/partners/lettera/lettera-logo.png" alt="" /><i>Write your story.</i></> : brand === "mobil" ? <img src="/partners/mobil/mobil-logo.png" alt="Mobil"/> : brand === "ucsg" ? <img src="/partners/ucsg/ucsg-logo.png" alt="UCSG"/> : <strong>Ad Mavericks One</strong>}</div>}
+      {!campaign && <div className="library-brand-art" aria-hidden>{brand === "lettera" ? <><img src="/partners/lettera/lettera-logo.png" alt="" /><i>Write your story.</i></> : brand === "breinjart" ? <img src="/partners/breinjart/breinjart-logo.png" alt="Breinjart"/> : brand === "mobil" ? <img src="/partners/mobil/mobil-logo.png" alt="Mobil"/> : brand === "ucsg" ? <img src="/partners/ucsg/ucsg-logo.png" alt="UCSG"/> : <strong>Ad Mavericks One</strong>}</div>}
     </header>
 
     {!available ? <div className="library-empty"><h2>No pudimos cargar tus clientes.</h2><p>Vuelve a intentarlo en unos momentos.</p><button className="btn btn-secondary" onClick={() => window.location.reload()}>Volver a cargar</button></div> :

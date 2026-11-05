@@ -44,9 +44,9 @@ const money = (n: number | null) =>
 const pct = (n: number) => `${(n * 100).toFixed(0)}%`;
 const BriefDefaults = createContext<Record<string, unknown>>({});
 
-export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, workspaceName = "Ad Mavericks" }: { initialPlan?: SavedMediaPlan | null; categoryCatalog: CategoryCatalog; canApprove?: boolean; workspaceName?: string }) {
+export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, workspaceName = "Ad Mavericks", initialClientName = "" }: { initialPlan?: SavedMediaPlan | null; categoryCatalog: CategoryCatalog; canApprove?: boolean; workspaceName?: string; initialClientName?: string }) {
   const savedResearch = restoreResearch(initialPlan?.analysis?.research);
-  const [initialBrief] = useState(() => restorePlanBrief(initialPlan?.brief));
+  const [initialBrief] = useState(() => restorePlanBrief(initialPlan?.brief ?? { brand: initialClientName }));
   const [restoredResult] = useState(() => restoreSavedPlanningResult(initialPlan));
   const [state, formAction, pending] = useActionState<PlanResult | null, FormData>(async (_previous, data) => {
     try {
