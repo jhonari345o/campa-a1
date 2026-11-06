@@ -9,7 +9,7 @@ import { coverageFromLabels } from "./geographic-coverage";
 import { makeRadioDailySpots, type RadioDailySpots } from "./radio-schedule";
 import { audienceCohort } from "./audience-target";
 
-export const STRATEGY_VERSION = "2026-11-05.41";
+export const STRATEGY_VERSION = "2026-11-05.42";
 export const MAX_STRATEGY_EXECUTIONS = 25;
 // Planning policy approved by the platform owner; it is not an audience study.
 export const STARTING_MEDIA_MIX: Readonly<Record<MediaGroup, number>> = {
@@ -220,13 +220,16 @@ function digitalPlanRows(platforms:PlanRow[],allocation:StrategyAllocation,budge
 function baseWeights(brief:StrategyBrief,bundle:StrategyEvidenceBundle,plan:MediaPlan) {
   const allowed=allowedStrategyMedia(brief,bundle);
   const fullMix=ALL.every(m=>brief.selectedMedia.includes(m))&&!excludedMedia(brief).length;
-  return allowed.map(m=>{
-    if(fullMix)return {medium:m,weight:STARTING_MEDIA_MIX[m]};
-    const rows=plan.plan.filter(r=>mediaGroupForLabel(r.label)===m), prior=rows.reduce((n,r)=>n+r.pct,0);
-    const category=bundle.categoryMix.find(x=>x.medium===m)?.share??0, consumption=bundle.consumption.find(x=>x.medium===m&&x.comparable)?.value??0;
-    // A candidate without category pressure is a documented option, not measured category demand.
-    return {medium:m,weight:prior>0?prior:category>0?category:consumption>0?consumption/100:0.08};
-  });
+  if(fullMix)return allowed.map(m=>({medium:m,weight:STARTING_MEDIA_MIX[m]}));
+  const sum=(values:number[])=>values.reduce((a,b)=>a+b,0);
+  const prior=allowed.map(m=>Math.max(0,sum(plan.plan.filter(r=>mediaGroupForLabel(r.label)===m).map(r=>r.pct))));
+  const base=allowed.map(m=>STARTING_MEDIA_MIX[m]);
+  const signals=allowed.map((m,i)=>prior[i]||Math.max(0,bundle.categoryMix.find(x=>x.medium===m)?.share??0));
+  const totalBase=sum(base),totalSignal=sum(signals);
+  // A reduced selection starts from the same plan. Competitors' investment
+  // may tilt the mix but is not a measure of how well a channel works.
+  return allowed.map((medium,i)=>({medium,weight:totalSignal>0
+    ? .75*base[i]/totalBase+.25*signals[i]/totalSignal : base[i]/totalBase}));
 }
 function candidateSort(a:StrategyCandidate,b:StrategyCandidate,brief?:TerritoryBrief) {
   // Compare ratings only inside the very same study/cohort, never across methodologies.

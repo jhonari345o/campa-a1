@@ -1,21 +1,18 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
-import { digitalProductionGroups } from "@/lib/digital-productions";
-import type { CatalogProduct } from "@/lib/catalog-shopping";
+import { useState } from "react";
+import type { digitalProductionGroups } from "@/lib/digital-productions";
 import { catalogMoney, catalogTax, CatalogInlineProduct } from "./CatalogShopping";
 import styles from "./DigitalProductions.module.css";
 
-export function DigitalProductions({ products }: { products: CatalogProduct[] }) {
-  const groups = useMemo(() => digitalProductionGroups(products), [products]);
-  const [network, setNetwork] = useState("Todos"), [query, setQuery] = useState("");
-  const networks = ["Todos", ...new Set(groups.map(group => group.network))];
-  const shown = groups.filter(group => (network === "Todos" || group.network === network)
-    && `${group.name} ${group.network} ${group.description}`.toLocaleLowerCase("es").includes(query.trim().toLocaleLowerCase("es")));
+export function DigitalProductions({ groups, network }: { groups: ReturnType<typeof digitalProductionGroups>; network: string | null }) {
+  const [query, setQuery] = useState("");
+  const selected = network ? groups.filter(group => group.network === network) : groups;
+  const shown = selected.filter(group => `${group.name} ${group.network} ${group.description}`.toLocaleLowerCase("es").includes(query.trim().toLocaleLowerCase("es")));
   return <section className={styles.section} aria-label="Medios digitales">
-    <header className={styles.heading}><div><p>Medios digitales</p><h2>Programas con voz propia</h2><span>Elige producciones, contenidos y paquetes para tu marca.</span></div><strong>{groups.length} programas</strong></header>
-    <div className={styles.filters}><div role="group" aria-label="Canales digitales">{networks.map(value => <button type="button" key={value} aria-pressed={network === value} onClick={() => setNetwork(value)}>{value}</button>)}</div><label>Buscar programa<input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Programa o canal"/></label></div>
+    <header className={styles.heading}><div><p>Medios digitales</p><h2>{network ?? "Canales y programas digitales"}</h2><span>Elige producciones, contenidos y paquetes para tu marca.</span></div><strong>{selected.length} {selected.length === 1 ? "programa" : "programas"}</strong></header>
+    <div className={styles.filters}><label>Buscar programa<input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Programa o canal"/></label></div>
     <div className={styles.grid}>{shown.map(group => <Production key={group.id} group={group}/>)}</div>
     {!shown.length && <p className={styles.empty}>No hay programas que coincidan con tu búsqueda.</p>}
   </section>;

@@ -5,8 +5,9 @@ import { getMyCompanies } from "@/lib/company";
 import { canWorkspaceRole } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { canonicalCatalogOrder, catalogQuoteSignature, normalizeCatalogPicks, type CatalogCart, type CatalogProduct } from "@/lib/catalog-shopping";
+import { canonicalCatalogOrder, catalogQuoteSignature, normalizeCatalogPicks, type CatalogCart } from "@/lib/catalog-shopping";
 import { readCatalogCart, readShoppingProducts } from "@/lib/catalog-shopping-server";
+import type { CatalogCheckoutInput, CatalogRequestResult } from "@/lib/catalog-checkout";
 import { validDate } from "@/lib/broadcast-catalog";
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export async function loadCatalogSelection() { return readCatalogCart(); }
@@ -28,8 +29,7 @@ export async function saveCatalogSelection(items: unknown, expectedVersion: numb
     return { ok: false, cart, error: data.code === "expired" ? "El carrito venció tras dos horas sin cambios. Recupera la selección actual para continuar." : "El carrito cambió en otra pestaña. Recupera la versión guardada antes de continuar." };
   } catch { return { ok: false, error: "Revisa los productos y las cantidades del carrito." }; }
 }
-export type CatalogRequestResult = { ok: true; id: string; cart: CatalogCart } | { ok: false; error: string; products?: CatalogProduct[]; refreshCart?: boolean };
-export async function submitCatalogSelection(input: { requestId: string; version: number; quote: string; companyId: string | null; title: string; desiredStart: string; notes: string;clientId?:string|null }): Promise<CatalogRequestResult> {
+export async function submitCatalogSelection(input: CatalogCheckoutInput): Promise<CatalogRequestResult> {
   const profile = await getSessionProfile();
   if (!profile) return { ok: false, error: "Inicia sesión para enviar la solicitud." };
   if (!input || !uuid.test(input.requestId) || !Number.isSafeInteger(input.version) || input.version < 0 || typeof input.quote !== "string" || input.quote.length > 200_000 || typeof input.title !== "string" || !input.title.trim() || input.title.length > 120 || typeof input.notes !== "string" || input.notes.length > 2000 || typeof input.desiredStart !== "string" || (input.desiredStart && !validDate(input.desiredStart)) || (input.companyId != null && !uuid.test(input.companyId))) return { ok: false, error: "Revisa los datos de la solicitud." };

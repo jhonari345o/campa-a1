@@ -102,3 +102,19 @@ test("a planning continuation moves away from the failed free pool and preserves
   assert.equal(result,'{"ok":true}');assert.deepEqual(attempts,[["live/third:free","live/fourth:free","openrouter/free"]]);
  }finally{globalThis.fetch=originalFetch;keys.forEach((key,index)=>{if(previous[index]===undefined)delete process.env[key];else process.env[key]=previous[index];});}
 });
+
+test("planning gives a previously validated, still-compatible free model first turn without suppressing fallback",async()=>{
+ const original=globalThis.fetch,keys=["AI_PROVIDER","OPENROUTER_API_KEY","OPENROUTER_MODEL","OPENROUTER_FALLBACK_MODELS"],before=keys.map(k=>process.env[k]);
+ Object.assign(process.env,{AI_PROVIDER:"openrouter",OPENROUTER_API_KEY:"synthetic-test-key",OPENROUTER_MODEL:"live/preferred:free",OPENROUTER_FALLBACK_MODELS:"live/other:free"});
+ const routes:string[][]=[];
+ globalThis.fetch=async(url,options)=>{
+  if(String(url).endsWith("/models"))return Response.json({data:[row("live/preferred:free"),row("live/other:free")]});
+  const body=JSON.parse(String(options?.body));routes.push(body.models??[body.model]);
+  assert.deepEqual(body.provider.max_price,{prompt:0,completion:0});
+  if(routes.length===1)return new Response("capacity",{status:429});
+  return Response.json({model:body.model,choices:[{finish_reason:"stop",message:{content:"ok"}}]});
+ };
+ try{assert.equal(await chatCompletion([{role:"user",content:"Fixture"}],{fastFreeRouting:true,preferredFreeModels:["unlisted/paid","live/other:free"]}),"ok");
+  assert.deepEqual(routes[0],["live/other:free"]);assert.equal(routes[1][0],"live/preferred:free");}
+ finally{globalThis.fetch=original;keys.forEach((k,i)=>{if(before[i]===undefined)delete process.env[k];else process.env[k]=before[i];});}
+});

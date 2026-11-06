@@ -28,3 +28,9 @@ test("retry routing reads only bounded free model identifiers from server diagno
  assert.deepEqual(failedFreeModelIds(null),[]);
  assert.equal(failedFreeModelIds({_diagnostic:{attemptedModels:Array.from({length:20},(_,i)=>`vendor/model-${i}:free`)}}).length,12);
 });
+
+test("a lost second response preserves the computed first plan",async()=>{
+ const first={ok:true,plan:{strategy:{aiState:"unavailable",aiRetryable:true}}};
+ let calls=0;const result=await completeWithFreeAiRetry(async()=>{if(++calls===1)return first;throw Error("network lost");});
+ assert.equal(result,first);assert.equal(calls,2);
+});
