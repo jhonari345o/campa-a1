@@ -9,6 +9,7 @@ import { projectResearch } from "../lib/infomedia";
 import { strategyBrief, strategyCatalogs, strategyResearch, tvSource, tvStudy } from "./media-strategy-fixture";
 import { buildCurrentCampaigns } from "../lib/campaigns";
 import type { OohAsset } from "../lib/ooh-catalog";
+import { strategyPresentation } from "../lib/media-strategy";
 
 const date="2026-10-31";
 test("a budget cannot be assigned to a press format without a purchasable price",()=>{
@@ -23,11 +24,36 @@ test("a budget cannot be assigned to a press format without a purchasable price"
   assert.equal(report.allocations[0].candidate,null);
   assert.deepEqual(report.allocations[0].executions,[]);
   assert.equal(report.reserveUsd,5000);
+  assert.deepEqual(strategyPresentation(report).allocations,[]);
+  assert.doesNotMatch(report.summary,/prensa/i);
+  const revised=customizeStrategyPlan(applyStrategyPlan(base,report,brief),[{label:"Prensa",pct:1,amount:5000}],5000);
+  assert.equal(revised.strategy?.reserveUsd,5000);
+  assert.equal(revised.plan[0].amount,0);
+  assert.equal(revised.strategy?.evaluation.budgetConserved,true);
   bundle.candidates.push({...template,id:"press:priced",catalogKey:"press:priced",unitPriceUsd:400,minimumSpendUsd:400,sourceUse:"comparable"});
   const priced=buildStrategyReport(brief,bundle,base,options);
   assert.equal(priced.allocations[0].candidate?.catalogKey,"press:priced");
   assert.ok(priced.allocations[0].units!>0);
   assert.ok(priced.evaluation.budgetConserved);
+  assert.equal(strategyPresentation(priced).summary,options.advice.summary);
+});
+test("the AI analysis, saved proposal and customer-facing mix agree on the funded media",()=>{
+  const brief=strategyBrief({selectedMedia:["digital","press"],budgetUsd:1000});
+  const bundle=buildStrategyEvidence(brief,strategyResearch,strategyCatalogs(),date);
+  bundle.candidates=bundle.candidates.filter(c=>c.medium!=="press");
+  const base={matched:0,totalRef:0,plan:[],basis:"infomedia" as const,benchmark:[],profileLabel:"Sintético",strategySummary:""};
+  const summary="La pauta combina prensa y digital.";
+  const allocations=(["press","digital"] as const).map(medium=>({medium,weight:5000,rationale:"Pauta propuesta.",candidateIds:[],evidenceIds:[]}));
+  const report=buildStrategyReport(brief,bundle,base,{aiState:"validated",fingerprint:"synthetic",generatedAt:date,advice:{summary,allocations,questions:[]}});
+  const shown=strategyPresentation(report);
+  assert.deepEqual(shown.allocations.map(a=>[a.medium,a.amountUsd]),[["digital",500]]);
+  assert.match(shown.summary,/digital/i);assert.doesNotMatch(shown.summary,/prensa/i);
+  assert.equal(report.reserveUsd,500);
+  assert.equal(applyStrategyPlan(base,report,brief).strategySummary,shown.summary);
+  assert.equal(strategyPresentation({...report,summary}).summary,shown.summary);
+  const proportional={...report,allocations:report.allocations.map(a=>({...a,amountUsd:null,pct:.5})),summary};
+  assert.equal(strategyPresentation(proportional).allocations.length,2);
+  assert.equal(strategyPresentation(proportional).summary,summary);
 });
 test("a large TV tariff cannot remove all programmes in another requested city",()=>{
   const catalogs=strategyCatalogs();

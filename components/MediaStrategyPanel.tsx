@@ -1,6 +1,6 @@
 "use client";
 import { useState, type CSSProperties } from "react";
-import { digitalProductionSpend, type StrategyReport } from "@/lib/media-strategy";
+import { digitalProductionSpend, strategyPresentation, type StrategyReport } from "@/lib/media-strategy";
 import type { CategoryResearch } from "@/lib/infomedia";
 import type { MediaGroup } from "@/lib/media-groups";
 import { mediaGroupLabel } from "@/lib/plan-optimizer";
@@ -26,31 +26,32 @@ const TABS = [{ id: "category", label: "1. Categoría y competencia", short: "1.
 type View = typeof TABS[number]["id"];
 
 export function MediaStrategyPanel({ report, research, brief, brand = "", objective = "", selectedMedia = report.allocations.map(row => row.medium) }: { report: StrategyReport; brief?: BroadcastBrief & {clientId?:string|null}; research?: CategoryResearch; brand?: string; objective?: string; selectedMedia?: string[] }) {
+  const {allocations,summary} = strategyPresentation(report);
   const [view, setView] = useState<View>("category");
   const [delivery,setDelivery]=useState<DeliverySummary|null>(null);
-  const [selectedMedium, setSelectedMedium] = useState<MediaGroup | null>(report.allocations[0]?.medium ?? null);
+  const [selectedMedium, setSelectedMedium] = useState<MediaGroup | null>(allocations[0]?.medium ?? null);
   const [brandLimit, setBrandLimit] = useState(5), [audienceKind, setAudienceKind] = useState<"media" | "behavior">("media");
   const [comparisonId, setComparisonId] = useState("current");
   const ai = report.aiState === "validated" || report.aiState === "cached", sources = new Map(report.sources.map(source => [source.id, source]));
   const campaignPeriod = displayCampaignPeriod(brief?.startDate, brief?.endDate);
-  const active = report.allocations.find(row => row.medium === selectedMedium) ?? report.allocations[0];
-  const scenarios = [{ id: "current", label: "Mix recomendado", allocations: report.allocations }, ...report.alternatives].filter((row, index, all) => all.findIndex(item => JSON.stringify(item.allocations.map(({ medium, pct, amountUsd }) => ({ medium, pct, amountUsd }))) === JSON.stringify(row.allocations.map(({ medium, pct, amountUsd }) => ({ medium, pct, amountUsd })))) === index);
+  const active = allocations.find(row => row.medium === selectedMedium) ?? allocations[0];
+  const scenarios = [{ id: "current", label: "Mix recomendado", allocations: allocations }, ...report.alternatives].filter((row, index, all) => all.findIndex(item => JSON.stringify(item.allocations.map(({ medium, pct, amountUsd }) => ({ medium, pct, amountUsd }))) === JSON.stringify(row.allocations.map(({ medium, pct, amountUsd }) => ({ medium, pct, amountUsd })))) === index);
   const comparison = scenarios.find(row => row.id === comparisonId) ?? scenarios[0];
-  const comparisonRows = [...new Set([...report.allocations, ...comparison.allocations].map(row => row.medium))].map(medium => comparison.allocations.find(row => row.medium === medium) ?? { medium, pct: 0, amountUsd: report.budgetUsd == null ? null : 0 });
+  const comparisonRows = [...new Set([...allocations, ...comparison.allocations].map(row => row.medium))].map(medium => comparison.allocations.find(row => row.medium === medium) ?? { medium, pct: 0, amountUsd: report.budgetUsd == null ? null : 0 });
   const competition = [...report.competition].sort((a, b) => b.estimatedInvestment - a.estimatedInvestment).slice(0, brandLimit);
   const competitionScale = Math.max(.01, ...report.competition.map(row => row.soi));
   const tgi = research?.tgi, audienceRows = tgi?.values.filter(row => row.role === audienceKind && (audienceKind === "behavior" || tgiIndicatorApplies(row.id, selectedMedia))) ?? [];
   const deliveryPicks = strategyDeliveryPicks(report);
   return <section className={styles.root} aria-label="Análisis y recomendación de medios">
-    <header className={styles.header}><div><p className={styles.kicker}>Análisis del plan</p><h2>La estrategia de tu plan</h2><p>{report.summary}</p></div><span className={styles.badge}>{report.customized ? "Mix personalizado" : ai ? "Datos + IA de Mavi" : "Motor de datos"}</span></header>
+    <header className={styles.header}><div><p className={styles.kicker}>Análisis del plan</p><h2>La estrategia de tu plan</h2><p>{summary}</p></div><span className={styles.badge}>{report.customized ? "Mix personalizado" : ai ? "Datos + IA de Mavi" : "Motor de datos"}</span></header>
 
-    <div className={styles.metrics}><div><span>Presupuesto</span><strong>{money(report.budgetUsd)}</strong></div><div><span>Medios en el mix</span><strong>{report.allocations.length}</strong></div><div><span>Opciones de medios</span><strong>{report.candidateCount}</strong></div></div>
-    {view === "mix" && brief && <PlanDeliveryPreview onSummary={setDelivery} request={{brief,picks:deliveryPicks,expectedMedia:report.allocations.filter(a=>(a.amountUsd??a.pct)>0).map(a=>a.medium),clientId:brief.clientId}}/>}
+    <div className={styles.metrics}><div><span>Presupuesto</span><strong>{money(report.budgetUsd)}</strong></div><div><span>Medios en el mix</span><strong>{allocations.length}</strong></div><div><span>Opciones de medios</span><strong>{report.candidateCount}</strong></div></div>
+    {view === "mix" && brief && <PlanDeliveryPreview onSummary={setDelivery} request={{brief,picks:deliveryPicks,expectedMedia:allocations.map(a=>a.medium),clientId:brief.clientId}}/>}
     <nav className={styles.tabs} aria-label="Explorar análisis del plan">{TABS.map(tab => <button type="button" key={tab.id} aria-label={tab.label} aria-pressed={view === tab.id} onClick={() => setView(tab.id)}><span className={styles.desktopTab}>{tab.label}</span><span className={styles.mobileTab}>{tab.short}</span></button>)}</nav>
 
     {view === "mix" && <div className={styles.overview}>
-      <div className={styles.mixCard}><h3>Distribución de la inversión</h3><StrategyMixChart rows={report.allocations} budget={report.budgetUsd} selected={selectedMedium}/><p className={styles.chartHelp}>Selecciona un medio para revisar su recomendación.</p>
-        <div className={styles.mixLegend}>{report.allocations.map(row => <button type="button" key={row.medium} onClick={() => setSelectedMedium(row.medium)} aria-pressed={selectedMedium === row.medium} style={{ "--mix-color": MEDIA_COLORS[row.medium] } as CSSProperties}>
+      <div className={styles.mixCard}><h3>Distribución de la inversión</h3><StrategyMixChart rows={allocations} budget={report.budgetUsd} selected={selectedMedium}/><p className={styles.chartHelp}>Selecciona un medio para revisar su recomendación.</p>
+        <div className={styles.mixLegend}>{allocations.map(row => <button type="button" key={row.medium} onClick={() => setSelectedMedium(row.medium)} aria-pressed={selectedMedium === row.medium} style={{ "--mix-color": MEDIA_COLORS[row.medium] } as CSSProperties}>
           <i/><span>{mediaGroupLabel(row.medium)}</span><strong>{share(row.pct)}</strong><small>{money(row.amountUsd)}</small>
         </button>)}{Boolean(report.reserveUsd) && <div className={styles.reserve}><span>Sin asignar</span><strong>{money(report.reserveUsd)}</strong></div>}</div>
       </div>
@@ -62,8 +63,8 @@ export function MediaStrategyPanel({ report, research, brief, brand = "", object
         <ProviderPlanCards allocation={active} delivery={delivery} campaignPeriod={campaignPeriod}/>
 
 
-      </article> : <div className={styles.empty}>Completa las fuentes del brief para construir la distribución de medios.</div>}
-      <div className={styles.mediaRail}>{report.allocations.map(row => <button type="button" key={row.medium} aria-pressed={selectedMedium === row.medium} onClick={() => setSelectedMedium(row.medium)}>
+      </article> : <div className={styles.empty}>Puedes ajustar el presupuesto o elegir otros medios para esta pauta.</div>}
+      <div className={styles.mediaRail}>{allocations.map(row => <button type="button" key={row.medium} aria-pressed={selectedMedium === row.medium} onClick={() => setSelectedMedium(row.medium)}>
         <span className={styles.mediumIcon} style={{ color: MEDIA_COLORS[row.medium] }}><MediaSelectionIcon medium={row.medium}/></span><strong>{mediaGroupLabel(row.medium)}</strong><span>{share(row.pct)} · {money(row.amountUsd)}</span>{row.candidate && <div><MediaProviderMark provider={row.candidate.provider} medium={row.medium}/><small>{row.candidate.provider}</small></div>}
       </button>)}</div>
     </div>}
@@ -89,7 +90,7 @@ export function MediaStrategyPanel({ report, research, brief, brand = "", object
 
     {view === "compare" && <div className={styles.tabContent}><section className={styles.section}><div className={styles.sectionHeading}><div><h3>Compara el mix</h3><p>El mismo presupuesto, con las alternativas documentadas del análisis.</p></div></div>
       <div className={styles.scenarioPicker}>{scenarios.map(scenario => <button type="button" key={scenario.id} aria-pressed={comparison.id === scenario.id} onClick={() => setComparisonId(scenario.id)}>{scenario.label}</button>)}</div>
-      <div className={styles.comparison}><div><StrategyMixChart rows={comparison.allocations} budget={report.budgetUsd} compact caption="Comparación"/><h4>{comparison.label}</h4><p>Vista de comparación. Puedes ajustar el plan en Personalizar propuesta.</p></div><div className={styles.comparisonRows}>{comparisonRows.map(row => { const base = report.allocations.find(item => item.medium === row.medium)?.pct ?? 0, change = row.pct - base; return <article key={row.medium}><header><strong>{mediaGroupLabel(row.medium)}</strong><span>{share(row.pct)}</span></header><div className={styles.comparisonTrack}><i style={{ width: `${row.pct * 100}%`, background: MEDIA_COLORS[row.medium] }}/></div><footer><span>{money(row.amountUsd)}</span><small>{Math.abs(change) < .00001 ? "Igual al recomendado" : `${change > 0 ? "+" : ""}${number(change * 100)} puntos porcentuales`}</small></footer></article>; })}</div></div>
+      <div className={styles.comparison}><div><StrategyMixChart rows={comparison.allocations} budget={report.budgetUsd} compact caption="Comparación"/><h4>{comparison.label}</h4><p>Vista de comparación. Puedes ajustar el plan en Personalizar propuesta.</p></div><div className={styles.comparisonRows}>{comparisonRows.map(row => { const base = allocations.find(item => item.medium === row.medium)?.pct ?? 0, change = row.pct - base; return <article key={row.medium}><header><strong>{mediaGroupLabel(row.medium)}</strong><span>{share(row.pct)}</span></header><div className={styles.comparisonTrack}><i style={{ width: `${row.pct * 100}%`, background: MEDIA_COLORS[row.medium] }}/></div><footer><span>{money(row.amountUsd)}</span><small>{Math.abs(change) < .00001 ? "Igual al recomendado" : `${change > 0 ? "+" : ""}${number(change * 100)} puntos porcentuales`}</small></footer></article>; })}</div></div>
     </section></div>}
 
     {report.questions.length > 0 && <details className={styles.nextSteps}><summary>Personaliza la estrategia</summary><ul>{report.questions.map(question => <li key={question}>{question}</li>)}</ul></details>}
