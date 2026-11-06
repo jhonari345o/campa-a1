@@ -1,5 +1,4 @@
-import Image from "next/image";
-import { MediaSelectionIcon } from "@/components/MediaSelectionIcon";
+import { CatalogLogo } from "@/components/CatalogLogo";
 import {CatalogRadioProducts,CatalogRadioTariffs,CatalogWorkspaceFormats} from "./CatalogShopping";
 import type { BroadcastCatalog } from "@/lib/broadcast-catalog";
 import { radioRegions, type RadioDirectoryEntry } from "@/lib/radio-directory";
@@ -16,7 +15,7 @@ export function RadioStationDetail({ station, catalog, asOf }: { station: RadioD
   const regions = station.regionKeys.map(key => radioRegions.find(region => region.key === key)?.label).filter(Boolean);
   return <div className={styles.detail}>
     <header className={styles.detailHero}>
-      <div className={styles.detailLogo}>{station.logoPath ? <Image src={station.logoPath} alt={`Logo de ${station.name}`} fill sizes="140px" className="object-contain p-4" /> : <MediaSelectionIcon medium="radio"/>}</div>
+      <div className={styles.detailLogo}><CatalogLogo src={station.logoPath} alt={`Logo de ${station.name}`} medium="radio" priority className="object-contain p-3"/></div>
       <div className={styles.detailIntro}><p className={styles.eyebrow}>Ficha de emisora</p><h3>{station.name}</h3><p className={styles.stationFacts}>{[station.city, station.dial].filter(Boolean).join(" · ") || regions.join(" · ")}</p>{station.description && <p className={styles.stationDescription}>{station.description}</p>}{station.genres.length > 0 && <div className={styles.genres}>{station.genres.map(genre => <span key={genre}>{genre}</span>)}</div>}{profile.website && <a className={styles.officialLink} href={profile.website} target="_blank" rel="noopener noreferrer">Sitio oficial ↗</a>}</div>
     </header>
     <nav className={styles.detailNav} aria-label={`Secciones de ${station.name}`}><a href="#radio-coverage">Cobertura</a><a href="#radio-tariffs">Tarifas</a>{showRankings && <a href="#radio-rankings">Rankings</a>}</nav>
@@ -27,7 +26,7 @@ export function RadioStationDetail({ station, catalog, asOf }: { station: RadioD
     </section>
     <section id="radio-tariffs" className={styles.detailSection} aria-labelledby="radio-tariffs-title">
       <p className={styles.eyebrow}>02 · Inversión</p><h4 id="radio-tariffs-title">Tarifas y formatos</h4>
-      <CatalogRadioTariffs stationId={station.id} stationName={station.name}><CatalogWorkspaceFormats stationId={station.id}/>
+      <CatalogRadioTariffs stationId={station.id} stationName={station.name} regionKeys={station.regionKeys}><CatalogWorkspaceFormats stationId={station.id}/>
       {!profile.tariffs.length ? <div><p className={styles.missing}>Selecciona las cuñas para solicitar una propuesta de esta emisora.</p><CatalogRadioProducts stationId={station.id}/></div> : <div className={styles.editions}>{profile.tariffs.map(tariff => {
         const status = radioTariffStatus(tariff, asOf);
         return <article key={tariff.id} className={styles.edition}>

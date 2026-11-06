@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import { CatalogLogo } from "@/components/CatalogLogo";
 import { useEffect, useRef, useState } from "react";
 import { radioDirectoryMatches, radioEntriesForRegion, radioRegions, type RadioDirectoryCatalog } from "@/lib/radio-directory";
 import type { BroadcastCatalog } from "@/lib/broadcast-catalog";
@@ -53,8 +54,8 @@ export function RadioDirectoryPanel({ directory, broadcast }: { directory: Radio
         <details className={styles.credits}><summary>Créditos de fotografías</summary><ul>{radioRegions.filter(item => radioLandscapes[item.key]).map(item => { const photo = radioLandscapes[item.key]; return <li key={item.key}><a href={photo.source} target="_blank" rel="noopener noreferrer">{item.label} · {photo.label}</a> — {photo.author} · <a href={photo.licenseUrl} target="_blank" rel="noopener noreferrer">{photo.license}</a>. Recorte y conversión a WebP.</li>; })}</ul></details>
       </> : <>
         <div className={styles.searchRow}><label>Buscar emisora en {region.label}<input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Nombre, ciudad o frecuencia" maxLength={100} /></label><p role="status">{shown.length} de {countLabel(stations.length)}</p></div>
-        <div className={styles.stations}>{shown.map(station => <article key={station.id} className={styles.station}>
-          <div className={styles.stationHeader}><div className={styles.logo}>{station.logoPath ? <Image src={station.logoPath} alt="" fill sizes="72px" className="object-contain p-2" /> : <RadioIcon />}</div><span className={styles.stationScope}>{region.label}</span></div>
+        <div className={styles.stations}>{shown.map((station,index) => <article key={station.id} className={styles.station}>
+          <div className={styles.stationHeader}><div className={styles.logo}><CatalogLogo src={station.logoPath} alt="" medium="radio" priority={index<8}/></div><span className={styles.stationScope}>{region.label}</span></div>
           <h3><button type="button" className={styles.stationOpen} onClick={() => setStationId(station.id)} aria-label={`Ver ficha de ${station.name}`}>{station.name}</button></h3>
           {(station.city || station.dial) && <p className={styles.stationFacts}>{[station.city, station.dial].filter(Boolean).join(" · ")}</p>}
           {station.description && <p className={styles.stationDescription}>{station.description}</p>}

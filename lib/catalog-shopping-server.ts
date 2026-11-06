@@ -8,6 +8,7 @@ import { getInfluencerCatalog } from "./media-workspace";
 import { getOohCatalog } from "./ooh-server";
 import { catalogProducts, normalizeCatalogPicks, type CatalogCart } from "./catalog-shopping";
 import { digitalBudgetProduct } from "./digital-budget";
+import { catalogKindsFor } from "./catalog-loading";
 
 export async function readCatalogCart(): Promise<CatalogCart> {
   const db = await createClient();
@@ -26,7 +27,7 @@ export async function readShoppingProducts(items: { productKey: string }[]) {
   ]);
   if ("error" in ooh && ooh.error) throw new Error("CATALOG_UNAVAILABLE");
   const budgets = items.flatMap(item => { const budget = digitalBudgetProduct(item.productKey); return budget ? [budget] : []; });
-  return priceCatalogProducts([...catalogProducts(profiles, ooh, { broadcast, radio, press }), ...budgets]);
+  return priceCatalogProducts([...catalogProducts(profiles, ooh, { broadcast, radio, press }), ...budgets],undefined,undefined,catalogKindsFor("media","",items));
 }
 export type OohPurchaseReference = {
   id: string; provider_slug: string; asset_id: string | null; location: string; format: string;

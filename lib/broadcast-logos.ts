@@ -7,6 +7,15 @@ export function broadcastLogo(name:string,medium:"radio"|"television",context=""
   for(const [aliases,path] of TV)if(exact(aliases))return path;
   return null;
  }
+ if(exact(["la otra"]))return "/providers/radio/la-otra/logo.webp";
+ if(exact(["francisco stereo"]))return "/providers/radio/francisco-stereo/logo.webp";
+ if(exact(["exa"]))return "/providers/radio/exa/logo.webp";
+ if(exact(["centro"])){
+  const identity=`${key} ${place}`;
+  if(/\b(guayaquil|guayas|gye|101 3)\b/.test(identity))return "/providers/radio/radio-centro/logo.png";
+  if(/\b(quito|pichincha|uio|97 7)\b/.test(identity))return "/providers/radio/radio-centro-quito/logo.webp";
+  return null;
+ }
  for(const [aliases,path] of RADIO)if(exact(aliases))return path;
  if(exact(["fiesta"])&&/\b(machala|el oro)\b/.test(place))return "/providers/radio/radio-fiesta-machala/logo.webp";
  if(exact(["planeta"])&&/\b(riobamba|chimborazo)\b/.test(place))return "/providers/radio/radio-planeta-riobamba/logo.webp";

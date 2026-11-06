@@ -1,5 +1,5 @@
 "use client";
-import Image from "next/image";
+import { CatalogLogo } from "@/components/CatalogLogo";
 import { useState, type ReactNode } from "react";
 import type { BroadcastCatalog } from "@/lib/broadcast-catalog";
 import type { CatalogProduct } from "@/lib/catalog-shopping";
@@ -57,7 +57,7 @@ export function TelevisionProgramBrowser({ catalog, products, renderAction, rend
     <div className={styles.distributions} role="group" aria-label="Tipo de televisión">{(Object.keys(distributionLabels) as TelevisionDistribution[]).map(key=><button type="button" key={key} aria-pressed={distribution===key} onClick={()=>{setDistribution(key);setChannelKey(null);setQuery("");setProvince("");}}>{distributionLabels[key]}</button>)}</div>
     {distribution==="local" && <div className={styles.provinces} role="group" aria-label="Provincias con televisión local"><button type="button" aria-pressed={!province} onClick={()=>{setProvince("");setChannelKey(null);}}>Todas las provincias</button>{regions.map(region=><button type="button" key={region.key} aria-pressed={province===region.label} onClick={()=>{setProvince(region.label);setChannelKey(null);}}>{region.label}</button>)}</div>}
     <div className={styles.channels} role="group" aria-label="Seleccionar canal de televisión">{visibleChannels.map(item => <button type="button" key={item.key} className={styles.channel} onClick={() => openChannel(item.key)} aria-label={`Ver programas de ${item.name}`} aria-pressed={channelKey === item.key}>
-      <span className={styles.logo}>{item.logo ? <Image src={item.logo} alt="" fill sizes="120px" className="object-contain p-3"/> : <TvIcon/>}</span><strong>{item.name}</strong>{item.key==="red-comercial"&&<small>RTS · TVC · Combo</small>}
+      <span className={styles.logo}><CatalogLogo src={item.logo} alt="" medium="television" priority className="object-contain p-3"/></span><strong>{item.name}</strong>{item.key==="red-comercial"&&<small>RTS · TVC · Combo</small>}
     </button>)}</div>
     {channel ? <div className={styles.tariffPanel} aria-label={`Tarifario de ${channel.name}`}>
       <div className={styles.panelHeading}><div><p className={styles.eyebrow}>Programación y tarifas</p><h3>{channel.name}</h3></div><span role="status">{rows.length} {rows.length === 1 ? "opción" : "opciones"} · {currentMarket}</span></div>
@@ -75,4 +75,3 @@ export function TelevisionProgramBrowser({ catalog, products, renderAction, rend
     </div> : <p className={styles.empty}>{visibleChannels.length ? "Selecciona un canal para ver su listado de programas." : "No hay canales disponibles en esta selección."}</p>}
   </section>;
 }
-function TvIcon() { return <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="6" y="12" width="36" height="27" rx="6"/><path d="m17 4 7 8 8-8M17 44h14"/><path d="m21 20 9 6-9 6z"/></svg>; }
