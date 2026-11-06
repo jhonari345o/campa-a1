@@ -15,6 +15,7 @@ import {
 } from "@/lib/media-catalog";
 import type { CatalogHealth } from "@/lib/media-workspace";
 
+import { digitalProductionGroups } from "@/lib/digital-productions";
 import { DigitalProductions } from "./DigitalProductions";
 import { TelevisionDirectoryPanel } from "./TelevisionDirectory";
 import type { BroadcastCatalog } from "@/lib/broadcast-catalog";
@@ -108,11 +109,20 @@ export function MediaCatalog({
 }
 
 function DigitalSection({products}:{products:CatalogProduct[]}) {
-  const [section,setSection]=useState<"platforms"|"productions">("platforms");
+  const groups = useMemo(() => digitalProductionGroups(products), [products]);
+  const networks = useMemo(() => [...new Set(groups.map(group => group.network))], [groups]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const platforms = selected === "platforms" || !networks.length;
+  const network = selected && networks.includes(selected) ? selected : null;
+  const buttonClass = (active: boolean) => `rounded-xl border px-4 py-2 text-sm font-bold ${active ? "border-[#302c28] bg-[#302c28] text-white" : "border-border bg-white text-forest"}`;
   return (
     <section className="media-portal-section">
-      <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label="Tipo de publicidad digital">{([["platforms","Plataformas digitales"],["productions","Medios digitales"]] as const).map(([id,label])=><button key={id} type="button" aria-pressed={section===id} onClick={()=>setSection(id)} className={`rounded-xl border px-5 py-3 text-sm font-bold ${section===id?"border-[#302c28] bg-[#302c28] text-white":"border-border bg-white text-forest"}`}>{label}</button>)}</div>
-      {section === "productions" ? <DigitalProductions products={products}/> : <>
+      <div className="mb-5 flex flex-wrap items-center gap-2" role="group" aria-label="Canales y plataformas digitales">
+        {networks.length > 0 && <button type="button" aria-pressed={!platforms && !network} onClick={() => setSelected(null)} className={buttonClass(!platforms && !network)}>Todos los canales</button>}
+        {networks.map(name => <button type="button" key={name} aria-pressed={!platforms && network === name} onClick={() => setSelected(name)} className={buttonClass(!platforms && network === name)}>{name}</button>)}
+        <button type="button" aria-pressed={platforms} onClick={() => setSelected("platforms")} className={buttonClass(platforms)}>Plataformas de pauta</button>
+      </div>
+      {!platforms ? <DigitalProductions key={network ?? "todos"} groups={groups} network={network}/> : <>
       <SectionHeading
         eyebrow="Digital"
         title="Plataformas según el objetivo"

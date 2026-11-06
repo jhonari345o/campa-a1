@@ -11,7 +11,7 @@ import { radioProductMatchesStation } from "@/lib/account-radio-tariffs";
 import { digitalBudgetKey, digitalBudgetProduct, digitalGoalsForPlatform } from "@/lib/digital-budget";
 import { formatBudgetInput, parseBudgetInput } from "@/lib/brief-inputs";
 import { CalendarDateField } from "@/components/PlanScheduleFields";
-import { submitCatalogSelection } from "./catalog-actions";
+import { checkoutCatalog } from "@/lib/catalog-checkout-client";
 import { persistCatalogCart, recoverCatalogCart } from "@/lib/catalog-cart-client";
 import { cartDraftKey, cartFingerprint, saveCartDraft, recoverCartDraft, clearCartDraft } from "@/lib/catalog-cart-draft";
 import styles from "./CatalogShopping.module.css";
@@ -38,6 +38,8 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
   const [products, setProducts] = useState(() => [...initialProducts, ...budgetProducts(cart.items)]), [items, setItems] = useState(cart.items);
   const [saving, setSaving] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState(cart.error ?? "");
   const [mode, setMode] = useState<"cart" | "review" | null>(null), [orderId, setOrderId] = useState("");
+  const [purchaseError,setPurchaseError] = useState("");
+  const checkoutInFlight = useRef(false);
   const [notice, setNotice] = useState("");
   const desired = useRef(normalizeCatalogPicks(cart.items)), persisted = useRef(cartFingerprint(cart.items)), version = useRef(cart.version);
   const running = useRef(false), mounted = useRef(true), submission = useRef<string | null>(null);
@@ -110,9 +112,9 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
   }
   flush.current = drain;
   function replace(next: CatalogPick[], nextProducts = products) {
-    if (busy) return;
+    if (checkoutInFlight.current) return;
     try { next=normalizeCatalogPicks(next);catalogCartSummary(next, nextProducts); } catch { setError("La selección supera el límite permitido. Reduce los productos o cantidades."); return; }
-    desired.current = next; setItems(next); setOrderId(""); submission.current = null; backupSelection();void drain();
+    desired.current = next; setItems(next); setOrderId(""); setPurchaseError(""); submission.current = null; backupSelection();void drain();
   }
   function setBudget(slug: string, goal: string, cents: number) {
     if ((!canRequest && !isAdmin) || busy) return;
@@ -148,21 +150,26 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
     finally { setSaving(false); }
   }
   async function send(form: HTMLFormElement) {
-    if (busy || saving || error || !canRequest) return;
+    if (checkoutInFlight.current || running.current || saving || error || !canRequest) return;
+    checkoutInFlight.current = true;
     const data = new FormData(form);
-    setBusy(true); setError("");
+    setBusy(true); setPurchaseError("");
     submission.current ??= crypto.randomUUID();
     try {
-      const result = await submitCatalogSelection({
+      const result = await checkoutCatalog({
         clientId:cart.clientId??null,requestId: submission.current, version: version.current, quote: catalogQuoteSignature(items, products),
         companyId: String(data.get("companyId") ?? "") || null, title: String(data.get("title") ?? ""),
         desiredStart: String(data.get("desiredStart") ?? ""), notes: [String(data.get("notes") ?? ""), data.get("desiredEnd") ? `Fin de campaña: ${String(data.get("desiredEnd"))}` : ""].filter(Boolean).join("\n").slice(0,2000),
       });
-      if (!result.ok) { if (result.products) setProducts(result.products); setError(result.error); return; }
+      if (!result.ok) {
+        if (result.products) setProducts(old => { const updated = new Map(old.map(p => [p.key,p])); for (const item of items) updated.delete(item.productKey); for (const p of result.products!) updated.set(p.key,p); return [...updated.values()]; });
+        if (result.refreshCart) setError(result.error); else setPurchaseError(result.error);
+        return;
+      }
       version.current = result.cart.version; desired.current = result.cart.items;
-      persisted.current = cartFingerprint(result.cart.items); setItems(result.cart.items); setOrderId(result.id);clearCartDraft(sessionStorage,draftKey);
-    } catch { setError("La conexión se interrumpió. Vuelve a enviar para recuperar la misma solicitud."); }
-    finally { setBusy(false); }
+      persisted.current = cartFingerprint(result.cart.items); setItems(result.cart.items); setOrderId(result.id);setNotice("Compra recibida. Puedes consultarla en Órdenes.");try { clearCartDraft(sessionStorage,draftKey); } catch { /* The order is already registered. */ }
+    } catch { setPurchaseError("No recibimos la respuesta. Vuelve a pulsar Comprar Medios: tu compra no se duplicará."); }
+    finally { checkoutInFlight.current = false; setBusy(false); }
   }
   function replaceProduct(oldKey: string, newKey: string) {
     if (busy || (!canRequest && !isAdmin)) return;
@@ -171,7 +178,7 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
   }
   const value: ShoppingState = { clientId:cart.clientId??null,products, items, saving, busy, error, companies, canRequest, isAdmin, change, setBudget, replaceProduct, remove: key => replace(desired.current.filter(p => p.productKey !== key)), open: review => { setOrderId(""); setMode(review ? "review" : "cart"); }, restore, retry: () => void drain() };
   return <Shopping.Provider value={value}>{children}<span className="sr-only" role="status">{notice}</span>
-    <ShoppingDialog mode={mode} orderId={orderId} onClose={() => { if (!busy) setMode(null); }} onReview={() => setMode("review")} onSend={send} />
+    <ShoppingDialog mode={mode} orderId={orderId} purchaseError={purchaseError} onClose={() => setMode(null)} onReview={() => setMode("review")} onSend={send} />
   </Shopping.Provider>;
 }
 export function CatalogShoppingLayout({ active, children }: { active: boolean; children: ReactNode }) {
@@ -287,7 +294,7 @@ function CartContents({ compact = false }: { compact?: boolean }) {
     {summary.lines.length > 0 && <div className={styles.total}><span>{summary.pendingPrice && summary.estimatedSubtotalCents != null ? "Total estimado" : summary.totalLabel}</span><strong>{catalogMoney(summary.estimatedSubtotalCents ?? summary.knownSubtotalCents)}</strong>{summary.pendingPrice > 0 && summary.estimatedSubtotalCents == null && <small>{summary.pendingPrice} {summary.pendingPrice === 1 ? "producto requiere" : "productos requieren"} cotización</small>}</div>}
     <div className={styles.cartFooter}><span className={styles.saveState} role="status">{cart.saving ? "Guardando selección…" : cart.error ? "Revisa el guardado de tu selección" : summary.lines.length ? "Selección guardada en tu cuenta" : "Selección privada"}</span>
       {cart.error && <div className={styles.error} role="alert"><p>{cart.error}</p><button type="button" onClick={cart.retry} disabled={cart.busy || cart.saving}>Reintentar</button><button type="button" onClick={cart.restore} disabled={cart.busy || cart.saving}>Recuperar carrito guardado</button></div>}
-      {!compact && <button type="button" className={styles.primary} onClick={() => cart.open(true)} disabled={!summary.lines.length || !!summary.unavailable || cart.saving || cart.busy || !!cart.error || !cart.canRequest}>Revisar selección <span aria-hidden="true">→</span></button>}
+      {!compact && <button type="button" className={styles.primary} onClick={() => cart.open(true)} disabled={!summary.lines.length || cart.busy || !cart.canRequest}>Revisar selección <span aria-hidden="true">→</span></button>}
       {!cart.canRequest && <p className={styles.note}>Tu rol permite seleccionar productos; el envío requiere un usuario autorizado.</p>}
       <p className={styles.note}>Las cantidades respetan la unidad de cada producto. </p>
     </div>
@@ -308,21 +315,23 @@ function MobileCartBar() {
   if (!summary.lines.length) return null;
   return <button type="button" className={styles.mobileBar} onClick={() => cart.open()} aria-label={`Ver carrito: ${summary.quantity} unidades`}><span className={styles.mobileCount}>{summary.quantity}</span><strong>Ver carrito</strong><span>{catalogMoney(summary.estimatedSubtotalCents ?? summary.knownSubtotalCents)}{summary.pendingPrice > 0 ? summary.estimatedSubtotalCents == null ? " + cotizaciones" : " est." : ""}</span></button>;
 }
-function ShoppingDialog({ mode, orderId, onClose, onReview, onSend }: { mode: "cart" | "review" | null; orderId: string; onClose: () => void; onReview: () => void; onSend: (form: HTMLFormElement) => Promise<void> }) {
-  const ref = useRef<HTMLDialogElement>(null), cart = useShopping(), summary = catalogCartSummary(cart.items, cart.products);
+function ShoppingDialog({ mode, orderId, purchaseError, onClose, onReview, onSend }: { purchaseError:string; mode: "cart" | "review" | null; orderId: string; onClose: () => void; onReview: () => void; onSend: (form: HTMLFormElement) => Promise<void> }) {
+  const ref = useRef<HTMLDialogElement>(null), cart = useShopping();
+  const summary = useMemo(() => mode ? catalogCartSummary(cart.items, cart.products) : null, [mode, cart.items, cart.products]);
   const [startDate,setStartDate]=useState(""), [endDate,setEndDate]=useState("");
   useEffect(() => { if (mode && !ref.current?.open) ref.current?.showModal(); if (!mode && ref.current?.open) ref.current.close(); }, [mode]);
-  return <dialog ref={ref} className={styles.dialog} onClose={onClose} onCancel={event => { if (cart.busy) event.preventDefault(); }}>
-    <header className={styles.dialogHeader}><div><p>Catálogo de medios</p><h2>{orderId ? "Solicitud registrada" : mode === "review" ? "Revisa tu selección" : "Tu carrito"}</h2></div><button type="button" aria-label="Cerrar carrito" onClick={onClose} disabled={cart.busy}>×</button></header>
-    {orderId ? <div className={styles.success}><span aria-hidden="true">✓</span><h3>Tu solicitud está en revisión</h3><p>Consulta sus productos y estado en Órdenes.</p><a className={styles.primary} href={`/campanas?catalog=${encodeURIComponent(orderId)}`}>Ver solicitud →</a><button type="button" className={styles.secondary} onClick={onClose}>Seguir explorando</button></div> : <><CartContents compact />{mode && <CartDeliveryProjection startDate={startDate} endDate={endDate} setStartDate={setStartDate} setEndDate={setEndDate}/>}
-      {mode === "cart" ? <button type="button" className={styles.primary} onClick={onReview} disabled={!summary.lines.length || !!summary.unavailable || cart.saving || !!cart.error || !cart.canRequest}>Revisar selección →</button> : <form className={styles.requestForm} onSubmit={event => { event.preventDefault(); void onSend(event.currentTarget); }}>
+  return <dialog ref={ref} aria-labelledby="catalog-cart-title" className={styles.dialog} onClose={onClose}>
+    {mode && summary && <><header className={styles.dialogHeader}><div><p>Catálogo de medios</p><h2 id="catalog-cart-title">{orderId ? "Compra recibida" : mode === "review" ? "Revisa tu selección" : "Tu carrito"}</h2></div><button type="button" aria-label="Cerrar carrito" onClick={onClose}>×</button></header>
+    {orderId ? <div className={styles.success}><span aria-hidden="true">✓</span><div role="status"><h3>Tu compra está siendo procesada</h3><p>Nuestro equipo coordinará la pauta con los medios y en breve te enviará un correo de confirmación.</p></div><a className={styles.primary} href={`/campanas?catalog=${encodeURIComponent(orderId)}`}>Ver mi compra →</a><button type="button" className={styles.secondary} onClick={onClose}>Seguir explorando</button></div> : <><CartContents compact />{mode && <CartDeliveryProjection startDate={startDate} endDate={endDate} setStartDate={setStartDate} setEndDate={setEndDate}/>}
+      {mode === "cart" ? <button type="button" className={styles.primary} onClick={onReview} disabled={!summary.lines.length || cart.busy || !cart.canRequest}>Revisar selección →</button> : <form className={styles.requestForm} onSubmit={event => { event.preventDefault(); void onSend(event.currentTarget); }}>
         <label>Nombre de la compra<input name="title" required maxLength={120} defaultValue="Selección del catálogo" placeholder="Marca o referencia de la compra" /></label>
         {cart.companies.length > 1 || cart.isAdmin ? <label>Espacio de la compra<select name="companyId" defaultValue={cart.companies.length === 1 ? cart.companies[0].id : ""}>{cart.isAdmin && <option value="">Ad Mavericks · cuenta propia</option>}{!cart.isAdmin && <option value="" disabled>Selecciona un espacio</option>}{cart.companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label> : <input type="hidden" name="companyId" value={cart.companies[0]?.id ?? ""} />}
         <input type="hidden" name="desiredStart" value={startDate}/>
         <input type="hidden" name="desiredEnd" value={endDate}/>
         <label>Indicaciones <small>Opcional</small><textarea name="notes" rows={3} maxLength={2000} placeholder="Fechas, ciudad, marca o detalles de los entregables" /></label>
+        {purchaseError && <p className={styles.error} role="alert">{purchaseError}</p>}
         <button className={styles.primary} type="submit" disabled={cart.busy || cart.saving || !!cart.error || !!summary.unavailable || !summary.lines.length || !cart.canRequest}>{cart.busy ? "Registrando compra…" : "Comprar Medios →"}</button>
-      </form>}</>}
+      </form>}</>}</>}
   </dialog>;
 }
 function CartDeliveryProjection({startDate,endDate,setStartDate,setEndDate}:{startDate:string;endDate:string;setStartDate:(v:string)=>void;setEndDate:(v:string)=>void}) {

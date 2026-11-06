@@ -3,7 +3,7 @@ import { getLlmConfiguration } from "./llm-config";
 import { availableFreeModels } from "./free-model-routing";
 
 export type LlmMessage = { role: "system" | "user" | "assistant"; content: string };
-type CompletionOptions = { maxTokens?: number; temperature?: number; signal?: AbortSignal; json?: boolean; responseSchema?: {name:string;schema:Record<string,unknown>}; timeoutMs?: number; reasoningEffort?: "low" | "medium" | "high"; reasoningEnabled?: boolean; fastFreeRouting?: boolean; excludedFreeModels?: string[]; onAttemptModels?: (models:string[]) => void; onModel?: (model: string) => void };
+type CompletionOptions = { maxTokens?: number; temperature?: number; signal?: AbortSignal; json?: boolean; responseSchema?: {name:string;schema:Record<string,unknown>}; timeoutMs?: number; reasoningEffort?: "low" | "medium" | "high"; reasoningEnabled?: boolean; fastFreeRouting?: boolean; excludedFreeModels?: string[]; preferredFreeModels?: string[]; onAttemptModels?: (models:string[]) => void; onModel?: (model: string) => void };
 
 /** Retain a bounded diagnosis, never the provider's raw account/prompt details. */
 async function providerErrorCode(res: Response): Promise<string> {
@@ -146,6 +146,9 @@ async function openaiChat(
     // free pool without shortening a valid inference or extending this deadline.
     const alternatives=models.filter(model=>!opts?.excludedFreeModels?.includes(model));
     if(alternatives.length)models=alternatives;
+    // Only an eligible, currently free model can be promoted by past successes.
+    const preferred=(opts?.preferredFreeModels??[]).filter(m=>m.endsWith(":free")&&models.includes(m)&&!opts?.excludedFreeModels?.includes(m));
+    models=[...new Set([...preferred,...models])];
   }
   const maxAttempts = Math.min(3, models.length) + (fastFree ? 1 : 0);
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -159,7 +162,9 @@ async function openaiChat(
     let data: { model?: string; choices?: { finish_reason?: string; message?: { content?: string } }[] } | undefined;
     try {
       attemptSignal.throwIfAborted();
-      if(fastFree)opts?.onAttemptModels?.(models.slice(0,3));
+      const proved=fastFree&&opts?.preferredFreeModels?.includes(models[0]);
+      const route=proved?models.slice(0,1):models.slice(0,3);
+      if(fastFree)opts?.onAttemptModels?.(route);
       res = await fetch(`${provider.baseUrl.replace(/\/$/, "")}/chat/completions`, {
         method: "POST",
         headers: {
@@ -171,7 +176,7 @@ async function openaiChat(
           model: models[0],
           // Keep each gateway request bounded; the full free pool remains
           // available to subsequent attempts within the same deadline.
-          ...(models.length > 1 ? { models: models.slice(0, 3) } : {}),
+          ...(route.length > 1 ? { models: route } : {}),
           ...(provider.freeOnly||provider.openRouter&&opts?.responseSchema ? { provider: { ...(provider.freeOnly?{max_price: { prompt: 0, completion: 0 }}:{}),...(opts?.responseSchema?{require_parameters:true}:{}),...(fastFree?{sort:{by:"latency",partition:"none"}}:{}) } } : {}),
           ...(opts?.responseSchema ? {response_format:{type:"json_schema",json_schema:{...opts.responseSchema,strict:true}}} : opts?.json ? { response_format: { type: "json_object" } } : {}),
           ...(!omitReasoningOption && provider.openRouter && opts?.reasoningEnabled===false ? { reasoning: { enabled:false } } : !omitReasoningOption && provider.openRouter && opts?.reasoningEffort ? { reasoning: { effort: opts.reasoningEffort, exclude: true } } : {}),
