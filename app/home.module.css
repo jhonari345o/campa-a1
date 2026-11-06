@@ -1,0 +1,58 @@
+.page section[id] { scroll-margin-top: 104px; }
+.hero { max-width: 1152px; margin: auto; padding: 32px 24px 16px; }
+.panel { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .9fr); grid-template-areas: "intro access" "companion access"; gap: 24px 48px; overflow: hidden; padding: 48px; border-radius: 32px; background: linear-gradient(120deg, #17281f, #22392f 65%, #24515a); color: #f8f7ef; }
+.panel::before { content: ""; position: absolute; z-index: -1; top: -240px; right: -270px; width: 640px; height: 640px; border: 1px solid #ffffff14; border-radius: 50%; box-shadow: 0 0 0 48px #ffffff03, 0 0 0 96px #ffffff03; pointer-events: none; }
+.intro { grid-area: intro; }
+.kicker { margin: 0 0 20px; color: #a4dc93; font-size: 11px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.intro h1 { max-width: 490px; margin: 0; font-size: clamp(36px, 4vw, 52px); font-weight: 900; line-height: 1.06; letter-spacing: -.045em; }
+.description { max-width: 410px; margin: 22px 0 0; color: #d1e0d4; font-size: 16px; line-height: 1.65; }
+.access { grid-area: access; align-self: center; padding: 32px; border: 1px solid #ffffff80; border-radius: 24px; background: #fafbf8; color: #22392f; box-shadow: 0 18px 60px #0b201a24; }
+.accessIcon { display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; margin-bottom: 24px; border: 1px solid #d7e5d5; border-radius: 14px; background: #e9f2e5; color: #23663d; }
+.accessIcon svg { width: 24px; height: 24px; }
+.eyebrow { margin: 0 0 10px; color: #56665d; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.access h2 { margin: 0; font-size: clamp(25px, 2.3vw, 31px); line-height: 1.15; font-weight: 900; letter-spacing: -.035em; }
+.instructions { margin: 16px 0 24px; color: #58665e; font-size: 14px; line-height: 1.65; }
+.login { display: flex; justify-content: center; align-items: center; gap: 14px; width: 100%; min-height: 54px; padding: 14px 18px; border-radius: 12px; background: #00a100; color: #07140e; font-size: 16px; font-weight: 900; }
+.login:hover { background: #0ab10a; }
+.login svg { width: 20px; height: 20px; flex-shrink: 0; }
+.audience { margin: 14px 0 0; color: #58665e; font-size: 12px; line-height: 1.5; text-align: center; }
+.request { margin-top: 26px; padding-top: 22px; border-top: 1px solid #d7ddd8; font-size: 13px; }
+.request p { margin: 0 0 4px; color: #58665e; }
+.request a { display: inline-flex; align-items: center; min-height: 44px; color: #23663d; font-weight: 900; text-decoration: underline; text-underline-offset: 4px; }
+.companion { grid-area: companion; display: flex; align-items: center; justify-content: space-between; gap: 16px; min-width: 0; }
+.companionCopy { max-width: 205px; }
+.companionCopy strong { display: block; font-size: 15px; }
+.companionCopy p { margin: 6px 0 12px; color: #d1e0d4; font-size: 13px; line-height: 1.6; }
+.learnMore { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: #f8f7ef; font-size: 13px; font-weight: 800; text-decoration: underline; text-underline-offset: 5px; }
+.mascot { flex-shrink: 0; height: 220px !important; max-width: 45%; object-fit: contain; }
+.panel a:focus-visible { outline: 3px solid #007d00; outline-offset: 4px; border-radius: 6px; }
+.companion a:focus-visible { outline-color: #a4dc93; }
+
+@media (max-width: 960px) {
+  .panel { padding: 32px; gap: 24px; }
+  .intro h1 { font-size: 38px; }
+  .access { padding: 24px; }
+  .mascot { height: 190px !important; }
+}
+
+@media (max-width: 700px) {
+  .hero { padding: 20px 16px 0; }
+  .panel { grid-template-columns: minmax(0, 1fr); grid-template-areas: "intro" "access" "companion"; gap: 26px; padding: 28px 22px; border-radius: 24px; }
+  .kicker { margin-bottom: 14px; font-size: 10px; }
+  .intro h1 { max-width: 460px; font-size: clamp(30px, 7.5vw, 40px); }
+  .description { margin-top: 16px; font-size: 14px; line-height: 1.55; }
+  .access { padding: 24px; border-radius: 18px; }
+  .accessIcon { display: none; }
+  .access h2 { font-size: 26px; }
+  .instructions { margin: 14px 0 20px; }
+  .request { margin-top: 20px; padding-top: 16px; }
+  .companion { justify-content: center; gap: 24px; }
+  .mascot { height: 160px !important; }
+  .companionCopy { max-width: 190px; }
+}
+
+@media (max-width: 360px) {
+  .panel { padding: 24px 16px; }
+  .access { padding: 22px 18px; }
+  .companion { gap: 12px; }
+}

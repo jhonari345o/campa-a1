@@ -1,0 +1,5 @@
+Nunito Sans, Latin subset, normal style.
+Unmodified WOFF2 previously downloaded by next/font/google for this application.
+Family: https://fonts.google.com/specimen/Nunito+Sans
+License: https://github.com/google/fonts/blob/main/ofl/nunitosans/OFL.txt
+SHA-256: 39184f4d011106f5bfbe3813d3a8c3673663f04a45a9c9f55b1ed15f4d5b1cc9

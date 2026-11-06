@@ -1,0 +1,93 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { CART_LIMITS, canonicalCatalogOrder, catalogCartSummary, catalogProducts, catalogQuoteSignature, changeCatalogQuantity, normalizeCatalogPicks, oohProductKey } from "../lib/catalog-shopping";
+import type { InfluencerProfile } from "../lib/media-catalog";
+import { parseOohAsset } from "../lib/ooh-catalog";
+const profile: InfluencerProfile = { id:"00000000-0000-4000-8000-000000000001",slug:"synthetic-creator",name:"Creador de prueba",category:"foodie",handle:null,platform:"Instagram",profileUrl:null,followers:null,avgViews:null,engagementPct:null,followerQualityPct:null,
+ rates:[{id:"00000000-0000-4000-8000-000000000002",format:"Reel",amountUsd:12.34,taxIncluded:false},{id:"00000000-0000-4000-8000-000000000003",format:"Story",amountUsd:3.21,taxIncluded:true}] };
+const asset=parseOohAsset({id:"synthetic-board",provider_slug:"test-provider",provinces:["Guayas"],details:{name:"Valla sintética",city:"Guayaquil",taxLabel:"Sin IVA",rates:[{amount:99.99,period:"month",basis:"per_unit",component:"Alquiler",kind:"tariff"},{amount:25,period:"one_time",basis:"per_unit",component:"Producción"}]}})!;
+const products=catalogProducts([profile],{assets:[asset]});
+test("each creator format and OOH period/component is a distinct purchasable product",()=>{
+ assert.equal(products.length,4);assert.equal(new Set(products.map(p=>p.key)).size,4);
+ assert.equal(products[2].priceCents,9999);assert.equal(products[2].unit,"mes · por unidad");
+ assert.deepEqual(products[2].source.rate,{amount:99.99,period:"month",basis:"per_unit",component:"Alquiler"});
+ assert.equal(catalogProducts([{...profile,rates:[{format:"Reel",amountUsd:12}]}],{assets:[]}).length,0);
+});
+test("repeated clicks increment the same product without merging different formats",()=>{
+ let items=changeCatalogQuantity([],products[0].key,1);items=changeCatalogQuantity(items,products[0].key,1);items=changeCatalogQuantity(items,products[1].key,1);
+ assert.deepEqual(items.map(i=>i.quantity),[2,1]);
+ items=changeCatalogQuantity(items,products[0].key,-1);assert.equal(items[0].quantity,1);
+ items=changeCatalogQuantity(items,products[0].key,-1);assert.equal(items.length,1);assert.equal(items[0].productKey,products[1].key);
+ for(let i=0;i<CART_LIMITS.quantity+1;i++)items=changeCatalogQuantity(items,products[1].key,1);
+ assert.equal(items[0].quantity,CART_LIMITS.quantity);
+});
+test("mixed quantities total in integer cents and preserve individual tax bases",()=>{
+ const summary=catalogCartSummary([{productKey:products[0].key,quantity:3},{productKey:products[1].key,quantity:2},{productKey:products[2].key,quantity:1}],products);
+ assert.equal(summary.knownSubtotalCents,14343);assert.equal(summary.totalCents,14343);assert.equal(summary.quantity,6);assert.equal(summary.totalLabel,"Subtotal de catálogo");
+ assert.equal(catalogCartSummary([{productKey:products[0].key,quantity:1}],products).totalLabel,"Subtotal sin IVA");
+});
+test("unknown OOH prices remain quotes while an explicit zero price stays zero",()=>{
+ const p=catalogProducts([],{assets:[{...asset,id:"quote-board",rates:[]},{...asset,id:"zero-board",rates:[{...asset.rates[0],amount:0}]}]});
+ assert.equal(p[0].priceCents,null);assert.equal(p[1].priceCents,0);
+ const order=canonicalCatalogOrder(p.map(product=>({productKey:product.key,quantity:2})),p);
+ assert.equal(order.totalCents,null);assert.equal(order.knownSubtotalCents,0);assert.equal(order.pendingPrice,1);assert.equal(order.unavailable,0);
+});
+test("draft inputs cannot supply prices, duplicate lines, invalid quantities or arbitrary objects",()=>{
+ for(const input of [null,{},[{productKey:products[0].key,quantity:1,priceCents:1}],[{productKey:products[0].key,quantity:1},{productKey:products[0].key,quantity:2}],...[0,-1,1.5,CART_LIMITS.quantity+1,"2",null].map(quantity=>[{productKey:products[0].key,quantity}]),[{productKey:"untrusted:thing",quantity:1}],[{productKey:"ooh:bad\u0000",quantity:1}]])assert.throws(()=>normalizeCatalogPicks(input));
+ assert.throws(()=>normalizeCatalogPicks(Array.from({length:101},(_,i)=>({productKey:"ooh:"+i,quantity:1}))));
+});
+test("price, tax, quantity and product changes invalidate the displayed quote",()=>{
+ const items=[{productKey:products[0].key,quantity:1}],signature=catalogQuoteSignature(items,products);
+ assert.equal(catalogQuoteSignature([...items].reverse(),[...products].reverse()),signature);
+ for(const patch of [{priceCents:12},{taxIncluded:true},{name:"Updated"},{unit:"paquete"},{reference:"New source"},{conditions:"New term"},{validTo:"2026-12-31"},{source:{agreementId:"another-agreement"}}])assert.notEqual(catalogQuoteSignature(items,products.map((p,i)=>i===0?{...p,...patch}:p)),signature);
+ assert.notEqual(catalogQuoteSignature([{...items[0],quantity:2}],products),signature);
+});
+test("withdrawn or changed OOH rates cannot silently become another product",()=>{
+ const items=[{productKey:products[2].key,quantity:1}],changed=catalogProducts([profile],{assets:[{...asset,rates:asset.rates.map(r=>({...r,amount:r.amount!+1}))}]});
+ assert.equal(oohProductKey(asset.id,asset.rates[0]),changed[2].key);
+ assert.notEqual(catalogQuoteSignature(items,products),catalogQuoteSignature(items,changed));
+ const withdrawn=changed.filter(p=>p.key!==items[0].productKey);assert.equal(catalogCartSummary(items,withdrawn).unavailable,1);assert.throws(()=>canonicalCatalogOrder(items,withdrawn));
+});
+test("null OOH components normalize to an empty component without losing the real price or unit",()=>{
+ const a=parseOohAsset({id:"null-component",provider_slug:"test",details:{format:"Valla fija",rates:[{amount:125,period:"month",basis:"per_unit",component:null,kind:"tariff"}]}})!;
+ const [p]=catalogProducts([],{assets:[a]});
+ assert.deepEqual(p.source.rate,{amount:125,period:"month",basis:"per_unit",component:""});
+ assert.equal(p.priceCents,12500);assert.equal(p.format,"Valla fija");assert.equal(p.unit,"mes · por unidad");
+});
+test("canonical orders use current server products and reject empty or excessive totals",()=>{
+ const order=canonicalCatalogOrder([{productKey:products[0].key,quantity:2}],products);
+ assert.equal(order.items[0].unitPriceCents,1234);assert.equal(order.items[0].taxIncluded,false);assert.equal(order.knownSubtotalCents,2468);
+ assert.throws(()=>canonicalCatalogOrder([],products));
+ assert.throws(()=>canonicalCatalogOrder([{productKey:products[0].key,quantity:99}],[{...products[0],priceCents:1000000000}]));
+});
+test("reference prices produce an estimate without authorizing a firm order or losing their source value",()=>{
+ const reference={...products[0],priceCents:null,referencePriceCents:4321,referenceOnly:true};
+ const picks=[{productKey:reference.key,quantity:3}];
+ const summary=catalogCartSummary(picks,[reference]);
+ assert.equal(summary.estimatedSubtotalCents,12963);assert.equal(summary.knownSubtotalCents,0);assert.equal(summary.totalCents,null);
+ const order=canonicalCatalogOrder(picks,[reference]);
+ assert.equal(order.items[0].unitPriceCents,null);assert.equal(order.items[0].referenceUnitPriceCents,4321);assert.equal(order.totalCents,null);
+ assert.notEqual(catalogQuoteSignature(picks,[reference]),catalogQuoteSignature(picks,[{...reference,referencePriceCents:4322}]));
+ assert.equal(catalogCartSummary(picks,[{...reference,referencePriceCents:null}]).estimatedSubtotalCents,null);
+ assert.throws(()=>catalogCartSummary(picks,[{...reference,referencePriceCents:CART_LIMITS.totalCents}]));
+});
+
+test("normal and VIP totems retain different product groups and monthly versus one-time components", () => {
+ const variants=[{...asset,id:"normal-totem",name:"Tótem LED",rates:[{...asset.rates[0],amount:150}]},{...asset,id:"special-totem",name:"Tótem VIP",rates:asset.rates}];
+ const rows=catalogProducts([], {assets:variants});
+ assert.equal(rows[0].formatGroup,"totem_standard");
+ assert.equal(rows[0].priceCents,15000);
+ assert.equal(rows[1].formatGroup,"totem_special");
+ assert.equal(rows[2].formatGroup,"totem_special");
+ assert.equal(rows[2].unit,"pago único · por unidad");
+ assert.equal(new Set(rows.map(r=>r.key)).size,3);
+});
+
+ test("two OOH format cards share one priced package and one cart identity",()=>{
+ const primary=parseOohAsset({id:"synthetic-package",provider_slug:"test",provinces:["Nacional"],details:{name:"Formato A",purchaseName:"Paquete A y B",conditions:"Tres salidas mensuales",taxLabel:"Sin IVA",rates:[{amount:380,period:"month",basis:"package",kind:"user_authorized_2026_11_02"}]}})!;
+ const alias=parseOohAsset({id:"synthetic-alias",provider_slug:"test",details:{name:"Formato B",purchaseAssetId:primary.id,rates:[{amount:380,period:"month",basis:"package"}]}})!;
+ const p=catalogProducts([],{assets:[primary,alias]});
+ assert.equal(p.length,1);assert.equal(p[0].name,"Paquete A y B");assert.equal(p[0].unit,"mes · paquete");assert.equal(p[0].source.standingPrice,true);assert.equal(p[0].conditions,"Tres salidas mensuales");
+ assert.equal(p[0].key,oohProductKey(alias.purchaseAssetId!,primary.rates[0]));
+ assert.equal(catalogCartSummary([{productKey:p[0].key,quantity:1}],p).totalCents,38000);
+ });

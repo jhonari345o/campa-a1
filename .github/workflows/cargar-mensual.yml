@@ -1,0 +1,31 @@
+name: Cargar inversion mensual (una vez)
+
+# Carga el detalle mes a mes (enero-junio 2026) por anunciante en la tabla
+# ad_investments_monthly. NO toca la inversion anual ya cargada.
+#
+# Antes: corre la migracion D_inversion_mensual (SQL Editor) para crear la tabla.
+# Usa los mismos secrets que el otro workflow:
+#   SUPABASE_URL                = https://TU-PROYECTO.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY   = sb_secret_...
+#
+# Se corre a mano desde la pestana "Actions" del repositorio.
+# Es idempotente: si lo corres dos veces, no duplica (actualiza).
+on:
+  workflow_dispatch:
+
+jobs:
+  cargar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - name: Cargar inversion mensual
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          npx tsx scripts/ingest/import.ts monthly data/inversion_mensual_2026.csv
