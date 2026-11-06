@@ -63,6 +63,7 @@ const nextConfig = {
         headers: securityHeaders,
       },
       ...privateRoutes.map((source) => ({ source: `${source}/:path*`, headers: privateHeaders })),
+      {source:"/providers/optimized/:path*",headers:[{key:"Cache-Control",value:"public, max-age=31536000, immutable"}]},
     ];
   },
 };

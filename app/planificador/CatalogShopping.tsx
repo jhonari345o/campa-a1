@@ -4,15 +4,16 @@ import { PlanDeliveryPreview } from "@/components/PlanDeliveryPreview";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { CART_LIMITS, catalogCartSummary, catalogQuoteSignature, changeCatalogQuantity, type CatalogCart, type CatalogPick, type CatalogProduct } from "@/lib/catalog-shopping";
+import { CART_LIMITS, catalogCartSummary, catalogQuoteSignature, changeCatalogQuantity, normalizeCatalogPicks, type CatalogCart, type CatalogPick, type CatalogProduct } from "@/lib/catalog-shopping";
 import { catalogReferenceDisclosure } from "@/lib/catalog-rate-display";
 import { catalogReplacementOptions, replaceCatalogProduct } from "@/lib/catalog-cart-replacements";
-import { radioProviderKey } from "@/lib/account-radio-tariffs";
+import { radioProductMatchesStation } from "@/lib/account-radio-tariffs";
 import { digitalBudgetKey, digitalBudgetProduct, digitalGoalsForPlatform } from "@/lib/digital-budget";
 import { formatBudgetInput, parseBudgetInput } from "@/lib/brief-inputs";
 import { CalendarDateField } from "@/components/PlanScheduleFields";
 import { submitCatalogSelection } from "./catalog-actions";
 import { persistCatalogCart, recoverCatalogCart } from "@/lib/catalog-cart-client";
+import { cartDraftKey, cartFingerprint, saveCartDraft, recoverCartDraft, clearCartDraft } from "@/lib/catalog-cart-draft";
 import styles from "./CatalogShopping.module.css";
 
 export type ShoppingCompany = { id: string; name: string };
@@ -30,20 +31,32 @@ export const catalogTax = (value: boolean | null) => value === true ? "IVA inclu
 function useShopping() { const value = useContext(Shopping); if (!value) throw new Error("Shopping provider required"); return value; }
 const budgetProducts = (picks: CatalogPick[]) => picks.flatMap(pick => { const product = digitalBudgetProduct(pick.productKey); return product ? [product] : []; });
 
-export function CatalogShoppingProvider({ products: initialProducts, cart, companies, canRequest, isAdmin, children }: {
-  products: CatalogProduct[]; cart: CatalogCart; companies: ShoppingCompany[]; canRequest: boolean; isAdmin: boolean; children: ReactNode;
+export function CatalogShoppingProvider({ products: initialProducts, cart, companies, canRequest, isAdmin, ownerId = "", children }: {
+  products: CatalogProduct[]; cart: CatalogCart; companies: ShoppingCompany[]; canRequest: boolean; isAdmin: boolean; ownerId?:string; children: ReactNode;
 }) {
   const router = useRouter();
   const [products, setProducts] = useState(() => [...initialProducts, ...budgetProducts(cart.items)]), [items, setItems] = useState(cart.items);
   const [saving, setSaving] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState(cart.error ?? "");
   const [mode, setMode] = useState<"cart" | "review" | null>(null), [orderId, setOrderId] = useState("");
   const [notice, setNotice] = useState("");
-  const desired = useRef(cart.items), persisted = useRef(JSON.stringify(cart.items)), version = useRef(cart.version);
+  const desired = useRef(normalizeCatalogPicks(cart.items)), persisted = useRef(cartFingerprint(cart.items)), version = useRef(cart.version);
   const running = useRef(false), mounted = useRef(true), submission = useRef<string | null>(null);
   const flight = useRef<Promise<boolean> | null>(null), pendingNavigation = useRef("");
   const flush = useRef<() => Promise<boolean>>(async () => true);
+  const draftKey = cartDraftKey(ownerId, cart.clientId ?? null);
+  function backupSelection() {
+    try { return saveCartDraft(sessionStorage,draftKey,version.current,persisted.current,desired.current); } catch { return false; }
+  }
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => { setProducts([...initialProducts, ...budgetProducts(desired.current)]); }, [initialProducts]);
+  useEffect(() => {
+    try {
+      const recovered=recoverCartDraft(sessionStorage,draftKey,cart);
+      if(recovered){desired.current=recovered;setItems(recovered);setProducts([...initialProducts,...budgetProducts(recovered)]);setNotice("Recuperamos tu selección para que continúes.");void flush.current();}
+    } catch { /* The server cart remains authoritative if session storage is unavailable. */ }
+    // A client change remounts this provider. Never replay a draft after a live save.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
   useEffect(() => {
     function beforeNavigation(event: MouseEvent) {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -51,9 +64,10 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
       if (!link || link.download || link.target && link.target !== "_self") return;
       const destination = new URL(link.href, location.href);
       if (destination.origin !== location.origin || destination.pathname === location.pathname && destination.search === location.search) return;
-      if (!running.current && JSON.stringify(desired.current) === persisted.current) return;
+      if (!running.current && cartFingerprint(desired.current) === persisted.current) return;
       event.preventDefault();
       const href = destination.pathname + destination.search + destination.hash;
+      if(backupSelection()) { void flush.current(); router.push(href); return; }
       pendingNavigation.current = href;
       setNotice("Guardando tu selección antes de continuar…");
       void flush.current().then(saved => {
@@ -64,24 +78,28 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
       });
     }
     function beforeUnload(event: BeforeUnloadEvent) {
-      if (running.current || JSON.stringify(desired.current) !== persisted.current) { event.preventDefault(); event.returnValue = ""; }
+      if ((running.current || cartFingerprint(desired.current) !== persisted.current) && !backupSelection()) { event.preventDefault(); event.returnValue = ""; }
     }
     document.addEventListener("click", beforeNavigation, true);
     window.addEventListener("beforeunload", beforeUnload);
     return () => { document.removeEventListener("click", beforeNavigation, true); window.removeEventListener("beforeunload", beforeUnload); };
-  }, [router]);
+    // Values are read from refs so navigation does not subscribe to every cart edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router,draftKey]);
   function drain(): Promise<boolean> {
     if (flight.current) return flight.current;
-    if (JSON.stringify(desired.current) === persisted.current) return Promise.resolve(true);
+    if (cartFingerprint(desired.current) === persisted.current) return Promise.resolve(true);
     running.current = true; setSaving(true); setError("");
     const task = (async () => {
     try {
-      while (JSON.stringify(desired.current) !== persisted.current) {
-        const snapshot = desired.current;
+      while (cartFingerprint(desired.current) !== persisted.current) {
+        const snapshot = normalizeCatalogPicks(desired.current);
         const result = await persistCatalogCart(snapshot, version.current,cart.clientId??null);
         if (!result.ok) { if (mounted.current) setError(result.error); return false; }
+        if(cartFingerprint(result.cart.items)!==cartFingerprint(snapshot)){if(mounted.current)setError("No pudimos verificar el guardado. Conservamos tu selección para volver a intentar.");return false;}
         version.current = result.cart.version;
-        persisted.current = JSON.stringify(result.cart.items);
+        persisted.current = cartFingerprint(result.cart.items);
+        if(mounted.current){try{if(cartFingerprint(desired.current)===persisted.current)clearCartDraft(sessionStorage,draftKey);else backupSelection();}catch{/* Keep the server result. */}}
       }
       return true;
     } catch { if (mounted.current) setError("No se pudo guardar. Tu selección sigue aquí; vuelve a intentar."); return false; }
@@ -93,8 +111,8 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
   flush.current = drain;
   function replace(next: CatalogPick[], nextProducts = products) {
     if (busy) return;
-    try { catalogCartSummary(next, nextProducts); } catch { setError("La selección supera el límite permitido. Reduce los productos o cantidades."); return; }
-    desired.current = next; setItems(next); setOrderId(""); submission.current = null; void drain();
+    try { next=normalizeCatalogPicks(next);catalogCartSummary(next, nextProducts); } catch { setError("La selección supera el límite permitido. Reduce los productos o cantidades."); return; }
+    desired.current = next; setItems(next); setOrderId(""); submission.current = null; backupSelection();void drain();
   }
   function setBudget(slug: string, goal: string, cents: number) {
     if ((!canRequest && !isAdmin) || busy) return;
@@ -125,7 +143,7 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
       if (result.error) { setError(result.error); return; }
       if((result.clientId??null)!==(cart.clientId??null)){setError("El cliente cambió. Recarga la página para usar su catálogo.");return;}
       version.current = result.version; desired.current = result.items;
-      persisted.current = JSON.stringify(result.items); setItems(result.items); setProducts([...initialProducts, ...budgetProducts(result.items)]); setError(""); submission.current = null;
+      persisted.current = cartFingerprint(result.items); setItems(result.items); setProducts([...initialProducts, ...budgetProducts(result.items)]); setError(""); submission.current = null;clearCartDraft(sessionStorage,draftKey);
     } catch { setError("No se pudo recuperar el carrito. Tu selección sigue aquí."); }
     finally { setSaving(false); }
   }
@@ -142,7 +160,7 @@ export function CatalogShoppingProvider({ products: initialProducts, cart, compa
       });
       if (!result.ok) { if (result.products) setProducts(result.products); setError(result.error); return; }
       version.current = result.cart.version; desired.current = result.cart.items;
-      persisted.current = JSON.stringify(result.cart.items); setItems(result.cart.items); setOrderId(result.id);
+      persisted.current = cartFingerprint(result.cart.items); setItems(result.cart.items); setOrderId(result.id);clearCartDraft(sessionStorage,draftKey);
     } catch { setError("La conexión se interrumpió. Vuelve a enviar para recuperar la misma solicitud."); }
     finally { setBusy(false); }
   }
@@ -212,9 +230,9 @@ export function CatalogRadioProducts({ stationId, tariffId, rateIndex }: { stati
   const product = rows.find(p => p.source.seconds === seconds) ?? rows[0];
   return product ? <div className={styles.radioProduct}>{rows.length > 1 && <label>Duración de la cuña<select value={product.source.seconds} onChange={e => setSeconds(Number(e.target.value))}>{rows.map(p => <option key={p.key} value={p.source.seconds}>{p.source.seconds} segundos</option>)}</select></label>}<p>{product.unit}</p><CatalogPrice productKey={product.key}/><CatalogInlineProduct productKey={product.key} label="Cuñas"/></div> : null;
 }
-export function CatalogRadioTariffs({ stationId, stationName, children }: { stationId: string; stationName: string; children: ReactNode }) {
+export function CatalogRadioTariffs({ stationId, stationName, regionKeys, children }: { stationId: string; stationName: string; regionKeys: string[]; children: ReactNode }) {
   const cart = useShopping();
-  const products = cart.products.filter(p => p.kind === "radio" && (p.source.stationId === stationId || radioProviderKey(p.provider) === radioProviderKey(stationName)));
+  const products = cart.products.filter(p => radioProductMatchesStation(p, {id:stationId,name:stationName,regionKeys}));
   // Approved catalog defaults replace legacy tariff IDs in the admin detail too.
   if (cart.isAdmin && !products.some(p => p.source.defaultPrice && p.source.standingPrice)) return children;
   if (!products.length) return <p className="text-sm text-muted">Solicita la tarifa de esta emisora para tu cuenta.</p>;

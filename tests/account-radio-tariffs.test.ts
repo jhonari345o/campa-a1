@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { accountRadioGroups, radioProviderKey, radioRatePreference } from "../lib/account-radio-tariffs";
+import { accountRadioGroups, radioProviderKey, radioRatePreference, radioProductMatchesStation } from "../lib/account-radio-tariffs";
 import { scopeCatalogProducts, type AgreedCatalogRate } from "../lib/catalog-pricing";
 import { catalogCartSummary, type CatalogProduct } from "../lib/catalog-shopping";
 
@@ -98,4 +98,33 @@ test("distinct duration and plaza are separate formats rather than conflicting d
   const rows=scopeCatalogProducts([short,long,other],[rate(short.key,"client","2026-10-01",3100),rate(long.key,"client","2026-09-01",4200),rate(other.key,"client","2026-08-01",3900)],"2026-11-01",false);
   assert.equal(accountRadioGroups(rows).length,1);assert.equal(rows.length,3);
   assert.deepEqual(rows.map(p=>p.priceCents),[3100,4200,3900]);
+});
+
+test("homonymous stations keep independent identities, negotiations and detail products", () => {
+  const gye={...product("radio:workspace:gye"),provider:"Radio Centro 101.3 FM",location:"Guayaquil",marketKeys:["guayas"],source:{stationId:"station-guayas",workspaceProductId:"gye"}};
+  const ambato={...product("radio:workspace:ambato"),provider:"Radio Centro",location:"Tungurahua",marketKeys:["tungurahua"],source:{stationId:"station-tungurahua",workspaceProductId:"ambato"}};
+  const rows=scopeCatalogProducts([gye,ambato],[rate(gye.key,"client","2026-10-01",2700),rate(ambato.key,"client","2026-11-01",1300)],"2026-11-05",false);
+  assert.equal(accountRadioGroups(rows).length,2);
+  assert.equal(rows.length,2);
+  assert.equal(radioProductMatchesStation(rows[0],{id:"station-guayas",name:"Radio Centro 101.3 FM",regionKeys:["guayas"]}),true);
+  assert.equal(radioProductMatchesStation(rows[1],{id:"station-guayas",name:"Radio Centro 101.3 FM",regionKeys:["guayas"]}),false);
+  assert.equal(rows.find(p=>p.source.stationId==="station-guayas")?.priceCents,2700);
+});
+
+test("an unlinked same-name tariff resolves only the station in its own territory", () => {
+  const gye={...product("radio:guayas:20"),provider:"Radio Centro 101.3 FM",location:"Guayas",source:{stationId:"station-guayas"}};
+  const other={...product("radio:tungurahua:20"),provider:"Radio Centro",location:"Tungurahua",source:{stationId:"station-tungurahua"}};
+  const own={...product("radio:workspace:own"),provider:"Radio Centro",location:"Guayaquil"};
+  const groups=accountRadioGroups([gye,other,own]);
+  assert.equal(groups.length,2);
+  assert.ok(groups.find(rows=>rows.some(p=>p.key===gye.key))?.some(p=>p.key===own.key));
+  assert.ok(!groups.find(rows=>rows.some(p=>p.key===other.key))?.some(p=>p.key===own.key));
+  assert.equal(radioProductMatchesStation(own,{id:"station-tungurahua",name:"Radio Centro",regionKeys:["tungurahua"]}),false);
+});
+
+test("a name alone cannot attach an ambiguous unscoped price to either station", () => {
+  const links=["guayas","tungurahua"].map(place=>({...product(`radio:${place}`),provider:"Radio Centro",location:place,source:{stationId:`station-${place}`}}));
+  const unknown={...product("radio:workspace:unknown"),provider:"Radio Centro",location:""};
+  assert.equal(accountRadioGroups([...links,unknown]).length,3);
+  assert.equal(radioProductMatchesStation(unknown,{id:"station-guayas",name:"Radio Centro",regionKeys:["guayas"]}),false);
 });

@@ -38,6 +38,7 @@ export function MediaCatalog({
   press,
   shoppingProducts,
   shoppingCart,
+  shoppingOwnerId,
   shoppingCompanies,
   canRequest,
   canPlan,
@@ -53,6 +54,7 @@ export function MediaCatalog({
   press: PressCatalog;
   shoppingProducts: CatalogProduct[];
   shoppingCart: CatalogCart;
+  shoppingOwnerId?:string;
   shoppingCompanies: ShoppingCompany[];
   canRequest: boolean;
   canPlan: boolean;
@@ -60,7 +62,7 @@ export function MediaCatalog({
   purchaseReferences: OohPurchaseReference[];previewCompanyId?:string;previewClientId?:string;
 }) {
   return (
-    <CatalogShoppingProvider key={`${previewCompanyId ?? "workspace"}:${shoppingCart.clientId ?? "account"}`} products={shoppingProducts} cart={shoppingCart} companies={shoppingCompanies} canRequest={canRequest} isAdmin={isAdmin}><div className="media-portal-shell">
+    <CatalogShoppingProvider key={`${previewCompanyId ?? "workspace"}:${shoppingCart.clientId ?? "account"}`} ownerId={shoppingOwnerId} products={shoppingProducts} cart={shoppingCart} companies={shoppingCompanies} canRequest={canRequest} isAdmin={isAdmin}><div className="media-portal-shell">
       <header className="media-portal-header">
         <div className="media-portal-header-copy">
           <p>Medios</p>

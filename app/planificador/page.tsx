@@ -29,6 +29,7 @@ import { SavedPlans } from "./SavedPlans";
 import { priceCatalogProducts } from "@/lib/catalog-access-server";
 import { catalogProducts } from "@/lib/catalog-shopping";
 import { readCatalogCart, readOohPurchaseReferences } from "@/lib/catalog-shopping-server";
+import { catalogKindsFor } from "@/lib/catalog-loading";
 
 export const metadata = { title: "Planificador de medios" };
 
@@ -64,19 +65,21 @@ export default async function PlanificadorPage({
   const categoryCatalog = view === "planner" || view === "diy" ? await getInfomediaCatalog() : { categories: [] };
   const catalogNeeded = view === "media" || view === "diy";
   const selectedPlanNeeded = (view === "planner" || view === "diy" || view === "versions") && Boolean(params.plan);
-  const [influencers, plans, selectedPlan, versions, oohLocations, collaboration, catalogHealth, broadcast, ooh, radioDirectory, press, shoppingCart, purchaseReferences] = await Promise.all([
-    catalogNeeded ? getInfluencerCatalog() : Promise.resolve([]),
+  const shoppingCart = view === "media" ? await readCatalogCart() : {version:0,items:[]};
+  const wantedKinds=catalogKindsFor(view,section,shoppingCart.items);
+  const needs=(kind:typeof wantedKinds[number])=>wantedKinds.includes(kind);
+  const [influencers, plans, selectedPlan, versions, oohLocations, collaboration, catalogHealth, broadcast, ooh, radioDirectory, press, purchaseReferences] = await Promise.all([
+    needs("influencer") ? getInfluencerCatalog() : Promise.resolve([]),
     view === "plans" ? getMySavedPlans(profile.id, requestedClient?.id ?? clientContext?.selected?.id) : Promise.resolve([]),
     selectedPlanNeeded ? getMySavedPlan(profile.id, params.plan!) : Promise.resolve(null),
     view === "versions" && params.plan ? getMyPlanVersions(profile.id, params.plan) : Promise.resolve([]),
     view === "diy" ? getOohLocationCatalog() : Promise.resolve([]),
     view === "versions" && params.plan ? getPlanCollaboration(profile.id, params.plan) : Promise.resolve({ comments: [], approvals: [] }),
     view === "media" && section !== "tv" && section !== "radio" && section !== "press" ? getCatalogHealth() : Promise.resolve(null),
-    catalogNeeded ? getBroadcastCatalog() : Promise.resolve({ sources: [], tv: [], radio: [] }),
-    view === "diy" || view === "media" ? getOohCatalog() : Promise.resolve({ assets: [] }),
-    catalogNeeded ? getRadioDirectory() : Promise.resolve({ stations: [] }),
-    catalogNeeded ? getPressCatalog() : Promise.resolve({ entries: [] }),
-    view === "media" ? readCatalogCart() : Promise.resolve({ version: 0, items: [] }),
+    needs("tv") || needs("radio") ? getBroadcastCatalog([...(needs("tv")?["tv" as const]:[]),...(needs("radio")?["radio" as const]:[])]) : Promise.resolve({ sources: [], tv: [], radio: [] }),
+    needs("ooh") ? getOohCatalog() : Promise.resolve({ assets: [] }),
+    needs("radio") ? getRadioDirectory() : Promise.resolve({ stations: [] }),
+    needs("press") ? getPressCatalog() : Promise.resolve({ entries: [] }),
     view === "media" && section === "ooh" && profile.is_platform_admin ? readOohPurchaseReferences() : Promise.resolve([]),
   ]);
 
@@ -87,7 +90,7 @@ export default async function PlanificadorPage({
   if (requestedClient && savedClientId && requestedClient.id !== savedClientId) notFound();
   const desiredClient = savedClient ?? requestedClient;
   const needsClient = Boolean(clientContext?.clients.length && (!clientContext.selected || (desiredClient && desiredClient.id !== clientContext.selected.id)));
-  const shoppingProducts = catalogNeeded ? await priceCatalogProducts(catalogProducts(influencers, ooh, { broadcast, radio: radioDirectory, press })) : [];
+  const shoppingProducts = catalogNeeded ? await priceCatalogProducts(catalogProducts(influencers, ooh, { broadcast, radio: radioDirectory, press }),undefined,undefined,wantedKinds) : [];
   return (
     <div className="min-h-screen">
       <AppHeader
@@ -107,7 +110,7 @@ export default async function PlanificadorPage({
         {needsClient && view !== "plans" && view !== "versions" ? (
           <section className="rounded-2xl bg-forest p-6 text-white"><h1 className="text-xl font-bold">{desiredClient ? `Prepara tu plan para ${desiredClient.name}` : "Elige tu cliente"}</h1><p className="mt-2">Continúa con el cliente seleccionado para trabajar con sus tarifas y guardar el plan en su espacio.</p></section>
         ) : view === "media" ? (
-          <MediaCatalog broadcast={broadcast} ooh={ooh} radioDirectory={radioDirectory} press={press} section={section} influencers={influencers} health={catalogHealth} shoppingProducts={shoppingProducts} shoppingCart={shoppingCart} shoppingCompanies={companies.filter(c => c.status === "activa" && canWorkspaceRole(c, "campaign:create")).map(c => ({ id: c.id, name: c.name }))} canPlan={profile.is_platform_admin || companies.some(c=>c.status==="activa"&&canWorkspaceRole(c,"plan"))} canRequest={profile.is_platform_admin || companies.some(c => c.status === "activa" && canWorkspaceRole(c, "campaign:create"))} isAdmin={profile.is_platform_admin} purchaseReferences={purchaseReferences} />
+          <MediaCatalog broadcast={broadcast} ooh={ooh} radioDirectory={radioDirectory} press={press} section={section} influencers={influencers} health={catalogHealth} shoppingProducts={shoppingProducts} shoppingCart={shoppingCart} shoppingOwnerId={profile.id} shoppingCompanies={companies.filter(c => c.status === "activa" && canWorkspaceRole(c, "campaign:create")).map(c => ({ id: c.id, name: c.name }))} canPlan={profile.is_platform_admin || companies.some(c=>c.status==="activa"&&canWorkspaceRole(c,"plan"))} canRequest={profile.is_platform_admin || companies.some(c => c.status === "activa" && canWorkspaceRole(c, "campaign:create"))} isAdmin={profile.is_platform_admin} purchaseReferences={purchaseReferences} />
         ) : view === "plans" ? (
           <SavedPlans plans={plans} />
         ) : view === "diy" ? (

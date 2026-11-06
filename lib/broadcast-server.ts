@@ -1,13 +1,13 @@
 import "server-only";
 import { catalogAccess } from "./catalog-access-server";
 import { emptyBroadcastCatalog, type BroadcastCatalog, type BroadcastSource } from "@/lib/broadcast-catalog";
-export async function getBroadcastCatalog(): Promise<BroadcastCatalog> {
+export async function getBroadcastCatalog(kinds:("tv"|"radio")[]=["tv","radio"]): Promise<BroadcastCatalog> {
   try {
     const { db, isAdmin } = await catalogAccess();
     const [sources,tv,radio] = await Promise.all([
-      db.from("broadcast_sources").select("id,kind,label,provider,period_start,period_end,market,market_keys,target,age_min,age_max,sex,nse,frequency,daypart,annual_contract,conditions,spot_seconds,minimum_seconds,tax_included").eq("active",true).order("period_end",{ascending:false}).limit(100),
-      db.from("broadcast_tv_offers").select("id,source_id,day,title,schedule,price_usd,target,note").limit(1000),
-      db.from("broadcast_radio_metrics").select("id,source_id,name,genre,rating,share,audience,rank").limit(1000),
+      db.from("broadcast_sources").select("id,kind,label,provider,period_start,period_end,market,market_keys,target,age_min,age_max,sex,nse,frequency,daypart,annual_contract,conditions,spot_seconds,minimum_seconds,tax_included").eq("active",true).in("kind",kinds).order("period_end",{ascending:false}).limit(100),
+      kinds.includes("tv")?db.from("broadcast_tv_offers").select("id,source_id,day,title,schedule,price_usd,target,note").limit(1000):Promise.resolve({data:[],error:null}),
+      kinds.includes("radio")?db.from("broadcast_radio_metrics").select("id,source_id,name,genre,rating,share,audience,rank").limit(1000):Promise.resolve({data:[],error:null}),
     ]);
     if (sources.error || tv.error || radio.error) return {...emptyBroadcastCatalog,error:"No se pudo cargar el catálogo privado. Intenta nuevamente."};
     return {

@@ -1,6 +1,8 @@
 import type { CatalogProduct } from "./catalog-shopping";
 import type { AgreedCatalogRate } from "./catalog-pricing";
 import { validDate } from "./broadcast-catalog";
+import { territoriesOverlap, territoryProvince } from "./planning-market";
+import geography from "./ecuador-geography.json";
 
 export type RadioRatePreference = { origin: "client" | "fallback" | "unspecified"; observedOn: string; clientSpecific: boolean };
 const record = (value: unknown): Record<string, unknown> => value != null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -39,17 +41,31 @@ function radioFormatKey(p: CatalogProduct): string {
   return JSON.stringify([program, format, formatText(p.unit), formatText(p.location)]);
 }
 
+const knownProvinces = new Set(geography.filter(p => p.kind === "province").map(p => formatText(p.label)));
+function productProvinces(p: CatalogProduct): string[] {
+  return [...new Set((p.marketKeys?.length ? p.marketKeys : p.location.split(/[·,+]/)).map(territoryProvince).filter(key => knownProvinces.has(key) || key === "nacional"))].sort();
+}
+function compatiblePlaces(a: string[], b: string[]) {
+  return a.length > 0 && b.length > 0 && a.some(x => b.some(y => territoriesOverlap(x, y)));
+}
+export function radioProductMatchesStation(p: CatalogProduct, station: { id: string; name: string; regionKeys: string[] }): boolean {
+  if (p.kind !== "radio") return false;
+  // An explicit identity always wins over a shared brand name.
+  if (p.source.stationId) return p.source.stationId === station.id;
+  return radioProviderKey(p.provider) === radioProviderKey(station.name)
+    && compatiblePlaces(productProvinces(p), station.regionKeys.map(territoryProvince));
+}
+
 export function accountRadioGroups(products: CatalogProduct[]): CatalogProduct[][] {
-  const aliases = new Map<string, string>();
-  for (const p of products) if (p.kind === "radio" && p.source.stationId) {
-    const key = radioProviderKey(p.provider) || p.key, previous = aliases.get(p.source.stationId);
-    aliases.set(p.source.stationId, previous ? [previous, key].sort()[0] : key);
-  }
-  const names = new Map<string, string>();
-  for (const p of products) if (p.kind === "radio" && p.source.stationId) names.set(radioProviderKey(p.provider), aliases.get(p.source.stationId)!);
+  const stations = new Map<string, CatalogProduct[]>();
+  for (const p of products) if (p.kind === "radio" && p.source.stationId) stations.set(p.source.stationId, [...(stations.get(p.source.stationId) ?? []), p]);
   const groups = new Map<string, CatalogProduct[]>();
   for (const p of products.filter(p => p.kind === "radio")) {
-    const key = names.get(radioProviderKey(p.provider)) || radioProviderKey(p.provider) || p.key;
+    const name = radioProviderKey(p.provider), places = productProvinces(p);
+    const matches = p.source.stationId ? [] : [...stations].filter(([, rows]) => rows.some(row => radioProviderKey(row.provider) === name)
+      && (!places.length || !rows.some(row => productProvinces(row).length) || rows.some(row => compatiblePlaces(places, productProvinces(row)))));
+    const id = p.source.stationId || (matches.length === 1 ? matches[0][0] : null);
+    const key = id ? `station:${id}` : `name:${name || p.key}:${places.join(",")}`;
     groups.set(key, [...(groups.get(key) ?? []), p]);
   }
   return [...groups.values()].map(rows => rows.sort((a, b) => a.name.localeCompare(b.name, "es") || a.key.localeCompare(b.key)));
