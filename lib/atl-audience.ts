@@ -1,6 +1,7 @@
 import { normalized, validDate } from "./broadcast-catalog";
 import { planningStudyBrief } from "./planning-market";
 import type { StrategyBrief } from "./media-strategy-evidence";
+import { audienceMatchesSource } from "./audience-target";
 
 export type PressAudience = {
  id:string; provider:string; sex:"all"|"male"|"female"; ageMin:number; ageMax:number; nse:string;
@@ -37,9 +38,7 @@ export function parseAtlAudience(value:unknown,medium:"press"|"ooh"):PressAudien
  return value.rows as PressAudience[]|OohObservation[];
 }
 export function pressAudienceApplies(s:PressAudience,brief:StrategyBrief,asOf:string){
- const age=normalized(brief.ageRange),expected=s.ageMax===99?String(s.ageMin):`${s.ageMin} ${s.ageMax}`;
- const sex=s.sex==="all"?"todas las personas":s.sex==="male"?"hombres":"mujeres";
- return brief.audienceType==="B2C"&&(age===expected||age===`personas ${expected}`)&&normalized(brief.sex)===sex&&normalized(brief.socioeconomic)==="todos los nse"&&Boolean(planningStudyBrief(s.marketKeys,brief))&&validDate(brief.startDate)&&validDate(asOf)&&s.periodEnd<=brief.startDate&&s.periodEnd<=asOf&&Date.parse(brief.startDate)-Date.parse(s.periodEnd)<=366*86400000;
+ return brief.audienceType==="B2C"&&audienceMatchesSource(s,brief)&&Boolean(planningStudyBrief(s.marketKeys,brief))&&validDate(brief.startDate)&&validDate(asOf)&&s.periodEnd<=brief.startDate&&s.periodEnd<=asOf&&Date.parse(brief.startDate)-Date.parse(s.periodEnd)<=366*86400000;
 }
 const publicationAliases:Record<string,string>={"metro ecuador":"metro","diario el universo":"el universo","diario expreso":"expreso","diario extra":"extra"};
 export const pressPublicationKey=(name:string)=>publicationAliases[normalized(name)]??normalized(name);

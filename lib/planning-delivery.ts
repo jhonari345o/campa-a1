@@ -1,4 +1,5 @@
 import { briefMarketKeys, normalized, validDate, type BroadcastBrief } from "./broadcast-catalog";
+import { audienceMatchesSource } from "./audience-target";
 import type { MediaGroup } from "./media-groups";
 import { projectPressEditionReach, type PressEditionReach } from "./press-delivery";
 import { projectOohSectorReach, type OohSectorReachEstimate } from "./ooh-delivery";
@@ -31,7 +32,7 @@ export function matchesCurveScope(curve:ReachCurve, lines:RatedDeliveryLine[]):b
 /** Project an authorized selection using current compatible ratings and the supplied historical calibration. */
 export function projectPlanningDelivery(brief:BroadcastBrief,lines:RatedDeliveryLine[],model:PlanningCurveModel):DeliverySummary|null {
   if(!validDate(brief.startDate)||!validDate(brief.endDate)||brief.endDate<brief.startDate||!Number.isFinite(model.universe)||model.universe<=0)return null;
-  if(model.target.ageMin!==18||model.target.ageMax!==99||model.target.sex!=="all"||model.target.nse!=="all"||!["18","18 99","personas 18"].includes(normalized(brief.ageRange??""))||normalized(brief.sex??"")!=="todas las personas"||normalized(brief.socioeconomic??"")!=="todos los nse"||brief.audienceType!=="B2C")return null;
+  if(model.target.ageMin!==18||model.target.ageMax!==99||model.target.sex!=="all"||model.target.nse!=="all"||!audienceMatchesSource(model.target,brief)||brief.audienceType!=="B2C")return null;
   const requested=[...new Set(briefMarketKeys(brief).map(key=>key.replace(/^provincia de /, "")).map(key=>key==="guayas"?"guayaquil":key==="pichincha"?"quito":key))].sort();
   // Geographic complements can sit outside the calibrated cities. Keep the
   // measured population and its visible scope label; never expand the universe.

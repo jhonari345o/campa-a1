@@ -5,6 +5,7 @@ import type { StrategyReport } from "./media-strategy";
 import { restoreResearch } from "./infomedia";
 import { normalizeCoverageBrief } from "./geographic-coverage";
 import { buildPlanAnalysis } from "./plan-analysis";
+import { restoreAudienceSelection } from "./audience-target";
 
 type JsonObject = Record<string, unknown>;
 type Check = (value: unknown) => boolean;
@@ -75,13 +76,14 @@ const amount = (value: unknown) => value !== "" && value != null && Number.isFin
 export function restorePlanBrief(value: unknown): PlanBrief {
   const row = object(value);
   const fields = Object.fromEntries(briefTextKeys.map(key => [key, text(row[key])])) as Pick<PlanBrief, typeof briefTextKeys[number]>;
+  const audience = restoreAudienceSelection({ ageRange: typeof row.ageRange === "string" ? row.ageRange : undefined, sex: typeof row.sex === "string" ? row.sex : undefined, socioeconomic: typeof row.socioeconomic === "string" ? row.socioeconomic : undefined });
   const names = arrayText(row.productName);
   const products = Array.isArray(row.products) ? row.products : names.map((name, index) => ({
     name, price: arrayText(row.productPrice)[index], margin: arrayText(row.productMargin)[index],
     capacity: arrayText(row.productCapacity)[index], season: arrayText(row.productSeason)[index], notes: arrayText(row.productNotes)[index],
   }));
   return {
-    ...fields, ...normalizeCoverageBrief(row),
+    ...fields, ageRange: audience.ageRange || fields.ageRange, sex: audience.sex || fields.sex, socioeconomic: audience.socioeconomic || fields.socioeconomic, ...normalizeCoverageBrief(row),
     clientId: typeof row.clientId === "string" ? row.clientId : null, clientName: text(row.clientName),
     categoryId: text(row.categoryId), referenceYear: amount(row.referenceYear) ?? 0,
     budgetUsd: amount(row.budgetUsd ?? row.budget), selectedMedia: arrayText(row.selectedMedia).filter(medium),

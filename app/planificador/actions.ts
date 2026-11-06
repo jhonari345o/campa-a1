@@ -24,6 +24,7 @@ import {PlanningSourcesUnavailable,type PlanningPreparationResult} from "@/lib/p
 import { withRequestScope } from "@/lib/request-scope";
 import type { SavePlanInput, SavePlanResult } from "@/lib/planning-save-request";
 import { openPlanningDraft, planningDraftScope, sealPlanningDraft } from "@/lib/planning-draft";
+import { restoreAudienceSelection, supportedAudienceSelection } from "@/lib/audience-target";
 
 export type PlanBrief = {
   clientId?:string|null;clientName?:string;
@@ -121,14 +122,16 @@ export async function generarPlan(
 
   const clientContext=await catalogClientContext();
   if(clientContext?.clients.length&&!clientContext.selected)return {ok:false,error:"Selecciona el cliente antes de generar su plan."};
+  const audienceSelection = restoreAudienceSelection({ageRange:String(formData.get("ageRange")??"Personas 18+"),sex:String(formData.get("sex")??"Todas las personas"),socioeconomic:String(formData.get("socioeconomic")??"Todos los NSE")});
+  if (!supportedAudienceSelection(audienceSelection)) return {ok:false,error:"Selecciona edad, sexo y nivel socioeconómico de los públicos disponibles."};
   let research: CategoryResearch;
   try {
-    research = withReferenceYear(await getCategoryResearch(String(formData.get("categoryId") ?? ""), String(formData.get("brand") ?? ""), { ageRange: String(formData.get("ageRange") ?? ""), sex: String(formData.get("sex") ?? ""), socioeconomic: String(formData.get("socioeconomic") ?? ""), audienceType: String(formData.get("audienceType") ?? ""), geography: String(formData.get("geography") ?? "") }, String(formData.get("competitors") ?? "")), Number(formData.get("referenceYear") ?? 0));
+    research = withReferenceYear(await getCategoryResearch(String(formData.get("categoryId") ?? ""), String(formData.get("brand") ?? ""), { ...audienceSelection, audienceType: String(formData.get("audienceType") ?? ""), geography: String(formData.get("geography") ?? "") }, String(formData.get("competitors") ?? "")), Number(formData.get("referenceYear") ?? 0));
   } catch {
     return { ok: false, error: "Selecciona una categoría de Infomedia con investigación disponible. Si el catálogo no carga, solicita su habilitación al administrador." };
   }
   const keyword = research.category.label;
-  const objective = String(formData.get("objective") ?? "").trim();
+  const objective = String(formData.get("objective") ?? "").trim() || "Reconocimiento";
   const audience = String(formData.get("audience") ?? "").trim();
   const budgetRaw = String(formData.get("budget") ?? "").trim();
   const budgetUsd = budgetRaw ? Number(budgetRaw) : null;
@@ -148,12 +151,10 @@ export async function generarPlan(
     brand: String(formData.get("brand") ?? "").trim(),
     keyword,
     objective,
-    priority: String(formData.get("priority") ?? "").trim(),
+    priority: String(formData.get("priority") ?? "").trim() || "Cobertura",
     audienceType: String(formData.get("audienceType") ?? "B2C"),
     audience,
-    ageRange: String(formData.get("ageRange") ?? "Personas 18+"),
-    sex: String(formData.get("sex") ?? "Todas las personas"),
-    socioeconomic: String(formData.get("socioeconomic") ?? "Todos los NSE"),
+    ...audienceSelection,
     ...normalizeCoverageBrief({ geography: String(formData.get("geography") ?? "").trim(), coverage: formData.get("coverage") }),
     startDate,
     endDate,
@@ -203,6 +204,7 @@ export async function generarPlan(
     const preparation=sealPlanningPreparation({brief,research,prepared},profile.id,process.env.SUPABASE_SERVICE_ROLE_KEY??"");
     return {ok:true,preparation};
   } catch (err) {
+    if (err instanceof Error && err.message === "INVALID_AUDIENCE_TARGET") return {ok:false,error:"Selecciona edad, sexo y nivel socioeconómico de los públicos disponibles."};
     if(err instanceof PlanningSourcesUnavailable)return {ok:false,retryable:true,error:"No pudimos cargar los medios de tu cuenta. Tu brief se conserva; vuelve a generar el plan."};
     if (err instanceof Error && err.message === "INVALID_STRATEGY_BRIEF") return { ok: false, error: "Revisa las fechas, el presupuesto y la extensión del brief antes de generar la recomendación." };
     if (err instanceof Error && err.message === "NO_CATEGORY_MEDIA_EVIDENCE") return { ok: false, error: "No hay inversión de categoría ni consumo TGI disponibles para los medios seleccionados. Revisa otros medios o utiliza el constructor manual." };

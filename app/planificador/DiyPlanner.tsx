@@ -1,5 +1,7 @@
 "use client";
 import { PlanDeliveryPreview } from "@/components/PlanDeliveryPreview";
+import { AudienceFields } from "@/components/AudienceFields";
+import { restoreAudienceSelection } from "@/lib/audience-target";
 import {WorkspaceDiyCatalog} from "./WorkspaceDiyCatalog";
 import {diyTvResolver} from "@/lib/diy-tv-pricing";
 import {DiyTelevision,type TvPick} from "./DiyTelevision";
@@ -75,16 +77,16 @@ export function DiyPlanner({
   const initialSelection = initialPlan?.selection ?? {};
   const [startDate,setStartDate]=useState(stringValue(initialBrief.startDate));
   const [endDate,setEndDate]=useState(stringValue(initialBrief.endDate));
-  const [ageRange,setAgeRange]=useState(stringValue(initialBrief.ageRange)||"Personas 18+");
-  const [sex,setSex]=useState(stringValue(initialBrief.sex)||"Todas las personas");
+  const [audienceSelection,setAudienceSelection]=useState(() => restoreAudienceSelection({ageRange:typeof initialBrief.ageRange === "string" ? initialBrief.ageRange : undefined,sex:typeof initialBrief.sex === "string" ? initialBrief.sex : undefined,socioeconomic:typeof initialBrief.socioeconomic === "string" ? initialBrief.socioeconomic : undefined}));
+  const { ageRange, sex, socioeconomic } = audienceSelection;
   const [planId, setPlanId] = useState(initialPlan?.id ?? "");
   const [name, setName] = useState(stringValue(initialPlan?.name) || "Plan multimedia personalizado");
   const [brand, setBrand] = useState(stringValue(initialBrief.brand) || (!initialPlan ? initialClientName : ""));
   const initialCategory = resolveCategory(categoryCatalog.categories, stringValue(initialBrief.categoryId), stringValue(initialBrief.keyword));
   const [keyword, setKeyword] = useState(initialCategory?.label ?? "");
   const [categoryId, setCategoryId] = useState(initialCategory?.id ?? "");
-  const [objective, setObjective] = useState(stringValue(initialBrief.objective) || "Ventas");
-  const [priority, setPriority] = useState(stringValue(initialBrief.priority) || "Balance");
+  const [objective, setObjective] = useState(stringValue(initialBrief.objective) || "Reconocimiento");
+  const [priority, setPriority] = useState(stringValue(initialBrief.priority) || "Cobertura");
   const [audienceType, setAudienceType] = useState(stringValue(initialBrief.audienceType) || "B2C");
   const [audience, setAudience] = useState(stringValue(initialBrief.audience));
   const [targetPeople, setTargetPeople] = useState(numberValue(initialBrief.targetPeople));
@@ -123,13 +125,13 @@ export function DiyPlanner({
     digitalReady,
   }), [audienceType, budget, digitalReady, geographies.length, objective, priority, selectedMedia]);
   const scenario = scenarios.find((item) => item.id === scenarioId) ?? scenarios[0];
-  const brief: BroadcastBrief = { startDate, endDate, geography: geographies.join(","), coverage, ageRange, sex, socioeconomic: "Todos los NSE", audienceType };
+  const brief: BroadcastBrief = { startDate, endDate, geography: geographies.join(","), coverage, ageRange, sex, socioeconomic, audienceType };
   const displayTv = tv.map(pick => { const result = validateBroadcastSelections(broadcast, brief, { tv: [pick] },diyTvResolver(brief,workspaceProducts)); return result.ok ? (result.selections.tv as TvPick[])[0] : { ...pick, unitPrice: null }; });
   const displayPress = press.map(pick => { const result = validatePressPicks(pressCatalog, [pick], { startDate, endDate, geographies }); return result.ok ? result.picks[0] : { ...pick, unitPrice: null, referencePriceUsd: null }; });
   let catalogSelection:ReturnType<typeof resolveDiyCatalog>=[],catalogError="";
   try {catalogSelection=resolveDiyCatalog(catalogPicks,workspaceProducts,selectedMedia,startDate,endDate,brief)}catch{catalogError="Hay productos que ya no están disponibles. Retíralos de la selección para continuar.";}
   const summary = diySelectionSummary(selectedMedia, { tv: displayTv, radio: radioPicks, ooh, press: displayPress, digital, influencers: creatorPicks, catalog:catalogSelection }, scenario?.allocations.find(item => item.kind === "digital")?.amountUsd ?? 0);
-  const signature = JSON.stringify({ name, brand, categoryId, objective, priority, audienceType, audience, targetPeople, interests, budget, geographies, coverage, startDate, endDate, ageRange, sex, selectedMedia, scenarioId, digitalReady, tv, radioPicks, ooh, press, digital, creatorPicks, catalogPicks });
+  const signature = JSON.stringify({ name, brand, categoryId, objective, priority, audienceType, audience, targetPeople, interests, budget, geographies, coverage, startDate, endDate, ageRange, sex, socioeconomic, selectedMedia, scenarioId, digitalReady, tv, radioPicks, ooh, press, digital, creatorPicks, catalogPicks });
   const savedSignature = useRef(signature);
   const dirty = savedSignature.current !== signature;
   useEffect(() => { if (!dirty) return; const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); }; window.addEventListener("beforeunload", warn); return () => window.removeEventListener("beforeunload", warn); }, [dirty]);
@@ -158,7 +160,7 @@ export function DiyPlanner({
       interests,
       audienceType,
       budgetUsd: budget,
-      geographies, coverage, startDate, endDate, ageRange, sex,
+      geographies, coverage, startDate, endDate, ageRange, sex, socioeconomic,
       selectedMedia,
       scenarioId: scenario?.id ?? "recommended",
       digitalReady,
@@ -184,7 +186,7 @@ export function DiyPlanner({
     <details open={briefOpen} onToggle={event => setBriefOpen(event.currentTarget.open)} className={styles.brief}><summary><span>Brief, fechas y público</span><small>{brand || "Define tu marca"} · {geographies.join(" · ")} · {money(budget)}</small></summary><div className={styles.briefBody}>
       <div className={styles.formGrid}><Field label="Nombre del plan" value={name} onChange={setName} /><Field label="Marca" value={brand} onChange={setBrand} /><InfomediaCategoryPicker categories={categoryCatalog.categories} error={categoryCatalog.error} initialId={stringValue(initialBrief.categoryId)} initialLabel={stringValue(initialBrief.keyword)} onSelect={category => { setKeyword(category?.label ?? ""); setCategoryId(category?.id ?? ""); }} /><BudgetField label="Presupuesto total (USD)" value={budget} onValueChange={value => setBudget(value ?? 0)} required/><Select label="Objetivo" value={objective} onChange={setObjective} options={["Reconocimiento", "Alcance", "Tráfico", "Interacción", "Mensajes", "Leads", "Ventas", "Visitas al local"].map(item => [item, item])} /><Select label="Prioridad" value={priority} onChange={setPriority} options={["Cobertura", "Frecuencia", "Eficiencia", "Conversión", "Afinidad", "Presencia local", "Balance"].map(item => [item, item])} /><Select label="Tipo de audiencia" value={audienceType} onChange={setAudienceType} options={["B2C", "B2B", "Mixta"].map(item => [item, item])} /><NumberField label="Personas a impactar (referencia)" value={targetPeople} onChange={setTargetPeople} min={0} /></div>
       <div className={styles.formGridTwo}><TextArea label="Audiencia" value={audience} onChange={setAudience} placeholder="Personas, necesidades y comportamientos prioritarios" /><TextArea label="Intereses, comportamientos o cargos" value={interests} onChange={setInterests} placeholder="Intereses, cargos y contextos relevantes" /></div>
-      <div className={styles.formGrid}><CalendarDateField name="startDate" label="Inicio" value={startDate} onChange={setStartDate} max={endDate || undefined} required={false}/><CalendarDateField name="endDate" label="Fin" value={endDate} onChange={setEndDate} min={startDate || undefined} required={false}/><Select label="Edad" value={ageRange} onChange={setAgeRange} options={["Personas 18+", "18-34", "35+", "25-54"].map(item => [item, item])} /><Select label="Sexo" value={sex} onChange={setSex} options={["Todas las personas", "Mujeres", "Hombres"].map(item => [item, item])} /></div>
+      <div className={styles.formGrid}><CalendarDateField name="startDate" label="Inicio" value={startDate} onChange={setStartDate} max={endDate || undefined} required={false}/><CalendarDateField name="endDate" label="Fin" value={endDate} onChange={setEndDate} min={startDate || undefined} required={false}/><AudienceFields value={audienceSelection} onChange={setAudienceSelection}/></div>
       <GeographicCoveragePicker value={coverage} onChange={next=>{setCoverage(next);setGeographies(coverageLegacyLabels(next));}} />
     </div></details>
     <nav className={styles.mediumRail} aria-label="Configurar medios del plan">{MEDIA.map(item => { const included = selectedMedia.includes(item.id), active = !review && activeMedium === item.id; return <div key={item.id} className={`${styles.mediumItem} ${active ? styles.mediumActive : ""}`}><button type="button" className={styles.mediumOpen} aria-pressed={active} aria-controls="diy-configurator" onClick={() => openMedium(item.id)}><span className={styles.mediumIcon}><MediaSelectionIcon medium={item.id} /></span><span><strong>{mediaGroupLabel(item.id)}</strong><small>{item.detail}</small></span></button><button type="button" className={styles.includeButton} aria-label={`${included ? "Quitar" : "Añadir"} ${mediaGroupLabel(item.id)} del plan`} aria-pressed={included} onClick={() => toggleMedium(item.id)}>{included ? "✓" : "+"}</button></div>; })}</nav>

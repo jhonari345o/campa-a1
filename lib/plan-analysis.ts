@@ -1,5 +1,6 @@
 import type { MediaPlan } from "@/lib/planner";
 import { mediaGroupForLabel } from "@/lib/media-groups";
+import { audienceSelectionLabel } from "./audience-target";
 
 export type AnalysisStatus = "listo" | "por_validar" | "requiere_preparacion";
 
@@ -237,7 +238,7 @@ export function buildPlanAnalysis(input: PlanAnalysisInput, plan: MediaPlan): Pl
     category: input.keyword,
     profileLabel: plan.profileLabel,
     periodLabel: plan.referencePeriod || "Referencia histórica del plan guardado",
-    targetLabel: `${input.audienceType} · ${input.ageRange} · ${input.sex} · ${input.socioeconomic}`,
+    targetLabel: `${input.audienceType} · ${audienceSelectionLabel(input) || [input.ageRange, input.sex, input.socioeconomic].join(" · ")}`,
     audienceDescription: input.audience.trim() || undefined,
     coverageLabel: input.geography || "Cobertura por definir",
     commercialReadiness,

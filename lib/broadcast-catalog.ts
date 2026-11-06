@@ -1,4 +1,5 @@
 import type { CoverageSelection } from "./geographic-coverage";
+import { audienceMatchesSource } from "./audience-target";
 
 export type BroadcastSource = {
   id: string; kind: "tv" | "radio"; label: string; provider: string;
@@ -32,11 +33,7 @@ export function radioCompatibility(source: BroadcastSource, brief: BroadcastBrie
   if (!validDate(brief.startDate) || source.periodEnd > brief.startDate) return "Selecciona una fecha posterior al estudio";
   if (!sameMarket(source, brief)) return "La plaza del estudio no coincide con el brief";
   if (brief.audienceType && brief.audienceType !== "B2C") return "El estudio no tiene un corte de audiencia empresarial";
-  const age = normalized(brief.ageRange ?? "");
-  if (source.ageMin !== 18 || source.ageMax !== 99 || !["personas 18", "18 99", "18"].includes(age)) return "El estudio corresponde a personas de 18 a 99 años";
-  const sex = normalized(brief.sex ?? "");
-  const expected = source.sex === "all" ? "todas las personas" : source.sex === "male" ? "hombres" : "mujeres";
-  if (sex !== expected || normalized(brief.socioeconomic ?? "") !== "todos los nse") return "El público del estudio no coincide con el brief";
+  if (!audienceMatchesSource(source, brief)) return "El público del estudio no coincide con el brief";
   return null;
 }
 export function compatibleRadio(catalog: BroadcastCatalog, brief: BroadcastBrief) {
