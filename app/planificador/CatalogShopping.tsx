@@ -1,4 +1,5 @@
 "use client";
+import { DEFAULT_AUDIENCE } from "@/lib/audience-target";
 import { PlanDeliveryPreview } from "@/components/PlanDeliveryPreview";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -315,6 +316,6 @@ function CartDeliveryProjection({startDate,endDate,setStartDate,setEndDate}:{sta
     <CalendarDateField name="reachEnd" label="Fin de campaña" value={endDate} onChange={setEndDate} min={startDate||undefined} required={false}/>
     <label>Cobertura<select value={geography} onChange={e=>setGeography(e.target.value)}>{["Guayaquil, Quito","Guayaquil","Quito"].map(city=><option key={city}>{city}</option>)}</select></label>
     <p>Público: personas de 18 años o más.</p>
-  </div>{startDate&&endDate&&<PlanDeliveryPreview request={{brief:{startDate,endDate,geography,ageRange:"Personas 18+",sex:"Todas las personas",socioeconomic:"Todos los NSE",audienceType:"B2C"},picks:cart.items,clientId:cart.clientId}}/>}</section>;
+  </div>{startDate&&endDate&&<PlanDeliveryPreview request={{brief:{startDate,endDate,geography,...DEFAULT_AUDIENCE,audienceType:"B2C"},picks:cart.items,clientId:cart.clientId}}/>}</section>;
 }
 function CartIcon() { return <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 4h2l2.2 11h11.6l2-8H6M8 19h.01M18 19h.01" /><circle cx="8" cy="19" r="1" /><circle cx="18" cy="19" r="1" /></svg>; }

@@ -1,4 +1,5 @@
 import { televisionStudyMatches } from "./television-measurement";
+import { audienceMatchesSource } from "./audience-target";
 import {planningStudyBrief,radioTariffCoversStationStudy,commercialTerritoryFits,radioCommercialCoverage,territoryKey} from "./planning-market";
 import {catalogProducts, type CatalogProduct} from "./catalog-shopping";
 import {planningProductPrice} from "./catalog-planning";
@@ -76,10 +77,7 @@ export function tvAudienceApplies(study: TvAudienceObservation, brief: StrategyB
   if(study.basis!=="period_average"||study.ageMin==null||study.ageMax==null)return false;
   if (!validDate(study.periodStart) || !validDate(study.periodEnd) || !validDate(brief.startDate) || !validDate(asOf) || study.periodStart > study.periodEnd || study.periodEnd > brief.startDate || study.periodEnd > asOf) return false;
   if (Date.parse(brief.startDate) - Date.parse(study.periodEnd) > 366 * 86_400_000) return false;
-  const age = normalized(brief.ageRange), expected = study.ageMax === 99 ? `${study.ageMin}` : `${study.ageMin} ${study.ageMax}`;
-  const agesMatch = age === expected || age === `personas ${expected}` || (study.ageMin === 18 && study.ageMax === 99 && age === "personas 18");
-  const sex = study.sex === "all" ? "todas las personas" : study.sex === "female" ? "mujeres" : study.sex === "male" ? "hombres" : "";
-  return agesMatch && sameMarket({ marketKeys: study.marketKeys } as BroadcastSource, brief) && normalized(brief.sex) === sex && study.nse === "all" && normalized(brief.socioeconomic) === "todos los nse" && brief.audienceType === "B2C";
+  return audienceMatchesSource(study, brief) && sameMarket({ marketKeys: study.marketKeys } as BroadcastSource, brief) && brief.audienceType === "B2C";
 }
 function tariffMarket(market: string, brief: StrategyBrief) {
   const keys = market.split(/\s*\+\s*|\s*[·,]\s*/).map(normalized).filter(Boolean);

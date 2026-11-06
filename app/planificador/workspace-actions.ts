@@ -24,6 +24,7 @@ import { buildPlanningScenarios, type PlanningScenario } from "@/lib/plan-optimi
 import type { MediaGroup } from "@/lib/media-groups";
 import { createClient } from "@/lib/supabase/server";
 import { restorePlanBrief, shouldCopySavedBrief } from "@/lib/planning-restore";
+import { restoreAudienceSelection, supportedAudienceSelection } from "@/lib/audience-target";
 
 export type SaveProgressInput = {
   planId?: string | null;
@@ -33,7 +34,7 @@ export type SaveProgressInput = {
 
 export type ManualPlanDraft = {
   activeMedium?: MediaGroup;
-  startDate?: string; endDate?: string; ageRange?: string; sex?: string;
+  startDate?: string; endDate?: string; ageRange?: string; sex?: string; socioeconomic?: string;
   categoryId: string;
   planId?: string | null;
   name: string;
@@ -89,6 +90,8 @@ export async function guardarProgresoBrief(input: SaveProgressInput): Promise<Sa
 export async function guardarPlanManual(input: ManualPlanDraft): Promise<SaveResult> {
   const access = await planAccess();
   if (!access.ok) return access;
+  const audienceSelection = restoreAudienceSelection(input);
+  if (!supportedAudienceSelection(audienceSelection)) return {ok:false,error:"Selecciona edad, sexo y nivel socioeconómico de los públicos disponibles."};
   let category;
   try { category = (await getCategoryResearch(input.categoryId)).category; } catch { return { ok: false, error: "Selecciona una categoría válida de Infomedia." }; }
   const budgetUsd = Number(input.budgetUsd);
@@ -125,7 +128,7 @@ export async function guardarPlanManual(input: ManualPlanDraft): Promise<SaveRes
     audienceType: cleanText(input.audienceType, 40),
     budgetUsd,
     geography: geographies.join(" · "),
-    geographies, coverage, startDate: input.startDate, endDate: input.endDate, ageRange: input.ageRange, sex: input.sex,
+    geographies, coverage, startDate: input.startDate, endDate: input.endDate, ...audienceSelection,
     selectedMedia,
   };
   const rawSelections = cleanObject(input.selections);
@@ -142,7 +145,7 @@ export async function guardarPlanManual(input: ManualPlanDraft): Promise<SaveRes
     const requests=diyTvRequests(broadcast,tvInput);
     tvProducts=requests.length?await readShoppingProducts(requests):[];
   }catch{return {ok:false,error:"Selecciona nuevamente los programas y cantidades del catálogo de tu cuenta."};}
-  const checked = validateBroadcastSelections(broadcast, {...brief, socioeconomic:"Todos los NSE"}, {
+  const checked = validateBroadcastSelections(broadcast, brief, {
     tv:tvInput,radio:selectedMedia.includes("radio")?rawSelections.radio:[],
   },diyTvResolver(brief,tvProducts));
   if (!checked.ok) return checked;

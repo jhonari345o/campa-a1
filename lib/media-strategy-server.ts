@@ -27,6 +27,7 @@ import type { CategoryResearch } from "./infomedia";
 import { validDate } from "./broadcast-catalog";
 import {PlanningSourcesUnavailable,requirePlanningSources} from "./planning-source-loading";
 import {failedFreeModelIds} from "./planning-ai-retry";
+import { supportedAudienceSelection } from "./audience-target";
 
 const EMPTY:StrategyCatalogs={broadcast:{sources:[],tv:[],radio:[]},radio:{stations:[]},press:{entries:[]},ooh:{assets:[]},influencers:[],tvAudience:[]};
 const SYSTEM = [
@@ -50,6 +51,7 @@ const SYSTEM = [
   "Propón el mix más defendible dentro de allowedMedia y las opciones entregadas. Puedes dejar un medio sin asignación. No propongas proveedores, formatos ni fuentes ajenos al JSON.",
   "No trates precios históricos, sin vigencia o sin plaza compatible como cotizaciones actuales. Los presupuestos y cantidades los calcula el servidor, conservando el total.",
   "Evalúa necesidades, intereses, modelo de conversión, margen y capacidad solo como criterios del brief, nunca como mediciones del mercado. Si una restricción es ambigua, pregunta.",
+  "audienceContext.needsAndBehaviors contiene las personas, necesidades o comportamientos que el cliente considera importantes. Úsalo para priorizar medios, programas, formatos, horarios y ubicaciones entre las opciones autorizadas, explicando brevemente su relación con la necesidad. Conserva el público demográfico amplio por defecto: el texto libre no autoriza estrechar edades, sexo o NSE ni inventar afinidad, hábitos, ratings o alcance para ese grupo. Solo una selección demográfica explícita cambia el corte de los estudios.",
   "Devuelve solo JSON: summary (una o dos frases, máximo cuatrocientos ochenta caracteres), allocations (medium, weight entero de cero a diez mil, rationale de una frase, evidenceIds, candidateIds y productionWeight solo para digital), questions (arreglo vacío). Los pesos expresan prioridades relativas y al menos uno debe ser positivo; el servidor los normaliza y conserva el presupuesto total. Presenta la recomendación final; las preguntas de control se gestionan internamente.",
   "Sigue outputContract. Copia los medium, evidenceIds y candidateIds exactamente de las opciones canónicas de cada medio. candidateIds puede ser un arreglo vacío. questions puede ser un arreglo vacío. No añadas campos ni texto fuera del JSON. Mantén la respuesta concisa.",
   "Usa los identificadores canónicos. No incluyas ningún dígito en summary, rationale o questions, incluso en edades, fechas, nombres de emisoras o etiquetas de alcance. Tampoco importes, porcentajes, cantidades, resultados numéricos, enlaces, HTML ni Markdown: los datos exactos se muestran desde las fuentes. No garantices resultados ni una mezcla óptima universal.",
@@ -62,6 +64,7 @@ function stable(value:unknown):unknown {
 }
 export function assertStrategyBrief(brief:StrategyBrief) {
   if(!brief||typeof brief!=="object"||!Array.isArray(brief.selectedMedia)||!brief.selectedMedia.length||brief.selectedMedia.length>6||new Set(brief.selectedMedia).size!==brief.selectedMedia.length||brief.selectedMedia.some(m=>!["television","radio","ooh","press","digital","influencers"].includes(m)))throw new Error("INVALID_STRATEGY_BRIEF");
+  if(!brief.ageRange||!brief.sex||!brief.socioeconomic||!supportedAudienceSelection(brief))throw new Error("INVALID_AUDIENCE_TARGET");
   if(brief.budgetUsd!=null&&(!Number.isFinite(brief.budgetUsd)||brief.budgetUsd<.01||brief.budgetUsd>10_000_000))throw new Error("INVALID_STRATEGY_BRIEF");
   if(JSON.stringify(brief).length>24_000||Object.values(brief).some(v=>typeof v==="string"&&v.length>4000)||!Array.isArray(brief.digitalPlatforms)||brief.digitalPlatforms.length>12||!Array.isArray(brief.products)||brief.products.length>30)throw new Error("INVALID_STRATEGY_BRIEF");
   if((brief.startDate&&!validDate(brief.startDate))||(brief.endDate&&!validDate(brief.endDate))||(brief.startDate&&brief.endDate&&brief.endDate<brief.startDate))throw new Error("INVALID_STRATEGY_BRIEF");

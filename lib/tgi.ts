@@ -1,4 +1,5 @@
 import type { MediaGroup } from "@/lib/media-groups";
+import { restoreAudienceSelection } from "./audience-target";
 
 /** Contracts only. The reference observations are loaded from private storage. */
 export type TgiTarget = { ageRange?: string; sex?: string; socioeconomic?: string; audienceType?: string; geography?: string };
@@ -16,9 +17,10 @@ const allowedIds = new Set(["tv-streaming", "open-tv", "ooh", "radio", "internet
 
 export function projectTgi(payload: unknown, target: TgiTarget): TgiResearch | undefined {
   const source = obj(payload);
-  const age = key(target.ageRange).replace(/^personas /, "");
+  const selection = restoreAudienceSelection(target);
+  const age = selection.ageRange;
   const column = age === "15-34" ? "youngAdults" : age === "35+" ? "adults35Plus" : "total";
-  const allDimensions = key(target.sex) === "todas las personas" && key(target.socioeconomic) === "todos los nse" && key(target.audienceType) === "b2c";
+  const allDimensions = !!target.sex && !!target.socioeconomic && selection.sex === "Todas las personas" && selection.socioeconomic === "Todos los NSE" && key(target.audienceType) === "b2c";
   const national = /^(todo ecuador|ecuador|nacional|cobertura nacional)$/.test(key(target.geography));
   const ageMatched = column !== "total" && allDimensions && national;
   const seen = new Set<string>();

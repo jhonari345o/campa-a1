@@ -7,6 +7,8 @@ import { InfomediaResearchPanel } from "@/components/InfomediaResearchPanel";
 import { PlanningProposal } from "@/components/PlanningProposal";
 import { MediaStrategyPanel } from "@/components/MediaStrategyPanel";
 import { MediaSelectionIcon } from "@/components/MediaSelectionIcon";
+import { AudienceFields } from "@/components/AudienceFields";
+import { restoreAudienceSelection } from "@/lib/audience-target";
 import { MediaProviderMark } from "@/components/MediaProviderMark";
 import { OohPlanPhoto } from "@/components/OohPlanPhoto";
 import { OohLocationPreview } from "@/components/OohLocationPreview";
@@ -47,6 +49,7 @@ const BriefDefaults = createContext<Record<string, unknown>>({});
 export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, workspaceName = "Ad Mavericks", initialClientName = "" }: { initialPlan?: SavedMediaPlan | null; categoryCatalog: CategoryCatalog; canApprove?: boolean; workspaceName?: string; initialClientName?: string }) {
   const savedResearch = restoreResearch(initialPlan?.analysis?.research);
   const [initialBrief] = useState(() => restorePlanBrief(initialPlan?.brief ?? { brand: initialClientName }));
+  const [audienceSelection, setAudienceSelection] = useState(() => restoreAudienceSelection(initialBrief));
   const [restoredResult] = useState(() => restoreSavedPlanningResult(initialPlan));
   const [state, formAction, pending] = useActionState<PlanResult | null, FormData>(async (_previous, data) => {
     try {
@@ -140,10 +143,10 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
           <div className="planner-fields planner-fields-two">
             <Field name="brand" label="Marca" placeholder="Nombre de la marca" defaultValue={stringValue(initialBrief.brand)} />
             <InfomediaCategoryPicker showPeriod initialYear={Number(initialBrief.referenceYear) || 0} categories={categoryCatalog.categories} error={categoryCatalog.error} initialId={stringValue(initialBrief.categoryId)} initialLabel={stringValue(initialBrief.keyword)} />
-            <SelectField name="objective" label="Objetivo principal" defaultValue={stringValue(initialBrief.objective) || "Ventas"}>
+            <SelectField name="objective" label="Objetivo principal" defaultValue={stringValue(initialBrief.objective) || "Reconocimiento"}>
               {["Reconocimiento", "Alcance", "Consideración", "Tráfico", "Interacción", "Reproducciones", "Generación de leads", "Mensajes", "Ventas", "Visitas al local", "Descargas de app", "Retención", "Otro"].map((option) => <option key={option}>{option}</option>)}
             </SelectField>
-            <SelectField name="priority" label="Prioridad del plan" defaultValue={stringValue(initialBrief.priority) || "Eficiencia"}>
+            <SelectField name="priority" label="Prioridad del plan" defaultValue={stringValue(initialBrief.priority) || "Cobertura"}>
               {["Cobertura", "Frecuencia", "Eficiencia", "Conversión", "Afinidad", "Presencia local", "Balance"].map((option) => <option key={option}>{option}</option>)}
             </SelectField>
           </div>
@@ -154,9 +157,7 @@ export function PlanForm({ initialPlan, categoryCatalog, canApprove = false, wor
           <SectionNumber number="02" title="Audiencia y geografía" description="Delimita a quién debe llegar la campaña y dónde tiene sentido invertir." />
           <div className="planner-fields planner-fields-four">
             <SelectField name="audienceType" label="Tipo de audiencia" defaultValue={stringValue(initialBrief.audienceType) || "B2C"}><option>B2C</option><option>B2B</option><option>Mixta</option></SelectField>
-            <SelectField name="ageRange" label="Edad" defaultValue={stringValue(initialBrief.ageRange) || "Personas 18+"}>{["Todas las edades", "13-17", "18-24", "25-34", "35-44", "45-54", "55-64", "65+", "15-34", "18-34", "25-54", "35+", "Personas 18+"].map((option) => <option key={option}>{option}</option>)}</SelectField>
-            <SelectField name="sex" label="Sexo" defaultValue={stringValue(initialBrief.sex) || "Todas las personas"}>{["Todas las personas", "Mujeres", "Hombres", "No binario", "Mujeres prioritario", "Hombres prioritario", "Por definir"].map((option) => <option key={option}>{option}</option>)}</SelectField>
-            <SelectField name="socioeconomic" label="Nivel socioeconómico" defaultValue={stringValue(initialBrief.socioeconomic) || "Todos los NSE"}>{["Todos los NSE", "A", "B", "C+", "C-", "D", "A/B", "B/C+", "C+/C-", "C-/D", "Por definir"].map((option) => <option key={option}>{option}</option>)}</SelectField>
+            <AudienceFields value={audienceSelection} onChange={setAudienceSelection} />
           </div>
           <div className="mt-6">
             <input type="hidden" name="geography" value={geography} />
