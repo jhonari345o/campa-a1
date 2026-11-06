@@ -9,7 +9,7 @@ import { coverageFromLabels } from "./geographic-coverage";
 import { makeRadioDailySpots, type RadioDailySpots } from "./radio-schedule";
 import { audienceCohort } from "./audience-target";
 
-export const STRATEGY_VERSION = "2026-11-05.42";
+export const STRATEGY_VERSION = "2026-11-05.43";
 export const MAX_STRATEGY_EXECUTIONS = 25;
 // Planning policy approved by the platform owner; it is not an audience study.
 export const STARTING_MEDIA_MIX: Readonly<Record<MediaGroup, number>> = {
@@ -412,6 +412,24 @@ function affordableWeights(weights:{medium:MediaGroup;weight:number}[],bundle:St
   }
   return result;
 }
+// Wire percentages are explicit; stored advice still uses integer basis points.
+function explicitPercent(value:unknown):number|null {
+  if(typeof value!=="string"||!/^\s*(?:0|[1-9]\d?|100)(?:[.,]\d{1,2})?\s*%\s*$/.test(value))return null;
+  const n=Number(value.replace("%","").replace(",",".").trim());
+  return n<=100?Math.round(n*100):null;
+}
+function relativeMix(values:unknown[]):number[]|null {
+  if(values.some(v=>typeof v==="string"&&v.includes("%"))){
+    const points=values.map(v=>v===0?0:explicitPercent(v));
+    return points.every((n):n is number=>n!==null)?points:null;
+  }
+  const ns=values.map(v=>typeof v==="number"?v:typeof v==="string"&&/^\d{1,5}(?:[.,]\d{1,4})?$/.test(v)?Number(v.replace(",",".")):NaN);
+  if(ns.some(n=>!Number.isFinite(n)||n<0||n>10000))return null;
+  if(ns.every(Number.isInteger))return ns;
+  // A complete fractional distribution is also unambiguous from its total.
+  const sum=ns.reduce((a,b)=>a+b,0);
+  return ns.length>1&&((ns.every(n=>n<=1)&&Math.abs(sum-1)<=.010001)||(ns.every(n=>n<=100)&&Math.abs(sum-100)<=1))?ns:null;
+}
 /** JSON is an instruction proposal. Server-owned sources, metrics, rates and arithmetic are immutable. */
 export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:StrategyEvidenceBundle,onReject?:(code:string)=>void,onSafeText?:()=>void):StrategyAdvice|null {
   const reject=(code:string)=>{onReject?.(code);return null;};
@@ -427,11 +445,12 @@ export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:Strate
   const questions = Array.isArray(v.questions) ? v.questions.filter(q=>text(q,400)).slice(0,5) as string[] : [];
   const allowed=new Set(allowedStrategyMedia(brief,bundle)),sourceIds=new Set(bundle.sources.filter(s=>s.use!=="unavailable").map(s=>s.id)),used=new Set<string>();
   const weights = new Map<MediaGroup,number>();
-  for (const value of v.allocations) {
+  const mix=relativeMix(v.allocations.map(value=>obj(value).weight));
+  if(!mix)return reject("WEIGHT");
+  for (const [index,value] of v.allocations.entries()) {
     const r=obj(value), medium=r.medium as MediaGroup;
     if(!allowed.has(medium)||weights.has(medium))return reject("MEDIUM");
-    if(!Number.isInteger(r.weight)||Number(r.weight)<0||Number(r.weight)>10_000)return reject("WEIGHT");
-    weights.set(medium,Number(r.weight));
+    weights.set(medium,mix[index]);
   }
   // The model proposes relative priorities, not money. Canonicalize them with
   // the same deterministic cent allocation used by the budget calculator.
@@ -441,7 +460,6 @@ export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:Strate
   const allocations:StrategyAdvice["allocations"]=[];
   for(const value of v.allocations){const r=obj(value),medium=r.medium as MediaGroup;
     if(!allowed.has(medium)||used.has(medium))return reject("MEDIUM");
-    if(!Number.isInteger(r.weight)||Number(r.weight)<0||Number(r.weight)>10_000)return reject("WEIGHT");
     const weight=canonicalWeights.get(medium)??0;
     if(typeof r.rationale!=="string")return reject("RATIONALE");
     const safeRationale=text(r.rationale,700);
@@ -454,7 +472,7 @@ export function parseStrategyAdvice(raw:string,brief:StrategyBrief,bundle:Strate
     const hasProductions=medium==="digital"&&pool.some(c=>c.digitalProduction&&(r.candidateIds as string[]).includes(c.id));
     // A list of programmes is not permission to spend the entire digital
     // allocation. Their envelope must be an explicit, validated AI decision.
-    const productionWeight=hasProductions&&weight>0?r.productionWeight:0;
+    const productionWeight=hasProductions&&weight>0?(explicitPercent(r.productionWeight)??r.productionWeight):0;
     if(productionWeight===undefined)return reject("DIGITAL_SPLIT_MISSING");
     if(!Number.isInteger(productionWeight))return reject("DIGITAL_SPLIT_TYPE");
     if(Number(productionWeight)<0||Number(productionWeight)>10_000)return reject("DIGITAL_SPLIT_RANGE");
@@ -502,7 +520,7 @@ export function strategyAiPayload(brief:StrategyBrief,bundle:StrategyEvidenceBun
   }));
   // Use the same integer scale as the response contract, instead of fractional baseline shares.
   const baseline=allocateStrategyBudget(baseWeights(brief,bundle,plan),100).map(r=>({medium:r.medium,weight:Math.round(r.amountUsd!*100)}));
-  const outputContract={summary:"Texto breve sin cifras",allocations:[{medium:"Copiar de allocationOptions",weight:"Peso relativo entero entre cero y diez mil; el servidor normaliza la suma y conserva el presupuesto",rationale:"Texto breve sin cifras",evidenceIds:"Entre uno y seis identificadores de evidenceIds del mismo medio",candidateIds:"Entre cero y veinticinco identificadores de candidateIds del mismo medio, solo los necesarios para la cobertura y el presupuesto",productionWeight:"Solo en digital: entero de cero a diez mil que fija la fracción máxima del presupuesto digital para programas editoriales; el resto va a plataformas. Obligatorio si seleccionas programas; cero sin programas."}],questions:[]};
+  const outputContract={summary:"Texto breve sin cifras",allocations:[{medium:"Copiar de allocationOptions",weight:"Porcentaje del plan con signo %, por ejemplo 30%; nunca un monto. La suma debe aproximarse al 100%",rationale:"Texto breve sin cifras",evidenceIds:"Entre uno y seis identificadores de evidenceIds del mismo medio",candidateIds:"Entre cero y veinticinco identificadores de candidateIds del mismo medio, solo los necesarios para la cobertura y el presupuesto",productionWeight:"Solo en digital: porcentaje del presupuesto digital para programas, por ejemplo 25%; el resto va a plataformas. Sin programas usa 0%."}],questions:[]};
   const mixPolicy={startingPercentages:STARTING_MEDIA_MIX,appliesToAllSix:ALL.every(m=>brief.selectedMedia.includes(m)),adjustable:true,basis:"Política de planificación; no es una medición",adjustUsing:["competencia","consumo comparable de la audiencia","estudios y vigencia","rankings y ratings de cada plaza y público","cobertura","objetivo","presupuesto y tarifas"]};
   return {version:STRATEGY_VERSION,brief,audienceContext,mixPolicy,digitalOptions:{platforms:plan.plan.filter(r=>mediaGroupForLabel(r.label)==="digital"&&r.label!==DIGITAL_PRODUCTIONS_LABEL&&!/whatsapp/i.test(r.label)).map(r=>r.label),requestedPlatforms:brief.digitalPlatforms,programmeBudgetIsExplicit:true},territorialPolicy:{nationalPriority:nationalTerritoryOrder(),nationalFirst:briefMarketKeys(brief).includes("nacional"),coverageBeforeMeasurements:true},allowedMedia:allowed,allocationOptions,outputContract,referenceCases,broadcastPolicy:{tvMinimumProgramsPerChannel:2,tvPlanningBands:["A","AA","AAA"],lateForRelevantAdultsOnly:true,radioMonthlyPolicy:{preferredStationCount:{from:5,to:6},rotateStationsBetweenMonths:true,reduceStationCountWhenUnaffordable:true,activeDaysPerMonth:20,spotsPerDay:{starting:2,maximum:6},stationSpendCeilingUsd:2000,commercialMinimumsRemainBinding:true}},evidence:{sources:bundle.sources.filter(s=>wanted.has(s.id)),competition:bundle.competition,categoryMix:bundle.categoryMix,consumption:bundle.consumption,candidates,audienceReferences:bundle.audienceReferences,channelShares:bundle.channelShares,oohMarketReferences:bundle.oohMarketReferences,gaps:bundle.gaps},baseline,rules:["Las cifras y el presupuesto se calculan en el servidor.","La inversión de competidores no mide efectividad.","Las fuentes contextuales no son mediciones del target.","Un tarifario no es un rating y un ranking no es alcance de campaña.","No declares una mezcla óptima universal; compara solo alternativas respaldadas."]};
 }

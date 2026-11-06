@@ -90,4 +90,8 @@ test("the provider schema and restored advice preserve the explicit editorial sh
  const option=expanded.allocationOptions.find(o=>o.medium==="digital")!;
  const raw={summary:"Combina pauta y contenido editorial.",allocations:[{medium:"digital",weight:10000,productionWeight:2500,rationale:"La pauta responde al objetivo de la campaña.",evidenceIds:option.evidenceIds.slice(0,1),candidateIds:option.candidateIds}],questions:[]};
  assert.equal(parseStrategyAdvice(transport.restore(JSON.stringify(raw)),brief,bundle)?.allocations[0].productionWeight,2500);
+ const labelled=(split:string)=>transport.restore(JSON.stringify({...raw,allocations:[{...raw.allocations[0],weight:"100%",productionWeight:split}]}));
+ assert.equal(parseStrategyAdvice(labelled("25%"),brief,bundle)?.allocations[0].productionWeight,2500);
+ assert.equal(parseStrategyAdvice(labelled("125%"),brief,bundle),null);
+ assert.deepEqual((digital.properties.productionWeight as {enum:string[]}).enum,Array.from({length:101},(_,i)=>`${i}%`));
 });

@@ -186,6 +186,18 @@ test("AI relative weights normalize without copying money or changing selected e
   assert.equal(parseStrategyAdvice(JSON.stringify({summary:"Propuesta.",allocations:[row("digital",0)]}),b,bundle),null);
   assert.equal(parseStrategyAdvice(JSON.stringify({summary:"Propuesta.",allocations:[row("digital",1),row("digital",1)]}),b,bundle),null);
 });
+test("provider percentages, independent of notation, preserve cents, source selections and exclusions",()=>{
+  const b=strategyBrief({selectedMedia:["television","digital"]}),bundle=buildStrategyEvidence(b,strategyResearch,strategyCatalogs(),date);
+  const read=(a:unknown,z:unknown)=>parseStrategyAdvice(JSON.stringify({summary:"Combina cobertura y repetición.",allocations:["television","digital"].map((medium,i)=>({medium,weight:i?z:a,rationale:"Responde al público solicitado.",evidenceIds:["category-investment"],candidateIds:i?[]:[bundle.candidates[0].id]}))}),b,bundle);
+  for(const pair of [["32,5%","67.5%"],[.325,.675],[32.5,67.5],["32.5","67.5"]]){
+    const v=read(...pair as [unknown,unknown])!;
+    assert.deepEqual(v.allocations.map(a=>a.weight),[3250,6750]);
+    assert.equal(v.allocations[0].candidateIds[0],bundle.candidates[0].id);
+    assert.deepEqual(allocateStrategyBudget(v.allocations,200000).map(r=>r.amountUsd),[65000,135000]);
+  }
+  for(const pair of [["100.01%","0%"],["$65.000","67.5%"],["32%",6800],[.3,70],[null,100],["30%","-1%"]])
+    assert.equal(read(...pair as [unknown,unknown]),null);
+});
 test("the complete brief and only canonical source fields are sent to the strategy adapter",async()=>{
   const b=strategyBrief({audience:"Necesidad específica",competitors:"Competidor sintético",restrictions:"No usar prensa",learnings:"Aprendizaje sintético"}),bundle=buildStrategyEvidence(b,strategyResearch,strategyCatalogs(),date);
   const base=await buildMediaPlan({...b,research:scopePlanningResearch(strategyResearch,bundle)});

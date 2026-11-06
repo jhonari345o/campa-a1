@@ -25,7 +25,8 @@ export function strategyAiTransport(payload:ReturnType<typeof strategyAiPayload>
   const reverse=new Map([...aliases].map(([id,alias])=>[alias,id]));
   // Repeated conditions and cohort descriptions are carried once, verbatim.
   // No observations, price, geography, date or qualification is truncated.
-  const aliased=JSON.parse(JSON.stringify(payload,(_key,value)=>typeof value==="string"?aliases.get(value)??value:value));
+  const wire={...payload,baseline:payload.baseline.map(({medium,weight})=>({medium,weight:`${weight/100}%`}))};
+  const aliased=JSON.parse(JSON.stringify(wire,(_key,value)=>typeof value==="string"?aliases.get(value)??value:value));
   const occurrences=new Map<string,number>();
   JSON.stringify(aliased,(_key,value)=>{if(typeof value==="string"&&value.length>=28)occurrences.set(value,(occurrences.get(value)??0)+1);return value;});
   // Include shorter repeated cohort/location labels only when the reference
@@ -35,12 +36,13 @@ export function strategyAiTransport(payload:ReturnType<typeof strategyAiPayload>
   const content=JSON.stringify(compactTables(texts.size?{textReferences:Object.fromEntries([...texts].map(([value,id])=>[id,value])),...compressed}:aliased));
   const validOptions=payload.allocationOptions.filter(option=>option.evidenceIds.length>0);
   const idList=(ids:string[],minimum:number,maximum:number)=>({type:"array",minItems:minimum,maxItems:Math.min(maximum,ids.length),items:ids.length?{type:"string",enum:ids.map(id=>aliases.get(id)??id)}:{type:"string"}});
+  const percent={type:"string",enum:Array.from({length:101},(_,n)=>`${n}%`)};
   const schema:Record<string,unknown>={type:"object",additionalProperties:false,required:["summary","allocations","questions"],properties:{
     summary:{type:"string",minLength:1,maxLength:480,pattern:"^[^0-9%$€<>]*$",description:"Conclusión de una o dos frases en español. Sin dígitos, porcentajes, importes, enlaces ni HTML; tampoco escribir edades o nombres con cifras."},
     allocations:{type:"array",minItems:1,maxItems:payload.allowedMedia.length,items:{anyOf:validOptions.map(option=>({type:"object",additionalProperties:false,required:["medium","weight","rationale","evidenceIds","candidateIds",...(option.medium==="digital"?["productionWeight"]:[])],properties:{
-      medium:{type:"string",enum:[option.medium]},weight:{type:"integer",minimum:0,maximum:10000,description:"Prioridad relativa entera. El servidor normaliza los pesos y conserva el presupuesto."},rationale:{type:"string",minLength:1,maxLength:240,pattern:"^[^0-9%$€<>]*$",description:"Una frase sobre la selección. Sin dígitos, porcentajes, importes, enlaces ni HTML; tampoco escribir edades o nombres con cifras."},
+      medium:{type:"string",enum:[option.medium]},weight:{...percent,description:"Porcentaje del presupuesto del plan. Ejemplo: 30%."},rationale:{type:"string",minLength:1,maxLength:240,pattern:"^[^0-9%$€<>]*$",description:"Una frase sobre la selección. Sin dígitos, porcentajes, importes, enlaces ni HTML; tampoco escribir edades o nombres con cifras."},
       evidenceIds:idList(option.evidenceIds,1,6),candidateIds:idList(option.candidateIds,0,MAX_STRATEGY_EXECUTIONS),
-      ...(option.medium==="digital"?{productionWeight:{type:"integer",minimum:0,maximum:10000,description:"Fracción máxima del presupuesto digital destinada a programas editoriales, en escala cero a diez mil. Cero sin programas; el resto se reserva a plataformas de pauta."}}:{}),
+      ...(option.medium==="digital"?{productionWeight:{...percent,description:"Porcentaje de la inversión digital para programas. Ejemplo: 25%. Sin programas: 0%."}}:{}),
     }}))}},questions:{type:"array",maxItems:0,items:{type:"string"}},
   }};
   return {content,ready:validOptions.length>0,responseSchema:{name:"media_strategy",schema},restore(raw:string):string {
