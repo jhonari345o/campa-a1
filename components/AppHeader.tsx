@@ -89,10 +89,10 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
                 </Link>
               );
             })}
-            {(kind === "agency" || capabilities.request) && capabilities.reports && <Link href="/campanas" onClick={close} className={`portal-nav-item ${active === "campanas" ? "is-active" : ""}`}><span>06</span><strong>Órdenes</strong></Link>}
-            {kind === "client" ? <Link href={link("/reportes")} onClick={close} className={`portal-nav-item ${active === "reportes" ? "is-active" : ""}`}><span>↗</span><strong>Reportes</strong></Link> : capabilities.reports && workspace?.brand !== "lettera" && <ReportNavigationItem active={active === "reportes"} isAdmin={isAdmin} onClick={close} />}
+            {!previewCompanyId && (kind === "agency" || capabilities.request) && capabilities.reports && <Link href="/campanas" onClick={close} className={`portal-nav-item ${active === "campanas" ? "is-active" : ""}`}><span>06</span><strong>Órdenes</strong></Link>}
+            {kind === "client" || previewCompanyId ? capabilities.reports && <Link href={link("/reportes")} onClick={close} className={`portal-nav-item ${active === "reportes" ? "is-active" : ""}`}><span>↗</span><strong>Reportes</strong></Link> : capabilities.reports && workspace?.brand !== "lettera" && <ReportNavigationItem active={active === "reportes"} isAdmin={isAdmin} onClick={close} />}
             {kind === "provider" && <Link href="/proveedores" onClick={close} className="portal-nav-item"><span>↗</span><strong>Mis medios y novedades</strong></Link>}
-            {kind === "agency" && capabilities.request && <Link href="/creditos" onClick={close} className="portal-nav-item"><span>◎</span><strong>Crédito y facturación</strong></Link>}
+            {!previewCompanyId && capabilities.request && <Link href="/creditos" onClick={close} className="portal-nav-item"><span>◎</span><strong>Crédito y facturación</strong></Link>}
           </nav>
 
           {capabilities.catalog && <nav className="portal-catalog-nav" aria-label="Catálogo general de medios">
@@ -115,7 +115,7 @@ export function AppHeader({ name, isAdmin, active = "panel", title, catalogSecti
 
           <nav className="portal-utility-nav" aria-label="Herramientas de la cuenta">
             {capabilities.request && <Link href="/pautar" onClick={close}>Pautar con Mavi</Link>}
-            {capabilities.reports && kind === "agency" && <Link href="/campanas" onClick={close}>Campañas</Link>}
+            {!previewCompanyId && capabilities.reports && kind === "agency" && <Link href="/campanas" onClick={close}>Campañas</Link>}
             {isAdmin && <Link href="/mercado" onClick={close}>Inteligencia de mercado</Link>}
             {isAdmin && <Link href="/consola" onClick={close}>Administración</Link>}
           </nav>
