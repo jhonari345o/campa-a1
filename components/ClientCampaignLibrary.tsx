@@ -13,7 +13,7 @@ const VIEWS: { id: View; label: string }[] = [{ id: "overview", label: "Resumen"
 const countLabel = (n: number, singular: string, plural: string) => `${n} ${n === 1 ? singular : plural}`;
 const STATUS = { planning: "Con plan", running: "En campaña", reported: "Con reportes" };
 
-export function ClientCampaignLibrary({ library, workspaceName, brand = "one", available = true, preview = false, initialClientId = "", planClientContext = true }: { planClientContext?: boolean; preview?: boolean; initialClientId?: string; library: CampaignLibrary; workspaceName: string; brand?: WorkspaceIdentity["brand"]; available?: boolean }) {
+export function ClientCampaignLibrary({ library, workspaceName, brand = "one", available = true, preview = false, canPlan = false, initialClientId = "", planClientContext = true }: { planClientContext?: boolean; preview?: boolean; canPlan?: boolean; initialClientId?: string; library: CampaignLibrary; workspaceName: string; brand?: WorkspaceIdentity["brand"]; available?: boolean }) {
   const [selection, setSelection] = useState<Selection>({...INITIAL,client:initialClientId});
   const [query, setQuery] = useState("");
   const [catalog, setCatalog] = useState<"reported" | "planning">("reported");
@@ -58,7 +58,7 @@ export function ClientCampaignLibrary({ library, workspaceName, brand = "one", a
         <p className="library-description">{campaign?.summary ?? (client ? "Ejecución, respaldos y planes, reunidos por " + (films ? "película." : "campaña.") : "Consulta lo ejecutado por cliente y campaña, con sus reportes y planes de medios.")}</p>
         <div className="library-hero-bottom">
           <span>{campaign ? campaign.period : client ? countLabel(campaigns.length, films ? "película" : "campaña", films ? "películas" : "campañas") : library.clients.length + " clientes"}</span>
-          {campaign ? <span className="library-pill">{STATUS[campaign.status]}</span> : !preview && <Link href={client && planClientContext ? clientPlanningHref(client.id) : "/planificador?view=planner"}>Crear un plan <span aria-hidden>↗</span></Link>}
+          {campaign ? <span className="library-pill">{STATUS[campaign.status]}</span> : !preview && canPlan && <Link href={client && planClientContext ? clientPlanningHref(client.id) : "/planificador?view=planner"}>Crear un plan <span aria-hidden>↗</span></Link>}
         </div>
       </div>
       {campaign?.poster && /^\/postbuy\/warner\/posters\/[a-z0-9-]+\.jpg$/.test(campaign.poster) && <img src={campaign.poster} alt="" className="library-hero-poster" />}

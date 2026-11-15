@@ -4,6 +4,7 @@ import { ClientCampaignLibrary } from "@/components/ClientCampaignLibrary";
 import { ClientReports } from "@/components/ClientReports";
 import { getSessionProfile } from "@/lib/auth";
 import { getCampaignLibrary } from "@/lib/campaign-library-server";
+import { portalCapabilities } from "@/lib/portal-access";
 export const metadata = { title: "Clientes y campañas" };
 export const dynamic = "force-dynamic";
 export default async function ClientsPage() {
@@ -12,10 +13,11 @@ export default async function ClientsPage() {
   if (!profile.is_platform_admin && profile.workspace?.kind === "provider") redirect("/proveedores");
   if (!profile.is_platform_admin && profile.workspace?.kind === "client") return <ClientReports profile={profile} />;
   const { library, available } = await getCampaignLibrary(profile.workspace?.companyId);
+  const canPlan = portalCapabilities(profile.workspace?.kind ?? "agency", profile.workspace?.role ?? "", profile.is_platform_admin, profile.workspace?.clientPlanning).plan;
   return <div className="min-h-screen">
     <AppHeader name={profile.full_name ?? profile.email ?? ""} isAdmin={profile.is_platform_admin} workspace={profile.workspace} active="clientes" />
     <main id="workspace-content" className="portal-page library-page">
-      <ClientCampaignLibrary planClientContext={!profile.is_platform_admin} library={library} workspaceName={profile.workspace?.name ?? "Clientes"} brand={profile.workspace?.brand ?? "one"} available={available} />
+      <ClientCampaignLibrary canPlan={canPlan} planClientContext={!profile.is_platform_admin} library={library} workspaceName={profile.workspace?.name ?? "Clientes"} brand={profile.workspace?.brand ?? "one"} available={available} />
     </main>
   </div>;
 }
