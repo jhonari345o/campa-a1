@@ -276,6 +276,18 @@ function mp4Box(type: string, payload: Buffer): Buffer {
   return Buffer.concat([header, payload]);
 }
 
+test("el lector MP4 rechaza texto ejecutable y contenedores truncados como metadatos", () => {
+  for (const input of [
+    Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"></svg>'),
+    Buffer.from('<html><script>alert(1)</script></html>'),
+    mp4Box("moov", mp4Box("mvhd", Buffer.alloc(1))),
+    Buffer.from([0, 0, 0, 1, 109, 111, 111, 118]),
+  ]) {
+    const bytes = input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength) as ArrayBuffer;
+    assert.throws(() => parseMp4Metadata(bytes));
+  }
+});
+
 test("el reporte narrado usa únicamente métricas observadas", () => {
   const narrative = buildReportNarrative({ orderCount: 1, jobs: [{ platform: "meta", status: "publicada", spec: { presupuesto_usd: 500, metrics: { impresiones: 10_000, clics: 250, gasto_usd: 300 } } }, { platform: "google", status: "publicada", spec: { presupuesto_usd: 400, metrics: { impresiones: 8_000, clics: 80, gasto_usd: 200 } } }] });
   assert.match(narrative.headline, /Meta/);
