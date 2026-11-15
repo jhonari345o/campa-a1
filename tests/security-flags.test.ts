@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { createHmac } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
@@ -74,18 +73,27 @@ test("el cobro separa inversión, 22% y 25% sin reducir el presupuesto Meta", ()
   });
 });
 
-test("el webhook dLocal Go exige la firma HMAC del cuerpo crudo", () => {
+test("el webhook dLocal Go exige la firma HMAC del cuerpo crudo", async () => {
   const apiKey = "test-api-key";
   const secretKey = "test-secret-key";
   const rawBody = '{"payment_id":"DP-123"}';
-  const signature = createHmac("sha256", secretKey)
-    .update(`${apiKey}${rawBody}`, "utf8")
-    .digest("hex");
+  // Fixed vector independently generated with Python hmac/hashlib SHA-256.
+  const signature = "eabf2a61136b32c7c9e5b7e03585ce57e9f343c57769b9505b5df33ad99c0fa2";
   const header = `V2-HMAC-SHA256, Signature: ${signature}`;
 
-  assert.equal(verifyDlocalNotificationSignature(rawBody, header, apiKey, secretKey), true);
-  assert.equal(verifyDlocalNotificationSignature(`${rawBody} `, header, apiKey, secretKey), false);
-  assert.equal(verifyDlocalNotificationSignature(rawBody, "V2-HMAC-SHA256, Signature: 00", apiKey, secretKey), false);
+  assert.equal(await verifyDlocalNotificationSignature(rawBody, header, apiKey, secretKey), true);
+  for (const body of [`${rawBody} `, '{"payment_id":"DP-124"}', '{ "payment_id": "DP-123" }'])
+    assert.equal(await verifyDlocalNotificationSignature(body, header, apiKey, secretKey), false);
+  for (const value of [null, "", "V2-HMAC-SHA256, Signature: 00", `V2-HMAC-SHA256, Signature: ${"0".repeat(64)}`, `${header}, Signature: ${signature}`, `Bearer ${signature}`])
+    assert.equal(await verifyDlocalNotificationSignature(rawBody, value, apiKey, secretKey), false);
+  for (const [merchant, secret] of [["", secretKey], [apiKey, ""], ["other-merchant", secretKey], [apiKey, "other-secret"]])
+    assert.equal(await verifyDlocalNotificationSignature(rawBody, header, merchant, secret), false);
+  assert.equal(await verifyDlocalNotificationSignature(rawBody, header.toUpperCase(), apiKey, secretKey), true);
+  assert.equal(await verifyDlocalNotificationSignature(
+    '{"payment_id":"DP-ñ","nombre":"José"}',
+    "V2-HMAC-SHA256, Signature: 4f6c2046464ac00d459ab3220852035c5b75f702e53a572883f41afe4eb7cd20",
+    "test-merchant", "test-signing-secret",
+  ), true);
 });
 
 test("solo el valor true explicito habilita un interruptor", () => {

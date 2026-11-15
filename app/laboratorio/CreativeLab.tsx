@@ -34,8 +34,8 @@ export function CreativeLab() {
   async function chooseFile(file?: File) {
     if (!file) return;
     if (!localAnalysisConsent) { setError("Autoriza el análisis local antes de seleccionar el archivo."); return; }
-    const isMp4 = file.type === "video/mp4" || /\.mp4$/i.test(file.name);
-    const kind = file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") || isMp4 ? "video" : null;
+    const isMp4 = file.type === "video/mp4" || ((!file.type || file.type === "application/octet-stream") && /\.mp4$/i.test(file.name));
+    const kind = ["image/jpeg", "image/png", "image/webp"].includes(file.type) ? "image" : isMp4 ? "video" : null;
     if (!kind) { setError("Selecciona una imagen JPG, PNG, WebP o un video MP4."); return; }
     if (file.size > 250 * 1024 * 1024) { setError("Para revisión local, usa un archivo menor a 250 MB."); return; }
     setError("");
@@ -96,6 +96,49 @@ export function CreativeLab() {
 
 function CreativePreview({ asset, placement }: { asset: Asset; placement: CreativePlacement }) { const vertical = placement === "meta_reels" || placement === "youtube_shorts"; return <div><div className={`relative mx-auto overflow-hidden rounded-2xl bg-black ${vertical ? "aspect-[9/16] max-h-[560px]" : placement === "meta_feed" ? "aspect-[4/5] max-h-[520px]" : "aspect-[16/7]"}`}>{asset.previewAvailable ? asset.kind === "video" ? <video src={asset.url} controls muted className="size-full object-contain" /> : <Image src={asset.url} alt="Vista previa del creativo" width={asset.width} height={asset.height} unoptimized className="size-full object-contain" /> : <div className="grid size-full place-items-center p-8 text-center text-white"><div><span className="text-4xl">◉</span><strong className="mt-3 block">Metadatos analizados</strong><p className="mt-1 text-xs text-white/60">Tu navegador no reproduce este códec, por eso no puede mostrar la vista previa.</p></div></div>}<div className="pointer-events-none absolute inset-[8%] rounded-xl border-2 border-dashed border-signal/80"><span className="absolute left-2 top-2 rounded bg-black/65 px-2 py-1 text-[9px] font-black text-signal">ZONA SEGURA ORIENTATIVA</span></div></div><div className="mt-3 flex flex-wrap justify-center gap-2 text-[10px] font-bold text-muted"><span>{asset.width} × {asset.height}px</span><span>•</span><span>{(asset.file.size / 1024 / 1024).toFixed(1)} MB</span>{asset.durationSeconds != null && <><span>•</span><span>{asset.durationSeconds.toFixed(1)} s</span></>}</div></div>; }
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; label: string }) { return <label className="flex items-center gap-2 rounded-xl border border-border bg-fog p-3 text-xs font-bold text-forest"><input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />{label}</label>; }
-function imageMetadata(url: string) { return new Promise<{ width: number; height: number; durationSeconds: null }>((resolve, reject) => { const image = new globalThis.Image(); image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight, durationSeconds: null }); image.onerror = reject; image.src = url; }); }
-function videoMetadata(url: string) { return new Promise<{ width: number; height: number; durationSeconds: number }>((resolve, reject) => { const video = document.createElement("video"); const timer = window.setTimeout(() => reject(new Error("VIDEO_METADATA_TIMEOUT")), 8_000); video.preload = "metadata"; video.onloadedmetadata = () => { window.clearTimeout(timer); resolve({ width: video.videoWidth, height: video.videoHeight, durationSeconds: Number.isFinite(video.duration) ? video.duration : 0 }); }; video.onerror = () => { window.clearTimeout(timer); reject(new Error("VIDEO_CODEC_UNSUPPORTED")); }; video.src = url; }); }
+function imageMetadata(url: string) {
+  return new Promise<{ width: number; height: number; durationSeconds: null }>((resolve, reject) => {
+    if (!url.startsWith("blob:") || new URL(url).origin !== window.location.origin) {
+      reject(new Error("LOCAL_MEDIA_REQUIRED"));
+      return;
+    }
+    const image = new globalThis.Image();
+    image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight, durationSeconds: null });
+    image.onerror = () => reject(new Error("IMAGE_METADATA_UNREADABLE"));
+    image.src = url;
+  });
+}
+function videoMetadata(url: string) {
+  return new Promise<{ width: number; height: number; durationSeconds: number }>((resolve, reject) => {
+    // Only object URLs created by this page may reach a media source. Never
+    // reinterpret a DOM value as a remote, data, or executable URL.
+    if (!url.startsWith("blob:") || new URL(url).origin !== window.location.origin) {
+      reject(new Error("LOCAL_MEDIA_REQUIRED"));
+      return;
+    }
+    const video = document.createElement("video");
+    const cleanup = () => {
+      window.clearTimeout(timer);
+      video.onloadedmetadata = null;
+      video.onerror = null;
+      video.removeAttribute("src");
+      video.load();
+    };
+    const timer = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("VIDEO_METADATA_TIMEOUT"));
+    }, 8_000);
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      const metadata = { width: video.videoWidth, height: video.videoHeight, durationSeconds: Number.isFinite(video.duration) ? video.duration : 0 };
+      cleanup();
+      resolve(metadata);
+    };
+    video.onerror = () => {
+      cleanup();
+      reject(new Error("VIDEO_CODEC_UNSUPPORTED"));
+    };
+    video.src = url;
+  });
+}
 function placementLabel(value: CreativePlacement) { return PLACEMENTS.find(([id]) => id === value)?.[1] ?? value; }

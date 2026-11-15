@@ -424,8 +424,10 @@ function affordableWeights(weights:{medium:MediaGroup;weight:number}[],bundle:St
 }
 // Wire percentages are explicit; stored advice still uses integer basis points.
 function explicitPercent(value:unknown):number|null {
-  if(typeof value!=="string"||!/^\s*(?:0|[1-9]\d?|100)(?:[.,]\d{1,2})?\s*%\s*$/.test(value))return null;
-  const n=Number(value.replace("%","").replace(",",".").trim());
+  if(typeof value!=="string")return null;
+  const match=/^\s*((?:0|[1-9]\d?|100)(?:[.,]\d{1,2})?)\s*%\s*$/.exec(value);
+  if(!match)return null;
+  const n=Number(match[1].replace(",","."));
   return n<=100?Math.round(n*100):null;
 }
 function relativeMix(values:unknown[]):number[]|null {
