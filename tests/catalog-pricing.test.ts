@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { scopeCatalogProducts, type AgreedCatalogRate } from "../lib/catalog-pricing";
 import { catalogReferenceDisclosure } from "../lib/catalog-rate-display";
+import { activeTelevisionProducts } from "../lib/television-directory";
 import { catalogCartSummary, catalogProducts, catalogQuoteSignature, type CatalogProduct } from "../lib/catalog-shopping";
 import type { BroadcastCatalog } from "../lib/broadcast-catalog";
 import type { RadioDirectoryCatalog } from "../lib/radio-directory";
@@ -20,6 +21,21 @@ test("missing, expired and overlapping agreements never fall back to a global or
  }
  const old=scopeCatalogProducts([base],[rate],"2026-10-31",false),changed=scopeCatalogProducts([base],[{...rate,priceCents:50000}],"2026-10-31",false);
  assert.notEqual(catalogQuoteSignature([{productKey:base.key,quantity:2}],old),catalogQuoteSignature([{productKey:base.key,quantity:2}],changed));
+});
+test("customer projection preserves source periods so archived TV rows do not reappear beside current sale defaults",()=>{
+ const archive:CatalogProduct={...base,key:"tv:archive",kind:"tv",provider:"Ecuavisa",name:"Programa",validFrom:"2026-06-01",validTo:"2026-06-30"};
+ const current:CatalogProduct={...archive,key:"tv:default:current",priceCents:6840,conditions:"",validFrom:"2026-11-02",validTo:null,source:{defaultPrice:true,standingPrice:true}};
+ const future:CatalogProduct={...archive,key:"tv:future",validFrom:"2026-12-01",validTo:"2026-12-31"};
+ const rows=scopeCatalogProducts([archive,current,future],[],"2026-11-14",false);
+ assert.deepEqual(rows.map(p=>[p.validFrom,p.validTo]),[["2026-06-01","2026-06-30"],["2026-11-02",null],["2026-12-01","2026-12-31"]]);
+ assert.deepEqual(activeTelevisionProducts(rows,"2026-11-14").map(p=>p.key),[current.key]);
+ assert.equal(rows[0].priceCents,null);assert.equal(rows[2].priceCents,null);
+ assert.equal(rows[0].source.rate,undefined);assert.ok(!JSON.stringify(rows).includes("Private purchase term"));
+ assert.equal(rows[1].priceCents,6840);
+ // An explicit current account agreement can renew an older programme.
+ const renewed=scopeCatalogProducts([archive],[{...rate,productKey:archive.key,validFrom:"2026-11-01",validTo:"infinity"}],"2026-11-14",false);
+ assert.equal(renewed[0].validTo,null);assert.equal(renewed[0].priceCents,40000);
+ assert.equal(activeTelevisionProducts(renewed,"2026-11-14").length,1);
 });
 test("radio seconds, spot counts, press insertions and digital budgets stay distinct in a mixed cart",()=>{
  const radio={stations:[{id:"station-a",name:"Radio test",city:"Guayaquil",logoPath:null,profile:{tariffs:[{id:"tariff-a",unit:"second",market:"Guayaquil",edition:"2026",target:"Adultos",taxIncluded:false,conditions:"",validFrom:"2026-01-01",validTo:"2026-12-31",rates:[{label:"Rotativo",amountUsd:0.2}]}]}}]} as RadioDirectoryCatalog;
