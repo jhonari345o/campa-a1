@@ -184,5 +184,7 @@ await asUser('','anon');await denied('select * from broadcast_sources');await de
 await db.exec('reset role');await db.query("update broadcast_sources set active=false");
 await asUser(planner);await count('select id from broadcast_tv_offers',[],0);
 await db.exec('reset role');await db.exec(await source('supabase/migrations/0022_broadcast_catalog.sql'));checks++;
+const { testCatalogClientFlows } = await import('./test-catalog-client-flows.mjs');
+checks += await testCatalogClientFlows(db, source);
 await db.close();
 console.log(JSON.stringify({status:'passed',checks,environment:'isolated PostgreSQL/PGlite; synthetic data; not production'}));

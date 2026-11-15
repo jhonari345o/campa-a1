@@ -7,7 +7,7 @@ const money=(cents:number)=>new Intl.NumberFormat("es-EC",{maximumFractionDigits
 export const metadata={title:"Crédito y facturación"};
 export default async function CreditPage(){
  const p=await getSessionProfile();if(!p)redirect("/ingresar");
- if(!p.is_platform_admin&&(!p.workspace||!portalCapabilities(p.workspace.kind??"agency",p.workspace.role).request))redirect("/panel");
+ if(!p.is_platform_admin&&(!p.workspace||!portalCapabilities(p.workspace.kind??"agency",p.workspace.role,false,p.workspace.clientPlanning).request))redirect("/panel");
  const db=await createClient(),month=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Guayaquil",year:"numeric",month:"2-digit"}).format(new Date())+"-01";
  let accounts=db.from("company_credit_accounts").select("company_id,monthly_limit_cents,payment_term_days,active,companies(name)");
  if(p.workspace)accounts=accounts.eq("company_id",p.workspace.companyId);
