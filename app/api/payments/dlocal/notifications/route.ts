@@ -15,12 +15,12 @@ export async function POST(request: Request) {
   }
 
   if (
-    !verifyDlocalNotificationSignature(
+    !(await verifyDlocalNotificationSignature(
       rawBody,
       request.headers.get("authorization"),
       credentials.apiKey,
       credentials.secretKey,
-    )
+    ))
   ) {
     return NextResponse.json({ error: "Firma inválida." }, { status: 401 });
   }

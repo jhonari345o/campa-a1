@@ -221,7 +221,8 @@ test("provider percentages, independent of notation, preserve cents, source sele
     assert.equal(v.allocations[0].candidateIds[0],bundle.candidates[0].id);
     assert.deepEqual(allocateStrategyBudget(v.allocations,200000).map(r=>r.amountUsd),[65000,135000]);
   }
-  for(const pair of [["100.01%","0%"],["$65.000","67.5%"],["32%",6800],[.3,70],[null,100],["30%","-1%"]])
+  for(const pair of [["100.01%","0%"],["$65.000","67.5%"],["32%",6800],[.3,70],[null,100],["30%","-1%"],
+    ["30%%","70%"],["3%0%","70%"],["30%<script>","70%"],["30,1,2%","70%"],["1e2%","0%"],["030%","70%"]])
     assert.equal(read(...pair as [unknown,unknown]),null);
 });
 test("the complete brief and only canonical source fields are sent to the strategy adapter",async()=>{
