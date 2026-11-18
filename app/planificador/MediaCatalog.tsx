@@ -93,7 +93,7 @@ export function MediaCatalog({
 
       {section !== "tv" && <WorkspaceRateCards products={shoppingProducts} section={section}/>}
       <CatalogShoppingLayout active={canRequest || isAdmin}><div className="media-portal-panel" role="tabpanel">
-        {section === "digital" && <DigitalSection products={shoppingProducts}/>}
+        {section === "digital" && <DigitalSection products={shoppingProducts} canManageDsp={isAdmin && !previewCompanyId}/>}
         {section === "influencers" && <InfluencerSection profiles={influencers} />}
         {section === "radio" && <RadioDirectoryPanel directory={radioDirectory} broadcast={broadcast} />}
         {section === "tv" && <TelevisionDirectoryPanel catalog={broadcast} products={shoppingProducts}/>}
@@ -108,7 +108,7 @@ export function MediaCatalog({
   );
 }
 
-function DigitalSection({products}:{products:CatalogProduct[]}) {
+function DigitalSection({products, canManageDsp}:{products:CatalogProduct[]; canManageDsp:boolean}) {
   const groups = useMemo(() => digitalProductionGroups(products), [products]);
   const networks = useMemo(() => [...new Set(groups.map(group => group.network))], [groups]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -121,6 +121,7 @@ function DigitalSection({products}:{products:CatalogProduct[]}) {
         {networks.length > 0 && <button type="button" aria-pressed={!platforms && !network} onClick={() => setSelected(null)} className={buttonClass(!platforms && !network)}>Todos los canales</button>}
         {networks.map(name => <button type="button" key={name} aria-pressed={!platforms && network === name} onClick={() => setSelected(name)} className={buttonClass(!platforms && network === name)}>{name}</button>)}
         <button type="button" aria-pressed={platforms} onClick={() => setSelected("platforms")} className={buttonClass(platforms)}>Plataformas de pauta</button>
+        {canManageDsp && <Link href="/digital/dsp" className="ml-auto rounded-xl border border-border bg-white px-4 py-2 text-sm font-bold text-signal-dark">Administrar DSP →</Link>}
       </div>
       {!platforms ? <DigitalProductions key={network ?? "todos"} groups={groups} network={network}/> : <>
       <SectionHeading
@@ -130,13 +131,13 @@ function DigitalSection({products}:{products:CatalogProduct[]}) {
         count={`${DIGITAL_PLATFORMS.length} plataformas`}
       />
       <div className="mt-6 grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,340px),1fr))" }}>
-        {DIGITAL_PLATFORMS.map((item) => <DigitalCard key={item.slug} item={item} />)}
+        {DIGITAL_PLATFORMS.map((item) => <DigitalCard key={item.slug} item={item} canManageDsp={canManageDsp} />)}
       </div></>}
     </section>
   );
 }
 
-function DigitalCard({ item }: { item: DigitalPlatform }) {
+function DigitalCard({ item, canManageDsp }: { item: DigitalPlatform; canManageDsp:boolean }) {
   return (
     <article className="media-portal-digital-card">
       <div className="flex items-start justify-between gap-3">
@@ -152,6 +153,7 @@ function DigitalCard({ item }: { item: DigitalPlatform }) {
         <strong className="text-forest">Medición:</strong> {item.measurement}
       </p>
       <CatalogDigitalBudget slug={item.slug}/>
+      {canManageDsp && item.slug === "programmatic-dsp" && <Link href="/digital/dsp" className="mt-4 text-sm font-bold text-signal-dark">Administrar StackAdapt →</Link>}
     </article>
   );
 }
