@@ -9,6 +9,7 @@ const CONSENT_PROTECTED_ROUTES = [
   "/api/planning",
   "/api/catalog",
   "/social-media", "/api/social-media",
+  "/digital/dsp", "/api/digital/dsp",
 ];
 
 /**
