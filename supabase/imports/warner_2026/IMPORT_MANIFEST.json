@@ -1,0 +1,14 @@
+{
+  "source": {
+    "visual_file": "Warner_medios_2026_con_imagenes.xlsx",
+    "visual_sha256": "4f4e538150b109461b20213f5cd181e18a3685174d988fd76091daeef26f654c",
+    "control_file": "Warner_medios_2026_presentacion_FINAL.xlsx",
+    "control_sha256": "65804b3f2959dfb0a849a5a97a0af633e293dfe54add64efa8118902e0fecf04",
+    "logos_file": "Logos_radios_Warner_2026.zip",
+    "logos_sha256": "eea7f251a1c528f359c207f6d0b6c07b4189a7e828b81afb839bf28549b90ec0"
+  },
+  "campaigns": 7,
+  "placements": 67,
+  "evidence_ready": 54,
+  "evidence_pending": 13
+}

@@ -1,0 +1,6 @@
+.photo { grid-column:1 / -1; min-width:0; margin:18px 0 0; overflow:hidden; border:1px solid #ded8cf; border-radius:15px; background:#f5f2eb; }
+.photo a { position:relative; display:block; }
+.photo img { display:block; width:100%; height:clamp(210px,27vw,380px); object-fit:contain; }
+.photo a>span { position:absolute; right:12px; bottom:12px; border-radius:9px; background:#322d2a; color:#fffdf5; padding:10px 13px; font-size:11px; font-weight:800; }
+.photo a:focus-visible { outline:3px solid #007d00; outline-offset:-3px; }
+.photo figcaption { border-top:1px solid #ded8cf; padding:10px 14px; color:#64584d; font-size:11px; }

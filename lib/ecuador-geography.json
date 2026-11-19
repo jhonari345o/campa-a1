@@ -1,0 +1,1714 @@
+[
+  {
+    "shapeId": "780006B84481112392323",
+    "key": "province:pastaza",
+    "kind": "province",
+    "label": "Pastaza"
+  },
+  {
+    "shapeId": "780006B30899548387252",
+    "key": "province:carchi",
+    "kind": "province",
+    "label": "Carchi"
+  },
+  {
+    "shapeId": "780006B83348252159319",
+    "key": "province:loja",
+    "kind": "province",
+    "label": "Loja"
+  },
+  {
+    "shapeId": "780006B32277993251715",
+    "key": "province:zamora-chinchipe",
+    "kind": "province",
+    "label": "Zamora Chinchipe"
+  },
+  {
+    "shapeId": "780006B8093408258889",
+    "key": "province:el-oro",
+    "kind": "province",
+    "label": "El Oro"
+  },
+  {
+    "shapeId": "780006B31400562589266",
+    "key": "province:esmeraldas",
+    "kind": "province",
+    "label": "Esmeraldas"
+  },
+  {
+    "shapeId": "780006B18414364413556",
+    "key": "province:imbabura",
+    "kind": "province",
+    "label": "Imbabura"
+  },
+  {
+    "shapeId": "780006B2045588347602",
+    "key": "province:sucumbios",
+    "kind": "province",
+    "label": "Sucumbíos"
+  },
+  {
+    "shapeId": "780006B15798287521285",
+    "key": "province:santa-elena",
+    "kind": "province",
+    "label": "Santa Elena"
+  },
+  {
+    "shapeId": "780006B2576853520044",
+    "key": "province:santo-domingo-de-los-tsachilas",
+    "kind": "province",
+    "label": "Santo Domingo de los Tsáchilas"
+  },
+  {
+    "shapeId": "780006B44300629339188",
+    "key": "province:pichincha",
+    "kind": "province",
+    "label": "Pichincha"
+  },
+  {
+    "shapeId": "780006B63949328087962",
+    "key": "province:manabi",
+    "kind": "province",
+    "label": "Manabí"
+  },
+  {
+    "shapeId": "780006B24339224838979",
+    "key": "province:azuay",
+    "kind": "province",
+    "label": "Azuay"
+  },
+  {
+    "shapeId": "780006B5869423141371",
+    "key": "province:canar",
+    "kind": "province",
+    "label": "Cañar"
+  },
+  {
+    "shapeId": "780006B56468316684184",
+    "key": "province:guayas",
+    "kind": "province",
+    "label": "Guayas"
+  },
+  {
+    "shapeId": "780006B68361660427036",
+    "key": "province:los-rios",
+    "kind": "province",
+    "label": "Los Ríos"
+  },
+  {
+    "shapeId": "780006B34708550650195",
+    "key": "province:cotopaxi",
+    "kind": "province",
+    "label": "Cotopaxi"
+  },
+  {
+    "shapeId": "780006B72413159872158",
+    "key": "province:bolivar",
+    "kind": "province",
+    "label": "Bolívar"
+  },
+  {
+    "shapeId": "780006B23430196387963",
+    "key": "province:tungurahua",
+    "kind": "province",
+    "label": "Tungurahua"
+  },
+  {
+    "shapeId": "780006B46353723731382",
+    "key": "province:chimborazo",
+    "kind": "province",
+    "label": "Chimborazo"
+  },
+  {
+    "shapeId": "780006B74004453472975",
+    "key": "province:morona-santiago",
+    "kind": "province",
+    "label": "Morona Santiago"
+  },
+  {
+    "shapeId": "780006B95371609522575",
+    "key": "province:napo",
+    "kind": "province",
+    "label": "Napo"
+  },
+  {
+    "shapeId": "780006B54205869319714",
+    "key": "province:orellana",
+    "kind": "province",
+    "label": "Orellana"
+  },
+  {
+    "shapeId": "780006B54205469685650",
+    "key": "province:galapagos",
+    "kind": "province",
+    "label": "Galápagos"
+  },
+  {
+    "shapeId": "8360857B81048544444838",
+    "key": "city:24-de-mayo:manabi",
+    "kind": "city",
+    "label": "24 de Mayo",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B665042104792",
+    "key": "city:aguarico:orellana",
+    "kind": "city",
+    "label": "Aguarico",
+    "context": "Orellana"
+  },
+  {
+    "shapeId": "8360857B82258447900817",
+    "key": "city:alausi:chimborazo",
+    "kind": "city",
+    "label": "Alausi",
+    "context": "Chimborazo"
+  },
+  {
+    "shapeId": "8360857B37279599451859",
+    "key": "city:alfredo-baquerizo-moreno:guayas",
+    "kind": "city",
+    "label": "Alfredo Baquerizo Moreno",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B61692882319499",
+    "key": "city:ambato:tungurahua",
+    "kind": "city",
+    "label": "Ambato",
+    "context": "Tungurahua"
+  },
+  {
+    "shapeId": "8360857B41675882344987",
+    "key": "city:antonio-ante:imbabura",
+    "kind": "city",
+    "label": "Antonio Ante",
+    "context": "Imbabura"
+  },
+  {
+    "shapeId": "8360857B99947477251050",
+    "key": "city:arajuno:pastaza",
+    "kind": "city",
+    "label": "Arajuno",
+    "context": "Pastaza"
+  },
+  {
+    "shapeId": "8360857B80114747144377",
+    "key": "city:archidona:napo",
+    "kind": "city",
+    "label": "Archidona",
+    "context": "Napo"
+  },
+  {
+    "shapeId": "8360857B40714321113119",
+    "key": "city:arenillas:el-oro",
+    "kind": "city",
+    "label": "Arenillas",
+    "context": "El Oro"
+  },
+  {
+    "shapeId": "8360857B71031597583616",
+    "key": "city:atacames:esmeraldas",
+    "kind": "city",
+    "label": "Atacames",
+    "context": "Esmeraldas"
+  },
+  {
+    "shapeId": "8360857B45777368126824",
+    "key": "city:atahualpa:el-oro",
+    "kind": "city",
+    "label": "Atahualpa",
+    "context": "El Oro"
+  },
+  {
+    "shapeId": "8360857B88575915979484",
+    "key": "city:azogues:canar",
+    "kind": "city",
+    "label": "Azogues",
+    "context": "Cañar"
+  },
+  {
+    "shapeId": "8360857B87551033662534",
+    "key": "city:baba:los-rios",
+    "kind": "city",
+    "label": "Baba",
+    "context": "Los Ríos"
+  },
+  {
+    "shapeId": "8360857B44096543508351",
+    "key": "city:babahoyo:los-rios",
+    "kind": "city",
+    "label": "Babahoyo",
+    "context": "Los Ríos"
+  },
+  {
+    "shapeId": "8360857B63754497407840",
+    "key": "city:balao:guayas",
+    "kind": "city",
+    "label": "Balao",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B29129198314993",
+    "key": "city:balsas:el-oro",
+    "kind": "city",
+    "label": "Balsas",
+    "context": "El Oro"
+  },
+  {
+    "shapeId": "8360857B55301947791088",
+    "key": "city:balzar:guayas",
+    "kind": "city",
+    "label": "Balzar",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B58135855754809",
+    "key": "city:banos-de-agua-santa:tungurahua",
+    "kind": "city",
+    "label": "Baños de Agua Santa",
+    "context": "Tungurahua"
+  },
+  {
+    "shapeId": "8360857B93443037342113",
+    "key": "city:biblian:canar",
+    "kind": "city",
+    "label": "Biblian",
+    "context": "Cañar"
+  },
+  {
+    "shapeId": "8360857B4480682421183",
+    "key": "city:bolivar:carchi",
+    "kind": "city",
+    "label": "Bolivar",
+    "context": "Carchi"
+  },
+  {
+    "shapeId": "8360857B59948244226228",
+    "key": "city:bolivar:manabi",
+    "kind": "city",
+    "label": "Bolivar",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B33101813988560",
+    "key": "city:buena-fe:los-rios",
+    "kind": "city",
+    "label": "Buena Fe",
+    "context": "Los Ríos"
+  },
+  {
+    "shapeId": "8360857B21807845085638",
+    "key": "city:caluma:bolivar",
+    "kind": "city",
+    "label": "Caluma",
+    "context": "Bolívar"
+  },
+  {
+    "shapeId": "8360857B77805583896778",
+    "key": "city:calvas:loja",
+    "kind": "city",
+    "label": "Calvas",
+    "context": "Loja"
+  },
+  {
+    "shapeId": "8360857B38047305818625",
+    "key": "city:camilo-ponce-enriquez:azuay",
+    "kind": "city",
+    "label": "Camilo Ponce Enriquez",
+    "context": "Azuay"
+  },
+  {
+    "shapeId": "8360857B37850433241159",
+    "key": "city:canar:canar",
+    "kind": "city",
+    "label": "Cañar",
+    "context": "Cañar"
+  },
+  {
+    "shapeId": "8360857B58627909026885",
+    "key": "city:carlos-julio-arosemena-tola:napo",
+    "kind": "city",
+    "label": "Carlos Julio Arosemena Tola",
+    "context": "Napo"
+  },
+  {
+    "shapeId": "8360857B63398910527025",
+    "key": "city:cascales:sucumbios",
+    "kind": "city",
+    "label": "Cascales",
+    "context": "Sucumbíos"
+  },
+  {
+    "shapeId": "8360857B67514259930674",
+    "key": "city:catamayo:loja",
+    "kind": "city",
+    "label": "Catamayo",
+    "context": "Loja"
+  },
+  {
+    "shapeId": "8360857B65214647181775",
+    "key": "city:cayambe:pichincha",
+    "kind": "city",
+    "label": "Cayambe",
+    "context": "Pichincha"
+  },
+  {
+    "shapeId": "8360857B35359374832073",
+    "key": "city:celica:loja",
+    "kind": "city",
+    "label": "Celica",
+    "context": "Loja"
+  },
+  {
+    "shapeId": "8360857B40845623315832",
+    "key": "city:centinela-del-condor:zamora-chinchipe",
+    "kind": "city",
+    "label": "Centinela del Condor",
+    "context": "Zamora Chinchipe"
+  },
+  {
+    "shapeId": "8360857B65795256666582",
+    "key": "city:cevallos:tungurahua",
+    "kind": "city",
+    "label": "Cevallos",
+    "context": "Tungurahua"
+  },
+  {
+    "shapeId": "8360857B56169079883124",
+    "key": "city:chaguarpamba:loja",
+    "kind": "city",
+    "label": "Chaguarpamba",
+    "context": "Loja"
+  },
+  {
+    "shapeId": "8360857B64832470835751",
+    "key": "city:chambo:chimborazo",
+    "kind": "city",
+    "label": "Chambo",
+    "context": "Chimborazo"
+  },
+  {
+    "shapeId": "8360857B68230797378495",
+    "key": "city:chilla:el-oro",
+    "kind": "city",
+    "label": "Chilla",
+    "context": "El Oro"
+  },
+  {
+    "shapeId": "8360857B60313806039355",
+    "key": "city:chillanes:bolivar",
+    "kind": "city",
+    "label": "Chillanes",
+    "context": "Bolívar"
+  },
+  {
+    "shapeId": "8360857B60997464812695",
+    "key": "city:chimbo:bolivar",
+    "kind": "city",
+    "label": "Chimbo",
+    "context": "Bolívar"
+  },
+  {
+    "shapeId": "8360857B7366793693817",
+    "key": "city:chinchipe:zamora-chinchipe",
+    "kind": "city",
+    "label": "Chinchipe",
+    "context": "Zamora Chinchipe"
+  },
+  {
+    "shapeId": "8360857B73185000874563",
+    "key": "city:chone:manabi",
+    "kind": "city",
+    "label": "Chone",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B12860339410526",
+    "key": "city:chordeleg:azuay",
+    "kind": "city",
+    "label": "Chordeleg",
+    "context": "Azuay"
+  },
+  {
+    "shapeId": "8360857B64943669996857",
+    "key": "city:chunchi:chimborazo",
+    "kind": "city",
+    "label": "Chunchi",
+    "context": "Chimborazo"
+  },
+  {
+    "shapeId": "8360857B84939424323345",
+    "key": "city:colimes:guayas",
+    "kind": "city",
+    "label": "Colimes",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B90964740580974",
+    "key": "city:colta:chimborazo",
+    "kind": "city",
+    "label": "Colta",
+    "context": "Chimborazo"
+  },
+  {
+    "shapeId": "8360857B15521483188159",
+    "key": "city:cotacachi:imbabura",
+    "kind": "city",
+    "label": "Cotacachi",
+    "context": "Imbabura"
+  },
+  {
+    "shapeId": "8360857B68184402536651",
+    "key": "city:crnel-marcelino-mariduena:guayas",
+    "kind": "city",
+    "label": "Crnel. Marcelino Maridueña",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B44277665484155",
+    "key": "city:cuenca:azuay",
+    "kind": "city",
+    "label": "Cuenca",
+    "context": "Azuay"
+  },
+  {
+    "shapeId": "8360857B2358017472723",
+    "key": "city:cumanda:chimborazo",
+    "kind": "city",
+    "label": "Cumanda",
+    "context": "Chimborazo"
+  },
+  {
+    "shapeId": "8360857B98272453986256",
+    "key": "city:cuyabeno:sucumbios",
+    "kind": "city",
+    "label": "Cuyabeno",
+    "context": "Sucumbíos"
+  },
+  {
+    "shapeId": "8360857B15995512724159",
+    "key": "city:daule:guayas",
+    "kind": "city",
+    "label": "Daule",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B48088232281675",
+    "key": "city:deleg:canar",
+    "kind": "city",
+    "label": "Deleg",
+    "context": "Cañar"
+  },
+  {
+    "shapeId": "8360857B97967949149299",
+    "key": "city:duran:guayas",
+    "kind": "city",
+    "label": "Duran",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B61359836335380",
+    "key": "city:echeandia:bolivar",
+    "kind": "city",
+    "label": "Echeandia",
+    "context": "Bolívar"
+  },
+  {
+    "shapeId": "8360857B97185681080722",
+    "key": "city:el-carmen:manabi",
+    "kind": "city",
+    "label": "El Carmen",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B77920880428732",
+    "key": "city:el-chaco:napo",
+    "kind": "city",
+    "label": "El Chaco",
+    "context": "Napo"
+  },
+  {
+    "shapeId": "8360857B6127992117214",
+    "key": "city:el-guabo:el-oro",
+    "kind": "city",
+    "label": "El Guabo",
+    "context": "El Oro"
+  },
+  {
+    "shapeId": "8360857B8773690858711",
+    "key": "city:el-pan:azuay",
+    "kind": "city",
+    "label": "El Pan",
+    "context": "Azuay"
+  },
+  {
+    "shapeId": "8360857B57489769890627",
+    "key": "city:el-pangui:zamora-chinchipe",
+    "kind": "city",
+    "label": "El Pangui",
+    "context": "Zamora Chinchipe"
+  },
+  {
+    "shapeId": "8360857B56552951365472",
+    "key": "city:el-piedrero:guayas",
+    "kind": "city",
+    "label": "El Piedrero",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B65217893137982",
+    "key": "city:el-tambo:canar",
+    "kind": "city",
+    "label": "El Tambo",
+    "context": "Cañar"
+  },
+  {
+    "shapeId": "8360857B22416675182339",
+    "key": "city:el-triunfo:guayas",
+    "kind": "city",
+    "label": "El Triunfo",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B46981965589636",
+    "key": "city:eloy-alfaro:esmeraldas",
+    "kind": "city",
+    "label": "Eloy Alfaro",
+    "context": "Esmeraldas"
+  },
+  {
+    "shapeId": "8360857B95089772616558",
+    "key": "city:empalme:guayas",
+    "kind": "city",
+    "label": "Empalme",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B50260374474946",
+    "key": "city:esmeraldas:esmeraldas",
+    "kind": "city",
+    "label": "Esmeraldas",
+    "context": "Esmeraldas"
+  },
+  {
+    "shapeId": "8360857B16708852637049",
+    "key": "city:espejo:carchi",
+    "kind": "city",
+    "label": "Espejo",
+    "context": "Carchi"
+  },
+  {
+    "shapeId": "8360857B90110286076801",
+    "key": "city:espindola:loja",
+    "kind": "city",
+    "label": "Espindola",
+    "context": "Loja"
+  },
+  {
+    "shapeId": "8360857B52288748558736",
+    "key": "city:flavio-alfaro:manabi",
+    "kind": "city",
+    "label": "Flavio Alfaro",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B7998826994941",
+    "key": "city:giron:azuay",
+    "kind": "city",
+    "label": "Giron",
+    "context": "Azuay"
+  },
+  {
+    "shapeId": "8360857B53481091829171",
+    "key": "city:gnral-antonio-elizalde:guayas",
+    "kind": "city",
+    "label": "Gnral. Antonio Elizalde",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B84387334952145",
+    "key": "city:gonzalo-pizarro:sucumbios",
+    "kind": "city",
+    "label": "Gonzalo Pizarro",
+    "context": "Sucumbíos"
+  },
+  {
+    "shapeId": "8360857B83721057206969",
+    "key": "city:gonzanama:loja",
+    "kind": "city",
+    "label": "Gonzanama",
+    "context": "Loja"
+  },
+  {
+    "shapeId": "8360857B86752754342516",
+    "key": "city:guachapala:azuay",
+    "kind": "city",
+    "label": "Guachapala",
+    "context": "Azuay"
+  },
+  {
+    "shapeId": "8360857B64865140859495",
+    "key": "city:gualaceo:azuay",
+    "kind": "city",
+    "label": "Gualaceo",
+    "context": "Azuay"
+  },
+  {
+    "shapeId": "8360857B90160317571497",
+    "key": "city:gualaquiza:morona-santiago",
+    "kind": "city",
+    "label": "Gualaquiza",
+    "context": "Morona Santiago"
+  },
+  {
+    "shapeId": "8360857B94409334599022",
+    "key": "city:guamote:chimborazo",
+    "kind": "city",
+    "label": "Guamote",
+    "context": "Chimborazo"
+  },
+  {
+    "shapeId": "8360857B97791335649951",
+    "key": "city:guano:chimborazo",
+    "kind": "city",
+    "label": "Guano",
+    "context": "Chimborazo"
+  },
+  {
+    "shapeId": "8360857B44914689230683",
+    "key": "city:guaranda:bolivar",
+    "kind": "city",
+    "label": "Guaranda",
+    "context": "Bolívar"
+  },
+  {
+    "shapeId": "8360857B75288721097085",
+    "key": "city:guayaquil:guayas",
+    "kind": "city",
+    "label": "Guayaquil",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B57232990650034",
+    "key": "city:huamboya:morona-santiago",
+    "kind": "city",
+    "label": "Huamboya",
+    "context": "Morona Santiago"
+  },
+  {
+    "shapeId": "8360857B41959203551937",
+    "key": "city:huaquillas:el-oro",
+    "kind": "city",
+    "label": "Huaquillas",
+    "context": "El Oro"
+  },
+  {
+    "shapeId": "8360857B37631210722611",
+    "key": "city:ibarra:imbabura",
+    "kind": "city",
+    "label": "Ibarra",
+    "context": "Imbabura"
+  },
+  {
+    "shapeId": "8360857B49822942031092",
+    "key": "city:isabela:galapagos",
+    "kind": "city",
+    "label": "Isabela",
+    "context": "Galápagos"
+  },
+  {
+    "shapeId": "8360857B10119074569782",
+    "key": "city:isidro-ayora:guayas",
+    "kind": "city",
+    "label": "Isidro Ayora",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B32343432212573",
+    "key": "city:jama:manabi",
+    "kind": "city",
+    "label": "Jama",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B39254193540064",
+    "key": "city:jaramijo:manabi",
+    "kind": "city",
+    "label": "Jaramijo",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B19905531919728",
+    "key": "city:jipijapa:manabi",
+    "kind": "city",
+    "label": "Jipijapa",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B31956195822204",
+    "key": "city:junin:manabi",
+    "kind": "city",
+    "label": "Junin",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B34762572283066",
+    "key": "city:la-concordia:santo-domingo-de-los-tsachilas",
+    "kind": "city",
+    "label": "La Concordia",
+    "context": "Santo Domingo de los Tsáchilas"
+  },
+  {
+    "shapeId": "8360857B49386620675514",
+    "key": "city:la-joya-de-los-sachas:orellana",
+    "kind": "city",
+    "label": "La Joya de los Sachas",
+    "context": "Orellana"
+  },
+  {
+    "shapeId": "8360857B88993978002865",
+    "key": "city:la-libertad:santa-elena",
+    "kind": "city",
+    "label": "La Libertad",
+    "context": "Santa Elena"
+  },
+  {
+    "shapeId": "8360857B47745613666531",
+    "key": "city:la-mana:cotopaxi",
+    "kind": "city",
+    "label": "La Mana",
+    "context": "Cotopaxi"
+  },
+  {
+    "shapeId": "8360857B94153717881636",
+    "key": "city:la-troncal:canar",
+    "kind": "city",
+    "label": "La Troncal",
+    "context": "Cañar"
+  },
+  {
+    "shapeId": "8360857B32687179357863",
+    "key": "city:lago-agrio:sucumbios",
+    "kind": "city",
+    "label": "Lago Agrio",
+    "context": "Sucumbíos"
+  },
+  {
+    "shapeId": "8360857B1829680752404",
+    "key": "city:las-golondrinas:imbabura",
+    "kind": "city",
+    "label": "Las Golondrinas",
+    "context": "Imbabura"
+  },
+  {
+    "shapeId": "8360857B7040191128771",
+    "key": "city:las-lajas:el-oro",
+    "kind": "city",
+    "label": "Las Lajas",
+    "context": "El Oro"
+  },
+  {
+    "shapeId": "8360857B91548183775904",
+    "key": "city:las-naves:bolivar",
+    "kind": "city",
+    "label": "Las Naves",
+    "context": "Bolívar"
+  },
+  {
+    "shapeId": "8360857B97397633199247",
+    "key": "city:latacunga:cotopaxi",
+    "kind": "city",
+    "label": "Latacunga",
+    "context": "Cotopaxi"
+  },
+  {
+    "shapeId": "8360857B43814367991628",
+    "key": "city:limon-indanza:morona-santiago",
+    "kind": "city",
+    "label": "Limon Indanza",
+    "context": "Morona Santiago"
+  },
+  {
+    "shapeId": "8360857B64842407463110",
+    "key": "city:logrono:morona-santiago",
+    "kind": "city",
+    "label": "Logroño",
+    "context": "Morona Santiago"
+  },
+  {
+    "shapeId": "8360857B45302823884127",
+    "key": "city:loja:loja",
+    "kind": "city",
+    "label": "Loja",
+    "context": "Loja"
+  },
+  {
+    "shapeId": "8360857B38256129042157",
+    "key": "city:lomas-de-sargentillo:guayas",
+    "kind": "city",
+    "label": "Lomas de Sargentillo",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B25470470808554",
+    "key": "city:loreto:napo",
+    "kind": "city",
+    "label": "Loreto",
+    "context": "Napo"
+  },
+  {
+    "shapeId": "8360857B58604759333218",
+    "key": "city:macara:loja",
+    "kind": "city",
+    "label": "Macara",
+    "context": "Loja"
+  },
+  {
+    "shapeId": "8360857B54520179219696",
+    "key": "city:machala:el-oro",
+    "kind": "city",
+    "label": "Machala",
+    "context": "El Oro"
+  },
+  {
+    "shapeId": "8360857B97342174923698",
+    "key": "city:manga-del-cura:manabi",
+    "kind": "city",
+    "label": "Manga del Cura",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B72136829689010",
+    "key": "city:manta:manabi",
+    "kind": "city",
+    "label": "Manta",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B87513516698723",
+    "key": "city:marcabeli:el-oro",
+    "kind": "city",
+    "label": "Marcabeli",
+    "context": "El Oro"
+  },
+  {
+    "shapeId": "8360857B86630198193549",
+    "key": "city:mejia:pichincha",
+    "kind": "city",
+    "label": "Mejia",
+    "context": "Pichincha"
+  },
+  {
+    "shapeId": "8360857B12620262069407",
+    "key": "city:mera:pastaza",
+    "kind": "city",
+    "label": "Mera",
+    "context": "Pastaza"
+  },
+  {
+    "shapeId": "8360857B82263990527647",
+    "key": "city:milagro:guayas",
+    "kind": "city",
+    "label": "Milagro",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B23467138047954",
+    "key": "city:mira:carchi",
+    "kind": "city",
+    "label": "Mira",
+    "context": "Carchi"
+  },
+  {
+    "shapeId": "8360857B55649152040637",
+    "key": "city:mocache:los-rios",
+    "kind": "city",
+    "label": "Mocache",
+    "context": "Los Ríos"
+  },
+  {
+    "shapeId": "8360857B45602957344517",
+    "key": "city:mocha:tungurahua",
+    "kind": "city",
+    "label": "Mocha",
+    "context": "Tungurahua"
+  },
+  {
+    "shapeId": "8360857B47637388687848",
+    "key": "city:montalvo:los-rios",
+    "kind": "city",
+    "label": "Montalvo",
+    "context": "Los Ríos"
+  },
+  {
+    "shapeId": "8360857B99830619134812",
+    "key": "city:montecristi:manabi",
+    "kind": "city",
+    "label": "Montecristi",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B57734122630891",
+    "key": "city:montufar:carchi",
+    "kind": "city",
+    "label": "Montufar",
+    "context": "Carchi"
+  },
+  {
+    "shapeId": "8360857B55598712606622",
+    "key": "city:morona:morona-santiago",
+    "kind": "city",
+    "label": "Morona",
+    "context": "Morona Santiago"
+  },
+  {
+    "shapeId": "8360857B78809265584676",
+    "key": "city:muisne:esmeraldas",
+    "kind": "city",
+    "label": "Muisne",
+    "context": "Esmeraldas"
+  },
+  {
+    "shapeId": "8360857B24818019376312",
+    "key": "city:nabon:azuay",
+    "kind": "city",
+    "label": "Nabon",
+    "context": "Azuay"
+  },
+  {
+    "shapeId": "8360857B36504899110850",
+    "key": "city:nangaritza:zamora-chinchipe",
+    "kind": "city",
+    "label": "Nangaritza",
+    "context": "Zamora Chinchipe"
+  },
+  {
+    "shapeId": "8360857B52535355247444",
+    "key": "city:naranjal:guayas",
+    "kind": "city",
+    "label": "Naranjal",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B54885584710427",
+    "key": "city:naranjito:guayas",
+    "kind": "city",
+    "label": "Naranjito",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B45537729635416",
+    "key": "city:nobol:guayas",
+    "kind": "city",
+    "label": "Nobol",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B52842084274578",
+    "key": "city:olmedo:loja",
+    "kind": "city",
+    "label": "Olmedo",
+    "context": "Loja"
+  },
+  {
+    "shapeId": "8360857B9236921602752",
+    "key": "city:olmedo:manabi",
+    "kind": "city",
+    "label": "Olmedo",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B30899779173578",
+    "key": "city:ona:azuay",
+    "kind": "city",
+    "label": "Oña",
+    "context": "Azuay"
+  },
+  {
+    "shapeId": "8360857B2632512841058",
+    "key": "city:orellana:orellana",
+    "kind": "city",
+    "label": "Orellana",
+    "context": "Orellana"
+  },
+  {
+    "shapeId": "8360857B9675012556832",
+    "key": "city:otavalo:imbabura",
+    "kind": "city",
+    "label": "Otavalo",
+    "context": "Imbabura"
+  },
+  {
+    "shapeId": "8360857B79368212574342",
+    "key": "city:pablo-sexto:morona-santiago",
+    "kind": "city",
+    "label": "Pablo Sexto",
+    "context": "Morona Santiago"
+  },
+  {
+    "shapeId": "8360857B88388288506249",
+    "key": "city:pajan:manabi",
+    "kind": "city",
+    "label": "Pajan",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B40737212656211",
+    "key": "city:palanda:zamora-chinchipe",
+    "kind": "city",
+    "label": "Palanda",
+    "context": "Zamora Chinchipe"
+  },
+  {
+    "shapeId": "8360857B53847682680021",
+    "key": "city:palenque:los-rios",
+    "kind": "city",
+    "label": "Palenque",
+    "context": "Los Ríos"
+  },
+  {
+    "shapeId": "8360857B38620743711757",
+    "key": "city:palestina:guayas",
+    "kind": "city",
+    "label": "Palestina",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B6755122070607",
+    "key": "city:pallatanga:chimborazo",
+    "kind": "city",
+    "label": "Pallatanga",
+    "context": "Chimborazo"
+  },
+  {
+    "shapeId": "8360857B98088290450398",
+    "key": "city:palora:morona-santiago",
+    "kind": "city",
+    "label": "Palora",
+    "context": "Morona Santiago"
+  },
+  {
+    "shapeId": "8360857B19688519580687",
+    "key": "city:paltas:loja",
+    "kind": "city",
+    "label": "Paltas",
+    "context": "Loja"
+  },
+  {
+    "shapeId": "8360857B45229230453028",
+    "key": "city:pangua:cotopaxi",
+    "kind": "city",
+    "label": "Pangua",
+    "context": "Cotopaxi"
+  },
+  {
+    "shapeId": "8360857B20282725655414",
+    "key": "city:paquisha:zamora-chinchipe",
+    "kind": "city",
+    "label": "Paquisha",
+    "context": "Zamora Chinchipe"
+  },
+  {
+    "shapeId": "8360857B52243980096662",
+    "key": "city:pasaje:el-oro",
+    "kind": "city",
+    "label": "Pasaje",
+    "context": "El Oro"
+  },
+  {
+    "shapeId": "8360857B89599541187452",
+    "key": "city:pastaza:pastaza",
+    "kind": "city",
+    "label": "Pastaza",
+    "context": "Pastaza"
+  },
+  {
+    "shapeId": "8360857B3185299233317",
+    "key": "city:patate:tungurahua",
+    "kind": "city",
+    "label": "Patate",
+    "context": "Tungurahua"
+  },
+  {
+    "shapeId": "8360857B51005001809557",
+    "key": "city:paute:azuay",
+    "kind": "city",
+    "label": "Paute",
+    "context": "Azuay"
+  },
+  {
+    "shapeId": "8360857B91942112022560",
+    "key": "city:pedernales:manabi",
+    "kind": "city",
+    "label": "Pedernales",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B48061354733305",
+    "key": "city:pedro-carbo:guayas",
+    "kind": "city",
+    "label": "Pedro Carbo",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B86285248238237",
+    "key": "city:pedro-moncayo:pichincha",
+    "kind": "city",
+    "label": "Pedro Moncayo",
+    "context": "Pichincha"
+  },
+  {
+    "shapeId": "8360857B92001887030544",
+    "key": "city:pedro-vicente-maldonado:pichincha",
+    "kind": "city",
+    "label": "Pedro Vicente Maldonado",
+    "context": "Pichincha"
+  },
+  {
+    "shapeId": "8360857B23969397471508",
+    "key": "city:penipe:chimborazo",
+    "kind": "city",
+    "label": "Penipe",
+    "context": "Chimborazo"
+  },
+  {
+    "shapeId": "8360857B60959111227770",
+    "key": "city:pichincha:manabi",
+    "kind": "city",
+    "label": "Pichincha",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B7887344691779",
+    "key": "city:pimampiro:imbabura",
+    "kind": "city",
+    "label": "Pimampiro",
+    "context": "Imbabura"
+  },
+  {
+    "shapeId": "8360857B66952763601704",
+    "key": "city:pinas:el-oro",
+    "kind": "city",
+    "label": "Piñas",
+    "context": "El Oro"
+  },
+  {
+    "shapeId": "8360857B50209341108464",
+    "key": "city:pindal:loja",
+    "kind": "city",
+    "label": "Pindal",
+    "context": "Loja"
+  },
+  {
+    "shapeId": "8360857B78942405683114",
+    "key": "city:playas:guayas",
+    "kind": "city",
+    "label": "Playas",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B9604201024636",
+    "key": "city:portovelo:el-oro",
+    "kind": "city",
+    "label": "Portovelo",
+    "context": "El Oro"
+  },
+  {
+    "shapeId": "8360857B28339541752257",
+    "key": "city:portoviejo:manabi",
+    "kind": "city",
+    "label": "Portoviejo",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B91188181337605",
+    "key": "city:pucara:azuay",
+    "kind": "city",
+    "label": "Pucara",
+    "context": "Azuay"
+  },
+  {
+    "shapeId": "8360857B21283646614979",
+    "key": "city:puebloviejo:los-rios",
+    "kind": "city",
+    "label": "Puebloviejo",
+    "context": "Los Ríos"
+  },
+  {
+    "shapeId": "8360857B39062181944850",
+    "key": "city:puerto-lopez:manabi",
+    "kind": "city",
+    "label": "Puerto Lopez",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B71791990485840",
+    "key": "city:puerto-quito:pichincha",
+    "kind": "city",
+    "label": "Puerto Quito",
+    "context": "Pichincha"
+  },
+  {
+    "shapeId": "8360857B69808227880519",
+    "key": "city:pujili:cotopaxi",
+    "kind": "city",
+    "label": "Pujili",
+    "context": "Cotopaxi"
+  },
+  {
+    "shapeId": "8360857B86865530067586",
+    "key": "city:putumayo:sucumbios",
+    "kind": "city",
+    "label": "Putumayo",
+    "context": "Sucumbíos"
+  },
+  {
+    "shapeId": "8360857B44801921966022",
+    "key": "city:puyango:loja",
+    "kind": "city",
+    "label": "Puyango",
+    "context": "Loja"
+  },
+  {
+    "shapeId": "8360857B96078226152486",
+    "key": "city:quero:tungurahua",
+    "kind": "city",
+    "label": "Quero",
+    "context": "Tungurahua"
+  },
+  {
+    "shapeId": "8360857B67101317912818",
+    "key": "city:quevedo:los-rios",
+    "kind": "city",
+    "label": "Quevedo",
+    "context": "Los Ríos"
+  },
+  {
+    "shapeId": "8360857B2766573114879",
+    "key": "city:quijos:napo",
+    "kind": "city",
+    "label": "Quijos",
+    "context": "Napo"
+  },
+  {
+    "shapeId": "8360857B88871237564279",
+    "key": "city:quilanga:loja",
+    "kind": "city",
+    "label": "Quilanga",
+    "context": "Loja"
+  },
+  {
+    "shapeId": "8360857B19300187334866",
+    "key": "city:quininde:esmeraldas",
+    "kind": "city",
+    "label": "Quininde",
+    "context": "Esmeraldas"
+  },
+  {
+    "shapeId": "8360857B59163426869713",
+    "key": "city:quinsaloma:los-rios",
+    "kind": "city",
+    "label": "Quinsaloma",
+    "context": "Los Ríos"
+  },
+  {
+    "shapeId": "8360857B23484517950931",
+    "key": "city:quito:pichincha",
+    "kind": "city",
+    "label": "Quito",
+    "context": "Pichincha"
+  },
+  {
+    "shapeId": "8360857B36561787951803",
+    "key": "city:riobamba:chimborazo",
+    "kind": "city",
+    "label": "Riobamba",
+    "context": "Chimborazo"
+  },
+  {
+    "shapeId": "8360857B16857875434642",
+    "key": "city:rioverde:esmeraldas",
+    "kind": "city",
+    "label": "Rioverde",
+    "context": "Esmeraldas"
+  },
+  {
+    "shapeId": "8360857B52091379979635",
+    "key": "city:rocafuerte:manabi",
+    "kind": "city",
+    "label": "Rocafuerte",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B83560565245065",
+    "key": "city:ruminahui:pichincha",
+    "kind": "city",
+    "label": "Rumiñahui",
+    "context": "Pichincha"
+  },
+  {
+    "shapeId": "8360857B66602561776891",
+    "key": "city:salcedo:cotopaxi",
+    "kind": "city",
+    "label": "Salcedo",
+    "context": "Cotopaxi"
+  },
+  {
+    "shapeId": "8360857B49766571468879",
+    "key": "city:salinas:santa-elena",
+    "kind": "city",
+    "label": "Salinas",
+    "context": "Santa Elena"
+  },
+  {
+    "shapeId": "8360857B73646233564804",
+    "key": "city:salitre:guayas",
+    "kind": "city",
+    "label": "Salitre",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B50799900166454",
+    "key": "city:samborondon:guayas",
+    "kind": "city",
+    "label": "Samborondón",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B96374734157472",
+    "key": "city:san-cristobal:galapagos",
+    "kind": "city",
+    "label": "San Cristobal",
+    "context": "Galápagos"
+  },
+  {
+    "shapeId": "8360857B77074182584191",
+    "key": "city:san-fernando:azuay",
+    "kind": "city",
+    "label": "San Fernando",
+    "context": "Azuay"
+  },
+  {
+    "shapeId": "8360857B83271763782433",
+    "key": "city:san-jacinto-de-yaguachi:guayas",
+    "kind": "city",
+    "label": "San Jacinto de Yaguachi",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B91956383415021",
+    "key": "city:san-juan-bosco:morona-santiago",
+    "kind": "city",
+    "label": "San Juan Bosco",
+    "context": "Morona Santiago"
+  },
+  {
+    "shapeId": "8360857B36933905288912",
+    "key": "city:san-lorenzo:esmeraldas",
+    "kind": "city",
+    "label": "San Lorenzo",
+    "context": "Esmeraldas"
+  },
+  {
+    "shapeId": "8360857B61039226108204",
+    "key": "city:san-miguel:bolivar",
+    "kind": "city",
+    "label": "San Miguel",
+    "context": "Bolívar"
+  },
+  {
+    "shapeId": "8360857B83571898768339",
+    "key": "city:san-miguel-de-los-bancos:pichincha",
+    "kind": "city",
+    "label": "San Miguel de Los Bancos",
+    "context": "Pichincha"
+  },
+  {
+    "shapeId": "8360857B34555635043771",
+    "key": "city:san-miguel-de-urcuqui:imbabura",
+    "kind": "city",
+    "label": "San Miguel de Urcuqui",
+    "context": "Imbabura"
+  },
+  {
+    "shapeId": "8360857B26572966022177",
+    "key": "city:san-pedro-de-huaca:carchi",
+    "kind": "city",
+    "label": "San Pedro de Huaca",
+    "context": "Carchi"
+  },
+  {
+    "shapeId": "8360857B2847558667695",
+    "key": "city:san-pedro-de-pelileo:tungurahua",
+    "kind": "city",
+    "label": "San Pedro de Pelileo",
+    "context": "Tungurahua"
+  },
+  {
+    "shapeId": "8360857B32619791172197",
+    "key": "city:san-vicente:manabi",
+    "kind": "city",
+    "label": "San Vicente",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B69594621756810",
+    "key": "city:santa-ana:manabi",
+    "kind": "city",
+    "label": "Santa Ana",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B98127475553098",
+    "key": "city:santa-clara:pastaza",
+    "kind": "city",
+    "label": "Santa Clara",
+    "context": "Pastaza"
+  },
+  {
+    "shapeId": "8360857B73941749048341",
+    "key": "city:santa-cruz:galapagos",
+    "kind": "city",
+    "label": "Santa Cruz",
+    "context": "Galápagos"
+  },
+  {
+    "shapeId": "8360857B94997360470933",
+    "key": "city:santa-elena:santa-elena",
+    "kind": "city",
+    "label": "Santa Elena",
+    "context": "Santa Elena"
+  },
+  {
+    "shapeId": "8360857B32737896699989",
+    "key": "city:santa-isabel:azuay",
+    "kind": "city",
+    "label": "Santa Isabel",
+    "context": "Azuay"
+  },
+  {
+    "shapeId": "8360857B32465002428557",
+    "key": "city:santa-lucia:guayas",
+    "kind": "city",
+    "label": "Santa Lucia",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B25401291560682",
+    "key": "city:santa-rosa:el-oro",
+    "kind": "city",
+    "label": "Santa Rosa",
+    "context": "El Oro"
+  },
+  {
+    "shapeId": "8360857B27745190393271",
+    "key": "city:santiago:morona-santiago",
+    "kind": "city",
+    "label": "Santiago",
+    "context": "Morona Santiago"
+  },
+  {
+    "shapeId": "8360857B6057709742750",
+    "key": "city:santiago-de-pillaro:tungurahua",
+    "kind": "city",
+    "label": "Santiago de Pillaro",
+    "context": "Tungurahua"
+  },
+  {
+    "shapeId": "8360857B50709521665039",
+    "key": "city:santo-domingo:santo-domingo-de-los-tsachilas",
+    "kind": "city",
+    "label": "Santo Domingo",
+    "context": "Santo Domingo de los Tsáchilas"
+  },
+  {
+    "shapeId": "8360857B28418888111721",
+    "key": "city:saquisili:cotopaxi",
+    "kind": "city",
+    "label": "Saquisili",
+    "context": "Cotopaxi"
+  },
+  {
+    "shapeId": "8360857B4776298104783",
+    "key": "city:saraguro:loja",
+    "kind": "city",
+    "label": "Saraguro",
+    "context": "Loja"
+  },
+  {
+    "shapeId": "8360857B69749435538117",
+    "key": "city:sevilla-de-oro:azuay",
+    "kind": "city",
+    "label": "Sevilla de Oro",
+    "context": "Azuay"
+  },
+  {
+    "shapeId": "8360857B16712310561849",
+    "key": "city:shushufindi:sucumbios",
+    "kind": "city",
+    "label": "Shushufindi",
+    "context": "Sucumbíos"
+  },
+  {
+    "shapeId": "8360857B12215357040494",
+    "key": "city:sigchos:cotopaxi",
+    "kind": "city",
+    "label": "Sigchos",
+    "context": "Cotopaxi"
+  },
+  {
+    "shapeId": "8360857B4650736479610",
+    "key": "city:sigsig:azuay",
+    "kind": "city",
+    "label": "Sigsig",
+    "context": "Azuay"
+  },
+  {
+    "shapeId": "8360857B9786839624042",
+    "key": "city:simon-bolivar:guayas",
+    "kind": "city",
+    "label": "Simon Bolivar",
+    "context": "Guayas"
+  },
+  {
+    "shapeId": "8360857B65989855164186",
+    "key": "city:sozoranga:loja",
+    "kind": "city",
+    "label": "Sozoranga",
+    "context": "Loja"
+  },
+  {
+    "shapeId": "8360857B16036105102773",
+    "key": "city:sucre:manabi",
+    "kind": "city",
+    "label": "Sucre",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B23495862214977",
+    "key": "city:sucua:morona-santiago",
+    "kind": "city",
+    "label": "Sucua",
+    "context": "Morona Santiago"
+  },
+  {
+    "shapeId": "8360857B67239224798881",
+    "key": "city:sucumbios:sucumbios",
+    "kind": "city",
+    "label": "Sucumbíos",
+    "context": "Sucumbíos"
+  },
+  {
+    "shapeId": "8360857B89634065401442",
+    "key": "city:suscal:canar",
+    "kind": "city",
+    "label": "Suscal",
+    "context": "Cañar"
+  },
+  {
+    "shapeId": "8360857B62075287883124",
+    "key": "city:taisha:morona-santiago",
+    "kind": "city",
+    "label": "Taisha",
+    "context": "Morona Santiago"
+  },
+  {
+    "shapeId": "8360857B35780226802256",
+    "key": "city:tena:napo",
+    "kind": "city",
+    "label": "Tena",
+    "context": "Napo"
+  },
+  {
+    "shapeId": "8360857B823186733653",
+    "key": "city:tisaleo:tungurahua",
+    "kind": "city",
+    "label": "Tisaleo",
+    "context": "Tungurahua"
+  },
+  {
+    "shapeId": "8360857B5800321951611",
+    "key": "city:tiwintza:morona-santiago",
+    "kind": "city",
+    "label": "Tiwintza",
+    "context": "Morona Santiago"
+  },
+  {
+    "shapeId": "8360857B34654590669506",
+    "key": "city:tosagua:manabi",
+    "kind": "city",
+    "label": "Tosagua",
+    "context": "Manabí"
+  },
+  {
+    "shapeId": "8360857B85617002422218",
+    "key": "city:tulcan:carchi",
+    "kind": "city",
+    "label": "Tulcan",
+    "context": "Carchi"
+  },
+  {
+    "shapeId": "8360857B13036239300316",
+    "key": "city:urdaneta:los-rios",
+    "kind": "city",
+    "label": "Urdaneta",
+    "context": "Los Ríos"
+  },
+  {
+    "shapeId": "8360857B40545077285302",
+    "key": "city:valencia:los-rios",
+    "kind": "city",
+    "label": "Valencia",
+    "context": "Los Ríos"
+  },
+  {
+    "shapeId": "8360857B83829792617197",
+    "key": "city:ventanas:los-rios",
+    "kind": "city",
+    "label": "Ventanas",
+    "context": "Los Ríos"
+  },
+  {
+    "shapeId": "8360857B65824722348178",
+    "key": "city:vinces:los-rios",
+    "kind": "city",
+    "label": "Vinces",
+    "context": "Los Ríos"
+  },
+  {
+    "shapeId": "8360857B31068945551304",
+    "key": "city:yacuambi:zamora-chinchipe",
+    "kind": "city",
+    "label": "Yacuambi",
+    "context": "Zamora Chinchipe"
+  },
+  {
+    "shapeId": "8360857B42265273644391",
+    "key": "city:yantzaza:zamora-chinchipe",
+    "kind": "city",
+    "label": "Yantzaza",
+    "context": "Zamora Chinchipe"
+  },
+  {
+    "shapeId": "8360857B6169045226043",
+    "key": "city:zamora:zamora-chinchipe",
+    "kind": "city",
+    "label": "Zamora",
+    "context": "Zamora Chinchipe"
+  },
+  {
+    "shapeId": "8360857B34607676191169",
+    "key": "city:zapotillo:loja",
+    "kind": "city",
+    "label": "Zapotillo",
+    "context": "Loja"
+  },
+  {
+    "shapeId": "8360857B11168395923367",
+    "key": "city:zaruma:el-oro",
+    "kind": "city",
+    "label": "Zaruma",
+    "context": "El Oro"
+  }
+]
