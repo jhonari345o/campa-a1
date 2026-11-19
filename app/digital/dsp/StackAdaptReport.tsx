@@ -7,7 +7,11 @@ import styles from "./StackAdaptReport.module.css";
 
 export const formatNumber = (value: number | null | undefined, digits = 2) => value == null ? "—" : new Intl.NumberFormat("es-EC", { maximumFractionDigits: digits }).format(value);
 const shortDate = (date: string) => new Intl.DateTimeFormat("es-EC", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
-const csvCell = (value: unknown) => `"${String(value ?? "").replace(/^[=+@\-\t\r]/, "'$&").replace(/"/g, '""')}"`;
+const csvCell = (value: unknown) => {
+  const text = String(value ?? "");
+  const safe = /^\s*[=+@-]|^[\t\r]/.test(text) ? `'${text}` : text;
+  return `"${safe.replace(/"/g, '""')}"`;
+};
 type ChartMetric = "impressions" | "clicks" | "cost";
 const chartLabels: Record<ChartMetric, string> = { impressions: "Impresiones", clicks: "Clics", cost: "Inversión" };
 

@@ -30,6 +30,8 @@ test("missing or inconsistent daily delivery stays missing instead of inventing 
   assert.equal(result.metrics?.impressions, 1000);
   const empty = await readStackAdaptDashboard(read({ summary: { __typename: "CampaignDeliveryOutcome", totalStats: null, records: page([]) }, daily: { __typename: "CampaignDeliveryOutcome", records: page([]) } }), connection, "client-a", "2026-01-01", "2026-01-03");
   assert.equal(empty.metrics, null); assert.equal(empty.daily[0].metrics, null);
+  const absent = await readStackAdaptDashboard(read({ summary: { __typename: "CampaignDeliveryOutcome", totalStats: { cost: null, impressionsBigint: null }, records: page([]) }, daily: { __typename: "CampaignDeliveryOutcome", records: page([]) } }), connection, "client-a", "2026-01-01", "2026-01-03");
+  assert.equal(absent.metrics, null); assert.equal(absent.dailyComplete, false);
 });
 test("reports validate advertiser and selected campaign before delivery queries and constrain every request", async () => {
   const calls: string[] = [];

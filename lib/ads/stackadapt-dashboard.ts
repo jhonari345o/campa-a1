@@ -67,7 +67,8 @@ export async function readStackAdaptDashboard(read: StackAdaptRead, connection: 
     const summary = obj(data.summary);
     if (summary.__typename === "Progress") return pending;
     if (summary.__typename !== "CampaignDeliveryOutcome") throw invalid();
-    const currentTotal = summary.totalStats == null ? null : metrics(summary.totalStats);
+    let currentTotal = summary.totalStats == null ? null : metrics(summary.totalStats);
+    if (currentTotal && Object.values(currentTotal).every(value => value === null)) currentTotal = null;
     if (index === 0) total = currentTotal;
     else if (JSON.stringify(total) !== JSON.stringify(currentTotal)) throw new StackAdaptError("report_changed", "La entrega se actualizó durante la consulta. Actualiza el reporte.");
     const records = page(summary.records);
