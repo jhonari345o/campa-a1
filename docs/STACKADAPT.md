@@ -38,3 +38,20 @@ Las pruebas automatizadas usan respuestas sintéticas y no acreditan acceso a un
 - [Referencia del esquema](https://docs.stackadapt.com/graphql/reference)
 - [Administración de llaves](https://support.stackadapt.com/hc/en-us/articles/32798717073175-Managing-API-Keys)
 - [Reportes](https://docs.stackadapt.com/graphql/scenarios/delivery-reports)
+
+
+## Reportes visuales (19 de noviembre de 2026)
+
+`/digital/dsp`, accesible también desde Reportes para administradores, contiene filtros por anunciante, campaña y período (hasta 93 días), indicadores, barras diarias de impresiones/clics/inversión, dispositivos, regiones y resultados por campaña. Permite descargar los datos diarios en CSV e imprimir el reporte.
+
+- `mode=dashboard`: resumen TOTAL y serie GRAPH/DAILY de `campaignDelivery`; recorre todas las páginas de campañas antes de devolver el resultado.
+- `mode=breakdowns`: `campaignInsight` con DEVICE_TYPE y COUNTRY/REGION, paginado y agregado por dimensión. Carga por separado para no bloquear los indicadores.
+- Ambos modos conservan el acceso exclusivo de administradores. Una campaña seleccionada se valida contra su anunciante y ambos filtros se envían al proveedor. Cada fila de campaña o desglose debe pertenecer al anunciante autorizado.
+- El alcance y la frecuencia se conservan del total del período informado por StackAdapt (`uniqueImpressionsBigint`, `frequency`). Se muestran como identificadores únicos, no como personas verificadas. No se suman entre días ni campañas.
+- CTR, CPM y CPC se calculan con los totales y no promediando ratios. Un denominador cero o dato ausente muestra «—».
+- Los huecos de la serie solo se completan con cero cuando todos los indicadores aditivos concilian con el total. Si no concilian, permanecen sin dato y el panel indica que el desglose está incompleto.
+- Las fechas conservan el calendario informado por StackAdapt; la hora de consulta se presenta en America/Guayaquil. El panel indica ambas bases.
+- Cambiar anunciante, campaña o fechas cancela las consultas anteriores y retira los resultados anteriores. Las respuestas tardías no pueden reemplazar la selección vigente.
+- No se incorporan segmentos demográficos o métricas de otras plataformas si no vienen de la fuente. No se ha otorgado acceso a usuarios finales ni establecido correspondencias automáticas con los clientes internos de One.
+
+Validación: pruebas de autorización, paginación, aislamiento de campaña/anunciante, alcance no aditivo, cifras nulas, ratios, fechas y conciliación diaria; contraste de lectura real con SUPER EASY (1 oct–18 nov de 2026), selección de su campaña de noviembre y rechazo de esa campaña bajo otro anunciante. Sin activar ni modificar campañas.

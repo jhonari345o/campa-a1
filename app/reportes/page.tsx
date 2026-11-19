@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { ClientReports } from "@/components/ClientReports";
 import { AppHeader } from "@/components/AppHeader";
 import { getSessionProfile } from "@/lib/auth";
@@ -56,6 +57,7 @@ export default async function ReportesPage() {
       <AppHeader name={profile.full_name ?? profile.email ?? "Ad Mavericks"} isAdmin={profile.is_platform_admin} workspace={profile.workspace} active="reportes" />
       <main id="workspace-content" className="portal-page portal-page-planner">
         <a href="/clientes" className="library-panel-link"><div><strong>Reportes por cliente</strong><small>Abre una campaña para consultar su plan de medios y comparar resultados.</small></div><span aria-hidden>↗</span></a>
+        {profile.is_platform_admin && <Link href="/digital/dsp" className="library-panel-link"><div><strong>Reportes digitales · StackAdapt</strong><small>Evolución diaria, campañas, dispositivos y ubicaciones por anunciante.</small></div><span aria-hidden>↗</span></Link>}
         {!hasReports ? (
           <section className="reports-locked">
             <span>05</span>

@@ -1,3 +1,4 @@
+import { STACKADAPT_BREAKDOWN_QUERY, STACKADAPT_CAMPAIGN_SCOPE_QUERY, STACKADAPT_DASHBOARD_QUERY } from "./stackadapt-report-queries";
 /** Fixed, read-only StackAdapt GraphQL operations. Credentials stay in the caller. */
 export const STACKADAPT_ENDPOINT = "https://api.stackadapt.com/graphql";
 export const STACKADAPT_CONNECTION_QUERY = `query OneStackAdaptConnection($after: String) {
@@ -72,7 +73,7 @@ export function stackAdaptConfig(env: Record<string, string | undefined>): Stack
 /** Reject redirects, oversized payloads, partial GraphQL errors and raw provider messages. */
 export function stackAdaptReader(config: StackAdaptConfig, fetcher: typeof fetch = fetch) {
   return async (query: string, variables: Record<string, unknown>): Promise<JsonObject> => {
-    if (![STACKADAPT_CONNECTION_QUERY, STACKADAPT_CAMPAIGNS_QUERY, STACKADAPT_REPORT_QUERY].includes(query)) throw invalid();
+    if (![STACKADAPT_CONNECTION_QUERY, STACKADAPT_CAMPAIGNS_QUERY, STACKADAPT_REPORT_QUERY, STACKADAPT_CAMPAIGN_SCOPE_QUERY, STACKADAPT_DASHBOARD_QUERY, STACKADAPT_BREAKDOWN_QUERY].includes(query)) throw invalid();
     try {
       const response = await fetcher(STACKADAPT_ENDPOINT, {
         method: "POST", redirect: "error", cache: "no-store", signal: AbortSignal.timeout(15_000),
