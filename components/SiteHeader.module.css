@@ -1,0 +1,30 @@
+.header { position: sticky; top: 0; z-index: 30; border-bottom: 1px solid #d7ddd8; background: #f4f5f2f5; backdrop-filter: blur(14px); }
+.inner { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 28px; max-width: 1152px; min-height: 88px; margin: auto; padding: 16px 24px; }
+.brand { flex-shrink: 0; font-size: 21px; }
+.nav { display: flex; align-items: center; gap: 24px; }
+.nav a { display: inline-flex; align-items: center; min-height: 44px; color: #22392f; font-size: 13px; font-weight: 800; }
+.nav a:hover { color: #007d00; text-decoration: underline; text-underline-offset: 5px; }
+.login { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; flex-shrink: 0; padding: 12px 22px; border-radius: 12px; background: #00a100; color: #07140e; font-size: 14px; font-weight: 900; white-space: nowrap; }
+.login:hover { background: #0ab10a; }
+.menuButton { display: none; }
+.header a:focus-visible, .menuButton:focus-visible { outline: 3px solid #007d00; outline-offset: 4px; }
+.skipLink { position: absolute; top: 8px; left: 16px; z-index: 2; padding: 12px 16px; border-radius: 8px; background: white; color: #22392f; font-weight: 800; transform: translateY(-160%); }
+.skipLink:focus { transform: translateY(0); }
+
+@media (max-width: 960px) {
+  .inner { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; min-height: 76px; padding: 12px 20px; }
+  .brand { grid-column: 1; grid-row: 1; justify-self: start; font-size: 19px; }
+  .login { grid-column: 2; grid-row: 1; }
+  .menuButton { grid-column: 3; grid-row: 1; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid #d7ddd8; border-radius: 10px; background: transparent; color: #22392f; cursor: pointer; }
+  .menuButton svg { width: 22px; height: 22px; }
+  .nav { display: none; grid-column: 1 / -1; grid-row: 2; border-top: 1px solid #d7ddd8; padding-top: 8px; }
+  .open { display: grid; gap: 2px; }
+  .nav a { min-height: 48px; padding: 8px 12px; border-radius: 8px; font-size: 14px; }
+  .nav a:hover { background: #e8eee6; }
+}
+
+@media (max-width: 480px) {
+  .inner { gap: 8px; padding: 12px; }
+  .brand { font-size: 14px; }
+  .login { min-height: 44px; padding: 10px 12px; font-size: 13px; }
+}

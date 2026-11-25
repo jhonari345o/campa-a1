@@ -1,0 +1,64 @@
+{
+  "generated_at": "2026-08-24T11:07:03.930719+00:00",
+  "campaign": {
+    "id": "f8f920cd-8c07-5713-98f1-19fb63c8cb4f",
+    "sha256": "bd40e65232761af23ab5c6766fe25e0d967a6fbf053915a48a0b70f38e75aca6",
+    "raw_rows": 20892,
+    "sheets": [
+      {
+        "name": "MEDIOS",
+        "rows": 4431,
+        "columns": 19
+      },
+      {
+        "name": "MESES",
+        "rows": 4431,
+        "columns": 17
+      },
+      {
+        "name": "ANUNCIANTES",
+        "rows": 3692,
+        "columns": 10
+      },
+      {
+        "name": "Hoja1",
+        "rows": 19,
+        "columns": 10
+      },
+      {
+        "name": "macro",
+        "rows": 8319,
+        "columns": 12
+      }
+    ],
+    "advertisers": 3688,
+    "agency_rows_aggregated": 71,
+    "media_summaries": 7,
+    "monthly_summaries": 6
+  },
+  "radio": {
+    "id": "1d9a2753-2977-5837-a3b3-1335e5bc665f",
+    "sha256": "372d04a96fd134e4bea4a39200f1a71ca033bd68e70f37f8e8c7779d8914a42a",
+    "raw_rows": 214,
+    "stations": 104,
+    "sheets": [
+      {
+        "name": "Radios x Audiencia",
+        "rows": 107,
+        "columns": 8
+      },
+      {
+        "name": "Radios x Alcance",
+        "rows": 107,
+        "columns": 8
+      }
+    ]
+  },
+  "execution_order": [
+    "00_raw_schema.sql",
+    "01_campaign_raw.sql",
+    "02_campaign_normalized.sql",
+    "03_radio.sql",
+    "99_validate_import.sql"
+  ]
+}
