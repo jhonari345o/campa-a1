@@ -6,7 +6,6 @@ import {workspaceIdentity} from "@/lib/workspace-brand";
 import {AppHeader} from "@/components/AppHeader";
 import {WorkspaceHome} from "@/components/WorkspaceHome";
 import {getCampaignLibrary} from "@/lib/campaign-library-server";
-import {ClientCampaignLibrary} from "@/components/ClientCampaignLibrary";
 import {ClientReports} from "@/components/ClientReports";
 import {getBroadcastCatalog} from "@/lib/broadcast-server";
 import {getRadioDirectory} from "@/lib/radio-directory-server";
@@ -18,7 +17,7 @@ import {priceCatalogProducts} from "@/lib/catalog-access-server";
 import {MediaCatalog} from "@/app/planificador/MediaCatalog";
 import type {CatalogSection} from "@/lib/media-catalog";
 export const metadata={title:"Revisión de portal"};
-export default async function WorkspacePreview({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{view?:string;section?:string;client?:string}>}){
+export default async function WorkspacePreview({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{view?:string;section?:string;client?:string;liveClient?:string;liveChannel?:string;liveReport?:string}>}){
  const actor=await getSessionProfile();if(!actor)redirect("/ingresar");if(!actor.is_platform_admin)redirect("/panel");
  const {id}=await params;if(!/^[a-f0-9-]{36}$/i.test(id))notFound();
  const db=await createClient(),{data:c,error}=await db.from("companies").select("id,name,status,brand_key,portal_kind,client_planning_enabled").eq("id",id).eq("status","activa").maybeSingle();
@@ -29,8 +28,7 @@ export default async function WorkspacePreview({params,searchParams}:{params:Pro
  const library=workspace.kind==="agency"?await getCampaignLibrary(id):null;
  const selectedClient=(clients??[]).find(c=>c.id===p.client);
  const banner=<aside className="workspace-preview-banner border-b border-border bg-white px-6 py-3 text-sm text-muted">Vista previa de consulta · {c.name}. <Link href="/consola" className="font-bold text-signal-dark">Volver a administración →</Link>{(clients??[]).length>0&&<nav className="mt-3 flex flex-wrap gap-2" aria-label="Cliente de la vista previa">{clients!.map(client=><Link className={`rounded-lg border border-border px-3 py-2 ${selectedClient?.id===client.id?"bg-forest text-white":""}`} key={client.id} href={`/consola/espacios/${id}?view=media&section=${section}&client=${client.id}`}>{client.name}</Link>)}</nav>}</aside>;
- if(p.view==="reports"&&library)return <><AppHeader name="Vista previa" isAdmin={false} workspace={workspace} previewCompanyId={id} active="clientes"/>{banner}<main id="workspace-content" className="portal-page library-page"><ClientCampaignLibrary preview initialClientId={selectedClient?.id} library={library.library} available={library.available} workspaceName={workspace.name} brand={workspace.brand}/></main></>;
- if(p.view==="reports")return <>{banner}<ClientReports previewCompanyId={id} profile={{...actor,is_platform_admin:false,full_name:"Vista previa",workspace}}/></>;
+ if(p.view==="reports")return <>{banner}<ClientReports previewCompanyId={id} initialClientId={selectedClient?.id} selection={{client:p.liveClient,channel:p.liveChannel,report:p.liveReport}} profile={{...actor,is_platform_admin:false,full_name:"Vista previa",workspace}}/></>;
  if(p.view!=="media")return <><AppHeader name="Vista previa" isAdmin={false} workspace={workspace} previewCompanyId={id}/>{banner}<WorkspaceHome clients={library?.library.clients} workspace={workspace} name={actor.full_name??""} previewCompanyId={id}/></>;
  const [rawBroadcast,rawRadio,rawPress,rawOoh,rawInfluencers]=await Promise.all([getBroadcastCatalog(),getRadioDirectory(),getPressCatalog(),getOohCatalog(),getInfluencerCatalog()]);
  // The preview uses the same customer projection. No supplier acquisition price is displayed.

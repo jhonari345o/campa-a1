@@ -8,7 +8,7 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",
   "img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org",
-  "frame-src 'self' https://www.openstreetmap.org https://*.openstreetmap.org https://www.google.com https://maps.google.com https://paybox.pagoplux.com https://sandbox-paybox.pagoplux.com",
+  "frame-src 'self' https://www.openstreetmap.org https://*.openstreetmap.org https://www.google.com https://maps.google.com https://paybox.pagoplux.com https://sandbox-paybox.pagoplux.com https://datastudio.google.com https://lookerstudio.google.com",
   "connect-src 'self' https://tiles.openfreemap.org https://*.supabase.co wss://*.supabase.co https://paybox.pagoplux.com https://sandbox-paybox.pagoplux.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
