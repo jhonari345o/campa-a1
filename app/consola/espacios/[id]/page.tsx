@@ -25,7 +25,7 @@ export default async function WorkspacePreview({params,searchParams}:{params:Pro
  const workspace=workspaceIdentity([{...c,role:"viewer"}],false)!;
  const p=await searchParams,sections=new Set(["tv","radio","ooh","press","digital","influencers"]),section=(sections.has(p.section??"")?p.section:"tv") as CatalogSection;
  const {data:clients}=await db.from("workspace_clients").select("id,name").eq("company_id",id).order("name");
- const library=workspace.kind==="agency"?await getCampaignLibrary(id):null;
+ const library=workspace.kind==="agency"&&p.view!=="reports"?await getCampaignLibrary(id):null;
  const selectedClient=(clients??[]).find(c=>c.id===p.client);
  const banner=<aside className="workspace-preview-banner border-b border-border bg-white px-6 py-3 text-sm text-muted">Vista previa de consulta · {c.name}. <Link href="/consola" className="font-bold text-signal-dark">Volver a administración →</Link>{(clients??[]).length>0&&<nav className="mt-3 flex flex-wrap gap-2" aria-label="Cliente de la vista previa">{clients!.map(client=><Link className={`rounded-lg border border-border px-3 py-2 ${selectedClient?.id===client.id?"bg-forest text-white":""}`} key={client.id} href={`/consola/espacios/${id}?view=media&section=${section}&client=${client.id}`}>{client.name}</Link>)}</nav>}</aside>;
  if(p.view==="reports")return <>{banner}<ClientReports previewCompanyId={id} initialClientId={selectedClient?.id} selection={{client:p.liveClient,channel:p.liveChannel,report:p.liveReport}} profile={{...actor,is_platform_admin:false,full_name:"Vista previa",workspace}}/></>;
