@@ -10,7 +10,6 @@ export function LiveReportFrame({ url, title }: { url: string; title: string }) 
   if (!embed) return null;
   return <section className={styles.viewer} aria-label={title}>
     <div className={styles.viewerToolbar}>
-      <p><span className={styles.liveDot} /> Reporte conectado a Looker Studio</p>
       <button type="button" onClick={() => { setLoading(true); setVersion(v => v + 1); }}>Recargar reporte ↻</button>
     </div>
     <p className={styles.viewerNote}>Se actualiza con el informe original. Si Google solicita ingreso, utiliza la cuenta que tiene acceso al reporte.</p>
