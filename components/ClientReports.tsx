@@ -3,6 +3,7 @@ import {ClientCampaignLibrary} from "./ClientCampaignLibrary";
 import {MaviScene} from "./Mavi";
 import {getPublishedCompanyReports} from "@/lib/company-reports-server";
 import {getCampaignLibrary} from "@/lib/campaign-library-server";
+import {EMPTY_LIBRARY} from "@/lib/campaign-library";
 import {getLiveReports} from "@/lib/live-reports-server";
 import {LiveReportCatalog} from "./LiveReportCatalog";
 import type {LiveReportSelection} from "@/lib/live-reports";
@@ -10,11 +11,11 @@ import {portalCapabilities} from "@/lib/portal-access";
 import {workspacePreviewHref} from "@/lib/workspace-preview";
 import type {Profile} from "@/lib/auth";
 export async function ClientReports({profile,previewCompanyId,selection={},initialClientId}:{profile:Profile;previewCompanyId?:string;selection?:LiveReportSelection;initialClientId?:string}){
+ const selected=Boolean(selection.client||selection.channel||selection.report);
  const [{library,available},live]=await Promise.all([
-  profile.workspace?.kind==="agency"?getCampaignLibrary(profile.workspace.companyId):getPublishedCompanyReports(profile.workspace?.companyId??"").then(library=>({library,available:true})),
+  selected||!profile.workspace?Promise.resolve({library:EMPTY_LIBRARY,available:true}):profile.workspace.kind==="agency"?getCampaignLibrary(profile.workspace.companyId):getPublishedCompanyReports(profile.workspace.companyId).then(library=>({library,available:true})),
   getLiveReports(previewCompanyId),
  ]);
- const selected=Boolean(selection.client||selection.channel||selection.report);
  const base=previewCompanyId?workspacePreviewHref(previewCompanyId,"/reportes"):"/reportes";
  const canPlan=portalCapabilities(profile.workspace?.kind??"client",profile.workspace?.role??"",profile.is_platform_admin,profile.workspace?.clientPlanning).plan;
  const catalogHref=previewCompanyId?workspacePreviewHref(previewCompanyId,"/planificador?view=media&section=tv"):"/planificador?view=media&section=tv";
