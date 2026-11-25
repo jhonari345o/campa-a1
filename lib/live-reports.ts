@@ -25,10 +25,6 @@ export function lookerEmbedUrl(value: unknown): string | null {
     return url.href;
   } catch { return null; }
 }
-export function lookerViewUrl(embed: string): string | null {
-  const safe = lookerEmbedUrl(embed);
-  return safe ? safe.replace("/embed/reporting/", "/reporting/") : null;
-}
 export function validLiveReport(value: unknown): value is LiveReport {
   if (!value || typeof value !== "object") return false;
   const r = value as Record<string, unknown>;
